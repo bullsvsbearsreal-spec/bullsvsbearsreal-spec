@@ -4,6 +4,9 @@ import { fetchWithTimeout, normalizeSymbol } from '../../_shared/fetch';
 import { fetchAllExchangesWithHealth } from '../../_shared/exchange-fetchers';
 import { dedupedFetch } from '../../_shared/inflight';
 import { tickerFetchers } from '../../tickers/exchanges';
+import {
+  EXCHANGE_FEES, FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT, getFeeScheduleSnapshot,
+} from '@/lib/constants/exchanges';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -17,10 +20,17 @@ const L1_TTL = 5_000;
 /**
  * GET /api/v1/spreads
  *
- * Returns cross-exchange price spreads for each symbol.
+ * Returns cross-exchange price spreads for each symbol with gross +
+ * net spread (after round-trip taker fees on both legs), per-side
+ * maker + taker fees, and a `meta.feeModel` block (version + updatedAt
+ * + full fee schedule) so callers can verify or recompute under their
+ * own fill model. Response headers `X-Fee-Model-Version` and
+ * `X-Fee-Model-Updated-At` mirror the model identifiers for cheap
+ * HEAD-request bump detection.
+ *
  * Query params:
  *   ?symbols=BTC,ETH   — filter by symbols (comma-separated)
- *   ?minSpread=0.01    — minimum spread % to include (default 0)
+ *   ?minSpread=0.01    — minimum GROSS spread % to include (default 0)
  *   ?limit=50          — max results (1–200, default 50)
  */
 export async function GET(request: NextRequest) {
@@ -69,15 +79,35 @@ export async function GET(request: NextRequest) {
       const spreadUsd = high.price - low.price;
       const spreadPct = low.price > 0 ? (spreadUsd / low.price) * 100 : 0;
       if (spreadPct < minSpread) continue;
+
+      // Fee accounting: round trip = taker on the low venue (buy) +
+      // taker on the high venue (sell). Spot arb doesn't need a close
+      // leg unless the trader is hedging, so this is conservative.
+      const highFees = EXCHANGE_FEES[high.exchange];
+      const lowFees  = EXCHANGE_FEES[low.exchange];
+      const roundTripFeePct = (highFees?.taker ?? 0.05) + (lowFees?.taker ?? 0.05);
+      const netSpreadPct = spreadPct - roundTripFeePct;
+
       spreads.push({
         symbol,
         spreadPct: Math.round(spreadPct * 10000) / 10000,
         spreadUsd: Math.round(spreadUsd * 100) / 100,
+        netSpreadPct: Math.round(netSpreadPct * 10000) / 10000,
         highExchange: high.exchange,
         highPrice: high.price,
         lowExchange: low.exchange,
         lowPrice: low.price,
         exchangeCount: entries.length,
+        // Per-side fees so callers can recompute net under different fill
+        // assumptions (maker-only routing, post-only orders, etc).
+        // All values are percent-per-trade.
+        fees: {
+          roundTrip: Math.round(roundTripFeePct * 10000) / 10000,
+          highExchangeTaker: highFees?.taker ?? null,
+          highExchangeMaker: highFees?.maker ?? null,
+          lowExchangeTaker:  lowFees?.taker  ?? null,
+          lowExchangeMaker:  lowFees?.maker  ?? null,
+        },
       });
     }
 
@@ -88,9 +118,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       success: true,
       data: result,
-      meta: { timestamp: Date.now(), entries: result.length, totalSymbols: bySymbol.size },
+      meta: {
+        timestamp: Date.now(),
+        entries: result.length,
+        totalSymbols: bySymbol.size,
+        // Same fee-model surface as /api/v1/arbitrage so callers using
+        // both endpoints have one cache key + bump signal to track.
+        feeModel: getFeeScheduleSnapshot(),
+      },
     }, {
-      headers: { 'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30' },
+      headers: {
+        'Cache-Control': 'public, s-maxage=10, stale-while-revalidate=30',
+        'X-Fee-Model-Version': FEE_MODEL_VERSION,
+        'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
+      },
     });
   } catch (e) {
     console.error('v1/spreads error:', e);

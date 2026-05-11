@@ -199,6 +199,48 @@ export const openApiSpec = {
           },
         },
       },
+      SpreadsResponse: {
+        type: 'object',
+        required: ['success', 'data', 'meta'],
+        properties: {
+          success: { type: 'boolean', example: true },
+          data: { type: 'array', items: { $ref: '#/components/schemas/SpreadRow' } },
+          meta: {
+            type: 'object',
+            properties: {
+              timestamp: { type: 'integer', description: 'Unix ms' },
+              entries: { type: 'integer' },
+              totalSymbols: { type: 'integer' },
+              feeModel: { $ref: '#/components/schemas/FeeModel' },
+            },
+          },
+        },
+      },
+      SpreadRow: {
+        type: 'object',
+        properties: {
+          symbol: { type: 'string', example: 'BTC' },
+          spreadPct: { type: 'number', description: 'Gross spread % (highPrice - lowPrice) / lowPrice × 100' },
+          spreadUsd: { type: 'number', description: 'Gross spread in USD' },
+          netSpreadPct: { type: 'number', description: 'spreadPct - roundTripFee, in %' },
+          highExchange: { type: 'string' },
+          highPrice: { type: 'number' },
+          lowExchange: { type: 'string' },
+          lowPrice: { type: 'number' },
+          exchangeCount: { type: 'integer' },
+          fees: {
+            type: 'object',
+            description: 'Fee assumptions baked into netSpreadPct (% per trade)',
+            properties: {
+              roundTrip: { type: 'number', description: 'High-leg taker + low-leg taker' },
+              highExchangeTaker: { type: 'number', nullable: true },
+              highExchangeMaker: { type: 'number', nullable: true },
+              lowExchangeTaker:  { type: 'number', nullable: true },
+              lowExchangeMaker:  { type: 'number', nullable: true },
+            },
+          },
+        },
+      },
       FeeModel: {
         type: 'object',
         description: 'Fee schedule snapshot. Bump-detect on `version` to know when to refresh cached calcs.',
@@ -315,8 +357,33 @@ export const openApiSpec = {
     },
     '/spreads': {
       get: {
-        summary: 'Cross-exchange spreads on top symbols',
-        responses: { 200: { description: 'OK' } },
+        summary: 'Cross-exchange price spreads with fee-aware net spread',
+        description: [
+          'Returns the high venue, low venue, gross spread (%) and net spread (% after',
+          'round-trip taker fees on both legs) per symbol. Each row includes maker + taker',
+          'fees per leg, and the top-level `meta.feeModel` exposes the same version /',
+          'updatedAt / schedule surface as `/arbitrage` so callers can detect fee-schedule',
+          'bumps with one cache key.',
+        ].join(' '),
+        parameters: [
+          { name: 'symbols', in: 'query', schema: { type: 'string' }, description: 'Comma-separated symbol filter (e.g. BTC,ETH)' },
+          { name: 'minSpread', in: 'query', schema: { type: 'number', default: 0 }, description: 'Minimum gross spread (%) to include' },
+          { name: 'limit', in: 'query', schema: { type: 'integer', minimum: 1, maximum: 200, default: 50 } },
+        ],
+        responses: {
+          200: {
+            description: 'OK',
+            headers: {
+              'X-Fee-Model-Version': { description: 'Identifier for the fee schedule used', schema: { type: 'string' } },
+              'X-Fee-Model-Updated-At': { description: 'ISO timestamp of last fee schedule revision', schema: { type: 'string', format: 'date-time' } },
+            },
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/SpreadsResponse' },
+              },
+            },
+          },
+        },
       },
     },
     '/arbitrage': {
