@@ -21,7 +21,8 @@ import { useState, useEffect, useCallback, Suspense } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
+// Image import removed — switched to plain <img> for Vercel Blob avatar URLs
+// (next/image throws on hosts not in next.config.js remotePatterns).
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import {
@@ -367,7 +368,13 @@ function AvatarBlock({ avatar, updateSession }: { avatar: ReturnType<typeof useA
       <label htmlFor="avatar-upload" className="cursor-pointer block">
         <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden border-2 border-white/[0.08] bg-gradient-to-br from-hub-yellow/15 to-hub-orange/10 flex items-center justify-center group-hover:border-hub-yellow/40 transition-colors">
           {avatar.url ? (
-            <Image src={avatar.url} alt="Avatar" width={96} height={96} className="w-full h-full object-cover" />
+            // Plain <img> — next/image throws on hosts not in
+            // remotePatterns. Vercel Blob ('*.public.blob.vercel-storage.com')
+            // isn't in our allowlist, so any user with a custom-uploaded
+            // avatar saw an empty dark square. (Same fix shipped on
+            // /dashboard hero in an earlier round.)
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img src={avatar.url} alt="Avatar" width={96} height={96} className="w-full h-full object-cover" />
           ) : (
             <User className="w-10 h-10 text-hub-yellow/60" />
           )}
