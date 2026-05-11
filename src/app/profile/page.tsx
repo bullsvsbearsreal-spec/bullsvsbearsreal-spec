@@ -453,7 +453,7 @@ function OverviewTab({
       <SectionCard title="Account" icon={Mail} description="Email, password, and security settings.">
         <div className="text-sm text-neutral-300 mb-1">{userEmail}</div>
         <div className="text-[11px] text-neutral-500 mb-3">For email or password changes, contact support.</div>
-        <Link href="/account/security" className="inline-flex items-center gap-1.5 text-xs text-hub-yellow hover:underline">
+        <Link href="/settings" className="inline-flex items-center gap-1.5 text-xs text-hub-yellow hover:underline">
           Two-factor authentication settings <ArrowRight className="w-3 h-3" />
         </Link>
       </SectionCard>
