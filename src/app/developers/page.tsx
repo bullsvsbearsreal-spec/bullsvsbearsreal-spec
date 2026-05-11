@@ -916,7 +916,15 @@ console.log(data);`,
             />
             <FaqItem
               q="What happens if I hit the rate limit?"
-              a="You'll get a 429 response with a Retry-After header. The limit resets every minute. Pro tier (coming soon) bumps this to 500/min with no daily cap."
+              a="You'll get a 429 response with a Retry-After header. The limit resets every minute. Every successful 200 response includes X-RateLimit-Limit / X-RateLimit-Remaining / X-RateLimit-Reset headers so you can throttle pre-emptively. Pro tier (coming soon) bumps this to 500/min with no daily cap."
+            />
+            <FaqItem
+              q="Are exchange fees baked into the /arbitrage net spread?"
+              a="Yes — /arbitrage's netSpread8h assumes taker fills on both legs (open + close = 4 taker fills) using the canonical EXCHANGE_FEES table. Every fee-aware endpoint returns meta.feeModel { version, updatedAt, schedule } so you can verify the assumption or recompute under your own fill model. Bump-detect via meta.feeModel.version or the X-Fee-Model-Version response header."
+            />
+            <FaqItem
+              q="What does the aggregate=1 query param do?"
+              a="Most market-data endpoints (funding, openinterest, tickers) return per-venue rows by default. Pass ?aggregate=1 and you get one row per symbol with summed/averaged values + a venues[] breakdown. Useful when you want 'total OI for BTC' without iterating venues client-side. /liquidations has the equivalent ?summary=1 mode."
             />
           </div>
         </FadeIn>
