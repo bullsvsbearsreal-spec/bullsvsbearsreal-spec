@@ -57,7 +57,11 @@ export const metadata: Metadata = {
     description: `Real-time funding rates, open interest, liquidations & arbitrage across ${ALL_EXCHANGES.length}+ exchanges (CEX + DEX). Multi-asset: crypto, stocks, forex, commodities.`,
     images: [
       {
-        url: '/api/og',
+        // Site-wide OG (root URL share, fallback when a child page has
+        // no per-page metadata) — uses the live-data 'tape' hero. Most
+        // child pages override this with their own page-aware chrome
+        // image via PAGE_META.
+        url: '/api/og?v=tape',
         width: 1200,
         height: 630,
         alt: `InfoHub - Real-Time Derivatives Data Across ${ALL_EXCHANGES.length}+ Exchanges`,
@@ -70,7 +74,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'InfoHub | Real-Time Derivatives Data',
     description: `Real-time funding rates, arbitrage tools, OI & liquidations across ${ALL_EXCHANGES.length}+ exchanges (CEX + DEX).`,
-    images: ['/api/og'],
+    images: ['/api/og?v=tape'],
     creator: '@infohub',
   },
 
