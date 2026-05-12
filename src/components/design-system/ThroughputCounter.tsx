@@ -1,11 +1,5 @@
 'use client';
-import { useEffect, useState } from 'react';
-
-interface AggregatorHealth {
-  health: Record<string, { connected: boolean; lastUpdate: number; errors: number }>;
-  symbolCount: number;
-  uptime: number;
-}
+import { useAggregatorHealth } from '@/hooks/useAggregatorHealth';
 
 interface ThroughputCounterProps {
   /** Render compact (no suffix word, narrower). */
@@ -14,54 +8,25 @@ interface ThroughputCounterProps {
 }
 
 /**
- * Real-time aggregator pulse — fetches `prices.info-hub.io/health` and
- * surfaces actual venue connectivity (e.g. "32/32 live"). CORS-enabled
- * on the aggregator, so we can hit it directly from the browser
- * without a Next.js proxy.
+ * Real-time aggregator-connection counter — shares a singleton poll
+ * with StatusBar's STREAMING badge via `useAggregatorHealth`. So two
+ * consumers on the same page (top chrome MarketTape + bottom chrome
+ * StatusBar) share one fetch every 15s instead of doubling network
+ * load.
  *
- * NOTE: this component previously rendered random wobble around a
- * hardcoded `baseline` (default 1247) every 420ms and called it
- * "msg/s". That was misleading telemetry — no real measurement was
- * happening. Replaced with real venue-connection counts here.
+ * NOTE: this component previously rendered random wobble around
+ * `baseline = 1247` every 420ms and called it "msg/s". That was
+ * fake telemetry. Replaced with real venue-connectivity counts
+ * via the shared health hook.
  *
- * Why no msg/s: the aggregator's /health endpoint surfaces a single
+ * Why no `msg/s`: the aggregator's /health surfaces a single
  * `lastUpdate` per venue (last batch ingest time), not a per-message
- * counter. We can't derive msg/s from that without inflating the
- * polling cadence beyond what's friendly to the droplet. Real
- * connectivity is the most useful honest signal we can offer.
+ * counter. Real connectivity is the most useful honest signal.
  */
 export default function ThroughputCounter({ compact = false, className }: ThroughputCounterProps) {
-  const [state, setState] = useState<{ connected: number; total: number } | null>(null);
+  const { connected, total, status } = useAggregatorHealth();
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function poll() {
-      try {
-        const res = await fetch('https://prices.info-hub.io/health', {
-          signal: AbortSignal.timeout(5000),
-          cache: 'no-store',
-        });
-        if (!res.ok) return;
-        const data = (await res.json()) as AggregatorHealth;
-        if (cancelled) return;
-        const venues = Object.values(data.health ?? {});
-        setState({
-          connected: venues.filter(v => v.connected).length,
-          total: venues.length,
-        });
-      } catch {
-        // Aggregator unreachable — leave previous value in place so the
-        // chrome doesn't flicker to '—' on every transient network blip.
-      }
-    }
-
-    poll();
-    const id = setInterval(poll, 15_000);
-    return () => { cancelled = true; clearInterval(id); };
-  }, []);
-
-  if (state == null) {
+  if (status === 'unknown') {
     return (
       <span className={className} style={{
         fontFamily: 'var(--font-mono)', fontSize: 10,
@@ -73,10 +38,8 @@ export default function ThroughputCounter({ compact = false, className }: Throug
   }
 
   // Color the connected count based on health.
-  const allHealthy = state.connected === state.total;
-  const mostlyHealthy = state.connected >= state.total - 2;
-  const c = allHealthy ? 'var(--pump-mild)'
-          : mostlyHealthy ? 'var(--hub-accent)'
+  const c = status === 'streaming' ? 'var(--pump-mild)'
+          : status === 'degraded' ? 'var(--hub-accent)'
           : 'var(--rekt-mild)';
 
   return (
@@ -85,8 +48,8 @@ export default function ThroughputCounter({ compact = false, className }: Throug
       color: 'var(--fg-default)', fontVariantNumeric: 'tabular-nums',
       fontWeight: 600,
     }}>
-      <span style={{ color: c }}>{state.connected}</span>
-      <span style={{ color: 'var(--fg-muted)' }}>/{state.total}</span>
+      <span style={{ color: c }}>{connected}</span>
+      <span style={{ color: 'var(--fg-muted)' }}>/{total}</span>
       {!compact && <span style={{ color: 'var(--fg-muted)', fontSize: 9, marginLeft: 3 }}>venues</span>}
     </span>
   );

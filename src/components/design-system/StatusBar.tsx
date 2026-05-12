@@ -5,6 +5,7 @@ import SatPing from './SatPing';
 import LatencyGauge from './LatencyGauge';
 import ExchangeStrip from './ExchangeStrip';
 import ThroughputCounter from './ThroughputCounter';
+import { useAggregatorHealth } from '@/hooks/useAggregatorHealth';
 
 interface StatusBarProps { version?: string; className?: string; }
 
@@ -16,6 +17,30 @@ function Sep({ hidden }: { hidden?: 'sm' | 'md' }) {
       className={hidden === 'sm' ? 'hidden sm:inline-block' : hidden === 'md' ? 'hidden md:inline-block' : undefined}
       style={{ width: 1, height: 14, background: 'var(--hub-border)', opacity: 0.5, flexShrink: 0 }}
     />
+  );
+}
+
+/** Streaming/degraded/offline badge — was previously hardcoded to
+ *  always read "STREAMING" in green regardless of actual aggregator
+ *  health. Now reads from the shared useAggregatorHealth hook. */
+function StreamStatusBadge() {
+  const { status } = useAggregatorHealth();
+
+  const config = {
+    streaming: { label: 'STREAMING', color: 'var(--pump-mild)' },
+    degraded:  { label: 'DEGRADED',  color: 'var(--hub-accent)' },
+    offline:   { label: 'OFFLINE',   color: 'var(--rekt-mild)' },
+    unknown:   { label: 'CONNECTING', color: 'var(--fg-muted)' },
+  }[status];
+
+  return (
+    <span style={{
+      display: 'inline-flex', alignItems: 'center', gap: 7,
+      color: config.color, fontWeight: 700, letterSpacing: '0.06em',
+    }}>
+      <StreamBars height={11} bars={4} color={config.color} />
+      <span>{config.label}</span>
+    </span>
   );
 }
 
@@ -34,16 +59,11 @@ export default function StatusBar({ version = 'v2.0', className }: StatusBarProp
       }}
       aria-label="System status"
     >
-      {/* Streaming + venue count (always grouped) */}
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, color: 'var(--pump-mild)', fontWeight: 700, letterSpacing: '0.06em' }}>
-        <StreamBars height={11} bars={4} color="var(--pump-mild)" />
-        <span>STREAMING</span>
-      </span>
+      <StreamStatusBadge />
       <Sep />
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-        {/* Real venue count from aggregator /health — same component
-            MarketTape uses. Defaults to "—" while the first poll is in
-            flight; coloured green/amber/red by connection ratio. */}
+        {/* Real venue count from aggregator /health — same shared
+            hook the STREAMING badge above uses. */}
         <ThroughputCounter />
         <span className="hidden md:inline-flex"><ExchangeStrip compact /></span>
       </span>
