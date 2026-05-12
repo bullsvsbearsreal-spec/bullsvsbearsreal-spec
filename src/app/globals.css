@@ -1517,6 +1517,18 @@ option { background: #171717; color: #fff; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
+/* Terminal-style loading dots — used by /loading.tsx.
+   `content` swaps through 1-3 dots over 1.2s to mimic a TTY cursor. */
+@keyframes loading-dots {
+  0%, 20%  { content: '.'; }
+  40%      { content: '..'; }
+  60%, 100%{ content: '...'; }
+}
+.animate-loading-dots::after {
+  content: '...';
+  animation: loading-dots 1.2s steps(3, end) infinite;
+}
+
 /* Ticker */
 @keyframes ticker { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
 .animate-ticker { animation: ticker 30s linear infinite; }

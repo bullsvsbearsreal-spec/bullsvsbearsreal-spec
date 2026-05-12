@@ -510,7 +510,7 @@ export default function DevelopersPage() {
                   Funding rates, open interest, liquidations, spreads, options, and arbitrage aggregated from 32 exchanges into a single REST API.
                 </p>
                 <p className="text-gray-500 text-sm leading-relaxed mb-8 max-w-lg">
-                  Built by traders, for traders. Whether you're running a funding bot, building a dashboard, or doing research, get live data in one call instead of managing 32 API keys.
+                  One call instead of 32 API keys, 32 rate limiters, 32 schemas, and the rolling pager you'd otherwise build when a venue's WS dies at 3am.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3 mb-10">
