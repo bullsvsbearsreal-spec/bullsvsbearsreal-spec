@@ -71,7 +71,7 @@ export default function TerminalShell({ children, online = 33, dexCount = 15, cl
   return (
     <div className={className} style={{ display: 'flex', flexDirection: 'column', height: '100vh', minWidth: 0, background: 'var(--hub-black)' }}>
       <TerminalHeader />
-      {tape.length > 0 && <MarketTape items={tape} baseline={1247} />}
+      {tape.length > 0 && <MarketTape items={tape} />}
       <RecentChips
         recent={[
           { href: '/liquidations',  label: 'Liquidations' },
