@@ -50,7 +50,7 @@ journalctl -u 'infohub-cron@*' --since '10 minutes ago' --output=cat | grep 'HTT
 cat /etc/infohub-cron.env   # mode 600, contains only CRON_SECRET=...
 ```
 
-The 12 cron timers and their schedules:
+The 13 cron timers and their schedules:
 
 | Endpoint | Schedule |
 | --- | --- |
@@ -60,6 +60,7 @@ The 12 cron timers and their schedules:
 | `/api/cron/whale-trades` | every 2 min |
 | `/api/cron/alerts` | every 5 min |
 | `/api/cron/check-position-alerts` | every 5 min |
+| `/api/cron/auto-tweet` | every 5 min |
 | `/api/cron/social-fetch` | every 15 min |
 | `/api/cron/refresh-etf-flows` | every 30 min |
 | `/api/cron/refresh-validators` | every 30 min |
