@@ -292,7 +292,7 @@ function LoginPageInner() {
                       onChange={e => setEmail(e.target.value)}
                       required
                       autoFocus
-                      className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/[0.06] border border-white/[0.1] text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 transition-all"
+                      className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/[0.06] border border-white/[0.1] text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/50 focus:ring-2 focus:ring-hub-yellow/20 transition-all"
                     />
                   </div>
                 </div>
@@ -300,7 +300,7 @@ function LoginPageInner() {
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <label className="block text-xs font-medium text-neutral-400">Password</label>
-                    <Link href="/forgot-password" className="text-xs text-yellow-500/80 hover:text-yellow-400 transition-colors">
+                    <Link href="/forgot-password" className="text-xs text-hub-yellow/80 hover:text-hub-yellow-light transition-colors">
                       Forgot password?
                     </Link>
                   </div>
@@ -312,7 +312,7 @@ function LoginPageInner() {
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       required
-                      className="w-full h-12 pl-10 pr-11 rounded-xl bg-white/[0.06] border border-white/[0.1] text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 transition-all"
+                      className="w-full h-12 pl-10 pr-11 rounded-xl bg-white/[0.06] border border-white/[0.1] text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/50 focus:ring-2 focus:ring-hub-yellow/20 transition-all"
                     />
                     <button type="button" onClick={() => setShowPw(!showPw)}
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors">
@@ -324,7 +324,7 @@ function LoginPageInner() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full h-12 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 mt-1 shadow-lg shadow-yellow-500/20"
+                  className="w-full h-12 rounded-xl bg-hub-yellow hover:bg-hub-yellow-light text-black font-semibold text-sm disabled:opacity-50 transition-colors flex items-center justify-center gap-2 mt-1 shadow-lg shadow-hub-yellow/20"
                 >
                   {loading ? (
                     <span className="inline-flex items-center gap-2">
@@ -345,8 +345,8 @@ function LoginPageInner() {
           {step === '2fa' && (
             <>
               <div className="mb-7 text-center">
-                <div className="w-12 h-12 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-4">
-                  <Shield size={24} className="text-yellow-500" />
+                <div className="w-12 h-12 rounded-full bg-hub-yellow/10 border border-hub-yellow/20 flex items-center justify-center mx-auto mb-4">
+                  <Shield size={24} className="text-hub-yellow" />
                 </div>
                 <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">Two-factor auth</h1>
                 <p className="text-neutral-500 text-sm mt-1.5">
@@ -372,7 +372,7 @@ function LoginPageInner() {
                       onClick={() => switchMethod('totp')}
                       className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors ${
                         selectedMethod === 'totp'
-                          ? 'bg-yellow-500/10 border border-yellow-500/30 text-yellow-500'
+                          ? 'bg-hub-yellow/10 border border-hub-yellow/30 text-hub-yellow'
                           : 'bg-white/[0.04] border border-white/[0.08] text-neutral-400 hover:text-white'
                       }`}
                     >
@@ -385,7 +385,7 @@ function LoginPageInner() {
                       onClick={() => switchMethod('email')}
                       className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-colors ${
                         selectedMethod === 'email'
-                          ? 'bg-yellow-500/10 border border-yellow-500/30 text-yellow-500'
+                          ? 'bg-hub-yellow/10 border border-hub-yellow/30 text-hub-yellow'
                           : 'bg-white/[0.04] border border-white/[0.08] text-neutral-400 hover:text-white'
                       }`}
                     >
@@ -408,7 +408,7 @@ function LoginPageInner() {
                     value={digit}
                     onChange={e => handleCodeChange(i, e.target.value)}
                     onKeyDown={e => handleCodeKeyDown(i, e)}
-                    className="w-12 h-14 text-center text-xl font-bold text-white rounded-xl bg-white/[0.06] border border-white/[0.1] focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 transition-all"
+                    className="w-12 h-14 text-center text-xl font-bold text-white rounded-xl bg-white/[0.06] border border-white/[0.1] focus:outline-none focus:border-hub-yellow/50 focus:ring-2 focus:ring-hub-yellow/20 transition-all"
                   />
                 ))}
               </div>
@@ -416,7 +416,7 @@ function LoginPageInner() {
               <button
                 onClick={() => handleVerify2FA()}
                 disabled={verifying || loading || code.some(d => !d)}
-                className="w-full h-12 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20"
+                className="w-full h-12 rounded-xl bg-hub-yellow hover:bg-hub-yellow-light text-black font-semibold text-sm disabled:opacity-50 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-hub-yellow/20"
               >
                 {verifying || loading ? (
                   <span className="inline-flex items-center gap-2">
@@ -433,7 +433,7 @@ function LoginPageInner() {
                   <button
                     onClick={sendEmailChallenge}
                     disabled={resendCooldown > 0}
-                    className="text-xs text-neutral-500 hover:text-yellow-500 transition-colors disabled:text-neutral-700 disabled:cursor-not-allowed"
+                    className="text-xs text-neutral-500 hover:text-hub-yellow transition-colors disabled:text-neutral-700 disabled:cursor-not-allowed"
                   >
                     {resendCooldown > 0
                       ? `Resend code in ${resendCooldown}s`
@@ -455,8 +455,8 @@ function LoginPageInner() {
           {step === 'unverified' && (
             <>
               <div className="mb-7 text-center">
-                <div className="w-12 h-12 rounded-full bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center mx-auto mb-4">
-                  <Mail size={24} className="text-yellow-500" />
+                <div className="w-12 h-12 rounded-full bg-hub-yellow/10 border border-hub-yellow/20 flex items-center justify-center mx-auto mb-4">
+                  <Mail size={24} className="text-hub-yellow" />
                 </div>
                 <h1 className="text-xl font-bold tracking-tight bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">Email not verified</h1>
                 <p className="text-neutral-500 text-sm mt-1.5">
@@ -474,7 +474,7 @@ function LoginPageInner() {
               <button
                 onClick={handleResendVerification}
                 disabled={loading}
-                className="w-full h-12 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20"
+                className="w-full h-12 rounded-xl bg-hub-yellow hover:bg-hub-yellow-light text-black font-semibold text-sm disabled:opacity-50 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-hub-yellow/20"
               >
                 {loading ? (
                   <span className="inline-flex items-center gap-2">
@@ -497,7 +497,7 @@ function LoginPageInner() {
 
         <p className="text-center text-sm text-neutral-500 mt-6">
           Don&apos;t have an account?{' '}
-          <Link href="/signup" className="text-yellow-500 hover:text-yellow-400 font-medium transition-colors">Create one</Link>
+          <Link href="/signup" className="text-hub-yellow hover:text-hub-yellow-light font-medium transition-colors">Create one</Link>
         </p>
       </div>
 

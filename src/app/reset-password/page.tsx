@@ -70,7 +70,7 @@ function ResetPasswordForm() {
         </div>
         <div className="text-center">
           <p className="text-sm text-neutral-400 mb-4">Invalid or missing reset link.</p>
-          <Link href="/forgot-password" className="text-sm text-yellow-500 hover:underline font-medium">
+          <Link href="/forgot-password" className="text-sm text-hub-yellow hover:underline font-medium">
             Request a new one
           </Link>
         </div>
@@ -91,7 +91,7 @@ function ResetPasswordForm() {
           </p>
           <Link
             href="/login"
-            className="inline-flex h-11 items-center justify-center gap-2 px-8 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-sm transition-all shadow-lg shadow-yellow-500/20"
+            className="inline-flex h-11 items-center justify-center gap-2 px-8 rounded-xl bg-hub-yellow hover:bg-hub-yellow-light text-black font-semibold text-sm transition-all shadow-lg shadow-hub-yellow/20"
           >
             Sign in
             <ArrowRight size={15} />
@@ -123,7 +123,7 @@ function ResetPasswordForm() {
               required
               minLength={8}
               autoFocus
-              className="w-full h-12 pl-10 pr-11 rounded-xl bg-white/[0.06] border border-white/[0.1] text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 transition-all"
+              className="w-full h-12 pl-10 pr-11 rounded-xl bg-white/[0.06] border border-white/[0.1] text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/50 focus:ring-2 focus:ring-hub-yellow/20 transition-all"
             />
             <button type="button" onClick={() => setShowPw(!showPw)}
               className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors">
@@ -155,7 +155,7 @@ function ResetPasswordForm() {
               onChange={e => setConfirmPw(e.target.value)}
               required
               minLength={8}
-              className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/[0.06] border border-white/[0.1] text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-yellow-500/50 focus:ring-2 focus:ring-yellow-500/20 transition-all"
+              className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/[0.06] border border-white/[0.1] text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/50 focus:ring-2 focus:ring-hub-yellow/20 transition-all"
             />
           </div>
           {confirmPw.length > 0 && password !== confirmPw && (
@@ -166,7 +166,7 @@ function ResetPasswordForm() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full h-12 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 mt-1 shadow-lg shadow-yellow-500/20"
+          className="w-full h-12 rounded-xl bg-hub-yellow hover:bg-hub-yellow-light text-black font-semibold text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 mt-1 shadow-lg shadow-hub-yellow/20"
         >
           {loading ? (
             <span className="inline-flex items-center gap-2">
@@ -223,7 +223,7 @@ export default function ResetPasswordPage() {
 
           <Suspense fallback={
             <div className="flex justify-center py-8">
-              <span className="w-5 h-5 border-2 border-neutral-600 border-t-yellow-500 rounded-full animate-spin" />
+              <span className="w-5 h-5 border-2 border-neutral-600 border-t-hub-yellow rounded-full animate-spin" />
             </div>
           }>
             <ResetPasswordForm />

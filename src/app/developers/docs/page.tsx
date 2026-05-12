@@ -258,7 +258,7 @@ export default function DocsPage() {
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold mb-3">
                 <span className="text-white">API </span>
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-orange-500">Documentation</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-hub-yellow to-hub-orange">Documentation</span>
               </h1>
               <p className="text-gray-400 text-base max-w-2xl mb-4">
                 Complete reference for the InfoHub Public API. Real-time derivatives data from 32 exchanges, aggregated into 26 REST endpoints.

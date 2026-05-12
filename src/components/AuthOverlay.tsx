@@ -29,7 +29,7 @@ export default function AuthOverlay() {
           <div className="space-y-3">
             <Link
               href="/login"
-              className="w-full h-12 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-yellow-500/20 transition-all"
+              className="w-full h-12 rounded-xl bg-hub-yellow hover:bg-hub-yellow-light text-black font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-hub-yellow/20 transition-all"
             >
               Sign In
               <ArrowRight size={15} />
