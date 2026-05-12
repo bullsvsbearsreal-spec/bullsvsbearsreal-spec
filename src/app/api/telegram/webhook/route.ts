@@ -157,14 +157,14 @@ export async function POST(request: NextRequest) {
       }
     } else {
       await sendMessage(chatId,
-        '👋 <b>Welcome to Hub!</b>\n\n' +
-        'I\'m InfoHub\'s AI trading agent. I can answer market questions, pull live data from 32 exchanges, and send you alerts.\n\n' +
-        'To link your account:\n' +
+        '👋 <b>You found the InfoHub bot.</b>\n\n' +
+        'I sit on top of 32 exchanges and answer questions like "what\'s BTC funding right now" or "biggest liquidations today" — live data, no fluff.\n\n' +
+        'To get alerts (funding extremes, whale trades, your own thresholds), link your account:\n' +
         '1. Log in at <b>info-hub.io</b>\n' +
-        '2. Go to <b>Settings</b> → Telegram\n' +
-        '3. Click <b>Generate Code</b>\n' +
-        '4. Send <code>/start CODE</code> here\n\n' +
-        'Or just ask me anything right now. Try: "What\'s BTC funding looking like?"',
+        '2. Settings → Telegram\n' +
+        '3. <b>Generate Code</b>\n' +
+        '4. Send <code>/start CODE</code> back here\n\n' +
+        'Or skip the link — just ask me anything. Try: <i>"BTC funding right now"</i>',
       );
     }
     return NextResponse.json({ ok: true });

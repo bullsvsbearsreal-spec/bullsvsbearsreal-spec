@@ -270,7 +270,7 @@ function LoginPageInner() {
                 <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">
                   Welcome back
                 </h1>
-                <p className="text-neutral-500 text-sm mt-1.5">Sign in to your account</p>
+                <p className="text-neutral-500 text-sm mt-1.5">Pick up where you left off — watchlist, alerts, positions.</p>
               </div>
 
               {error && (
