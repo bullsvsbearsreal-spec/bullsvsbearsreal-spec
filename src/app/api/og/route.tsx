@@ -416,7 +416,12 @@ function OptionsPreview() {
 }
 
 function ChangelogPreview() {
-  // Showcase the latest shipped tools as a 3×3 tile grid.
+  // Showcase the latest shipped tools as a 3×3 tile layout.
+  //
+  // IMPORTANT: Satori (next/og's renderer) only supports flexbox,
+  // NOT CSS Grid. The previous version used `display: 'grid'` which
+  // threw at render time → the entire OG handler returned 504. Now
+  // split into 3 flex rows of 3 tiles each.
   const tiles: { label: string; sub: string; tone: string }[] = [
     { label: 'Cycle Phase',       sub: 'composite signal', tone: PUMP },
     { label: 'Crowdedness',       sub: 'positioning extremes', tone: ACCENT },
@@ -428,32 +433,46 @@ function ChangelogPreview() {
     { label: 'Memecoin Radar',    sub: 'Solana 1h velocity', tone: '#fb923c' },
     { label: 'Trade Optimizer',   sub: 'cheapest venue', tone: PUMP },
   ];
+  // Chunk into rows of 3
+  const rows: typeof tiles[] = [tiles.slice(0, 3), tiles.slice(3, 6), tiles.slice(6, 9)];
+  const Tile = ({ t }: { t: typeof tiles[number] }) => (
+    <div
+      style={{
+        flex: 1,
+        display: 'flex', flexDirection: 'column',
+        padding: '14px 12px',
+        background: 'rgba(255,255,255,0.03)',
+        border: `1px solid ${t.tone}40`,
+        borderRadius: 10,
+        gap: 4,
+      }}
+    >
+      <div style={{ fontSize: 14, fontWeight: 800, color: '#fafafa', display: 'flex' }}>{t.label}</div>
+      <div style={{ fontSize: 10, color: t.tone, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700, display: 'flex' }}>{t.sub}</div>
+    </div>
+  );
   return (
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', gap: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        <span style={{ fontSize: 11, fontWeight: 800, color: ACCENT, textTransform: 'uppercase', letterSpacing: 1.4 }}>
-          ✨ Now shipping
+        {/* Use "NEW" pill instead of ✨ emoji — Satori's bundled font
+            subset doesn't have the emoji glyph and the route fell back
+            to a tofu box. */}
+        <span style={{
+          fontSize: 10, fontWeight: 800, color: ACCENT,
+          padding: '3px 8px', borderRadius: 4,
+          background: `${ACCENT}22`, letterSpacing: 1.4,
+          textTransform: 'uppercase', display: 'flex',
+        }}>NEW</span>
+        <span style={{ fontSize: 11, fontWeight: 800, color: '#fafafa', textTransform: 'uppercase', letterSpacing: 1.4, display: 'flex' }}>
+          Now shipping
         </span>
-        <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)' }} />
+        <div style={{ flex: 1, height: 1, background: 'rgba(255,255,255,0.08)', display: 'flex' }} />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
-        {tiles.map((t) => (
-          <div
-            key={t.label}
-            style={{
-              display: 'flex', flexDirection: 'column',
-              padding: '14px 12px',
-              background: 'rgba(255,255,255,0.03)',
-              border: `1px solid ${t.tone}40`,
-              borderRadius: 10,
-              gap: 4,
-            }}
-          >
-            <div style={{ fontSize: 14, fontWeight: 800, color: '#fafafa', display: 'flex' }}>{t.label}</div>
-            <div style={{ fontSize: 10, color: t.tone, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 700, display: 'flex' }}>{t.sub}</div>
-          </div>
-        ))}
-      </div>
+      {rows.map((row, i) => (
+        <div key={i} style={{ display: 'flex', gap: 8 }}>
+          {row.map(t => <Tile key={t.label} t={t} />)}
+        </div>
+      ))}
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 4 }}>
         <span style={{ fontSize: 10, color: '#737373', fontFamily: 'ui-monospace, monospace', display: 'flex' }}>
           + 21 more new tools · /changelog
