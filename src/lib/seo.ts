@@ -3,6 +3,7 @@ import { ALL_EXCHANGES } from '@/lib/constants';
 
 type OGVariant =
   | 'default'
+  | 'tape'         // hero variant — only /home + landing pages opt in
   | 'funding'
   | 'liquidations'
   | 'oi'
@@ -290,6 +291,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   '/home': {
     title: 'Live Crypto Derivatives Dashboard',
     description: 'Real-time funding rates, open interest, liquidations, and arbitrage opportunities across 32 exchanges. Track BTC/ETH/SOL/altcoin perpetual futures with terminal-style precision.',
+    ogVariant: 'tape',
   },
   '/spreads': {
     title: 'Price Spreads',

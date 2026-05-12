@@ -766,7 +766,17 @@ function TapeFundingCard({ live }: { live: LiveTickers }) {
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               <span style={{ fontSize: 16, fontWeight: 800, color: r.hot ? '#50d2c1' : '#fafafa' }}>{r.sym}-PERP</span>
-              {r.hot && <span style={{ fontSize: 12, color: ACCENT }}>▲</span>}
+              {/* "HOT" pill instead of a ▲ glyph — the triangle wasn't in
+                  the Inter subset Satori embeds and fell back to a tofu
+                  box in the rendered PNG. Pill is a deterministic shape. */}
+              {r.hot && (
+                <span style={{
+                  fontSize: 9, fontWeight: 800, color: ACCENT,
+                  padding: '2px 6px', borderRadius: 4,
+                  background: `${ACCENT}22`, letterSpacing: 0.8,
+                  display: 'flex',
+                }}>HOT</span>
+              )}
             </div>
             <span style={{ fontSize: 10, color: '#525252', fontWeight: 600, letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 1 }}>
               {r.full}
@@ -910,22 +920,24 @@ function renderTapeImage(live: LiveTickers) {
             ))}
           </div>
 
-          {/* Headline (two lines, "tape" in orange) */}
+          {/* Headline (two lines, "tape" in orange). Padding-right on
+              the "the" gives reliable spacing — trailing whitespace in
+              JSX gets collapsed by Satori's flex layout, which was
+              previously rendering as "thetape" jammed together. */}
           <div style={{ display: 'flex', flexDirection: 'column', marginBottom: 22 }}>
             <span style={{ fontSize: 92, fontWeight: 900, color: '#fafafa', letterSpacing: -4, lineHeight: 0.95, display: 'flex' }}>
               Read
             </span>
             <div style={{ display: 'flex', alignItems: 'baseline' }}>
-              <span style={{ fontSize: 92, fontWeight: 900, color: '#fafafa', letterSpacing: -4, lineHeight: 0.95 }}>the </span>
+              <span style={{ fontSize: 92, fontWeight: 900, color: '#fafafa', letterSpacing: -4, lineHeight: 0.95, paddingRight: 22, display: 'flex' }}>the</span>
               <span style={{
                 fontSize: 92, fontWeight: 900, letterSpacing: -4, lineHeight: 0.95,
                 background: `linear-gradient(135deg, #FFB800, ${ACCENT})`,
                 backgroundClip: 'text',
                 color: 'transparent',
+                display: 'flex',
               }}>tape</span>
-              <span style={{ fontSize: 92, fontWeight: 900, color: ACCENT, letterSpacing: -4, lineHeight: 0.95 }}>.</span>
-              {/* Blinking cursor */}
-              <span style={{ width: 6, height: 70, background: ACCENT, marginLeft: 4, display: 'flex' }} />
+              <span style={{ fontSize: 92, fontWeight: 900, color: ACCENT, letterSpacing: -4, lineHeight: 0.95, display: 'flex' }}>.</span>
             </div>
           </div>
 
@@ -991,11 +1003,14 @@ export async function GET(request: NextRequest) {
   const description = (searchParams.get('desc') || `Funding Rates · Open Interest · Liquidations · ${ALL_EXCHANGES.length}+ Exchanges`).slice(0, 200);
   const variant = ((searchParams.get('v') || 'default').toLowerCase()) as Variant;
 
-  // "tape" is the May 2026 hero design — also serves as the new default
-  // since it's what we use across the site. Short-circuit and render its
-  // own JSX rather than slotting into the standard chrome. Fetch live
-  // tickers + OI from the aggregator before composing the image.
-  if (variant === 'tape' || variant === 'default') {
+  // "tape" is the live-data hero — only /home opts in via its
+  // PAGE_META.ogVariant. Every other page (including 'default' fallback)
+  // renders the standard 2-column chrome below, which respects the
+  // per-page title + description the caller passed in. Previously
+  // 'default' also rendered the hero, which meant every page that
+  // didn't have an explicit variant got the same "Read the tape"
+  // headline regardless of what the page was actually about.
+  if (variant === 'tape') {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || `https://${request.headers.get('host')}`;
     const live = await fetchLiveTickers(baseUrl);
     const img = new ImageResponse(renderTapeImage(live), { width: 1200, height: 630 });
@@ -1030,27 +1045,32 @@ export async function GET(request: NextRequest) {
         {/* Top accent strip */}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg, transparent, ${ACCENT}, ${ACCENT_DARK}, ${ACCENT}, transparent)`, display: 'flex' }} />
 
-        <div style={{ display: 'flex', flex: 1, padding: 48 }}>
+        <div style={{ display: 'flex', flex: 1, padding: '52px 56px 64px' }}>
           {/* ── Left: text ── */}
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: 460, paddingRight: 36 }}>
-            {/* Logo */}
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 28 }}>
-              <span style={{ fontSize: 52, fontWeight: 900, color: '#fff', letterSpacing: -2, lineHeight: 1 }}>Info</span>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', width: 520, paddingRight: 40 }}>
+            {/* Logo — matches the in-app wordmark exactly so social
+                previews feel like part of the product. */}
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 32 }}>
+              <span style={{ fontSize: 42, fontWeight: 900, color: '#fff', letterSpacing: -1.6, lineHeight: 1, display: 'flex' }}>Info</span>
               <span style={{
-                fontSize: 52, fontWeight: 900,
-                color: '#000', letterSpacing: -2, lineHeight: 1,
+                fontSize: 42, fontWeight: 900,
+                color: '#000', letterSpacing: -1.6, lineHeight: 1,
                 background: `linear-gradient(135deg, #FFB800, ${ACCENT}, ${ACCENT_DARK})`,
-                padding: '4px 10px', borderRadius: 8, marginLeft: 2,
-              }}>Hub</span>
+                padding: '3px 9px', borderRadius: 7, marginLeft: 2,
+                display: 'flex',
+              }}>hub</span>
             </div>
 
-            {/* Title */}
-            <div style={{ fontSize: 42, fontWeight: 800, color: '#fff', lineHeight: 1.05, letterSpacing: -1.5, marginBottom: 16 }}>
+            {/* Title — bigger than before (was 42px, now 56px) so it
+                actually reads at Twitter-card thumbnail size where the
+                whole image renders at ~600×314. Letter-spacing tight
+                for the bold display feel. */}
+            <div style={{ fontSize: 56, fontWeight: 800, color: '#fafafa', lineHeight: 1.02, letterSpacing: -2.2, marginBottom: 20, display: 'flex' }}>
               {title}
             </div>
 
-            {/* Description */}
-            <div style={{ fontSize: 18, color: '#7c7c7c', lineHeight: 1.5, marginBottom: 28 }}>
+            {/* Description — neutral grey, generous line-height. */}
+            <div style={{ fontSize: 20, color: '#9ca3af', lineHeight: 1.5, marginBottom: 30, display: 'flex' }}>
               {description}
             </div>
 
