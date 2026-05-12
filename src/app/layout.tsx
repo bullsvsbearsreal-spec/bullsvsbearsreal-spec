@@ -75,7 +75,8 @@ export const metadata: Metadata = {
     title: 'InfoHub | Real-Time Derivatives Data',
     description: `Real-time funding rates, arbitrage tools, OI & liquidations across ${ALL_EXCHANGES.length}+ exchanges (CEX + DEX).`,
     images: ['/api/og?v=tape'],
-    creator: '@infohub',
+    creator: '@info_hub69',
+    site: '@info_hub69',
   },
 
   // Canonical & alternates
