@@ -5,7 +5,7 @@ import SatPing from './SatPing';
 import LatencyGauge from './LatencyGauge';
 import ExchangeStrip from './ExchangeStrip';
 
-interface StatusBarProps { venuesActive?: number; venuesTotal?: number; apiBase?: number; wsBase?: number; version?: string; className?: string; }
+interface StatusBarProps { venuesActive?: number; venuesTotal?: number; version?: string; className?: string; }
 
 /** Reusable thin separator between status-bar groups */
 function Sep({ hidden }: { hidden?: 'sm' | 'md' }) {
@@ -18,7 +18,7 @@ function Sep({ hidden }: { hidden?: 'sm' | 'md' }) {
   );
 }
 
-export default function StatusBar({ venuesActive = 32, venuesTotal = 32, apiBase = 142, wsBase = 38, version = 'v2.0', className }: StatusBarProps) {
+export default function StatusBar({ venuesActive = 32, venuesTotal = 32, version = 'v2.0', className }: StatusBarProps) {
   return (
     <footer
       className={className}
@@ -51,10 +51,12 @@ export default function StatusBar({ venuesActive = 32, venuesTotal = 32, apiBase
 
       <Sep hidden="sm" />
 
-      {/* Latency gauges */}
+      {/* Real-time API latency. WS gauge removed — no single WebSocket
+          to honestly ping (each user holds 6-12 concurrent venue WS) and
+          the previous implementation was a random-jitter fake. The api
+          gauge measures actual round-trip to /api/v1/status. */}
       <span className="hidden sm:inline-flex" style={{ gap: 12 }}>
-        <LatencyGauge label="api" base={apiBase} spread={18} />
-        <LatencyGauge label="ws"  base={wsBase}  spread={10} />
+        <LatencyGauge label="api" url="/api/v1/status" />
       </span>
 
       <div style={{ flex: 1, minWidth: 12 }} />
