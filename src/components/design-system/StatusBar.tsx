@@ -4,8 +4,9 @@ import StreamBars from './StreamBars';
 import SatPing from './SatPing';
 import LatencyGauge from './LatencyGauge';
 import ExchangeStrip from './ExchangeStrip';
+import ThroughputCounter from './ThroughputCounter';
 
-interface StatusBarProps { venuesActive?: number; venuesTotal?: number; version?: string; className?: string; }
+interface StatusBarProps { version?: string; className?: string; }
 
 /** Reusable thin separator between status-bar groups */
 function Sep({ hidden }: { hidden?: 'sm' | 'md' }) {
@@ -18,7 +19,7 @@ function Sep({ hidden }: { hidden?: 'sm' | 'md' }) {
   );
 }
 
-export default function StatusBar({ venuesActive = 32, venuesTotal = 32, version = 'v2.0', className }: StatusBarProps) {
+export default function StatusBar({ version = 'v2.0', className }: StatusBarProps) {
   return (
     <footer
       className={className}
@@ -40,12 +41,10 @@ export default function StatusBar({ venuesActive = 32, venuesTotal = 32, version
       </span>
       <Sep />
       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-        <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 4 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--fg-default)', fontVariantNumeric: 'tabular-nums' }}>
-            {venuesActive}<span style={{ color: 'var(--fg-muted)', fontWeight: 500 }}>/{venuesTotal}</span>
-          </span>
-          <span style={{ fontSize: 9, color: 'var(--fg-subtle)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>venues</span>
-        </span>
+        {/* Real venue count from aggregator /health — same component
+            MarketTape uses. Defaults to "—" while the first poll is in
+            flight; coloured green/amber/red by connection ratio. */}
+        <ThroughputCounter />
         <span className="hidden md:inline-flex"><ExchangeStrip compact /></span>
       </span>
 
