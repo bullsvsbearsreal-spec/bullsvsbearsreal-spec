@@ -503,7 +503,7 @@ export default function DevelopersPage() {
                 <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-extrabold tracking-tight leading-[1.1] mb-5">
                   <span className="text-white">One API for</span>
                   <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-orange-500">every crypto exchange</span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-hub-yellow-light via-hub-yellow to-hub-orange">every crypto exchange</span>
                 </h1>
 
                 <p className="text-gray-400 text-base sm:text-lg leading-relaxed mb-4 max-w-lg">
@@ -517,14 +517,14 @@ export default function DevelopersPage() {
                   {session?.user ? (
                     <button
                       onClick={() => document.getElementById('api-keys')?.scrollIntoView({ behavior: 'smooth' })}
-                      className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold px-6 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 active:translate-y-0"
+                      className="inline-flex items-center gap-2 bg-gradient-to-r from-hub-yellow to-hub-orange hover:brightness-110 text-black font-bold px-6 py-3.5 rounded-xl text-sm transition-[filter,background] shadow-lg shadow-hub-yellow/20"
                     >
                       <Key className="w-4 h-4" /> Manage API Keys
                     </button>
                   ) : (
                     <Link
                       href="/login?callbackUrl=/developers"
-                      className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold px-6 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 hover:-translate-y-0.5 active:translate-y-0"
+                      className="inline-flex items-center gap-2 bg-gradient-to-r from-hub-yellow to-hub-orange hover:brightness-110 text-black font-bold px-6 py-3.5 rounded-xl text-sm transition-[filter,background] shadow-lg shadow-hub-yellow/20"
                     >
                       <Key className="w-4 h-4" /> Get Free API Key
                     </Link>
@@ -814,7 +814,7 @@ export default function DevelopersPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {ENDPOINT_GROUPS.map(g => (
-              <div key={g.label} className={`bg-white/[0.02] border ${g.border} hover:border-white/[0.12] hover:bg-white/[0.03] rounded-xl p-5 transition-all duration-200 group hover:-translate-y-0.5 hover:shadow-xl hover:shadow-black/30`}>
+              <div key={g.label} className={`bg-white/[0.02] border ${g.border} hover:border-white/[0.12] hover:bg-white/[0.03] rounded-xl p-5 transition-colors duration-200 group`}>
                 <div className="flex items-center gap-2 mb-4">
                   <div className={`p-1.5 rounded-lg ${g.bg}`}>
                     <g.icon className={`w-4 h-4 ${g.color}`} />
@@ -1039,14 +1039,14 @@ console.log(data);`,
               {session?.user ? (
                 <button
                   onClick={() => document.getElementById('api-keys')?.scrollIntoView({ behavior: 'smooth' })}
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold px-6 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/25 hover:-translate-y-0.5 active:translate-y-0 shrink-0"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-hub-yellow to-hub-orange hover:brightness-110 text-black font-bold px-6 py-3.5 rounded-xl text-sm transition-[filter,background] shadow-lg shadow-hub-yellow/20 shrink-0"
                 >
                   <Key className="w-4 h-4" /> Manage Keys <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               ) : (
                 <Link
                   href="/login?callbackUrl=/developers"
-                  className="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-black font-bold px-6 py-3.5 rounded-xl text-sm transition-all shadow-lg shadow-amber-500/25 hover:-translate-y-0.5 active:translate-y-0 shrink-0"
+                  className="inline-flex items-center gap-2 bg-gradient-to-r from-hub-yellow to-hub-orange hover:brightness-110 text-black font-bold px-6 py-3.5 rounded-xl text-sm transition-[filter,background] shadow-lg shadow-hub-yellow/20 shrink-0"
                 >
                   <Key className="w-4 h-4" /> Get Free API Key <ChevronRight className="w-3.5 h-3.5" />
                 </Link>
