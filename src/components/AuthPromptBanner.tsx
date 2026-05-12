@@ -14,8 +14,8 @@ const VARIANT_CONFIG: Record<PromptVariant, { icon: typeof Cloud; title: string;
   },
   'email-alerts': {
     icon: Mail,
-    title: 'Get email notifications',
-    description: 'Sign in to receive alert notifications via email when conditions trigger.',
+    title: 'Email alerts',
+    description: 'Sign in to get your alerts in email — alongside Telegram, Discord, and browser push.',
   },
   'api-key': {
     icon: Key,
@@ -24,8 +24,8 @@ const VARIANT_CONFIG: Record<PromptVariant, { icon: typeof Cloud; title: string;
   },
   'generic': {
     icon: Shield,
-    title: 'Unlock more features',
-    description: 'Sign in for cloud sync, email alerts, and API access.',
+    title: 'Save your setup',
+    description: 'Sign in once — your watchlist, alerts, positions, and API keys all follow you to the next device.',
   },
 };
 

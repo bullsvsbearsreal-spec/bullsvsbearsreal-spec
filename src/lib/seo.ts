@@ -193,7 +193,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/team': {
     title: 'Team',
-    description: 'Meet the team behind InfoHub - building the best derivatives data platform.',
+    description: 'Two traders. One frustration: every derivatives tool was ugly, expensive, or both. Meet 0x.0celot and snakether, the people building InfoHub.',
   },
   '/terms': {
     title: 'Terms of Service',
@@ -261,7 +261,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/guides': {
     title: 'Trading Guides',
-    description: 'In-depth crypto trading guides covering funding rates, open interest, liquidations, order flow, and derivatives strategies. Coming soon.',
+    description: 'Trading guides written by traders, not SEO writers. Funding rate arbitrage end-to-end, reading open interest, surviving liquidation cascades, and more.',
   },
   '/wallet-tracker': {
     title: 'Wallet Tracker',
