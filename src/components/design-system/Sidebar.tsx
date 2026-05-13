@@ -253,7 +253,15 @@ export default function Sidebar({ sections = DEFAULT_SECTIONS, className }: Side
   }, [q, visibleSections]);
 
   return (
-    <aside className={className} style={{ width: 232, flexShrink: 0, background: 'var(--hub-black)', borderRight: '1px solid var(--hub-border-subtle)', padding: '12px 8px', display: 'flex', flexDirection: 'column', gap: 16, height: '100%', overflowY: 'auto' }} aria-label="Primary navigation">
+    // Hidden below `lg` — at 232px fixed width the sidebar took
+    // ~62% of a 375px iPhone screen, squeezing main content to ~143px
+    // and making data tables / charts effectively unusable on mobile.
+    // The TerminalHeader's nav covers the mobile navigation case.
+    <aside
+      className={`${className ?? ''} hidden lg:flex`}
+      style={{ width: 232, flexShrink: 0, background: 'var(--hub-black)', borderRight: '1px solid var(--hub-border-subtle)', padding: '12px 8px', flexDirection: 'column', gap: 16, height: '100%', overflowY: 'auto' }}
+      aria-label="Primary navigation"
+    >
       <div style={{ position: 'relative', padding: '0 4px' }}>
         <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--fg-subtle)', display: 'inline-flex' }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
