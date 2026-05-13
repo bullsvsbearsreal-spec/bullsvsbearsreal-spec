@@ -186,7 +186,11 @@ export async function GET() {
     if (cached) return NextResponse.json({ ...cached, cached: true }, { headers: CACHE_HEADERS });
   }
 
-  // All sources exhausted — signal unavailable instead of fake zeros
+  // All sources exhausted — signal unavailable instead of fake zeros.
+  // Critically: do NOT cache this at the edge. Was: CACHE_HEADERS pinned
+  // the unavailable response in CF for 2 minutes, which meant 2 minutes
+  // of every caller getting "$0 mcap, neutral 50". The v1 wrapper also
+  // L1-pinned it. Both now skip caching when `unavailable: true`.
   return NextResponse.json({
     total_market_cap: { usd: 0 },
     total_volume: { usd: 0 },
@@ -194,5 +198,5 @@ export async function GET() {
     market_cap_change_percentage_24h_usd: 0,
     active_cryptocurrencies: 0,
     unavailable: true,
-  }, { headers: CACHE_HEADERS });
+  }, { headers: { 'Cache-Control': 'no-store' } });
 }
