@@ -30,6 +30,11 @@ export async function GET(request: NextRequest) {
       },
     });
     clearTimeout(timeout);
+
+    // Forward upstream status when Bitunix returns a structured error
+    // body. Previously the route always returned 200 even on 4xx/5xx
+    // (the response body was forwarded but the HTTP status was lost),
+    // so callers checking response.ok would think the call succeeded.
     let data: any;
     try {
       data = await res.json();
@@ -38,6 +43,13 @@ export async function GET(request: NextRequest) {
         { code: -1, msg: `Bitunix returned non-JSON (status ${res.status})`, data: [] },
         { status: 502 },
       );
+    }
+    if (!res.ok) {
+      return NextResponse.json(data, {
+        status: res.status >= 500 ? 502 : res.status,
+        // No edge-cache on errors — let the next request re-try upstream.
+        headers: { 'Cache-Control': 'no-store' },
+      });
     }
     return NextResponse.json(data, {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },

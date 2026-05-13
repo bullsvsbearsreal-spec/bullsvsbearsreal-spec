@@ -162,7 +162,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/news': {
     title: 'Crypto News',
-    description: 'Real-time crypto news from 21+ sources — CoinDesk, The Block, Cointelegraph, Decrypt, CryptoSlate, and more. Filter by time, source type, and sentiment.',
+    description: 'Real-time crypto news from 25+ sources — CoinDesk, The Block, Cointelegraph, Decrypt, CryptoSlate, Blockworks, Watcher Guru, BitMEX Research, and more. Filter by time and source type.',
   },
   '/compare': {
     title: 'Compare Exchanges',
@@ -182,7 +182,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/api-docs': {
     title: 'API Documentation',
-    description: 'Crypto derivatives REST API across 32 exchanges. Real-time funding rates, open interest, liquidations, spreads, arbitrage, options, and on-chain whale data. OpenAPI 3.1 spec with full fee transparency.',
+    description: `Crypto derivatives REST API across ${ALL_EXCHANGES.length} exchanges. Real-time funding rates, open interest, liquidations, spreads, arbitrage, options, and on-chain whale data. OpenAPI 3.1 spec with full fee transparency.`,
   },
   '/faq': {
     title: 'FAQ',
@@ -254,7 +254,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/liquidation-heatmap': {
     title: 'Liquidation Heatmap',
-    description: 'Real-time forced liquidation density heatmap from Binance and OKX. Visualize liquidation clusters by price and time for BTC, ETH, and SOL.',
+    description: 'Real-time forced liquidation density heatmap from Binance, OKX, HTX, gTrade, and Deribit. Visualize liquidation clusters by price and time for BTC, ETH, and SOL.',
   },
   '/chart': {
     title: 'Chart',
@@ -270,7 +270,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/execution-costs': {
     title: 'Execution Costs',
-    description: 'Compare real-time execution costs across DEX perpetual exchanges. Fees, spread, price impact, and orderbook depth for Hyperliquid, dYdX, Drift, Aster, and more.',
+    description: 'Compare real-time execution costs across DEX perpetual exchanges. Fees, spread, price impact, and orderbook depth for Hyperliquid, dYdX, Aster, Aevo, Lighter, edgeX, gTrade, and more.',
   },
   '/stock-heatmap': {
     title: 'Stock Heatmap',
@@ -399,7 +399,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/funding-arb': {
     title: 'Funding Rate Arbitrage Scanner',
-    description: 'Cross-exchange funding rate divergence scanner across 30+ venues. Identify cash-and-carry opportunities, annualized APR estimates, and CEX↔DEX arbs in real-time.',
+    description: `Cross-exchange funding rate divergence scanner across ${ALL_EXCHANGES.length}+ venues. Identify cash-and-carry opportunities, annualized APR estimates, and CEX↔DEX arbs in real-time.`,
   },
   '/smart-money': {
     title: 'Smart Money Wallets',
@@ -606,7 +606,7 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: 'Top wallets ranked by closing-trade PnL over the last 90 days on Hyperliquid. Per-trader win rate, biggest single trade, top symbols, and click into full position detail.',
   },
   '/exchange-fees': {
-    title: 'Exchange Fee Comparison · 20 CEX + DEX',
+    title: 'Exchange Fee Comparison · CEX + DEX',
     description: 'Maker and taker fees side-by-side across Binance, Bybit, OKX, Bitget, MEXC, Kraken, Coinbase, BingX, KuCoin, Hyperliquid, GMX, dYdX, Aster, Lighter, and more. Affiliate commission rates included.',
   },
   '/max-pain': {

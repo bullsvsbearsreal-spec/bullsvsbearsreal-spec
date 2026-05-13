@@ -48,16 +48,19 @@ export async function GET(request: NextRequest) {
   if (denied) return denied;
 
   const origin = request.nextUrl.origin;
-  const timeout = AbortSignal.timeout(25000);
 
-  // Fetch health + live data in parallel
+  // Fetch health + live data in parallel. IMPORTANT: each fetch gets
+  // its OWN AbortSignal.timeout — sharing a single signal across three
+  // parallel fetches means any one abort cancels all three, defeating
+  // the parallelism. Was previously `const timeout = AbortSignal.timeout(25000)`
+  // shared across all three calls.
   const healthHeaders: HeadersInit = {};
   if (ADMIN_API_KEY) healthHeaders['authorization'] = `Bearer ${ADMIN_API_KEY}`;
 
   const [healthRes, fundingRes, oiRes, collectorData] = await Promise.all([
-    fetch(`${origin}/api/health`, { signal: timeout, headers: healthHeaders }).catch(() => null),
-    fetch(`${origin}/api/funding`, { signal: timeout }).catch(() => null),
-    fetch(`${origin}/api/openinterest`, { signal: timeout }).catch(() => null),
+    fetch(`${origin}/api/health`,        { signal: AbortSignal.timeout(25000), headers: healthHeaders }).catch(() => null),
+    fetch(`${origin}/api/funding`,       { signal: AbortSignal.timeout(25000) }).catch(() => null),
+    fetch(`${origin}/api/openinterest`,  { signal: AbortSignal.timeout(25000) }).catch(() => null),
     isDBConfigured() ? getCollectorHealth().catch(() => null) : null,
   ]);
 
