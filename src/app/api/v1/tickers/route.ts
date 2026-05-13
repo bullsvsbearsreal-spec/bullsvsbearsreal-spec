@@ -103,7 +103,11 @@ export async function GET(request: NextRequest) {
         if (price > 0) row.prices.push(price);
         if (high > 0) row.highs.push(high);
         if (low > 0)  row.lows.push(low);
-        if (Number.isFinite(ch) && ch !== 0) row.changes.push(ch);
+        // A literal 0% change is meaningful data — keep it. Previously
+        // the `ch !== 0` guard excluded venues reporting exactly zero,
+        // which skewed the cross-venue average toward whichever venues
+        // happened to have non-zero ticks.
+        if (Number.isFinite(ch)) row.changes.push(ch);
         if (vol > 0 && vol <= MAX_SANE_VOL && d.exchange) {
           const prev = row.volByVenue.get(d.exchange) ?? 0;
           if (vol > prev) row.volByVenue.set(d.exchange, vol);

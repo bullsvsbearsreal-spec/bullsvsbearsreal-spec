@@ -41,7 +41,18 @@ export async function GET(request: NextRequest) {
       fees: fees ? {
         takerPct: fees.taker,
         makerPct: fees.maker,
-        roundTripPct: fees.taker * 2,
+        // `roundTripPct` is the taker-on-both-sides round trip — the most
+        // common assumption for partner fee modeling and matches the
+        // legacy semantic of this field. Maker-on-both-sides + mixed
+        // (taker open / maker close) are exposed separately so partners
+        // who quote post-only fills can compute net spread under their
+        // own fill model without having to multiply.
+        roundTripPct:      fees.taker * 2,
+        roundTripTakerPct: fees.taker * 2,
+        roundTripMakerPct: fees.maker * 2,
+        // For venues with negative maker (Nado / Hyperliquid VIP / etc.)
+        // a maker-on-both-sides round trip is a rebate, not a cost —
+        // `roundTripMakerPct` will be negative there.
       } : null,
       fundingInterval: FUNDING_INTERVALS[name] || 'unknown',
       tradeUrlPattern: tradeUrl ? tradeUrl.replace('BTC', '{SYMBOL}') : null,
@@ -75,6 +86,18 @@ export async function GET(request: NextRequest) {
   });
   } catch (e) {
     console.error('v1/exchanges error:', e);
-    return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      {
+        status: 500,
+        // Even on 500 we expose the fee-model version so partners doing
+        // HEAD-based version polling can still detect schedule bumps
+        // during a transient origin error.
+        headers: {
+          'X-Fee-Model-Version': FEE_MODEL_VERSION,
+          'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
+        },
+      },
+    );
   }
 }

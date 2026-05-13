@@ -50,7 +50,13 @@ export async function GET(request: NextRequest) {
     console.error('v1/basis error:', e);
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
-      { status: 500 },
+      {
+        status: 500,
+        // Preserve auth.headers (rate-limit identifiers) on the 500 path
+        // so partners can still see X-RateLimit-* during a transient
+        // origin failure.
+        headers: { ...auth.headers },
+      },
     );
   }
 }
