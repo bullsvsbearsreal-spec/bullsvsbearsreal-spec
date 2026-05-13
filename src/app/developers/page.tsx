@@ -232,7 +232,12 @@ function HeroTerminal() {
                   <span className="w-1 h-1 rounded-full bg-green-400/70" />
                   success
                 </span>
-                <span className="text-[10px] text-gray-600">responded in 47ms</span>
+                {/* Was: "responded in 47ms" — hardcoded fake response
+                    time on a marketing terminal mock. The actual API
+                    cache TTLs vary 30-300s; quoting "47ms" misled
+                    partners building latency budgets. Drop it — the
+                    "success" badge alone communicates the same thing
+                    without inventing a number. */}
               </div>
               <div className="mt-2 text-green-400/50">
                 <span className="text-green-400 select-none">$ </span>
@@ -603,7 +608,7 @@ export default function DevelopersPage() {
             {([
               { step: 1, title: 'Create an account', desc: 'Sign up free. No credit card, no approval process. Takes 30 seconds.', icon: Key },
               { step: 2, title: 'Generate an API key', desc: 'One click in the dashboard. Your key starts with ih_ and works instantly.', icon: Hash },
-              { step: 3, title: 'Make your first call', desc: 'Pass the key as a Bearer token. Get structured JSON back in ~50ms.', icon: Zap },
+              { step: 3, title: 'Make your first call', desc: 'Pass the key as a Bearer token. Get structured JSON back from any of 26 endpoints.', icon: Zap },
             ] as const).map(s => (
               <div key={s.step} className="relative text-center">
                 <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/15 to-orange-500/10 border border-amber-500/20 mb-4 relative z-10">
