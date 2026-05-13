@@ -189,6 +189,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/account/connections', label: 'Connections',  color: ACC,  icon: I.user },
     { href: '/social',             label: 'KOL Feed',      color: MUTE, icon: I.news },
     { href: '/watchlist',          label: 'Watchlists',    color: ACC,  icon: I.watch },
+    { href: '/trader-watch',       label: 'Trader Watch',  color: PUR,  icon: I.user },
     { href: '/portfolio',          label: 'Portfolio (manual)', color: MUTE, icon: I.briefcase },
     { href: '/compare',            label: 'Compare',       color: MUTE, icon: I.scale },
   ]},

@@ -649,6 +649,10 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Position Size Calculator · R:R + Kelly',
     description: 'Compute exact position size given account, risk %, entry, and stop. Plus R:R ratio, leverage required, take-profit scenarios, and Kelly sizing for systematic traders.',
   },
+  '/trader-watch': {
+    title: 'Trader Watch · Live positions',
+    description: 'Watch traders across GMX, Hyperliquid, and gTrade on one screen. Star any trader and see their open positions, leverage, liq distance, and funding exposure live — no more 5 tabs to copy-trade.',
+  },
 };
 
 export function pageMetadata(path: string): Metadata {
