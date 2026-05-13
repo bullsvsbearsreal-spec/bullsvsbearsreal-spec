@@ -12,6 +12,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchFarsideFlows } from '@/lib/etf-flows-fetch';
 import { setWarmCache } from '@/lib/api/warm-cache';
+import { upsertWorkerHeartbeat } from '@/lib/db';
 import { verifyCronAuth } from '../_auth';
 
 export const runtime = 'nodejs';
@@ -51,6 +52,15 @@ export async function GET(req: NextRequest) {
   }
 
   const anyOk = Object.values(out).some(v => v.ok);
+  // Heartbeat — was missing. Farside-only feeds break for days under
+  // Cloudflare bot challenges and the only ops signal was journal
+  // grepping. Now admin pipeline panel surfaces it via heartbeat
+  // staleness + degraded status.
+  await upsertWorkerHeartbeat(
+    'cron:refresh-etf-flows',
+    anyOk ? 'ok' : 'degraded',
+    { btc: out.btc, eth: out.eth },
+  ).catch(e => console.error('[refresh-etf-flows] heartbeat error:', e));
   // Always return 200 — DO App Platform rewrites non-2xx route responses
   // to its own generic "via_upstream (502 -)" HTML page, which would mask
   // our structured error payload from systemd journal grepping. Signal

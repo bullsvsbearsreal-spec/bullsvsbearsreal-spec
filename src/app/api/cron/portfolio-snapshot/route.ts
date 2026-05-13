@@ -12,6 +12,7 @@ import {
   isDBConfigured,
   getUsersWithPortfolios,
   savePortfolioSnapshot,
+  upsertWorkerHeartbeat,
 } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -65,6 +66,7 @@ export async function GET(request: NextRequest) {
 
     const users = await getUsersWithPortfolios();
     let snapshots = 0;
+    let userErrors = 0;
 
     for (const user of users) {
       try {
@@ -97,12 +99,26 @@ export async function GET(request: NextRequest) {
         }
       } catch (err) {
         console.error(`[portfolio-cron] error for user ${user.userId}:`, err);
+        userErrors += 1;
       }
     }
+
+    // Daily cron — no heartbeat meant a broken Yahoo/CoinGecko price feed
+    // or DB savePortfolioSnapshot error would silently kill the user's
+    // portfolio history with zero ops signal. Heartbeat flips to
+    // 'degraded' on any per-user error.
+    await upsertWorkerHeartbeat(
+      'cron:portfolio-snapshot',
+      userErrors === 0 ? 'ok' : 'degraded',
+      { users: users.length, snapshots, userErrors },
+    ).catch(e => console.error('[portfolio-cron] heartbeat error:', e));
 
     return NextResponse.json({ ok: true, users: users.length, snapshots });
   } catch (error) {
     console.error('[portfolio-cron] error:', error);
+    await upsertWorkerHeartbeat('cron:portfolio-snapshot', 'degraded', {
+      error: error instanceof Error ? error.message.slice(0, 200) : 'unknown',
+    }).catch(() => { /* heartbeat best-effort */ });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },
