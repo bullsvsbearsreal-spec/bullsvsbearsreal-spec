@@ -126,26 +126,37 @@ export async function GET(request: NextRequest) {
 
     const sorted = [...coins].sort((a: any, b: any) => b.change24h - a.change24h);
 
-    cachedData = {
+    const fresh = {
       gainers: sorted.slice(0, 10),
       losers: sorted.slice(-10).reverse(),
     };
-    allCoinsCache = sorted;
-    cacheTime = Date.now();
 
-    // Also cache the full top-500 symbol list for getTop500Symbols() to reuse
-    if (isDBConfigured()) {
-      const allSymbols = (json.data || []).map((c: any) => c.symbol?.toUpperCase()).filter(Boolean);
-      setCache(DB_CACHE_KEY, cachedData, DB_CACHE_TTL).catch(e => console.warn('[top-movers] cache write failed:', e));
-      setCache('top500-symbols', allSymbols, DB_CACHE_TTL).catch(e => console.warn('[top-movers] cache symbols failed:', e));
-      setCache('heatmap-coins', sorted, DB_CACHE_TTL).catch(e => console.warn('[top-movers] cache heatmap failed:', e));
+    // Only pin caches when we actually got movers. Was: cached
+    // `{gainers: [], losers: []}` for the L1 TTL when CMC returned 200
+    // with empty data (filter rejected everything for some reason — quality
+    // filters at line 100-114 are strict). DB cache + heatmap-coins would
+    // then both be empty for the cache duration.
+    if (sorted.length > 0) {
+      cachedData = fresh;
+      allCoinsCache = sorted;
+      cacheTime = Date.now();
+
+      if (isDBConfigured()) {
+        const allSymbols = (json.data || []).map((c: any) => c.symbol?.toUpperCase()).filter(Boolean);
+        setCache(DB_CACHE_KEY, fresh, DB_CACHE_TTL).catch(e => console.warn('[top-movers] cache write failed:', e));
+        setCache('top500-symbols', allSymbols, DB_CACHE_TTL).catch(e => console.warn('[top-movers] cache symbols failed:', e));
+        setCache('heatmap-coins', sorted, DB_CACHE_TTL).catch(e => console.warn('[top-movers] cache heatmap failed:', e));
+      }
     }
 
-    const cacheHeaders = { 'X-Cache': 'MISS', 'Cache-Control': PUBLIC_CACHE };
+    const cacheHeaders = {
+      'X-Cache': 'MISS',
+      'Cache-Control': sorted.length > 0 ? PUBLIC_CACHE : 'no-store',
+    };
     if (isHeatmap) {
       return NextResponse.json({ coins: sorted }, { headers: cacheHeaders });
     }
-    return NextResponse.json(cachedData, { headers: cacheHeaders });
+    return NextResponse.json(fresh, { headers: cacheHeaders });
   } catch (error) {
     console.warn('Top movers CMC failed, trying CoinGecko fallback:', error instanceof Error ? error.message : error);
 
@@ -172,13 +183,21 @@ export async function GET(request: NextRequest) {
           .filter((c: any) => /^[A-Z0-9]+$/.test(c.symbol) && Math.abs(c.change24h) <= 500);
 
         const sorted = [...coins].sort((a: any, b: any) => b.change24h - a.change24h);
-        cachedData = { gainers: sorted.slice(0, 10), losers: sorted.slice(-10).reverse() };
-        allCoinsCache = sorted;
-        cacheTime = Date.now();
+        const fresh = { gainers: sorted.slice(0, 10), losers: sorted.slice(-10).reverse() };
 
-        const headers = { 'X-Cache': 'MISS-CG', 'Cache-Control': PUBLIC_CACHE };
+        // Same gate as the CMC path above — don't pin empty results.
+        if (sorted.length > 0) {
+          cachedData = fresh;
+          allCoinsCache = sorted;
+          cacheTime = Date.now();
+        }
+
+        const headers = {
+          'X-Cache': 'MISS-CG',
+          'Cache-Control': sorted.length > 0 ? PUBLIC_CACHE : 'no-store',
+        };
         if (isHeatmap) return NextResponse.json({ coins: sorted }, { headers });
-        return NextResponse.json(cachedData, { headers });
+        return NextResponse.json(fresh, { headers });
       }
     } catch (cgErr) {
       console.error('Top movers CoinGecko fallback also failed:', cgErr);
