@@ -181,18 +181,26 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    cache.set(cacheKey, { body, ts: Date.now() });
-    if (cache.size > 30) {
-      const now = Date.now();
-      Array.from(cache.entries()).forEach(([k, v]) => {
-        if (now - v.ts > CACHE_TTL * 3) cache.delete(k);
-      });
+    // Only pin the cache when we have opportunities. Was: cached
+    // `{data: [], totalSymbols: 0}` for 60s when the /api/funding fan-out
+    // returned empty (all-venue outage). /api/v1/funding-arb proxies this
+    // route, so partner consumers would also see empty for 60s post-recovery.
+    if (opportunities.length > 0) {
+      cache.set(cacheKey, { body, ts: Date.now() });
+      if (cache.size > 30) {
+        const now = Date.now();
+        Array.from(cache.entries()).forEach(([k, v]) => {
+          if (now - v.ts > CACHE_TTL * 3) cache.delete(k);
+        });
+      }
     }
 
     return NextResponse.json(body, {
       headers: {
         'X-Cache': 'MISS',
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=180',
+        'Cache-Control': opportunities.length > 0
+          ? 'public, s-maxage=60, stale-while-revalidate=180'
+          : 'no-store',
       },
     });
   } catch (err) {

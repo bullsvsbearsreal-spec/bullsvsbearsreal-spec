@@ -292,9 +292,20 @@ async function handleMarketView(opts: {
         timestamp: Date.now(),
       },
     };
-    cache.set(cacheKey, { body, ts: Date.now() });
+    // Only pin the cache when we have rows. Was: cached `{data: [], traderCount: 0}`
+    // for 30s when the GMX subgraph returned an empty array (happens during
+    // their indexer hiccups). Stale-while-revalidate would then serve the
+    // empty payload for another 2 min.
+    if (traders.length > 0) {
+      cache.set(cacheKey, { body, ts: Date.now() });
+    }
     return NextResponse.json(body, {
-      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120' },
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': traders.length > 0
+          ? 'public, s-maxage=30, stale-while-revalidate=120'
+          : 'no-store',
+      },
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -483,18 +494,25 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    cache.set(cacheKey, { body, ts: Date.now() });
-    if (cache.size > 50) {
-      const now = Date.now();
-      Array.from(cache.entries()).forEach(([k, v]) => {
-        if (now - v.ts > CACHE_TTL * 3) cache.delete(k);
-      });
+    // Only pin the cache when we have traders. Was: pinned empty body
+    // for 60s when the GMX subgraph hiccupped. Now empty responses pass
+    // through without poisoning the next minute of requests.
+    if (traders.length > 0) {
+      cache.set(cacheKey, { body, ts: Date.now() });
+      if (cache.size > 50) {
+        const now = Date.now();
+        Array.from(cache.entries()).forEach(([k, v]) => {
+          if (now - v.ts > CACHE_TTL * 3) cache.delete(k);
+        });
+      }
     }
 
     return NextResponse.json(body, {
       headers: {
         'X-Cache': 'MISS',
-        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=180',
+        'Cache-Control': traders.length > 0
+          ? 'public, s-maxage=60, stale-while-revalidate=180'
+          : 'no-store',
       },
     });
   } catch (err) {
