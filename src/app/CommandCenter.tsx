@@ -180,12 +180,29 @@ export default function CommandCenter() {
     refreshInterval: 60_000,
   });
 
-  const { data: fgData } = useApi<{ value: number; classification: string }>({
+  const { data: fgData } = useApi<{
+    value?: number;
+    classification?: string;
+    current?: { value: number; classification: string; timestamp: number };
+    history?: Array<{ value: number; classification: string; timestamp: number }>;
+  }>({
     key: 'cc:fear-greed',
     fetcher: async () => {
-      const res = await fetch('/api/fear-greed');
+      // Was passing no history flag; the page footer used to render the
+      // hardcoded "Yesterday 68 · Last week 52" without any real
+      // historical signal. Now we request history=true so the footer can
+      // show actual yesterday/last-week values when available. The
+      // route returns `{ current, history }` in history mode, and flat
+      // `{ value, classification }` in current-only mode — handle both.
+      const res = await fetch('/api/fear-greed?history=true');
       if (!res.ok) throw new Error('fg');
-      return res.json();
+      const json = await res.json();
+      // Flatten so existing fgData.value / fgData.classification usage
+      // below keeps working without conditional plumbing.
+      if (json.current) {
+        return { ...json.current, history: json.history };
+      }
+      return json;
     },
     refreshInterval: 300_000,
   });
@@ -386,7 +403,12 @@ export default function CommandCenter() {
                   Funding · 8h <span className="text-[var(--fg-3)] font-medium">— who&apos;s paying whom</span>
                 </h2>
               </div>
-              <div className="meta-ds">2s lag <span className="text-[var(--fg-5)]">·</span> 32 exchanges</div>
+              {/* Was: "2s lag" — fake latency claim. Our funding cache TTL
+                  is 30-60s and the API doesn't measure end-to-end lag, so
+                  the literal was straight made-up. */}
+              <div className="meta-ds">
+                {agg.total > 0 ? `${agg.total} exchanges` : '— exchanges'}
+              </div>
             </div>
             <div className="bg-hub-darker border border-[var(--hub-border)] rounded-[var(--radius-lg)] overflow-hidden">
               <div className="overflow-x-auto">
@@ -510,7 +532,23 @@ export default function CommandCenter() {
                   {fgData?.value ?? '—'}
                 </div>
                 <div className="eyebrow text-[var(--hub-accent)]">{(fgData?.classification ?? '').toUpperCase()}</div>
-                <div className="meta-ds mt-1">Yesterday 68 · Last week 52</div>
+                {/* Was: hardcoded "Yesterday 68 · Last week 52" — fake
+                    historical values that never changed. Now derived from
+                    the real /api/fear-greed?history=true payload, with
+                    graceful degrade when history isn't there. */}
+                <div className="meta-ds mt-1">
+                  {(() => {
+                    const hist = fgData?.history;
+                    if (!Array.isArray(hist) || hist.length === 0) return ' ';
+                    const now = Date.now();
+                    const yesterday = hist.find(p => now - p.timestamp >= 22 * 3600_000 && now - p.timestamp <= 26 * 3600_000);
+                    const lastWeek = hist.find(p => now - p.timestamp >= 6.5 * 86400_000 && now - p.timestamp <= 7.5 * 86400_000);
+                    const parts: string[] = [];
+                    if (yesterday) parts.push(`Yesterday ${Math.round(yesterday.value)}`);
+                    if (lastWeek) parts.push(`Last week ${Math.round(lastWeek.value)}`);
+                    return parts.length ? parts.join(' · ') : ' ';
+                  })()}
+                </div>
               </div>
             </div>
           </div>
