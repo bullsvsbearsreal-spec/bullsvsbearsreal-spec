@@ -243,6 +243,13 @@ export default function AlertsPage() {
       ...(isProx ? { proximityPct: parseFloat(formProximityPct) || 10 } : {}),
       ...(formChannels.length > 0 ? { channels: formChannels } : {}),
     });
+    // Reset ALL form fields after successful add so the next "New Alert"
+    // click starts from defaults instead of inheriting the last submission's
+    // symbol/metric/operator. Previously `formSymbol`/`formMetric`/
+    // `formOperator` persisted, surprising users.
+    setFormSymbol('BTC');
+    setFormMetric('price');
+    setFormOperator('gt');
     setFormValue('');
     setFormExchange('');
     setFormChannels([]);

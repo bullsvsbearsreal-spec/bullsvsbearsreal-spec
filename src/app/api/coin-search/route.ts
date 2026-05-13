@@ -41,7 +41,11 @@ async function getCoinMap(): Promise<any[]> {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const q = (searchParams.get('q') || '').trim().toLowerCase();
+  // Truncate at 100 chars. Middleware caps the whole query string at
+  // 512 but `?q=` alone can consume all of it, and we run O(n × |q|)
+  // string includes() across up to 5k coin map entries — a long q
+  // wastes CPU per request until the L2 cache fills.
+  const q = (searchParams.get('q') || '').trim().toLowerCase().slice(0, 100);
 
   if (!q || q.length < 1) {
     return Response.json({ results: [] });

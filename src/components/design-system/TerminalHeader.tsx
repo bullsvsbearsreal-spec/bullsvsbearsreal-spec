@@ -245,7 +245,17 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
           const groupActive = g.items.some(it => it.href === pathname);
           return (
             <div key={g.key} style={{ position: 'relative', height: '100%' }} onMouseEnter={() => setOpenKey(g.key)} onMouseLeave={() => setOpenKey(null)}>
-              <button style={{ height: '100%', padding: '0 10px', background: 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: 6, color: groupActive || isOpen ? 'var(--fg-default)' : 'var(--fg-muted)', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: groupActive ? 600 : 500, letterSpacing: '-0.005em', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+              {/* Button needs onClick too — onMouseEnter alone doesn't
+                  fire on touch devices. Mobile users couldn't open
+                  any nav dropdown at all (the sidebar is now hidden
+                  on mobile, so this was the only nav path). */}
+              <button
+                type="button"
+                onClick={() => setOpenKey(isOpen ? null : g.key)}
+                aria-expanded={isOpen}
+                aria-haspopup="menu"
+                style={{ height: '100%', padding: '0 10px', background: 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: 6, color: groupActive || isOpen ? 'var(--fg-default)' : 'var(--fg-muted)', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: groupActive ? 600 : 500, letterSpacing: '-0.005em', cursor: 'pointer', whiteSpace: 'nowrap' }}
+              >
                 <span style={{ color: 'var(--hub-accent)', display: 'inline-flex' }}>{g.icon}</span>
                 {g.label}
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--fg-subtle)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}><polyline points="6 9 12 15 18 9" /></svg>
