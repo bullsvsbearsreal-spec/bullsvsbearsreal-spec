@@ -464,8 +464,8 @@ export default function SymbolPage() {
                   funding rates, and open interest for {symbol} across all tracked exchanges.
                 </p>
                 <p>
-                  Candlestick chart data from Binance. Funding and OI aggregated from 17+ exchanges.
-                  Auto-refreshes every 30 seconds.
+                  Candlestick chart data from Binance. Funding and OI aggregated from all
+                  tracked exchanges. Auto-refreshes every 30 seconds.
                 </p>
               </div>
             </div>

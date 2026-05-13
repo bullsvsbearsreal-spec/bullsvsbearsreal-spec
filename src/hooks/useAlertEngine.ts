@@ -34,10 +34,33 @@ async function fetchMarketData(): Promise<Map<string, MarketData>> {
     // a timeout, the 60s setInterval on runCheck would stack up hung
     // fetches until the tab navigates away.
     const T = () => AbortSignal.timeout(10_000);
+    // Was: silently collapse network / non-200 / parse errors to null.
+    // Users assumed alerts were "working" while CF edge errors or 503s
+    // during deploys silently produced an empty marketData map. Now log
+    // a single line per failed fetch so console-watching users can see
+    // why their alerts aren't firing. (Logs throttle naturally because
+    // the engine only runs every 60s — no console-spam risk.)
+    const safeFetch = async (url: string) => {
+      try {
+        const r = await fetch(url, { signal: T() });
+        if (!r.ok) {
+          console.warn(`[alert-engine] ${url} HTTP ${r.status} — alerts may be stale`);
+          return null;
+        }
+        return await r.json();
+      } catch (e) {
+        if (e instanceof DOMException && e.name === 'AbortError') {
+          console.warn(`[alert-engine] ${url} timed out`);
+        } else {
+          console.warn(`[alert-engine] ${url} fetch error:`, e instanceof Error ? e.message : e);
+        }
+        return null;
+      }
+    };
     const [tickerRes, fundingRes, oiRes] = await Promise.all([
-      fetch('/api/tickers', { signal: T() }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch('/api/funding', { signal: T() }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch('/api/openinterest', { signal: T() }).then((r) => (r.ok ? r.json() : null)).catch(() => null),
+      safeFetch('/api/tickers'),
+      safeFetch('/api/funding'),
+      safeFetch('/api/openinterest'),
     ]);
 
     // Tickers: build price + change24h (proper averaging across exchanges)

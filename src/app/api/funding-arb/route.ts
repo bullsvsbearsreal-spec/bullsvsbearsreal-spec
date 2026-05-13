@@ -150,6 +150,13 @@ export async function GET(request: NextRequest) {
 
     const trimmed = opportunities.slice(0, limit);
 
+    // Count distinct exchanges that actually contributed at least one
+    // quote so the UI badge can stop saying "30+ exchanges" as a literal.
+    const exchangesScanned = new Set<string>();
+    bySymbol.forEach(venuesMap => {
+      venuesMap.forEach((_, exchange) => exchangesScanned.add(exchange));
+    });
+
     const summary = {
       totalSymbols: opportunities.length,
       displayed: trimmed.length,
@@ -159,6 +166,7 @@ export async function GET(request: NextRequest) {
         ? opportunities[Math.floor(opportunities.length / 2)].spread8h
         : 0,
       dexCrossSymbols: opportunities.filter(o => o.dexOnOneSide).length,
+      exchangesScanned: exchangesScanned.size,
     };
 
     const body = {

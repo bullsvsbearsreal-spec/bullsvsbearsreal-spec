@@ -357,11 +357,16 @@ const ENDPOINT_GROUPS = [
   },
 ];
 
+// Honest stats — was: "3s Data Freshness". Our actual cache TTLs are
+// 30-300s depending on endpoint (see CLAUDE.md "Slow upstream fetches"
+// section). "30s typical" is the most common bucket — funding,
+// open-interest, tickers all sit there. Partners building latency budgets
+// off "3s" would have been misled by an order of magnitude.
 const STATS = [
   { value: 32, suffix: '', label: 'Exchanges', icon: Database },
   { value: 26, suffix: '', label: 'Endpoints', icon: Wifi },
   { value: 100, suffix: '/m', label: 'Free Requests', icon: Zap },
-  { value: 3, suffix: 's', label: 'Data Freshness', icon: Clock },
+  { value: 30, suffix: 's', label: 'Typical Cache', icon: Clock },
 ];
 
 export default function DevelopersPage() {

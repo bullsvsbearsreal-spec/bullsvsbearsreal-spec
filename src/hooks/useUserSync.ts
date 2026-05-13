@@ -221,6 +221,24 @@ export function useUserSync() {
     return () => { controller.abort(); };
   }, [status, session?.user?.id]);
 
+  // Reset the synced-flag on sign-out so a same-mount user-switch
+  // (user A logs out, user B logs in in the same SPA session) re-pulls
+  // user B's remote data BEFORE the setItem patch starts pushing
+  // localStorage state up. Was: syncedRef stayed `true` across the
+  // logout, the initial pull was skipped for user B, and the first
+  // localStorage write (often A's leftover data) clobbered B's row.
+  // Also cancel any pending push so it doesn't fire under the new
+  // session's auth cookie.
+  useEffect(() => {
+    if (status !== 'authenticated') {
+      syncedRef.current = false;
+      if (pushTimerRef.current) {
+        clearTimeout(pushTimerRef.current);
+        pushTimerRef.current = null;
+      }
+    }
+  }, [status]);
+
   // Listen to localStorage changes (from this tab or other tabs)
   useEffect(() => {
     if (status !== 'authenticated') return;

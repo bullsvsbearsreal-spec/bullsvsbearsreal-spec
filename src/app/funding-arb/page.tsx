@@ -49,6 +49,7 @@ interface ArbResponse {
     topSymbol: string | null;
     medianSpread: number;
     dexCrossSymbols: number;
+    exchangesScanned?: number;
   };
   meta: { minVenues: number; minSpread: number; sort: string; timestamp: number };
 }
@@ -292,10 +293,15 @@ export default function FundingArbPage() {
             </div>
             <h1 className="text-xl font-bold text-white">Funding Arb Scanner</h1>
             <div className="ml-auto flex items-center gap-1">
+              {/* Was: sources={['30+ exchanges']} — a hardcoded badge.
+                  Now derive from the response so it reflects what
+                  actually contributed to the scan. */}
               <DataFreshness
                 exchangeCount={data?.summary?.totalSymbols ?? 0}
                 lastUpdated={data?.meta?.timestamp ?? null}
-                sources={['30+ exchanges']}
+                sources={data?.summary?.exchangesScanned
+                  ? [`${data.summary.exchangesScanned} exchanges`]
+                  : undefined}
               />
               <RefreshButton onRefresh={refresh} isRefreshing={isRefreshing} />
             </div>

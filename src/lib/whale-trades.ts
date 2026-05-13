@@ -221,15 +221,26 @@ export async function detectEVMSwaps(
 
     const decimalsOut = parseInt(tokenOut.total.decimals || tokenOut.token.decimals || '18');
     const decimalsIn = parseInt(tokenIn.total.decimals || tokenIn.token.decimals || '18');
-    const amountOut = parseFloat(tokenOut.total.value) / Math.pow(10, decimalsOut);
-    const amountIn = parseFloat(tokenIn.total.value) / Math.pow(10, decimalsIn);
+    // Blockscout sporadically returns `total: { value: "", decimals: "" }` on
+    // certain ERC-20s (especially proxy tokens), which made parseFloat('')
+    // produce NaN and propagate into amountOut/amountIn → valueUsd. The DB
+    // insert maps `valueUsd ?? null` into a numeric[] UNNEST; Postgres
+    // rejects NaN in numeric, which threw on the whole batch — taking the
+    // GOOD rows down with the bad one. Skip the row instead.
+    const rawOut = parseFloat(tokenOut.total.value);
+    const rawIn = parseFloat(tokenIn.total.value);
+    if (!Number.isFinite(rawOut) || !Number.isFinite(rawIn)) continue;
+    const amountOut = rawOut / Math.pow(10, decimalsOut);
+    const amountIn = rawIn / Math.pow(10, decimalsIn);
+    if (!Number.isFinite(amountOut) || !Number.isFinite(amountIn)) continue;
 
     // Estimate USD value from exchange_rate if available
     let valueUsd: number | undefined;
     const rateIn = parseFloat(tokenIn.token.exchange_rate || '0');
     const rateOut = parseFloat(tokenOut.token.exchange_rate || '0');
-    if (rateIn > 0) valueUsd = amountIn * rateIn;
-    else if (rateOut > 0) valueUsd = amountOut * rateOut;
+    if (rateIn > 0 && Number.isFinite(rateIn)) valueUsd = amountIn * rateIn;
+    else if (rateOut > 0 && Number.isFinite(rateOut)) valueUsd = amountOut * rateOut;
+    if (valueUsd != null && !Number.isFinite(valueUsd)) valueUsd = undefined;
 
     // Try to identify DEX from tx "to" addresses in the transfers
     let dex = 'Unknown DEX';

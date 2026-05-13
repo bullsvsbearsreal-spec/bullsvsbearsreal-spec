@@ -62,36 +62,57 @@ export async function GET(request: NextRequest) {
   let fearGreed: { value: number; classification: string } | null = null;
   let dominance: any = null;
 
-  try {
-    const [tickerRes, fundingRes, oiRes, fgRes, domRes] = await Promise.all([
-      fetch(`${origin}/api/tickers`, { signal: AbortSignal.timeout(15_000) }),
-      fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(15_000) }),
-      fetch(`${origin}/api/openinterest`, { signal: AbortSignal.timeout(15_000) }),
-      fetch(`${origin}/api/fear-greed`, { signal: AbortSignal.timeout(10_000) }),
-      fetch(`${origin}/api/dominance`, { signal: AbortSignal.timeout(10_000) }),
-    ]);
-    if (tickerRes.ok) {
-      const j = await tickerRes.json();
-      tickers = j.data || j || [];
+  // Each fetch lives in its own settled-promise so one upstream failure
+  // (geo-block, timeout, JSON drift) doesn't blank the whole briefing.
+  // Was: Promise.all → ONE rejection threw out of the try/catch with all
+  // five vars at defaults, and the cron silently sent a "Prices: (none)"
+  // 08:00 UTC message. Now: each upstream is independent, and if NOTHING
+  // came back we refuse to send rather than spam users with an empty pad.
+  const [tickerSettled, fundingSettled, oiSettled, fgSettled, domSettled] = await Promise.allSettled([
+    fetch(`${origin}/api/tickers`, { signal: AbortSignal.timeout(15_000) }),
+    fetch(`${origin}/api/funding`, { signal: AbortSignal.timeout(15_000) }),
+    fetch(`${origin}/api/openinterest`, { signal: AbortSignal.timeout(15_000) }),
+    fetch(`${origin}/api/fear-greed`, { signal: AbortSignal.timeout(10_000) }),
+    fetch(`${origin}/api/dominance`, { signal: AbortSignal.timeout(10_000) }),
+  ]);
+
+  const parse = async <T,>(
+    settled: PromiseSettledResult<Response>,
+    label: string,
+    extract: (j: any) => T,
+    fallback: T,
+  ): Promise<T> => {
+    if (settled.status === 'rejected') {
+      console.error(`[telegram-daily] ${label} rejected:`, settled.reason instanceof Error ? settled.reason.message : settled.reason);
+      return fallback;
     }
-    if (fundingRes.ok) {
-      const j = await fundingRes.json();
-      fundingData = j.data || [];
+    if (!settled.value.ok) {
+      console.error(`[telegram-daily] ${label} HTTP ${settled.value.status}`);
+      return fallback;
     }
-    if (oiRes.ok) {
-      const j = await oiRes.json();
-      oiData = j.data || j || [];
+    try {
+      const j = await settled.value.json();
+      return extract(j);
+    } catch (e) {
+      console.error(`[telegram-daily] ${label} parse error:`, e instanceof Error ? e.message : e);
+      return fallback;
     }
-    if (fgRes.ok) {
-      const j = await fgRes.json();
-      fearGreed = j.current || j;
-    }
-    if (domRes.ok) {
-      const j = await domRes.json();
-      dominance = j.data || j;
-    }
-  } catch (e) {
-    console.error('[telegram-daily] fetch error:', e);
+  };
+
+  tickers = await parse(tickerSettled, 'tickers', (j) => j.data || j || [], [] as any[]);
+  fundingData = await parse(fundingSettled, 'funding', (j) => j.data || [], [] as any[]);
+  oiData = await parse(oiSettled, 'oi', (j) => j.data || j || [], [] as any[]);
+  fearGreed = await parse(fgSettled, 'fear-greed', (j) => j.current || j, null);
+  dominance = await parse(domSettled, 'dominance', (j) => j.data || j, null);
+
+  // Refuse to send a near-empty briefing — if every upstream failed,
+  // users will get nothing useful and just learn to ignore the cron.
+  // Better to let admin see the audit-event next morning + retry later.
+  const haveData =
+    tickers.length > 0 || fundingData.length > 0 || oiData.length > 0 || fearGreed || dominance;
+  if (!haveData) {
+    console.error('[telegram-daily] all upstream fetches empty — skipping briefing');
+    return NextResponse.json({ ok: false, skipped: 'all upstreams empty' }, { status: 503 });
   }
 
   // ── Key Prices ──────────────────────────────────────────────

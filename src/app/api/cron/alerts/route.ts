@@ -74,6 +74,7 @@ export async function GET(request: NextRequest) {
 
     let totalTriggered = 0;
     let totalNotifications = 0;
+    let userErrors = 0;
 
     for (const user of users) {
       try {
@@ -183,16 +184,25 @@ export async function GET(request: NextRequest) {
         }
       } catch (err) {
         console.error(`[alert-cron] error processing user ${user.userId}:`, err);
+        userErrors += 1;
       }
     }
 
-    // Prune old notifications ~5% of the time
+    // Prune old notifications ~5% of the time. Wrap so prune failure
+    // (DB connection drop, perm issue) doesn't crash the whole cron — alerts
+    // were already sent above, prune is best-effort.
     if (Math.random() < 0.05) {
-      await pruneAlertNotifications();
+      await pruneAlertNotifications().catch(e =>
+        console.error('[cron:alerts] prune error:', e),
+      );
     }
 
-    await upsertWorkerHeartbeat('cron:alerts', 'ok', {
+    // Heartbeat reflects per-user error count — previously hardcoded 'ok' so
+    // admin pipeline showed green even when half the users were erroring out.
+    const heartbeatStatus: 'ok' | 'degraded' = userErrors === 0 ? 'ok' : 'degraded';
+    await upsertWorkerHeartbeat('cron:alerts', heartbeatStatus, {
       users: users.length, triggered: totalTriggered, notifications: totalNotifications,
+      userErrors,
     }).catch(e => console.error('[cron:alerts] heartbeat error:', e));
 
     return NextResponse.json({

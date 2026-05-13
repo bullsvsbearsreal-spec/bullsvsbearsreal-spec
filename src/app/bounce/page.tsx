@@ -111,21 +111,31 @@ export default function BounceHubPage() {
             </button>
           </form>
           {err && <div className="mt-2 text-[11px] text-red-400">{err}</div>}
+          {/* Was: hardcoded "#2 rekt · $72M" / "#4 · $32M" / "#8 · $15M"
+              ranks + dollar amounts. Those ranks shift hourly on the real
+              leaderboard, so the teaser lied within minutes of release.
+              Strip the stale numbers, keep the wallets as examples. */}
           <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
             <span className="text-neutral-500">Try:</span>
             {[
-              ['0x69423c20cb04da697996534507f8541fdb3e9aa9', '#2 rekt · $72M'],
-              ['0xaa1b01270a5bf5b981bf07a28c9def8d39625997', '#4 · $32M'],
-              ['0x2f79e7993359e37091f8298c9706c75243da65a5', '#8 · $15M'],
-            ].map(([addr, label]) => (
+              '0x69423c20cb04da697996534507f8541fdb3e9aa9',
+              '0xaa1b01270a5bf5b981bf07a28c9def8d39625997',
+              '0x2f79e7993359e37091f8298c9706c75243da65a5',
+            ].map((addr) => (
               <Link
                 key={addr}
                 href={`/bounce/${addr}`}
                 className="px-2 py-0.5 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded text-neutral-300 hover:text-white transition-colors font-mono"
               >
-                {label}
+                {addr.slice(0, 6)}…{addr.slice(-4)}
               </Link>
             ))}
+            <Link
+              href="/bounce/leaderboard"
+              className="px-2 py-0.5 text-hub-yellow hover:text-yellow-300 transition-colors"
+            >
+              See leaderboard →
+            </Link>
           </div>
         </div>
 

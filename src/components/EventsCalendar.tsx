@@ -24,7 +24,18 @@ export default function EventsCalendar({ symbol, limit = 10, showFilters = true 
     loadEvents();
   }, []);
 
-  const displayEvents = events.slice(0, limit);
+  // News-derived events have publishedDate as their `date_event`, which is
+  // in the PAST. Sort newest-first so users see the freshest news at the
+  // top instead of last-week's stories. (Real CoinMarketCal events would
+  // be in the future, so newest-first still does the right thing for
+  // paid-API consumers.)
+  const sorted = [...events].sort((a, b) => {
+    const ta = Date.parse(a.date_event);
+    const tb = Date.parse(b.date_event);
+    if (Number.isNaN(ta) || Number.isNaN(tb)) return 0;
+    return tb - ta;
+  });
+  const displayEvents = sorted.slice(0, limit);
 
   if (loading) {
     return (

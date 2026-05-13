@@ -78,7 +78,12 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingInterval: '8h' as const,
             markPrice,
             indexPrice,
-            nextFundingTime: item.nextFundingTime,
+            // Binance returns nextFundingTime as a number today, but every
+            // other venue in this file uses `Number(...) || Date.now()` —
+            // a string-coerce drift on Binance would otherwise propagate
+            // straight through to /api/v1/funding as a string, breaking
+            // partner countdown clocks. Match the sibling pattern.
+            nextFundingTime: Number(item.nextFundingTime) || Date.now() + 8 * 3600_000,
             type: 'cex' as const,
           };
         })
@@ -121,7 +126,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
               fundingInterval: '8h' as const,
               markPrice,
               indexPrice,
-              nextFundingTime: item.nextFundingTime,
+              // Same Number() coerce as USDT-M above (and every other
+              // venue) — was bare pass-through and would have shipped a
+              // string straight to partner consumers on schema drift.
+              nextFundingTime: Number(item.nextFundingTime) || Date.now() + 8 * 3600_000,
               type: 'cex' as const,
               marginType: 'inverse' as const,
             };

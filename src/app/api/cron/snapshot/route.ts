@@ -16,6 +16,7 @@ import {
   saveSpreadSnapshot,
   pruneOldData,
   recordAdminMetric,
+  recordAuditEvent,
   upsertWorkerHeartbeat,
 } from '@/lib/db';
 import { getFundingData } from '../../_shared/funding-core';
@@ -313,7 +314,16 @@ export async function GET(request: NextRequest) {
         console.warn('[cron:snapshot→watch] errors:', watchStats.errors.slice(0, 3).join(' | '));
       }
     } catch (e) {
-      console.warn('[cron:snapshot→watch] runner threw:', e instanceof Error ? e.message : e);
+      // When the runner itself throws (dynamic-import failure post-deploy,
+      // module-init crash, schema-drift on first DB hit) the watch
+      // heartbeat is never updated — so admin pipeline already shows stale
+      // last_beat. Add an explicit audit-log row too so root cause is
+      // visible without journalctl access. Was previously only console.warn,
+      // which only showed up in DO log search and was easy to miss.
+      const msg = e instanceof Error ? e.message : String(e);
+      console.warn('[cron:snapshot→watch] runner threw:', msg);
+      await recordAuditEvent('cron_watch_runner_threw', { error: msg.slice(0, 500) })
+        .catch(() => { /* audit log is best-effort */ });
     }
 
     // Daily prune of stale watch events (~1 in 1440 ticks → roughly once

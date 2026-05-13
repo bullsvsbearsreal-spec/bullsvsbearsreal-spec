@@ -37,7 +37,9 @@ export default function TopStatsBar() {
     if (!stats) return;
     checkFlash('vol', formatNumber(stats.totalVolume24h));
     checkFlash('oi', formatNumber(stats.totalOpenInterest));
-    checkFlash('dom', `${stats.btcDominance?.toFixed(1) || '54.2'}%`);
+    checkFlash('dom', stats.btcDominance != null && Number.isFinite(stats.btcDominance)
+      ? `${stats.btcDominance.toFixed(1)}%`
+      : '—');
     if (stats.btcLongShort) checkFlash('ls', `${stats.btcLongShort.longRatio.toFixed(1)}/${stats.btcLongShort.shortRatio.toFixed(1)}`);
   }, [stats, checkFlash]);
 
@@ -65,7 +67,9 @@ export default function TopStatsBar() {
   const items = [
     { key: 'vol', label: 'Vol 24H', value: formatNumber(stats.totalVolume24h) },
     { key: 'oi', label: 'OI', value: formatNumber(stats.totalOpenInterest) },
-    { key: 'dom', label: 'BTC Dom', value: `${stats.btcDominance?.toFixed(1) || '54.2'}%` },
+    { key: 'dom', label: 'BTC Dom', value: stats.btcDominance != null && Number.isFinite(stats.btcDominance)
+      ? `${stats.btcDominance.toFixed(1)}%`
+      : '—' },
   ];
 
   const lsFlash = flashKeys['ls'];

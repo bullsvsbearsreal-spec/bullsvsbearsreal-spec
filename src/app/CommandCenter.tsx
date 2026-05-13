@@ -23,6 +23,7 @@ import MarketTiles from '@/components/MarketTiles';
 import CoinSearch from '@/components/CoinSearch';
 import { CoinSearchResult } from '@/lib/api/coingecko';
 import { useApi } from '@/hooks/useSWRApi';
+import { useAggregatorHealth } from '@/hooks/useAggregatorHealth';
 import {
   Activity, BarChart3, Zap, Percent, Grid3X3, ArrowLeftRight, Crosshair,
   Rocket, Crown, GitCompareArrows, Newspaper, Unlock, LineChart, Bitcoin,
@@ -153,6 +154,7 @@ export default function CommandCenter() {
   const { status } = useSession();
   const router = useRouter();
   const handleCoinSelect = (coin: CoinSearchResult) => router.push(`/coin/${coin.id}`);
+  const agg = useAggregatorHealth();
 
   // Live data via the same APIs the rest of the site uses
   const { data: oiData } = useApi<{ totalOI?: number; totalOIChange24h?: number }>({
@@ -291,16 +293,45 @@ export default function CommandCenter() {
                 Real-time derivatives intelligence. Funding, OI, liquidations across 32 exchanges, one screen.
               </p>
             </div>
+            {/* Was: unconditional green dot + "Live · streaming · 32 exchanges".
+                Showed bright "Live" even when every aggregator venue was
+                disconnected. Now we drive the dot + label off the same
+                /health hook that the StatusBar uses. */}
             <div className="flex flex-col items-end gap-1 text-[11px] font-mono tabular-nums text-[var(--fg-4)]">
               <div className="inline-flex items-center gap-1.5">
-                <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-[var(--long)]">
-                  <span className="absolute inset-0 rounded-full bg-[var(--long)] animate-ping opacity-60" />
-                </span>
-                <span className="text-[var(--long)] font-semibold uppercase tracking-widest">Live</span>
-                <span className="text-[var(--fg-5)]">·</span>
-                <span>streaming</span>
+                {agg.status === 'streaming' ? (
+                  <>
+                    <span className="relative inline-flex w-1.5 h-1.5 rounded-full bg-[var(--long)]">
+                      <span className="absolute inset-0 rounded-full bg-[var(--long)] animate-ping opacity-60" />
+                    </span>
+                    <span className="text-[var(--long)] font-semibold uppercase tracking-widest">Live</span>
+                    <span className="text-[var(--fg-5)]">·</span>
+                    <span>streaming</span>
+                  </>
+                ) : agg.status === 'degraded' ? (
+                  <>
+                    <span className="inline-flex w-1.5 h-1.5 rounded-full bg-amber-400" />
+                    <span className="text-amber-400 font-semibold uppercase tracking-widest">Degraded</span>
+                    <span className="text-[var(--fg-5)]">·</span>
+                    <span>{agg.connected}/{agg.total} venues</span>
+                  </>
+                ) : agg.status === 'offline' ? (
+                  <>
+                    <span className="inline-flex w-1.5 h-1.5 rounded-full bg-[var(--short)]" />
+                    <span className="text-[var(--short)] font-semibold uppercase tracking-widest">Offline</span>
+                    <span className="text-[var(--fg-5)]">·</span>
+                    <span>retrying</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="inline-flex w-1.5 h-1.5 rounded-full bg-neutral-500" />
+                    <span className="text-neutral-400 font-semibold uppercase tracking-widest">Connecting</span>
+                  </>
+                )}
               </div>
-              <div>32 exchanges <span className="text-[var(--fg-5)]">·</span> v2.0</div>
+              <div>
+                {agg.total > 0 ? `${agg.total} exchanges` : '— exchanges'} <span className="text-[var(--fg-5)]">·</span> v2.0
+              </div>
             </div>
           </div>
 

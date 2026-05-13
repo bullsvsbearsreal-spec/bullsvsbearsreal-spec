@@ -215,8 +215,31 @@ function parsePosition(p: HLPosition): PositionLite | null {
     markPx,
     liquidationPx: p.liquidationPx ? (parseFloat(p.liquidationPx) || null) : null,
     unrealizedPnl,
-    cumFundingAllTime: parseFloat(p.cumFunding?.allTime ?? '0') || 0,
+    cumFundingAllTime: parseCumFundingAllTime(p),
   };
+}
+
+/**
+ * Read HL cumulative funding-paid with explicit schema-drift logging.
+ * Was inline as `parseFloat(p.cumFunding?.allTime ?? '0') || 0` — the
+ * optional chain silently returned 0 for every position if HL ever
+ * renamed `cumFunding` (they've done it: it was once `funding`). That
+ * killed `funding_paid` Telegram alerts across all watched HL wallets
+ * with zero log signal, since 0 − 0 = 0 in the diff. Now we warn loudly
+ * the first time it goes missing, while still falling back to 0 so a
+ * single bad position doesn't kill the whole tick.
+ */
+let cumFundingDriftWarned = false;
+function parseCumFundingAllTime(p: HLPosition): number {
+  if (!p.cumFunding || typeof p.cumFunding.allTime !== 'string') {
+    if (!cumFundingDriftWarned) {
+      console.warn(`[hl-watch] HL schema drift: cumFunding.allTime missing (first seen on coin=${p.coin})`);
+      cumFundingDriftWarned = true;
+    }
+    return 0;
+  }
+  const parsed = parseFloat(p.cumFunding.allTime);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function sideOf(szi: number): 'long' | 'short' {

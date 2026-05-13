@@ -22,6 +22,8 @@ import {
   DEFAULT_PRESETS,
 } from '@/lib/storage/screenerPresets';
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/storage/watchlist';
+import { ALL_EXCHANGES } from '@/lib/constants/exchanges';
+import { useAggregatorHealth } from '@/hooks/useAggregatorHealth';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -87,6 +89,7 @@ export default function ScreenerPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const agg = useAggregatorHealth();
 
   // Sorting
   const [sortField, setSortField] = useState<SortField>('volume24h');
@@ -416,13 +419,21 @@ export default function ScreenerPage() {
           <div>
             <h1 className="heading-page">Screener</h1>
             <p className="text-xs text-neutral-500 mt-0.5">
+              {/* Was: hardcoded "30 of 32" — that's a lie when aggregator
+                  health changes, and stale-looking when all 32 are up.
+                  Now we read the live connected/total from the same
+                  /health hook that drives the status bar. */}
               {loading && rows.length === 0
-                ? 'Scanning symbols across 30 of 32 tracked venues…'
+                ? agg.total > 0
+                  ? `Scanning symbols across ${agg.connected} of ${agg.total} tracked venues…`
+                  : 'Scanning symbols…'
                 : `Filter ${rows.length} symbols by funding, OI, volume, and price action`}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <DataFreshness exchangeCount={26} lastUpdated={lastUpdate} />
+            {/* Was: hardcoded exchangeCount={26} — wrong number, never
+                changed regardless of how many venues actually responded. */}
+            <DataFreshness exchangeCount={agg.connected || ALL_EXCHANGES.length} lastUpdated={lastUpdate} />
             <button
               onClick={fetchData}
               disabled={loading}

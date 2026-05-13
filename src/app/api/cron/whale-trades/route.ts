@@ -116,8 +116,14 @@ export async function GET(request: NextRequest) {
     await pruneOldWhaleData(30).catch(e => console.error('[whale-trades] prune error:', e));
   }
 
-  await upsertWorkerHeartbeat('cron:whale-trades', 'ok', {
+  // Heartbeat status reflects per-wallet error count — previously hardcoded
+  // 'ok' which meant the admin pipeline tab showed green even when half the
+  // wallets were 429ing or schema-drifting. Now: any error in the batch flips
+  // the heartbeat to 'degraded' so we can actually see breakage.
+  const heartbeatStatus: 'ok' | 'degraded' = errors.length === 0 ? 'ok' : 'degraded';
+  await upsertWorkerHeartbeat('cron:whale-trades', heartbeatStatus, {
     checked: batch.length, trades: totalTrades, notifications: totalNotifs,
+    errors: errors.length,
   }).catch(e => console.error('[whale-trades] heartbeat error:', e));
 
   return NextResponse.json({
