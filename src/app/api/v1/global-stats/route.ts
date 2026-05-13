@@ -30,7 +30,18 @@ export async function GET(request: NextRequest) {
       });
       if (!res.ok) return NextResponse.json({ success: false, error: 'Upstream fetch failed' }, { status: 502 });
       raw = await res.json();
-      l1Cache = { data: raw, ts: Date.now() };
+      // Don't cache the "all upstreams down" payload. The parent route at
+      // /api/global-stats returns HTTP 200 with `{ unavailable: true,
+      // total_market_cap: { usd: 0 }, ... }` when every CoinGecko / CMC
+      // source is broken — caching that for 2 minutes meant paying API
+      // partners read a fabricated "$0 mcap / 50 fg" response as
+      // authoritative. Only pin a payload that has at least one real
+      // number in it.
+      const hasUsefulData =
+        raw &&
+        raw.unavailable !== true &&
+        ((raw.total_market_cap?.usd ?? 0) > 0 || (raw.total_volume?.usd ?? 0) > 0);
+      if (hasUsefulData) l1Cache = { data: raw, ts: Date.now() };
     }
 
     return NextResponse.json({

@@ -8,7 +8,8 @@
  *                                 FUNDING countdown, L/S, MARK/INDEX,
  *                                 RSI/ATR). Above the chart.
  *   2. <ChartAiStrip>          — single-line market commentary with
- *                                 a "HUB AI" badge, mock-AI for now.
+ *                                 a "SIGNALS" badge (heuristic ranker,
+ *                                 not an LLM call — see buildAiInsight).
  *                                 Below the stats bar.
  *   3. <ChartVenueFundingStrip>— per-venue funding rate cards
  *                                 (Binance / Bybit / OKX / Bitget /
@@ -439,6 +440,11 @@ export function ChartAiStrip({ data }: { data: ChartAiStripData }) {
         flexShrink: 0,
       }}
     >
+      {/* Was: "HUB AI" — implied an LLM analyzed the symbol. Reality is
+          a heuristic ranker over funding + OI + L/S deltas (see
+          buildAiInsight — no model call). Renamed to SIGNALS so partners
+          and users don't think we're shipping ChatGPT analysis. The real
+          LLM integration is a follow-up. */}
       <span style={{
         display: 'inline-flex', alignItems: 'center', gap: 5,
         padding: '2px 7px', borderRadius: 4,
@@ -447,14 +453,14 @@ export function ChartAiStrip({ data }: { data: ChartAiStripData }) {
         fontSize: 9, fontWeight: 800, letterSpacing: '0.14em',
       }}>
         <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />
-        HUB AI
+        SIGNALS
       </span>
       <span style={{ flex: 1, color: 'var(--fg-default)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {insight}
       </span>
       {/* Removed the hardcoded "updated <1m ago" string — it was a fixed
           string literal that never changed regardless of when the
-          insight was last recomputed. The HUB AI commentary derives
+          insight was last recomputed. The SIGNALS commentary derives
           from the live data hooks above, whose own DataFreshness
           stamps are the truthful source. */}
       <button

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 
 /**
  * Client-side trader bookmarking. Persists in localStorage under
@@ -70,12 +70,19 @@ export function useTraderBookmarks() {
   // any consumer adds/removes a bookmark.
   const stored = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const bookmarks: TraderBookmark[] = (() => {
+  // useMemo keyed on the underlying JSON string so the returned array
+  // identity stays stable across renders. Was an IIFE that produced a
+  // fresh `[]` array every call — useTraderAlerts has `[enabled, bookmarks]`
+  // in its effect deps, so every parent re-render tore down the 2-minute
+  // poll and re-fired pollOnce() (which fans out to /api/hl-traders/[addr]
+  // per bookmark). An active user with 20 bookmarks easily blew through
+  // HL's rate limit just by rendering the top nav repeatedly.
+  const bookmarks: TraderBookmark[] = useMemo(() => {
     try {
       const parsed = JSON.parse(stored);
       return Array.isArray(parsed) ? parsed : [];
     } catch { return []; }
-  })();
+  }, [stored]);
 
   const isBookmarked = useCallback((address: string): boolean => {
     const lc = address.toLowerCase();

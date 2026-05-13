@@ -40,7 +40,15 @@ export async function GET(request: NextRequest) {
     }
 
     const data = await res.json();
-    l1Cache = { data, ts: Date.now() };
+    // Don't cache the "all upstreams down" sentinel payload. The parent
+    // route returns `{ value: 50, classification: 'Neutral', unavailable:
+    // true }` when CoinMarketCap/alternative.me/etc are all broken —
+    // caching that for 5 minutes meant paying partners read a fabricated
+    // "Neutral 50" as authoritative. Only pin payloads we actually
+    // retrieved.
+    if (data && data.unavailable !== true) {
+      l1Cache = { data, ts: Date.now() };
+    }
     return respond(data, wantHistory, auth.headers);
   } catch (e) {
     console.error('v1/fear-greed error:', e);

@@ -89,9 +89,14 @@ function LiquidationsPreview() {
       {/* Header strip */}
       <div style={{ display: 'flex', alignItems: 'center', padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(239,68,68,0.06)' }}>
         <div style={{ width: 8, height: 8, borderRadius: 999, background: REKT, marginRight: 8, display: 'flex' }} />
-        <span style={{ fontSize: 11, fontWeight: 800, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: 1 }}>LIVE · TOTAL REKT 24H</span>
+        {/* OG image is pre-rendered with example data — don't claim LIVE.
+            Was "LIVE · TOTAL REKT 24H" with hardcoded $437.16M next to it,
+            shipped to every Twitter/Discord share. Re-labeled as PREVIEW. */}
+        <span style={{ fontSize: 11, fontWeight: 800, color: '#fca5a5', textTransform: 'uppercase', letterSpacing: 1 }}>PREVIEW · LIQUIDATIONS</span>
         <div style={{ flex: 1, display: 'flex' }} />
-        <span style={{ fontSize: 18, fontWeight: 900, color: REKT, fontFamily: 'monospace', letterSpacing: -0.5 }}>$437.16M</span>
+        {/* Dropped the hardcoded "$437.16M" total — real number on the
+            page is updated every minute, baking it into the OG would make
+            us look wrong within minutes of any share. */}
       </div>
       {liqs.map((l, i) => {
         const isLong = l.side === 'LONG';

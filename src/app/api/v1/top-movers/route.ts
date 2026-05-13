@@ -34,7 +34,12 @@ export async function GET(request: NextRequest) {
       });
       if (!res.ok) return NextResponse.json({ success: false, error: 'Upstream fetch failed' }, { status: 502 });
       raw = await res.json();
-      l1Cache = { data: raw, ts: Date.now() };
+      // Don't cache an empty-arrays response — every upstream down would
+      // otherwise pin `{ gainers: [], losers: [] }` for 2 min and make
+      // /api/v1/top-movers return "no movers" to partners as authoritative.
+      const hasMovers = raw && (Array.isArray(raw.gainers) && raw.gainers.length > 0
+        || Array.isArray(raw.losers) && raw.losers.length > 0);
+      if (hasMovers) l1Cache = { data: raw, ts: Date.now() };
     }
 
     return NextResponse.json({
