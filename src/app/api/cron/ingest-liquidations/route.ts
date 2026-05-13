@@ -12,7 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { isDBConfigured, initDB, saveLiquidationSnapshot } from '@/lib/db';
+import { isDBConfigured, initDB, saveLiquidationSnapshot, upsertWorkerHeartbeat } from '@/lib/db';
 import { isLiqCryptoSymbol, normalizeLiqSymbol } from '@/lib/liquidation-parsers';
 
 export const runtime = 'nodejs';
@@ -302,11 +302,21 @@ export async function GET(request: NextRequest) {
     };
 
     if (allRows.length === 0) {
+      // Heartbeat as degraded — every fetcher returned zero rows. That's
+      // either a coordinated upstream outage OR a parser break, neither
+      // benign. The cron monitor's HTTP 200 grep would otherwise hide it.
+      await upsertWorkerHeartbeat('cron:ingest-liquidations', 'degraded', {
+        fetched, inserted: 0,
+      }).catch(() => { /* heartbeat best-effort */ });
       return NextResponse.json({ ok: true, fetched, inserted: 0 });
     }
 
     // Insert via existing DB helper (handles dedup with ON CONFLICT DO NOTHING)
     const inserted = await saveLiquidationSnapshot(allRows);
+
+    await upsertWorkerHeartbeat('cron:ingest-liquidations', 'ok', {
+      fetched, inserted,
+    }).catch(e => console.error('[ingest-liquidations] heartbeat error:', e));
 
     return NextResponse.json({ ok: true, fetched, inserted });
   } catch (err) {
@@ -315,9 +325,13 @@ export async function GET(request: NextRequest) {
     // BUT also log to console.error so journalctl/Sentry catches it —
     // otherwise the cron monitor's `grep "HTTP 200"` silently passes
     // even when ingestion is totally broken (saveLiquidationSnapshot
-    // throwing, initDB failing, etc.).
+    // throwing, initDB failing, etc.). Heartbeat flips degraded so the
+    // pipeline panel surfaces it independently of the cron monitor.
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[ingest-liquidations] cron failed:', msg);
+    await upsertWorkerHeartbeat('cron:ingest-liquidations', 'degraded', {
+      error: msg.slice(0, 200),
+    }).catch(() => { /* heartbeat best-effort */ });
     return NextResponse.json({
       ok: false,
       error: msg,

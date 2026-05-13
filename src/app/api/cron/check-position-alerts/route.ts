@@ -17,6 +17,7 @@ import {
   isDBConfigured, listEnabledAlertsWithPositions, markAlertFired,
   getTelegramLinkByUser, getUserEmail, getSQL,
   getPushSubscriptionsForUser, deletePushSubscription,
+  upsertWorkerHeartbeat,
 } from '@/lib/db';
 import { sendMessage } from '@/lib/telegram';
 import { Resend } from 'resend';
@@ -437,6 +438,14 @@ export async function GET(req: NextRequest) {
     debug.push({ userId: rule.userId, kind: rule.kind, triggered: triggered.length, fired: anyDelivered, reason });
   }
 
+  // Heartbeat so admin pipeline can show position-alert health. Was:
+  // zero plumbing — partial DB outages mid-run, per-user channel
+  // failures, and rate-limit hits were invisible beyond the line-level
+  // console logs.
+  await upsertWorkerHeartbeat('cron:check-position-alerts', 'ok', {
+    usersChecked, alertsFired, positionsTriggered,
+  }).catch(e => console.error('[check-position-alerts] heartbeat error:', e));
+
   return NextResponse.json(
     {
       usersChecked,
@@ -450,6 +459,9 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('[check-position-alerts] cron failed:', msg);
+    await upsertWorkerHeartbeat('cron:check-position-alerts', 'degraded', {
+      error: msg.slice(0, 200),
+    }).catch(() => { /* heartbeat best-effort */ });
     return NextResponse.json(
       { ok: false, error: msg },
       { status: 500, headers: { 'Cache-Control': 'no-store' } },

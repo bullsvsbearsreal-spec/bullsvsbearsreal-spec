@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { initDB, isDBConfigured, getActiveTelegramLinks } from '@/lib/db';
+import { initDB, isDBConfigured, getActiveTelegramLinks, upsertWorkerHeartbeat } from '@/lib/db';
 import { sendMessage, type InlineKeyboardMarkup } from '@/lib/telegram';
 
 export const runtime = 'nodejs';
@@ -238,6 +238,15 @@ export async function GET(request: NextRequest) {
       await new Promise(r => setTimeout(r, 50));
     }
   }
+
+  // Heartbeat — was: zero plumbing for a once-a-day cron, so a fully
+  // broken 08:00 UTC briefing (e.g. Telegram bot token revoked) would
+  // only show up via user complaints. Pipeline panel now surfaces it.
+  await upsertWorkerHeartbeat(
+    'cron:telegram-daily',
+    sent === 0 && links.length > 0 ? 'degraded' : 'ok',
+    { sent, total: links.length },
+  ).catch(e => console.error('[telegram-daily] heartbeat error:', e));
 
   return NextResponse.json({ ok: true, sent, total: links.length });
 }
