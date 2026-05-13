@@ -188,7 +188,7 @@ export default function CommandCenter() {
     refreshInterval: 300_000,
   });
 
-  const { data: domData } = useApi<{ btcDominance: number; ethDominance: number }>({
+  const { data: domData } = useApi<{ btcDominance: number; ethDominance: number; btcDominance24hChange?: number }>({
     key: 'cc:dominance',
     fetcher: async () => {
       const res = await fetch('/api/dominance');
@@ -310,7 +310,11 @@ export default function CommandCenter() {
               eyebrow="◷ TOTAL OI"
               tone="bullish"
               value={fmtUsdShort(oiData?.totalOI ?? 0)}
-              footer={<span><span className="text-[var(--long)]">▲ +3.8%</span> <span className="text-[var(--fg-5)]">24h</span></span>}
+              // Was: hardcoded "▲ +3.8% 24h" — the fetcher never
+              // populates totalOIChange24h, so the literal was shown to
+              // every user as fact. Dropped until /api/oi-delta is
+              // wired through to the aggregator response.
+              footer={<span className="text-[var(--fg-5)]">aggregated</span>}
             />
             <StatCard
               eyebrow="⚡ LIQUIDATED 24H"
@@ -323,14 +327,22 @@ export default function CommandCenter() {
             <StatCard
               eyebrow="◴ FEAR & GREED"
               value={fgData?.value ?? '—'}
-              footer={fgData
-                ? <span>{fgData.classification} <span className="text-[var(--fg-5)]">·</span> yesterday {fgData.value > 50 ? Math.max(40, fgData.value - 5) : Math.min(60, fgData.value + 5)}</span>
-                : '—'}
+              // Was: "yesterday {value > 50 ? value-5 : value+5}" — pure
+              // arithmetic on today's reading shown as historical data.
+              // /api/fear-greed only returns today's value. Show only
+              // the classification (which is honest) until we wire
+              // ?history=true.
+              footer={fgData ? <span>{fgData.classification}</span> : '—'}
             />
             <StatCard
               eyebrow="₿ BTC DOMINANCE"
               value={`${(domData?.btcDominance ?? 0).toFixed(1)}%`}
-              footer={<span><span className="text-[var(--long)]">▲ cycle high</span> <span className="text-[var(--fg-5)]">·</span> 1D</span>}
+              // Was: "▲ cycle high · 1D" — marketing copy, not
+              // computed. Replaced with the actual 24h change when
+              // available; falls back to a static label otherwise.
+              footer={typeof domData?.btcDominance24hChange === 'number'
+                ? <span><span className={domData.btcDominance24hChange >= 0 ? 'text-[var(--long)]' : 'text-[var(--short)]'}>{domData.btcDominance24hChange >= 0 ? '▲' : '▼'} {Math.abs(domData.btcDominance24hChange).toFixed(2)}%</span> <span className="text-[var(--fg-5)]">· 24h</span></span>
+                : <span className="text-[var(--fg-5)]">vs all crypto</span>}
             />
           </div>
 

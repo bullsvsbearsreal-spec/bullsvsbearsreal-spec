@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useApi } from '@/hooks/useSWRApi';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -230,6 +230,15 @@ export default function SmartMoneyPage() {
   const { bookmarks, remove, add, clear, updateNote } = useTraderBookmarks();
   const { recents, remove: removeRecent, clear: clearRecents } = useRecentTraders();
   const { feed, clearFeed, enabled: alertsEnabled, toggleEnabled: toggleAlerts, lastCheck } = useTraderAlerts();
+  // 1-second ticking clock so the "checked Xs ago" + "Xs ago" counters
+  // below actually count up between data refreshes. Inline
+  // `Date.now() - lastCheck` in JSX otherwise only updates on a
+  // parent re-render, freezing the seconds counter.
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   // Hide "Recently Viewed" items that are already bookmarked (avoid duplicate display)
   const bookmarkedSet = useMemo(
@@ -531,7 +540,7 @@ export default function SmartMoneyPage() {
               <span className="text-[10px] text-neutral-500 font-mono">{feed.length} events</span>
               {lastCheck && alertsEnabled && (
                 <span className="text-[10px] text-neutral-600">
-                  · checked {Math.floor((Date.now() - lastCheck) / 1000)}s ago
+                  · checked {Math.floor((nowTick - lastCheck) / 1000)}s ago
                 </span>
               )}
               <div className="ml-auto flex items-center gap-2">
