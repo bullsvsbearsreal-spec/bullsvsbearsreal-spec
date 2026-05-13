@@ -245,8 +245,18 @@ export async function GET(request: NextRequest) {
     },
   };
 
-  cache.set(cacheKey, { body, ts: Date.now() });
+  // Only pin cache when we have trending tokens. Was: cached empty for
+  // 60s when DexScreener returned 200 with no rows (rate-limit response
+  // is sometimes shaped like an empty success).
+  if (trimmed.length > 0) {
+    cache.set(cacheKey, { body, ts: Date.now() });
+  }
   return NextResponse.json(body, {
-    headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=180' },
+    headers: {
+      'X-Cache': 'MISS',
+      'Cache-Control': trimmed.length > 0
+        ? 'public, s-maxage=60, stale-while-revalidate=180'
+        : 'no-store',
+    },
   });
 }

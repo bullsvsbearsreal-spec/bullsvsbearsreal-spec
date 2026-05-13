@@ -330,9 +330,20 @@ export async function GET(request: NextRequest) {
     },
   };
 
-  cache.set(cacheKey, { body, ts: Date.now() });
+  // Only pin cache when we have wallets. Was: cached an empty array
+  // for 2 min when both GMX and HL leaderboards came back empty
+  // (rare but happens during their schema/indexer hiccups).
+  // /smart-money page would render "no proven alpha" for cache duration.
+  if (final.length > 0) {
+    cache.set(cacheKey, { body, ts: Date.now() });
+  }
 
   return NextResponse.json(body, {
-    headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' },
+    headers: {
+      'X-Cache': 'MISS',
+      'Cache-Control': final.length > 0
+        ? 'public, s-maxage=120, stale-while-revalidate=300'
+        : 'no-store',
+    },
   });
 }

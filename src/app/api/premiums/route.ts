@@ -206,8 +206,18 @@ export async function GET(_request: NextRequest) {
     },
   };
 
-  cache.set(cacheKey, { body, ts: Date.now() });
+  // Only pin cache when we have premium rows. Was: cached empty for
+  // 30s when any exchange (Binance / Coinbase / Upbit / bitFlyer) was
+  // down or open.er-api wasn't returning FX rates.
+  if (rows.length > 0) {
+    cache.set(cacheKey, { body, ts: Date.now() });
+  }
   return NextResponse.json(body, {
-    headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=90' },
+    headers: {
+      'X-Cache': 'MISS',
+      'Cache-Control': rows.length > 0
+        ? 'public, s-maxage=30, stale-while-revalidate=90'
+        : 'no-store',
+    },
   });
 }

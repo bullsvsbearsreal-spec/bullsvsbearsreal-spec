@@ -325,14 +325,22 @@ export async function GET(request: NextRequest) {
   try {
     const whales = await fetchAllWhales();
 
-    // Cache results
-    memCache = { data: whales, time: Date.now() };
-    if (isDBConfigured()) {
-      setCache(CACHE_KEY, whales, DB_CACHE_TTL).catch(e => console.warn('[hl-whales] cache write failed:', e));
+    // Only pin caches when we got whale rows. Was: cached an empty
+    // array for L1 TTL (90s) and DB TTL (3 min) when HL leaderboard
+    // came back empty (HL API hiccup). Smart-money page rendered
+    // "no whales" for ~3 min after HL recovered.
+    if (whales.length > 0) {
+      memCache = { data: whales, time: Date.now() };
+      if (isDBConfigured()) {
+        setCache(CACHE_KEY, whales, DB_CACHE_TTL).catch(e => console.warn('[hl-whales] cache write failed:', e));
+      }
     }
 
     return NextResponse.json(whales, {
-      headers: { 'X-Cache': 'MISS', 'Cache-Control': PUBLIC_CACHE },
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': whales.length > 0 ? PUBLIC_CACHE : 'no-store',
+      },
     });
   } catch (err) {
     // Return stale cache on error

@@ -130,11 +130,17 @@ export async function GET(_request: NextRequest) {
       },
     };
 
-    cache.set(cacheKey, { body, ts: Date.now() });
+    // Only pin cache when we have stable peg rows. Was: cached empty
+    // for 30s when CoinGecko returned 200 with no stable prices.
+    if (rows.length > 0) {
+      cache.set(cacheKey, { body, ts: Date.now() });
+    }
     return NextResponse.json(body, {
       headers: {
         'X-Cache': 'MISS',
-        'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120',
+        'Cache-Control': rows.length > 0
+          ? 'public, s-maxage=30, stale-while-revalidate=120'
+          : 'no-store',
       },
     });
   } catch (err) {

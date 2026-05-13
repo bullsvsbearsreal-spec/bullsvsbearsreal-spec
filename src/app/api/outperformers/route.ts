@@ -178,8 +178,18 @@ export async function GET(request: NextRequest) {
     meta: { timestamp: Date.now(), source: 'coingecko' },
   };
 
-  cache.set(cacheKey, { body, ts: Date.now() });
+  // Only pin cache when we have universe data. Was: cached
+  // `{data: [], universeSize: 0}` for 5 min when CoinGecko returned
+  // empty during regional outage.
+  if (rows.length > 0) {
+    cache.set(cacheKey, { body, ts: Date.now() });
+  }
   return NextResponse.json(body, {
-    headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900' },
+    headers: {
+      'X-Cache': 'MISS',
+      'Cache-Control': rows.length > 0
+        ? 'public, s-maxage=300, stale-while-revalidate=900'
+        : 'no-store',
+    },
   });
 }
