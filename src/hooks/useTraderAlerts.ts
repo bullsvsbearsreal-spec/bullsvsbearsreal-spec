@@ -201,64 +201,89 @@ export function useTraderAlerts() {
     window.dispatchEvent(new CustomEvent(EVENT));
   }, [enabled]);
 
-  // Poll every POLL_INTERVAL when enabled AND there are bookmarks
+  // Poll every POLL_INTERVAL when enabled AND there are bookmarks.
+  //
+  // Two race-condition guards added vs the original:
+  //   1. `active` flag — cancels pending setState after unmount /
+  //      effect re-run (was triggering React's "state update on
+  //      unmounted component" warning on navigation).
+  //   2. `running` mutex — prevents two `pollOnce` calls from racing
+  //      on the snapshot localStorage write. The original effect fired
+  //      `pollOnce()` immediately PLUS started a setInterval, so on
+  //      a fresh mount of a many-bookmark watchlist both calls could
+  //      execute in parallel — both read the same snapshot baseline,
+  //      both mutate the local object, and the slower writer clobbered
+  //      the faster one. That silently dropped diff-detected alerts.
   useEffect(() => {
     if (!enabled || bookmarks.length === 0) {
       if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
       return;
     }
 
+    let active = true;
+    let running = false;
+
     async function pollOnce() {
-      const snapshots: Record<string, TraderSnapshot> = readJson(SNAPSHOT_KEY, {});
-      const freshAlerts: TraderAlert[] = [];
-      for (const b of bookmarks) {
-        const positions = await fetchPositions(b.address);
-        const prev = snapshots[b.address];
-        if (prev) {
-          const changes = diffPositions(prev.positions, positions);
-          for (const c of changes) {
-            freshAlerts.push({
-              id: `${b.address}-${c.coin}-${Date.now()}`,
-              address: b.address,
-              displayName: b.displayName ?? null,
-              coin: c.coin,
-              kind: c.kind,
-              details: c.details,
-              sizeUsd: c.sizeUsd,
-              isLong: c.isLong,
-              timestamp: Date.now(),
-            });
-          }
-        }
-        snapshots[b.address] = { address: b.address, fetchedAt: Date.now(), positions };
-      }
-      writeJson(SNAPSHOT_KEY, snapshots);
-
-      if (freshAlerts.length > 0) {
-        const existing: TraderAlert[] = readJson(FEED_KEY, []);
-        const combined = [...freshAlerts, ...existing].slice(0, MAX_FEED);
-        writeJson(FEED_KEY, combined);
-
-        // Fire browser notification if permitted — one per alert, throttled
-        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-          // Cap notifications to 3 per poll to avoid spam
-          for (const a of freshAlerts.slice(0, 3)) {
-            try {
-              new Notification(`${a.displayName || a.address.slice(0, 10)}...`, {
-                body: a.details,
-                tag: `${a.address}-${a.coin}`, // dedupe rapid repeats on same coin
+      if (running) return;        // mutex — skip if previous tick still in flight
+      running = true;
+      try {
+        const snapshots: Record<string, TraderSnapshot> = readJson(SNAPSHOT_KEY, {});
+        const freshAlerts: TraderAlert[] = [];
+        for (const b of bookmarks) {
+          if (!active) return;
+          const positions = await fetchPositions(b.address);
+          if (!active) return;
+          const prev = snapshots[b.address];
+          if (prev) {
+            const changes = diffPositions(prev.positions, positions);
+            for (const c of changes) {
+              freshAlerts.push({
+                id: `${b.address}-${c.coin}-${Date.now()}`,
+                address: b.address,
+                displayName: b.displayName ?? null,
+                coin: c.coin,
+                kind: c.kind,
+                details: c.details,
+                sizeUsd: c.sizeUsd,
+                isLong: c.isLong,
+                timestamp: Date.now(),
               });
-            } catch { /* browsers may limit — ignore */ }
+            }
+          }
+          snapshots[b.address] = { address: b.address, fetchedAt: Date.now(), positions };
+        }
+        if (!active) return;
+        writeJson(SNAPSHOT_KEY, snapshots);
+
+        if (freshAlerts.length > 0) {
+          const existing: TraderAlert[] = readJson(FEED_KEY, []);
+          const combined = [...freshAlerts, ...existing].slice(0, MAX_FEED);
+          writeJson(FEED_KEY, combined);
+
+          // Fire browser notification if permitted — one per alert, throttled
+          if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+            // Cap notifications to 3 per poll to avoid spam
+            for (const a of freshAlerts.slice(0, 3)) {
+              try {
+                new Notification(`${a.displayName || a.address.slice(0, 10)}...`, {
+                  body: a.details,
+                  tag: `${a.address}-${a.coin}`, // dedupe rapid repeats on same coin
+                });
+              } catch { /* browsers may limit — ignore */ }
+            }
           }
         }
+        if (active) setLastCheck(Date.now());
+      } finally {
+        running = false;
       }
-      setLastCheck(Date.now());
     }
 
     // Fire immediately (seed snapshots), then interval
     pollOnce();
     pollingRef.current = setInterval(pollOnce, POLL_INTERVAL);
     return () => {
+      active = false;
       if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
     };
   }, [enabled, bookmarks]);

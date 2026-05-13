@@ -161,15 +161,24 @@ export function useUserSync() {
     };
   }, []);
 
-  // Initial sync on login
+  // Initial sync on login. AbortController prevents two concurrent
+  // sync flights from racing if the effect re-fires mid-sync (NextAuth
+  // token rotation, session refresh). Two parallel PUTs to /api/user/data
+  // with the slower one resolving last could silently overwrite the
+  // result of the faster one — corrupting the user's synced watchlist,
+  // alerts, portfolio.
   useEffect(() => {
     if (status !== 'authenticated' || !session?.user?.id || syncedRef.current) return;
 
+    const controller = new AbortController();
+    const { signal } = controller;
+
     (async () => {
       try {
-        const res = await fetch('/api/user/data');
-        if (!res.ok) return;
+        const res = await fetch('/api/user/data', { signal });
+        if (signal.aborted || !res.ok) return;
         const remoteData = await res.json();
+        if (signal.aborted) return;
 
         const localData = collectLocalData();
 
@@ -180,27 +189,36 @@ export function useUserSync() {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(localData),
+              signal,
             });
           }
         } else {
           // Merge and write to both sides
           const merged = mergeData(localData, remoteData);
+          if (signal.aborted) return;
           applyRemoteData(merged);
           await fetch('/api/user/data', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(merged),
+            signal,
           });
         }
 
+        if (signal.aborted) return;
         // Dispatch a custom event so pages re-read from localStorage
         window.dispatchEvent(new Event('user-data-synced'));
-      } catch {
-        // sync failed — localStorage still works
+        syncedRef.current = true;
+      } catch (e) {
+        // sync failed (incl. AbortError on cancellation) — localStorage
+        // still works and the next effect run will retry.
+        if (!(e instanceof DOMException && e.name === 'AbortError')) {
+          // not an abort — real failure, no need to surface beyond this.
+        }
       }
-
-      syncedRef.current = true;
     })();
+
+    return () => { controller.abort(); };
   }, [status, session?.user?.id]);
 
   // Listen to localStorage changes (from this tab or other tabs)
