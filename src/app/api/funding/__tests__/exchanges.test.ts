@@ -705,3 +705,133 @@ describe('Bitunix fetcher', () => {
     expect(results).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Binance-style predictedRate coverage
+//
+// Partners reported predictedRate === 0 / null on Binance/Bybit/Bitget. The
+// fix derives the next-window funding rate locally from the venue's own
+// markPrice + indexPrice using the standard Binance formula:
+//   predicted = clamp((mark - index) / index, ±0.05%) + 0.01%
+// These tests pin the math + the per-venue plumbing so the coverage gap
+// can't silently regress.
+// ---------------------------------------------------------------------------
+describe('Binance-style predictedRate', () => {
+  it('Binance USDT-M: small positive premium falls between clamp bounds', async () => {
+    // mark 68500.50, index 68480 → premium ≈ 0.0002994 → clamp keeps it → + 0.0001
+    // expected: (0.0002994 + 0.0001) * 100 ≈ 0.03994%
+    const fetchFn = mockFetchOk([
+      {
+        symbol: 'BTCUSDT',
+        lastFundingRate: '0.00012345',
+        markPrice: '68500.50',
+        indexPrice: '68480.00',
+        nextFundingTime: 1710000000000,
+      },
+    ]);
+    const results = await getFetcher('Binance')(fetchFn);
+    expect(results).toHaveLength(1);
+    expect(results[0].predictedRate).toBeCloseTo(0.039942, 4);
+  });
+
+  it('Binance USDT-M: huge positive premium clamps to upper bound + offset', async () => {
+    // 10% premium → clamps to 0.05% → + 0.01% → 0.06%
+    const fetchFn = mockFetchOk([
+      {
+        symbol: 'BTCUSDT',
+        lastFundingRate: '0.0001',
+        markPrice: '110',
+        indexPrice: '100',
+        nextFundingTime: 1710000000000,
+      },
+    ]);
+    const results = await getFetcher('Binance')(fetchFn);
+    expect(results[0].predictedRate).toBeCloseTo(0.06, 6);
+  });
+
+  it('Binance USDT-M: huge negative premium clamps to lower bound + offset', async () => {
+    // -10% premium → clamps to -0.05% → + 0.01% → -0.04%
+    const fetchFn = mockFetchOk([
+      {
+        symbol: 'BTCUSDT',
+        lastFundingRate: '0.0001',
+        markPrice: '90',
+        indexPrice: '100',
+        nextFundingTime: 1710000000000,
+      },
+    ]);
+    const results = await getFetcher('Binance')(fetchFn);
+    expect(results[0].predictedRate).toBeCloseTo(-0.04, 6);
+  });
+
+  it('Binance USDT-M: zero indexPrice → predictedRate undefined (no divide-by-zero)', async () => {
+    const fetchFn = mockFetchOk([
+      {
+        symbol: 'BTCUSDT',
+        lastFundingRate: '0.0001',
+        markPrice: '68500',
+        indexPrice: '0',
+        nextFundingTime: 1710000000000,
+      },
+    ]);
+    const results = await getFetcher('Binance')(fetchFn);
+    expect(results[0].predictedRate).toBeUndefined();
+  });
+
+  it('Bybit linear: computes predictedRate from markPrice + indexPrice', async () => {
+    const fetchFn = mockFetchOk({
+      retCode: 0,
+      result: {
+        list: [
+          {
+            symbol: 'BTCUSDT',
+            fundingRate: '0.0001',
+            markPrice: '68500.50',
+            indexPrice: '68480.00',
+            nextFundingTime: '1710000000000',
+          },
+        ],
+      },
+    });
+    const results = await getFetcher('Bybit')(fetchFn);
+    expect(results).toHaveLength(1);
+    expect(results[0].exchange).toBe('Bybit');
+    expect(results[0].predictedRate).toBeCloseTo(0.039942, 4);
+  });
+
+  it('Bitget USDT-FUTURES: computes predictedRate from markPrice + indexPrice', async () => {
+    const fetchFn = mockFetchOk({
+      code: '00000',
+      data: [
+        {
+          symbol: 'BTCUSDT',
+          fundingRate: '0.0001',
+          markPrice: '68500.50',
+          indexPrice: '68480.00',
+          nextFundingTime: '1710000000000',
+        },
+      ],
+    });
+    const results = await getFetcher('Bitget')(fetchFn);
+    expect(results).toHaveLength(1);
+    expect(results[0].exchange).toBe('Bitget');
+    expect(results[0].predictedRate).toBeCloseTo(0.039942, 4);
+  });
+
+  it('Binance COIN-M: applies same formula on USD_PERP symbols', async () => {
+    const fetchFn = mockFetchOk([
+      {
+        symbol: 'BTCUSD_PERP',
+        lastFundingRate: '0.0001',
+        markPrice: '68500.50',
+        indexPrice: '68480.00',
+        nextFundingTime: 1710000000000,
+      },
+    ]);
+    const results = await getFetcher('Binance-COINM')(fetchFn);
+    expect(results).toHaveLength(1);
+    expect(results[0].symbol).toBe('BTC');
+    expect(results[0].marginType).toBe('inverse');
+    expect(results[0].predictedRate).toBeCloseTo(0.039942, 4);
+  });
+});

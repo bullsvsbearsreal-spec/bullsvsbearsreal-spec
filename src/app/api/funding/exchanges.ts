@@ -4,6 +4,26 @@ import { normalizeSymbol, GTRADE_GROUP_ASSET_CLASS, type AssetClass } from './no
 
 const PROXY_BASE = process.env.NEXT_PUBLIC_BASE_URL || 'https://info-hub.io';
 
+/**
+ * Binance-style next-window funding prediction.
+ *   predicted ≈ clamp(premium, ±0.05%) + 0.01% (per 8h)
+ * where `premium = (mark - index) / index`.
+ *
+ * Returns the predicted rate as PERCENT (matching the storage format
+ * used by `fundingRate` in this file), not as a fraction. Same formula
+ * applies to any CEX that reports markPrice + indexPrice on its
+ * USDT-margined perpetuals (Binance / Bybit / Bitget / OKX).
+ *
+ * Partners asked for predictedRate coverage on these venues — we have
+ * the inputs in the same response, so it's just arithmetic.
+ */
+function binanceStylePredictedPercent(markPrice: number, indexPrice: number): number | undefined {
+  if (!Number.isFinite(markPrice) || !Number.isFinite(indexPrice) || indexPrice <= 0) return undefined;
+  const premium = (markPrice - indexPrice) / indexPrice;
+  const clamped = Math.max(-0.0005, Math.min(0.0005, premium));
+  return (clamped + 0.0001) * 100;
+}
+
 type FundingData = {
   symbol: string;
   exchange: string;
@@ -45,16 +65,23 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (!Array.isArray(data)) return [];
       return data
         .filter((item: any) => item.symbol?.endsWith('USDT') && item.lastFundingRate != null)
-        .map((item: any) => ({
-          symbol: item.symbol.replace('USDT', ''),
-          exchange: 'Binance',
-          fundingRate: (parseFloat(item.lastFundingRate) || 0) * 100,
-          fundingInterval: '8h' as const,
-          markPrice: parseFloat(item.markPrice) || 0,
-          indexPrice: parseFloat(item.indexPrice) || 0,
-          nextFundingTime: item.nextFundingTime,
-          type: 'cex' as const,
-        }))
+        .map((item: any) => {
+          const markPrice = parseFloat(item.markPrice) || 0;
+          const indexPrice = parseFloat(item.indexPrice) || 0;
+          return {
+            symbol: item.symbol.replace('USDT', ''),
+            exchange: 'Binance',
+            fundingRate: (parseFloat(item.lastFundingRate) || 0) * 100,
+            // Next-window prediction from the standard Binance formula
+            // — premiumIndex already returns the inputs we need.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
+            fundingInterval: '8h' as const,
+            markPrice,
+            indexPrice,
+            nextFundingTime: item.nextFundingTime,
+            type: 'cex' as const,
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
@@ -83,17 +110,22 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         if (!Array.isArray(data)) return [];
         return data
           .filter((item: any) => item.symbol?.endsWith('USD_PERP') && item.lastFundingRate != null)
-          .map((item: any) => ({
-            symbol: item.symbol.replace('USD_PERP', ''),
-            exchange: 'Binance',
-            fundingRate: (parseFloat(item.lastFundingRate) || 0) * 100,
-            fundingInterval: '8h' as const,
-            markPrice: parseFloat(item.markPrice) || 0,
-            indexPrice: parseFloat(item.indexPrice) || 0,
-            nextFundingTime: item.nextFundingTime,
-            type: 'cex' as const,
-            marginType: 'inverse' as const,
-          }))
+          .map((item: any) => {
+            const markPrice = parseFloat(item.markPrice) || 0;
+            const indexPrice = parseFloat(item.indexPrice) || 0;
+            return {
+              symbol: item.symbol.replace('USD_PERP', ''),
+              exchange: 'Binance',
+              fundingRate: (parseFloat(item.lastFundingRate) || 0) * 100,
+              predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
+              fundingInterval: '8h' as const,
+              markPrice,
+              indexPrice,
+              nextFundingTime: item.nextFundingTime,
+              type: 'cex' as const,
+              marginType: 'inverse' as const,
+            };
+          })
           .filter((item: any) => !isNaN(item.fundingRate));
       } catch {
         return [];
@@ -124,16 +156,25 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (json.retCode !== 0) return [];
       return json.result.list
         .filter((t: any) => t.symbol?.endsWith('USDT') && t.fundingRate != null)
-        .map((item: any) => ({
-          symbol: item.symbol.replace('USDT', ''),
-          exchange: 'Bybit',
-          fundingRate: (parseFloat(item.fundingRate) || 0) * 100,
-          fundingInterval: '8h' as const,
-          markPrice: parseFloat(item.markPrice) || 0,
-          indexPrice: parseFloat(item.indexPrice) || 0,
-          nextFundingTime: Number(item.nextFundingTime) || Date.now(),
-          type: 'cex' as const,
-        }))
+        .map((item: any) => {
+          const markPrice = parseFloat(item.markPrice) || 0;
+          const indexPrice = parseFloat(item.indexPrice) || 0;
+          return {
+            symbol: item.symbol.replace('USDT', ''),
+            exchange: 'Bybit',
+            fundingRate: (parseFloat(item.fundingRate) || 0) * 100,
+            // Bybit's tickers endpoint returns markPrice + indexPrice
+            // — same Binance-style formula applies to predict the next
+            // window. Partners were seeing 0% coverage on Bybit
+            // because we never computed this.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
+            fundingInterval: '8h' as const,
+            markPrice,
+            indexPrice,
+            nextFundingTime: Number(item.nextFundingTime) || Date.now(),
+            type: 'cex' as const,
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
@@ -223,16 +264,24 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (json.code !== '00000') return [];
       return json.data
         .filter((item: any) => item.symbol.endsWith('USDT'))
-        .map((item: any) => ({
-          symbol: item.symbol.replace('USDT', ''),
-          exchange: 'Bitget',
-          fundingRate: (parseFloat(item.fundingRate) || 0) * 100,
-          fundingInterval: '8h' as const,
-          markPrice: parseFloat(item.markPrice) || 0,
-          indexPrice: parseFloat(item.indexPrice) || 0,
-          nextFundingTime: Number(item.nextFundingTime) || Date.now(),
-          type: 'cex' as const,
-        }))
+        .map((item: any) => {
+          const markPrice = parseFloat(item.markPrice) || 0;
+          const indexPrice = parseFloat(item.indexPrice) || 0;
+          return {
+            symbol: item.symbol.replace('USDT', ''),
+            exchange: 'Bitget',
+            fundingRate: (parseFloat(item.fundingRate) || 0) * 100,
+            // Bitget's tickers endpoint returns markPrice + indexPrice
+            // — same Binance-style formula applies. Closes the
+            // predictedRate coverage gap partners flagged.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
+            fundingInterval: '8h' as const,
+            markPrice,
+            indexPrice,
+            nextFundingTime: Number(item.nextFundingTime) || Date.now(),
+            type: 'cex' as const,
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
