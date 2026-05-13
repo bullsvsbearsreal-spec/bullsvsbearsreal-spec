@@ -97,7 +97,7 @@ export default function GuidesPage() {
             <div className="flex items-center gap-2 mb-6">
               <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/[0.04] border border-white/[0.08]">
                 <span className="w-1.5 h-1.5 rounded-full bg-hub-yellow animate-pulse" />
-                <span className="text-hub-yellow text-[11px] font-medium">Work in progress</span>
+                <span className="text-hub-yellow text-[11px] font-medium">3 published · more in the works</span>
               </div>
             </div>
 
@@ -270,7 +270,7 @@ export default function GuidesPage() {
           {/* ─── Bottom note ─── */}
           <div className="text-center pt-4 border-t border-white/[0.04]">
             <p className="text-neutral-700 text-xs">
-              Guides are coming soon, we're writing them now.
+              First batch is live. New guides drop every couple of weeks — no schedule, no fluff, only when we have something worth saying.
             </p>
           </div>
         </div>
