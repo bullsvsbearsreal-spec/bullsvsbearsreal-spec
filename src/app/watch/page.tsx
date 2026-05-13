@@ -428,6 +428,9 @@ function WatchPageInner() {
               type="text" value={addrInput}
               onChange={e => { setAddrInput(e.target.value); setError(null); }}
               placeholder="0x… any Hyperliquid or gTrade wallet"
+              aria-label="Wallet address"
+              aria-describedby={error ? 'watch-addr-error' : undefined}
+              aria-invalid={!!error}
               className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white font-mono placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
               autoComplete="off" spellCheck={false}
             />
@@ -435,6 +438,7 @@ function WatchPageInner() {
               type="text" value={labelInput}
               onChange={e => setLabelInput(e.target.value)}
               placeholder="Label (optional)"
+              aria-label="Wallet label (optional)"
               maxLength={80}
               className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
             />
@@ -446,7 +450,7 @@ function WatchPageInner() {
               Watch
             </button>
           </div>
-          {error && <div className="text-[11px] text-rose-400 mt-2">{error}</div>}
+          {error && <div id="watch-addr-error" role="alert" className="text-[11px] text-rose-400 mt-2">{error}</div>}
           <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
             <span className="text-neutral-600">Or pick from leaderboards:</span>
             <Link href="/hl-traders" className="text-neutral-400 hover:text-hub-yellow inline-flex items-center gap-0.5">
@@ -567,6 +571,15 @@ function WatchPageInner() {
                         : 'border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.03]'
                     }`}
                     onClick={() => setFilterAddr(isFiltered ? null : w.address)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setFilterAddr(isFiltered ? null : w.address);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={isFiltered}
                     title={isFiltered ? 'Click to clear filter' : 'Click to filter event log to this wallet'}
                   >
                     <div className="flex items-start gap-3 flex-wrap">

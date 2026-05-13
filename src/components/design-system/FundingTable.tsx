@@ -19,6 +19,11 @@ interface FundingTableProps {
   updatedAgo?: string;
   venueCount?: number;
   selectedSymbol?: string | null;
+  /** Whether the underlying fetch is still pending. Without this, an
+   *  empty `rows` result is indistinguishable from "loading" and the
+   *  table permanently shows "Loading funding rates…" on legit empty
+   *  cases (e.g. a fresh symbol with no funding history). */
+  loading?: boolean;
   onRowClick?: (row: FundingTableRow) => void;
   onPeriodChange?: (period: string) => void;
   className?: string;
@@ -26,7 +31,7 @@ interface FundingTableProps {
 
 const COLS = '32px 1.4fr 1fr 1fr 1fr 0.8fr 1fr';
 
-export default function FundingTable({ rows, title = 'Top Funding', period = '8h', updatedAgo, venueCount = 32, selectedSymbol, onRowClick, onPeriodChange, className }: FundingTableProps) {
+export default function FundingTable({ rows, title = 'Top Funding', period = '8h', updatedAgo, venueCount = 32, selectedSymbol, loading = false, onRowClick, onPeriodChange, className }: FundingTableProps) {
   return (
     <div className={className} style={{ background: 'var(--hub-darker)', border: '1px solid var(--hub-border)', borderRadius: 12, overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--hub-border-subtle)', gap: 10 }}>
@@ -52,14 +57,34 @@ export default function FundingTable({ rows, title = 'Top Funding', period = '8h
       </div>
 
       {rows.length === 0 ? (
-        <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--fg-subtle)', fontSize: 12, fontFamily: 'var(--font-mono)' }}>Loading funding rates…</div>
+        <div style={{ padding: '40px 16px', textAlign: 'center', color: 'var(--fg-subtle)', fontSize: 12, fontFamily: 'var(--font-mono)' }}>
+          {loading ? 'Loading funding rates…' : 'No data for this filter.'}
+        </div>
       ) : rows.map((r, i) => {
         const on = r.symbol === selectedSymbol;
         const stripeBg = i % 2 ? 'transparent' : 'rgba(255,255,255,0.015)';
+        const isClickable = !!onRowClick;
         return (
-          <div key={`${r.symbol}-${r.venue}`} onClick={() => onRowClick?.(r)} style={{ display: 'grid', gridTemplateColumns: COLS, gap: 10, padding: '10px 16px', paddingLeft: on ? 14 : 16, alignItems: 'center', borderBottom: '1px solid var(--hub-border-subtle)', background: on ? 'rgba(255,165,0,0.06)' : stripeBg, cursor: onRowClick ? 'pointer' : 'default', fontSize: 12, borderLeft: on ? '2px solid var(--hub-accent)' : '2px solid transparent', transition: 'background 120ms' }}
+          <div
+            key={`${r.symbol}-${r.venue}`}
+            onClick={() => onRowClick?.(r)}
+            // Keyboard support — Enter/Space activates row when clickable.
+            // Was previously mouse-only (no role/tabIndex/onKeyDown), making
+            // symbol selection inaccessible to keyboard users.
+            role={isClickable ? 'button' : undefined}
+            tabIndex={isClickable ? 0 : undefined}
+            onKeyDown={isClickable ? (e => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                onRowClick?.(r);
+              }
+            }) : undefined}
+            aria-label={isClickable ? `Select ${r.symbol} on ${r.venue}` : undefined}
+            style={{ display: 'grid', gridTemplateColumns: COLS, gap: 10, padding: '10px 16px', paddingLeft: on ? 14 : 16, alignItems: 'center', borderBottom: '1px solid var(--hub-border-subtle)', background: on ? 'rgba(255,165,0,0.06)' : stripeBg, cursor: isClickable ? 'pointer' : 'default', fontSize: 12, borderLeft: on ? '2px solid var(--hub-accent)' : '2px solid transparent', transition: 'background 120ms', outline: 'none' }}
             onMouseEnter={e => { if (!on) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
-            onMouseLeave={e => { if (!on) e.currentTarget.style.background = stripeBg; }}>
+            onMouseLeave={e => { if (!on) e.currentTarget.style.background = stripeBg; }}
+            onFocus={e => { if (!on) e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+            onBlur={e => { if (!on) e.currentTarget.style.background = stripeBg; }}>
             <div style={{ color: 'var(--fg-subtle)', fontFamily: 'var(--font-mono)' }}>{i + 1}</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <div style={{ width: 22, height: 22, borderRadius: 999, flexShrink: 0, background: r.iconBg || 'linear-gradient(135deg,#f7931a,#ffb547)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 10, fontWeight: 800, fontFamily: 'var(--font-sans)' }}>{r.symbol[0]}</div>

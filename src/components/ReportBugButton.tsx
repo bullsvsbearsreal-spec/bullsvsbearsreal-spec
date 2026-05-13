@@ -112,16 +112,22 @@ export default function ReportBugButton() {
       </button>
 
       {open && (
+        // Backdrop is decorative only — clicking it closes. The actual
+        // dialog role + aria-modal + label belong on the visible panel
+        // below, not the full-viewport backdrop. Previously the backdrop
+        // carried them, which made screen readers announce the dialog
+        // as starting at the backdrop rather than the content card.
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 bg-black/60 backdrop-blur-sm"
           onClick={close}
-          role="dialog"
-          aria-modal="true"
-          aria-label="Report a bug"
+          aria-hidden="true"
         >
           <div
             className="w-full max-w-md bg-neutral-950 border border-white/[0.08] rounded-2xl shadow-2xl"
             onClick={e => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Report a bug"
           >
             {/* Header */}
             <div className="flex items-center justify-between px-4 py-3 border-b border-white/[0.06]">
