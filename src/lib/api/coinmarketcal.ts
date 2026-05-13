@@ -111,8 +111,14 @@ export async function fetchCryptoNews(limit: number = 20): Promise<NewsArticle[]
     const base = typeof window === 'undefined'
       ? (process.env.NEXT_PUBLIC_BASE_URL || 'https://info-hub.io')
       : '';
+    // Was: no AbortSignal — if our own /api/news hangs (it shouldn't, but
+    // it depends on upstream CryptoCompare which is occasionally slow), this
+    // call would never time out. Add a 10s ceiling so callers (SSR pages,
+    // EventsCalendar) degrade fast instead of holding open the entire
+    // request.
     const response = await fetch(`${base}/api/news?limit=${limit}`, {
       next: { revalidate: 300 },
+      signal: AbortSignal.timeout(10_000),
     });
     if (!response.ok) return [];
 
@@ -234,6 +240,7 @@ export async function fetchCoinEvents(coinId: string): Promise<CryptoEvent[]> {
             'x-api-key': COINMARKETCAL_API_KEY,
           },
           next: { revalidate: 300 },
+          signal: AbortSignal.timeout(10_000),
         }
       );
 
@@ -278,6 +285,7 @@ export async function fetchUpcomingEvents(limit: number = 20): Promise<CryptoEve
             'x-api-key': COINMARKETCAL_API_KEY,
           },
           next: { revalidate: 300 },
+          signal: AbortSignal.timeout(10_000),
         }
       );
 
