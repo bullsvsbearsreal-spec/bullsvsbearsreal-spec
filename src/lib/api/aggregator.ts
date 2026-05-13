@@ -135,7 +135,12 @@ export async function fetchAllFundingRates(assetClass: AssetClassFilter = 'crypt
     const json = await response.json();
     // API returns { data, health, meta } — extract data array
     const allRates = Array.isArray(json) ? json : (json.data ?? json);
-    setCache(cacheKey, allRates, FUNDING_TTL);
+    // Only pin cache when we got non-empty rates. Was: empty array got
+    // pinned for FUNDING_TTL when every venue was down, freezing the
+    // funding UI for the cache duration.
+    if (Array.isArray(allRates) && allRates.length > 0) {
+      setCache(cacheKey, allRates, FUNDING_TTL);
+    }
     return allRates;
   } catch (error) {
     console.error('Error fetching funding rates:', error);
@@ -151,7 +156,9 @@ export async function fetchAllFundingRates(assetClass: AssetClassFilter = 'crypt
       }
     });
 
-    setCache(cacheKey, allRates, FUNDING_TTL);
+    if (allRates.length > 0) {
+      setCache(cacheKey, allRates, FUNDING_TTL);
+    }
     return allRates;
   }
 }
@@ -170,7 +177,11 @@ export async function fetchAllOpenInterest(): Promise<OpenInterestData[]> {
     const json = await response.json();
     // API returns { data, health, meta } — extract data array
     const allOI = Array.isArray(json) ? json : (json.data ?? json);
-    setCache('openInterest', allOI);
+    // Only pin cache when we got non-empty OI rows. Was: empty array got
+    // pinned when every venue was down — OI page froze for cache duration.
+    if (Array.isArray(allOI) && allOI.length > 0) {
+      setCache('openInterest', allOI);
+    }
     return allOI;
   } catch (error) {
     console.warn('[OI]', error instanceof Error ? error.message : error);
@@ -186,7 +197,9 @@ export async function fetchAllOpenInterest(): Promise<OpenInterestData[]> {
       }
     });
 
-    setCache('openInterest', allOI);
+    if (allOI.length > 0) {
+      setCache('openInterest', allOI);
+    }
     return allOI;
   }
 }
@@ -571,7 +584,13 @@ export async function fetchFundingArbitrage(assetClass: AssetClassFilter = 'cryp
     .filter((item): item is NonNullable<typeof item> => item !== null)
     .sort((a, b) => b.spread - a.spread);
 
-  setCache(cacheKey, arbitrageData);
+  // Only pin the cache when we have arbitrage opportunities. Was: cached
+  // an empty array for the default TTL when fetchAllFundingRates returned
+  // empty (every venue down) — /arbitrage page would render "no opps"
+  // until cache expired.
+  if (arbitrageData.length > 0) {
+    setCache(cacheKey, arbitrageData);
+  }
   return arbitrageData;
 }
 
