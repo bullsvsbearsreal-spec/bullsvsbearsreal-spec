@@ -267,13 +267,25 @@ async function fetchAllWhales(): Promise<WhaleData[]> {
 /*  Route handler                                                      */
 /* ------------------------------------------------------------------ */
 
+// EVM-style 0x-prefixed 40-hex-char addresses only — what HL accepts.
+// Was: passed `address` straight to fetch() with HL, letting anyone send
+// arbitrary strings through us as a proxy to api.hyperliquid.xyz. Now
+// reject early.
+const ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
+
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const singleAddress = searchParams.get('address');
 
   // Single wallet lookup (for custom whale tracking)
   if (singleAddress) {
-    const label = searchParams.get('label') || 'Custom';
+    if (!ADDR_RE.test(singleAddress)) {
+      return NextResponse.json(
+        { error: 'Invalid address format — expected 0x + 40 hex chars' },
+        { status: 400 },
+      );
+    }
+    const label = (searchParams.get('label') || 'Custom').slice(0, 80);
     const whale = await fetchWhaleState(singleAddress, label);
     if (!whale) {
       return NextResponse.json(
