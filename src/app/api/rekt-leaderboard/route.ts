@@ -138,9 +138,21 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    cache.set(cacheKey, { body, ts: Date.now() });
+    // Only pin the cache when we have rows. Was: cached `{data: [], totalRekt: 0}`
+    // for 5 minutes if bounce.tech returned 200 with an empty payload — that
+    // happened during bounce.tech indexer outages and produced a "no wallets
+    // tracked" page until the cache expired. Now empty responses pass through
+    // without poisoning the next 5 minutes of requests.
+    if (rows.length > 0) {
+      cache.set(cacheKey, { body, ts: Date.now() });
+    }
     return NextResponse.json(body, {
-      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900' },
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': rows.length > 0
+          ? 'public, s-maxage=300, stale-while-revalidate=900'
+          : 'no-store',
+      },
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown';

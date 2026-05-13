@@ -181,8 +181,20 @@ export async function GET(_request: NextRequest) {
     meta: { timestamp: Date.now(), sampleSize: alts.length, windowDays: hasThirty ? 30 : 7 },
   };
 
-  cache.set(cacheKey, { body, ts: Date.now() });
+  // Only pin the cache when we have real alts. Was: cached
+  // `{altseasonIndex: 0, totalAlts: 0}` for 5 min when CoinGecko returned
+  // a valid 200 with an empty `marketsRaw` (rate-limit hit on free tier
+  // sometimes does this). Users would see "Bitcoin Season · index 0" as
+  // if it were real signal.
+  if (alts.length > 0) {
+    cache.set(cacheKey, { body, ts: Date.now() });
+  }
   return NextResponse.json(body, {
-    headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900' },
+    headers: {
+      'X-Cache': 'MISS',
+      'Cache-Control': alts.length > 0
+        ? 'public, s-maxage=300, stale-while-revalidate=900'
+        : 'no-store',
+    },
   });
 }

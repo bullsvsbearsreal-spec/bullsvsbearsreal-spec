@@ -225,9 +225,21 @@ export async function GET(request: NextRequest) {
       meta: { timestamp: Date.now(), source: 'coingecko' },
     };
 
-    cache.set(cacheKey, { body, ts: Date.now() });
+    // Cache only when we have universe data. Was: pinned an empty
+    // `{data: [], universeSize: 0}` for 5 min if CoinGecko returned a
+    // valid 200 with an empty array (rare but possible during their
+    // partial-region failures). Users would see "No signals" for 5 min
+    // even when CG recovered seconds later.
+    if (allRows.length > 0) {
+      cache.set(cacheKey, { body, ts: Date.now() });
+    }
     return NextResponse.json(body, {
-      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900' },
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': allRows.length > 0
+          ? 'public, s-maxage=300, stale-while-revalidate=900'
+          : 'no-store',
+      },
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown';
