@@ -43,12 +43,25 @@ export async function PUT(req: NextRequest, ctx: { params: Promise<{ id: string 
   const [own] = await sql`SELECT id FROM hl_watched_wallets WHERE id = ${id} AND user_id = ${userId}` as Array<{ id: number }>;
   if (!own) return NextResponse.json({ error: 'not found' }, { status: 404 });
 
-  // Build patch — only update fields the caller sent, keep the rest
+  // Build patch — only update fields the caller sent, keep the rest.
+  // Was: `Number(n) || fallback` — that pattern silently ignored `n=0`
+  // because 0 is falsy in JS, so a user who set "fire on ANY size
+  // change" (threshold 0) had their setting overwritten with the
+  // existing fallback. Now we accept 0 explicitly and only fall back
+  // when the value is genuinely non-finite.
   const label = body.label === undefined ? undefined : (body.label ?? '').trim().slice(0, 80) || null;
-  const clamp01 = (n: number | undefined, fallback: number) =>
-    n === undefined ? fallback : Math.max(0, Math.min(1, Number(n) || fallback));
-  const clampUsd = (n: number | undefined, fallback: number) =>
-    n === undefined ? fallback : Math.max(0, Number(n) || fallback);
+  const clamp01 = (n: number | undefined, fallback: number) => {
+    if (n === undefined) return fallback;
+    const v = Number(n);
+    if (!Number.isFinite(v)) return fallback;
+    return Math.max(0, Math.min(1, v));
+  };
+  const clampUsd = (n: number | undefined, fallback: number) => {
+    if (n === undefined) return fallback;
+    const v = Number(n);
+    if (!Number.isFinite(v)) return fallback;
+    return Math.max(0, v);
+  };
 
   // Read existing thresholds so we don't have to send everything every PUT
   const [existing] = await sql`

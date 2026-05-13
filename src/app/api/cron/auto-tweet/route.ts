@@ -15,7 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyCronAuth } from '../_auth';
-import { initDB, isDBConfigured } from '@/lib/db';
+import { initDB, isDBConfigured, upsertWorkerHeartbeat } from '@/lib/db';
 import { runAutoTweetTick } from '@/lib/auto-tweet/runner';
 
 export const runtime = 'nodejs';
@@ -37,9 +37,28 @@ export async function GET(request: NextRequest) {
   try {
     await initDB();
     const stats = await runAutoTweetTick();
+    // Heartbeat so admin pipeline panel can show auto-tweet health.
+    // Was: zero visibility — Twitter API auth expiry, rate-limits, or
+    // schema drift on the funding/oi loaders would silently break tweets
+    // for days while the cron returned HTTP 200 from the route monitor.
+    await upsertWorkerHeartbeat(
+      'cron:auto-tweet',
+      stats.ok ? 'ok' : 'degraded',
+      {
+        detected: stats.detected,
+        posted: stats.posted,
+        dryRun: stats.dryRun,
+        skipped: stats.skipped,
+        errors: stats.errors.length,
+        durationMs: stats.durationMs,
+      },
+    ).catch(e => console.error('[cron/auto-tweet] heartbeat error:', e));
     return NextResponse.json(stats);
   } catch (e) {
     console.error('[cron/auto-tweet] error:', e);
+    await upsertWorkerHeartbeat('cron:auto-tweet', 'degraded', {
+      error: e instanceof Error ? e.message.slice(0, 200) : 'unknown',
+    }).catch(() => { /* heartbeat best-effort */ });
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : 'unknown' },
       { status: 500 },

@@ -23,6 +23,7 @@ import {
   setExchangeKeyLastSync,
   saveUserTrades,
   getLastTradeTsBySource,
+  upsertWorkerHeartbeat,
 } from '@/lib/db';
 import { decryptSecret, isEncryptionConfigured } from '@/lib/crypto/exchange-keys';
 import { getExchangeClient } from '@/lib/exchange-clients';
@@ -323,6 +324,23 @@ export async function GET(req: NextRequest) {
     userStats.push(stat);
   }
 
+    // Heartbeat with degraded status when any source errored. Was: zero
+    // heartbeat plumbing — the admin pipeline tab couldn't tell whether
+    // sync-positions was running cleanly or quietly burning through
+    // half its keys with API errors.
+    await upsertWorkerHeartbeat(
+      'cron:sync-positions',
+      totalErrors === 0 ? 'ok' : 'degraded',
+      {
+        users: targets.length,
+        totalKeys,
+        totalPositions,
+        totalTradesInserted,
+        totalErrors,
+        orphansDeleted,
+      },
+    ).catch(e => console.error('[sync-positions] heartbeat error:', e));
+
     return NextResponse.json(
       {
         users: targets.length,
@@ -343,6 +361,9 @@ export async function GET(req: NextRequest) {
     // for every user with no signal.
     const msg = e instanceof Error ? e.message : String(e);
     console.error('[sync-positions] cron failed:', msg);
+    await upsertWorkerHeartbeat('cron:sync-positions', 'degraded', {
+      error: msg.slice(0, 200),
+    }).catch(() => { /* heartbeat best-effort */ });
     return NextResponse.json(
       { ok: false, error: msg },
       { status: 500, headers: { 'Cache-Control': 'no-store' } },
