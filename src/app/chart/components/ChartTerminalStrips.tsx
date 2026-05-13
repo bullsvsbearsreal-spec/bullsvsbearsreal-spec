@@ -452,9 +452,11 @@ export function ChartAiStrip({ data }: { data: ChartAiStripData }) {
       <span style={{ flex: 1, color: 'var(--fg-default)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
         {insight}
       </span>
-      <span data-chart-hide-mobile="" style={{ fontSize: 9, color: 'var(--fg-muted)', whiteSpace: 'nowrap' }}>
-        updated &lt;1m ago
-      </span>
+      {/* Removed the hardcoded "updated <1m ago" string — it was a fixed
+          string literal that never changed regardless of when the
+          insight was last recomputed. The HUB AI commentary derives
+          from the live data hooks above, whose own DataFreshness
+          stamps are the truthful source. */}
       <button
         type="button"
         data-chart-hide-mobile=""

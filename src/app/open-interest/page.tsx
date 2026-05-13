@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -51,7 +51,15 @@ export default function OpenInterestPage() {
   const [expanded, setExpanded] = useState(false);
   const PAGE_SIZE = 100;
 
-  const fetchData = async () => {
+  // Wrapped in useCallback so the setInterval below captures the latest
+  // reference rather than a stale closure. Previously `fetchData` was a
+  // plain async function declared in the component body, and the useEffect
+  // had `[]` deps — meaning the version of fetchData captured by
+  // setInterval was the initial-render one, which would silently call a
+  // stale closure if any state used inside fetchData ever started being
+  // referenced. Defensive fix even though current fetchData reads no
+  // closed-over state.
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -75,13 +83,13 @@ export default function OpenInterestPage() {
       setError('Unable to reach exchange APIs — check your connection or try again shortly.');
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 60000); // 60s (server caches for 2 min)
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchData]);
 
   // Get unique exchanges
   const exchanges = useMemo(() => Array.from(new Set(openInterest.map(oi => oi.exchange))), [openInterest]);

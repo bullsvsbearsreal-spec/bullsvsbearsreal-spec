@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import Link from 'next/link';
 import { useApi, useTickers, useOpenInterest, useMarketStats } from '@/hooks/useSWRApi';
 import { formatNumber } from '@/lib/utils/format';
+import { ALL_EXCHANGES } from '@/lib/constants';
 import { DollarSign, BarChart3, TrendingUp, TrendingDown, Layers } from 'lucide-react';
 
 export default function StatsOverview() {
@@ -58,7 +59,7 @@ export default function StatsOverview() {
       iconBg: 'bg-hub-yellow/10',
       href: '/screener',
       isBigNumber: true,
-      subtitle: 'Perp · 17 exchanges',
+      subtitle: `Perp · ${ALL_EXCHANGES.length} exchanges`,
     },
     {
       label: 'Open Interest',
@@ -68,7 +69,7 @@ export default function StatsOverview() {
       iconBg: 'bg-blue-400/10',
       href: '/open-interest',
       isBigNumber: true,
-      subtitle: '28 exchanges aggregated',
+      subtitle: `${ALL_EXCHANGES.length} exchanges aggregated`,
     },
     {
       label: 'Top Gainer',

@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Share2, Check, Copy } from 'lucide-react';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 interface ShareButtonProps {
   title?: string;
@@ -12,7 +13,7 @@ interface ShareButtonProps {
 
 export default function ShareButton({
   title = 'InfoHub - Real-Time Derivatives Data',
-  text = 'Check out funding rates on InfoHub — 21 exchanges, real-time data',
+  text = `Check out funding rates on InfoHub — ${ALL_EXCHANGES.length} exchanges, real-time data`,
   url,
   className = '',
 }: ShareButtonProps) {

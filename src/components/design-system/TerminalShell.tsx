@@ -14,15 +14,12 @@ interface TickerLite { sym: string; price: number; chg: number; }
 
 interface TerminalShellProps {
   children: ReactNode;
-  /** Override sidebar online count (default 33). */
-  online?: number;
-  dexCount?: number;
   className?: string;
 }
 
 const WANT_TAPE = ['BTC', 'ETH', 'SOL', 'HYPE', 'BNB', 'DOGE', 'XRP', 'AVAX', 'LINK', 'TON', 'PEPE', 'WIF'];
 
-export default function TerminalShell({ children, online = 33, dexCount = 15, className }: TerminalShellProps) {
+export default function TerminalShell({ children, className }: TerminalShellProps) {
   const [tape, setTape] = useState<TickerLite[]>([]);
 
   useEffect(() => {
@@ -87,7 +84,11 @@ export default function TerminalShell({ children, online = 33, dexCount = 15, cl
       />
 
       <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        <Sidebar online={online} dexCount={dexCount} msgPerSec={1247} />
+        {/* Sidebar pulls real online/dex counts from useAggregatorHealth.
+            Props `online`/`dexCount`/`msgPerSec` were removed because nothing
+            ever passed them — TerminalShell hardcoded `msgPerSec={1247}`
+            which rendered as fake "1.2k msg/s" telemetry. */}
+        <Sidebar />
         <main
           style={{
             flex: 1,

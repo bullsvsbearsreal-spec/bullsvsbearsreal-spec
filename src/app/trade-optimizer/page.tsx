@@ -273,7 +273,7 @@ export default function TradeOptimizerPage() {
     //   - /api/funding-countdown   (5 CEX-style venues, has accurate
     //                               nextFundingTime — used for the
     //                               countdown badge in the cheapest banner)
-    //   - /api/funding             (31 exchanges, used as the PRIMARY
+    //   - /api/funding             (32 exchanges, used as the PRIMARY
     //                               funding-rate source so DEXes like
     //                               dYdX/Aster/Aevo/gTrade/Lighter/edgeX/
     //                               GMX/Variational stop showing "—"

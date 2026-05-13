@@ -3,9 +3,14 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { useMarketStats } from '@/hooks/useSWRApi';
 import { formatNumber } from '@/lib/utils/format';
+import { useAggregatorHealth } from '@/hooks/useAggregatorHealth';
 
 export default function TopStatsBar() {
   const { data: stats, isLoading: loading } = useMarketStats();
+  // Real aggregator status — the previous "streaming" green pulsing dot
+  // was rendered unconditionally on this bar; now it reflects whether
+  // the aggregator is actually connected.
+  const { status: aggStatus } = useAggregatorHealth();
   const prevValues = useRef<Record<string, string>>({});
   const [flashKeys, setFlashKeys] = useState<Record<string, 'up' | 'down'>>({});
 
@@ -106,10 +111,24 @@ export default function TopStatsBar() {
             )}
           </div>
 
-          {/* Live heartbeat */}
+          {/* Live heartbeat — now reflects real aggregator status.
+              Was previously a permanently-green pulsing dot labeled
+              "streaming" rendered unconditionally. */}
           <div className="ml-auto flex items-center gap-1.5 flex-shrink-0">
-            <span className="heartbeat-dot" />
-            <span className="text-[9px] text-neutral-600 font-medium tracking-wide">streaming</span>
+            <span
+              className={
+                aggStatus === 'streaming' ? 'heartbeat-dot' :
+                aggStatus === 'degraded'  ? 'heartbeat-dot heartbeat-dot--degraded' :
+                aggStatus === 'offline'   ? 'heartbeat-dot heartbeat-dot--offline' :
+                'heartbeat-dot heartbeat-dot--pending'
+              }
+            />
+            <span className="text-[9px] text-neutral-600 font-medium tracking-wide">
+              {aggStatus === 'streaming' ? 'streaming'
+                : aggStatus === 'degraded' ? 'degraded'
+                : aggStatus === 'offline' ? 'offline'
+                : 'connecting'}
+            </span>
           </div>
         </div>
       </div>

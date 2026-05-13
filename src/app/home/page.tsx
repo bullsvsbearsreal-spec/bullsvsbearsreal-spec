@@ -313,7 +313,12 @@ export default function HomePage() {
       }
     }
     load();
-    return () => { cancelled = true; };
+    // Auto-refresh every 60s. Without this the homepage loaded data
+    // once at mount and never updated, despite "LIVE · 32 venues" pills
+    // and "Major Coins · Live" headers throughout the page. Cheap-ish
+    // since most underlying endpoints are L1-cached server-side.
+    const id = setInterval(load, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
   }, []);
 
   const cexExchanges = useMemo(() => ALL_EXCHANGES.filter(e => !isExchangeDex(e)), []);

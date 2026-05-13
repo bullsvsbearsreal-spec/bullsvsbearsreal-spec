@@ -230,6 +230,15 @@ export default function TraderWatchPage() {
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<number | null>(null);
   const [sortKey, setSortKey] = useState<'pnl' | 'size' | 'liqDist' | 'symbol'>('size');
+  // Ticking clock for "updated Xs ago" so the counter actually counts up
+  // between auto-refresh ticks. Without this, the JSX `Date.now() -
+  // lastRefresh` is evaluated once per React render — between refreshes
+  // the displayed seconds froze and jumped at the next 30s tick.
+  const [nowTick, setNowTick] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   /** Refresh all bookmarked traders' positions in parallel. */
   const refresh = useCallback(async () => {
@@ -359,7 +368,7 @@ export default function TraderWatchPage() {
         <div className="flex items-center gap-3">
           {lastRefresh && (
             <span className="text-[11px] text-neutral-600 font-mono">
-              updated {Math.floor((Date.now() - lastRefresh) / 1000)}s ago
+              updated {Math.floor((nowTick - lastRefresh) / 1000)}s ago
             </span>
           )}
           <button

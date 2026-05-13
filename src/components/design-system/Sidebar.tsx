@@ -3,6 +3,8 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useSession } from 'next-auth/react';
+import { useAggregatorHealth } from '@/hooks/useAggregatorHealth';
+import { ALL_EXCHANGES, isExchangeDex } from '@/lib/constants';
 
 const I = {
   fundRate:  '<path d="M3 3v18h18"/><polyline points="7 14 11 10 14 13 19 7"/>',
@@ -218,9 +220,21 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
   ]},
 ];
 
-interface SidebarProps { sections?: SidebarSection[]; online?: number; dexCount?: number; msgPerSec?: number; className?: string; }
+interface SidebarProps { sections?: SidebarSection[]; className?: string; }
 
-export default function Sidebar({ sections = DEFAULT_SECTIONS, online = 33, dexCount = 15, msgPerSec = 1247, className }: SidebarProps) {
+export default function Sidebar({ sections = DEFAULT_SECTIONS, className }: SidebarProps) {
+  // Real aggregator connectivity — same singleton hook the StatusBar
+  // STREAMING badge + MarketTape ThroughputCounter use. No more
+  // hardcoded "33 Online" / "15 DEX" / "1.2k msg/s" fakes.
+  const { connected, total } = useAggregatorHealth();
+  const online = total > 0 ? connected : 0;
+  // DEX subset of the connected venue set. Both /lib/constants/exchanges
+  // tag DEXes via isExchangeDex. We don't have per-venue health here
+  // (the aggregator returns presence only, not classification), so the
+  // DEX count is derived from ALL_EXCHANGES which is the source of truth.
+  const dexCount = total > 0
+    ? ALL_EXCHANGES.filter(isExchangeDex).length
+    : 0;
   const pathname = usePathname();
   const { data: session } = useSession();
   const isAdmin = (session?.user as { role?: string } | undefined)?.role === 'admin';
@@ -280,7 +294,7 @@ export default function Sidebar({ sections = DEFAULT_SECTIONS, online = 33, dexC
         }}
         onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--hub-border-strong, rgba(255,255,255,0.12))'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
         onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--hub-border)'; e.currentTarget.style.transform = 'translateY(0)'; }}
-        title={`${online} venues online · ${dexCount} DEX · ${(msgPerSec / 1000).toFixed(1)}k messages/sec`}
+        title={`${online}/${total} venues online · ${dexCount} are DEX`}
       >
         {/* Top row: venue counts side-by-side */}
         <div style={{ display: 'flex', gap: 10, alignItems: 'flex-end' }}>
@@ -300,7 +314,11 @@ export default function Sidebar({ sections = DEFAULT_SECTIONS, online = 33, dexC
             <span style={{ fontSize: 8, fontWeight: 700, color: 'var(--hub-accent-light)', textTransform: 'uppercase', letterSpacing: '0.16em', paddingLeft: 10 }}>DEX</span>
           </div>
         </div>
-        {/* Throughput row with mini animated bars */}
+        {/* Aggregator health summary. Replaced the previous "1.2k msg/s"
+            fake (hardcoded `msgPerSec={1247}` prop, no data source) with
+            a real "X / Y venues" line that comes from useAggregatorHealth.
+            Equalizer bars retained as a decorative cue — they're cosmetic,
+            not claiming a specific msg/s rate. */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, paddingTop: 6, borderTop: '1px solid var(--hub-border)', opacity: 0.85 }}>
           <span style={{ display: 'inline-flex', alignItems: 'flex-end', gap: 1.5, height: 9 }} aria-hidden>
             {[3, 6, 4, 7, 5, 8].map((h, i) => (
@@ -308,18 +326,17 @@ export default function Sidebar({ sections = DEFAULT_SECTIONS, online = 33, dexC
                 key={i}
                 style={{
                   display: 'inline-block', width: 1.5, height: h,
-                  background: 'var(--pump-mild)', borderRadius: 1,
-                  animation: `sidebar-bar ${1.2 + i * 0.1}s ease-in-out infinite`,
+                  background: online > 0 ? 'var(--pump-mild)' : 'var(--fg-faint)', borderRadius: 1,
+                  animation: online > 0 ? `sidebar-bar ${1.2 + i * 0.1}s ease-in-out infinite` : 'none',
                   animationDelay: `${i * 0.08}s`,
                   opacity: 0.7,
                 }}
               />
             ))}
           </span>
-          <span style={{ fontSize: 10, color: 'var(--fg-default)', fontFamily: 'var(--font-mono)', fontWeight: 600, fontVariantNumeric: 'tabular-nums' }}>
-            {(msgPerSec / 1000).toFixed(1)}k
+          <span style={{ fontSize: 9, color: 'var(--fg-subtle)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+            {total > 0 ? `${online}/${total} venues` : 'connecting…'}
           </span>
-          <span style={{ fontSize: 9, color: 'var(--fg-subtle)', fontFamily: 'var(--font-mono)' }}>msg/s</span>
         </div>
       </div>
       <style jsx>{`

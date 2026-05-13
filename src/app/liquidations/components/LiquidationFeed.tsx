@@ -3,6 +3,7 @@
 import { useRef, useEffect, useMemo, useState } from 'react';
 import { Zap, Loader2 } from 'lucide-react';
 import LiquidationFeedRow from './LiquidationFeedRow';
+import { EXCHANGE_WS_URLS } from '@/lib/liquidation-parsers';
 
 interface LiquidationItem {
   symbol: string;
@@ -98,7 +99,7 @@ export default function LiquidationFeed({
           <div className="flex flex-col items-center justify-center h-full py-16 gap-3">
             <Loader2 className="w-5 h-5 text-neutral-500 animate-spin" />
             <p className="text-sm text-neutral-500">Connecting to live feeds...</p>
-            <p className="text-xs text-neutral-600">Streaming from 8 exchanges in real-time</p>
+            <p className="text-xs text-neutral-600">Streaming from {Object.keys(EXCHANGE_WS_URLS).length} exchanges in real-time</p>
           </div>
         ) : filteredData.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full py-16 gap-3">
