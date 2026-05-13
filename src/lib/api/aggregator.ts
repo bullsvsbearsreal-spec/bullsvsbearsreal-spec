@@ -93,7 +93,12 @@ export async function fetchAllTickers(): Promise<TickerData[]> {
     });
 
     const result = Array.from(symbolMap.values()).sort((a, b) => (b.quoteVolume24h || 0) - (a.quoteVolume24h || 0));
-    setCache('tickers', result);
+    // Only pin cache when we got non-empty tickers. Was: cached empty
+    // array when /api/tickers came back with no data — every page that
+    // reads tickers (home, /chart, /screener) froze on empty data.
+    if (result.length > 0) {
+      setCache('tickers', result);
+    }
     return result;
   } catch (error) {
     console.warn('[Tickers]', error instanceof Error ? error.message : error);
@@ -109,7 +114,9 @@ export async function fetchAllTickers(): Promise<TickerData[]> {
       }
     });
 
-    setCache('tickers', allTickers);
+    if (allTickers.length > 0) {
+      setCache('tickers', allTickers);
+    }
     return allTickers;
   }
 }
@@ -223,7 +230,11 @@ export async function fetchSpotPrices(): Promise<SpotPriceEntry[]> {
     if (json.currencyStatus && typeof json.currencyStatus === 'object') {
       currencyStatusCache = json.currencyStatus;
     }
-    setCache('spotPrices', data, 30_000); // match server L1 TTL
+    // Only pin cache when we have prices. Empty array got pinned for 30s
+    // when /api/spot-prices upstream failed.
+    if (Array.isArray(data) && data.length > 0) {
+      setCache('spotPrices', data, 30_000); // match server L1 TTL
+    }
     return data;
   } catch (error) {
     console.error('Error fetching spot prices:', error);
@@ -371,7 +382,13 @@ export async function fetchTopMovers(): Promise<{ gainers: TickerData[]; losers:
     losers: sorted.slice(-Math.min(10, Math.floor(sorted.length / 2) || 10)).reverse(),
   };
 
-  setCache('topMovers', result);
+  // Only pin cache when we have movers. Was: cached empty
+  // `{gainers: [], losers: []}` for DEFAULT_TTL when fetchAllTickers
+  // returned empty (already cached upstream — see fix above). Now both
+  // layers skip the cache write on empty.
+  if (sorted.length > 0) {
+    setCache('topMovers', result);
+  }
   return result;
 }
 
@@ -394,14 +411,19 @@ export async function fetchOIChanges(): Promise<(OpenInterestData & { pct1h?: nu
       ...changesMap[d.symbol],
     }));
 
-    setCache('oiChanges', result);
+    // Gate cache write on having data — both branches.
+    if (result.length > 0) {
+      setCache('oiChanges', result);
+    }
     return result;
   } catch {
     // Fallback: use basic OI data without changes
     const oiData = await fetchAllOpenInterest();
     const sorted = [...oiData].sort((a, b) => (b.openInterestValue || 0) - (a.openInterestValue || 0));
     const result = sorted.slice(0, 20);
-    setCache('oiChanges', result);
+    if (result.length > 0) {
+      setCache('oiChanges', result);
+    }
     return result;
   }
 }
