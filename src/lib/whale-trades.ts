@@ -401,7 +401,13 @@ export async function detectHyperliquidTrades(address: string): Promise<Detected
       trades.push({
         address,
         chain: 'arbitrum',
-        txHash: fill.hash || fill.tid || `hl-${fill.time}-${coin}`,
+        // Synthetic txHash composition: prefer the real on-chain hash;
+        // otherwise build one keyed on (address, time, coin) so dedup
+        // works correctly. Was using `fill.tid` as a fallback hash —
+        // tid is a per-user trade COUNTER, so two different addresses
+        // with overlapping tids would collide and silently dedup.
+        // Including the address fixes that.
+        txHash: fill.hash || `hl-${address}-${fill.time}-${coin}`,
         logIndex: fill.tid ? parseInt(fill.tid) : 0,
         dex: 'Hyperliquid',
         action: side,
