@@ -21,6 +21,7 @@
  * Auth: Authorization: Bearer <CRON_SECRET>.
  */
 import { NextRequest, NextResponse } from 'next/server';
+import { upsertWorkerHeartbeat } from '@/lib/db';
 import { verifyCronAuth } from '../_auth';
 
 export const runtime = 'nodejs';
@@ -69,9 +70,25 @@ export async function GET(req: NextRequest) {
       `leaderboard=${leaderboard.ok}/${leaderboard.status}/${leaderboard.ms}ms`,
     );
   }
+
+  // Heartbeat — was missing. The route always returns 200 so DO doesn't
+  // rewrite the body, which meant the cron-monitor HTTP grep couldn't see
+  // failure. Heartbeat reflects real cache-warm health.
+  const allOk = smartMoney.ok && leaderboard.ok;
+  await upsertWorkerHeartbeat(
+    'cron:warm-smart-money',
+    allOk ? 'ok' : 'degraded',
+    {
+      smartMoneyMs: smartMoney.ms,
+      leaderboardMs: leaderboard.ms,
+      smartMoneyStatus: smartMoney.status,
+      leaderboardStatus: leaderboard.status,
+    },
+  ).catch(e => console.error('[warm-smart-money] heartbeat error:', e));
+
   return NextResponse.json(
     {
-      ok: smartMoney.ok && leaderboard.ok,
+      ok: allOk,
       results: { smartMoney, leaderboard },
       ts: Date.now(),
     },

@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { fetchValidatorsFresh } from '@/lib/validators-data';
 import { setWarmCache } from '@/lib/api/warm-cache';
+import { upsertWorkerHeartbeat } from '@/lib/db';
 import { verifyCronAuth } from '../_auth';
 
 export const runtime = 'nodejs';
@@ -29,13 +30,21 @@ export async function GET(req: NextRequest) {
     const body = await fetchValidatorsFresh();
     if (body.totalTvl <= 0) {
       // 200 — DO rewrites non-2xx to a generic 502 HTML page, masking our
-      // diagnostics. Signal failure in the JSON instead.
+      // diagnostics. Signal failure in the JSON instead, but degrade the
+      // heartbeat so admin pipeline panel surfaces it.
+      await upsertWorkerHeartbeat('cron:refresh-validators', 'degraded', {
+        reason: 'empty DefiLlama payload', totalTvl: 0,
+      }).catch(() => { /* heartbeat best-effort */ });
       return NextResponse.json(
         { ok: false, reason: 'empty payload from DefiLlama', byAsset: {}, totalTvl: 0 },
         { headers: { 'Cache-Control': 'no-store' } },
       );
     }
     await setWarmCache(WARM_KEY, body, WARM_TTL);
+    await upsertWorkerHeartbeat('cron:refresh-validators', 'ok', {
+      totalTvl: body.totalTvl,
+      assetCount: Object.keys(body.byAsset).length,
+    }).catch(e => console.error('[refresh-validators] heartbeat error:', e));
     return NextResponse.json(
       {
         ok: true,
@@ -46,6 +55,9 @@ export async function GET(req: NextRequest) {
       { headers: { 'Cache-Control': 'no-store' } },
     );
   } catch (e) {
+    await upsertWorkerHeartbeat('cron:refresh-validators', 'degraded', {
+      error: e instanceof Error ? e.message.slice(0, 200) : 'unknown',
+    }).catch(() => { /* heartbeat best-effort */ });
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : 'failed' },
       { headers: { 'Cache-Control': 'no-store' } },

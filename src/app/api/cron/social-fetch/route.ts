@@ -12,7 +12,7 @@
  * or rss.app-backed fetcher and the rest of the pipeline keeps working.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { initDB, isDBConfigured, saveSocialPosts, getStaleSocialHandles } from '@/lib/db';
+import { initDB, isDBConfigured, saveSocialPosts, getStaleSocialHandles, upsertWorkerHeartbeat } from '@/lib/db';
 import { TWITTER_KOLS } from '@/lib/social/kols';
 import { nitterFetcher } from '@/lib/social/nitter';
 import { verifyCronAuth } from '../_auth';
@@ -112,6 +112,25 @@ export async function GET(request: NextRequest) {
   const totalInserted = stats.reduce((s, x) => s + x.inserted, 0);
   const errors = stats.filter(s => s.error);
 
+  // Heartbeat — degraded if every handle errored OR more than half are
+  // stale, since either indicates the underlying nitter feed is broken.
+  // Was: no heartbeat — admin pipeline panel couldn't tell nitter had
+  // died until users noticed missing KOL posts on /social.
+  const isDegraded =
+    errors.length === stats.length ||
+    (stale.length > 0 && stale.length >= TWITTER_KOLS.length / 2);
+  await upsertWorkerHeartbeat(
+    'cron:social-fetch',
+    isDegraded ? 'degraded' : 'ok',
+    {
+      handles: TWITTER_KOLS.length,
+      totalFetched,
+      totalInserted,
+      errorCount: errors.length,
+      staleCount: stale.length,
+    },
+  ).catch(e => console.error('[social-fetch] heartbeat error:', e));
+
   return NextResponse.json(
     {
       source: fetcher.name,
@@ -129,6 +148,9 @@ export async function GET(request: NextRequest) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('[social-fetch] cron failed:', msg);
+    await upsertWorkerHeartbeat('cron:social-fetch', 'degraded', {
+      error: msg.slice(0, 200),
+    }).catch(() => { /* heartbeat best-effort */ });
     return NextResponse.json(
       { ok: false, error: msg },
       { status: 500, headers: { 'Cache-Control': 'no-store' } },
