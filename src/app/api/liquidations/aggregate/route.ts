@@ -98,9 +98,20 @@ export async function GET(request: NextRequest) {
       meta: { windowHours: hours, source: 'db', timestamp: Date.now() },
     };
 
-    cache.set(cacheKey, { body, ts: Date.now() });
+    // Only pin cache when we have liquidations. Was: cached
+    // `{symbols: [], totals: {totalValue: 0}}` for 30s when the
+    // DB had no recent liq data (cron lag or table just got pruned).
+    // CommandCenter showed "$0 vaporized" until cache expired.
+    if (symbols.length > 0) {
+      cache.set(cacheKey, { body, ts: Date.now() });
+    }
     return NextResponse.json(body, {
-      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=120' },
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': symbols.length > 0
+          ? 'public, s-maxage=30, stale-while-revalidate=120'
+          : 'no-store',
+      },
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown';

@@ -335,8 +335,21 @@ export async function GET(request: NextRequest) {
     },
   };
 
-  cache.set(cacheKey, { body, ts: Date.now() });
+  // Only pin cache when we have at least empirical events OR forecast
+  // clusters. Was: cached completely empty `{empirical: {events: 0},
+  // forecast: {clusters: []}}` for 60s when both OKX live feed AND the
+  // DB fallback came back empty. UI showed "no liquidation levels" for
+  // the cache duration.
+  const hasContent = events.length > 0 || forecast.clusters.length > 0;
+  if (hasContent) {
+    cache.set(cacheKey, { body, ts: Date.now() });
+  }
   return NextResponse.json(body, {
-    headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=120' },
+    headers: {
+      'X-Cache': 'MISS',
+      'Cache-Control': hasContent
+        ? 'public, s-maxage=60, stale-while-revalidate=120'
+        : 'no-store',
+    },
   });
 }

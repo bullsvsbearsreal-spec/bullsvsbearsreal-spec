@@ -242,8 +242,20 @@ export async function GET(_request: NextRequest) {
     meta: { timestamp: Date.now(), symbolsTracked: topRows.length },
   };
 
-  cache.set(cacheKey, { body, ts: Date.now() });
+  // Only pin cache when we have at least one symbol row. Was: cached an
+  // empty `{data: [], summary: {totalOI: 0, ...}}` for 60s when both
+  // /api/openinterest and /api/tickers came back empty during full
+  // upstream outage. UI would render "no leverage data" with stale-
+  // while-revalidate keeping it sticky for another 3 min.
+  if (topRows.length > 0) {
+    cache.set(cacheKey, { body, ts: Date.now() });
+  }
   return NextResponse.json(body, {
-    headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=180' },
+    headers: {
+      'X-Cache': 'MISS',
+      'Cache-Control': topRows.length > 0
+        ? 'public, s-maxage=60, stale-while-revalidate=180'
+        : 'no-store',
+    },
   });
 }

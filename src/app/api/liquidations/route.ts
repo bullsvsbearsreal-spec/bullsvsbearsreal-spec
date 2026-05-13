@@ -119,23 +119,35 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    cache.set(cacheKey, { body, ts: Date.now() });
-    if (cache.size > 100) {
-      // Evict expired entries first
-      const now = Date.now();
-      cache.forEach((v, k) => { if (now - v.ts > CACHE_TTL) cache.delete(k); });
-      // If still over limit, evict oldest until at 75
+    // Only pin cache when we have liquidations. Was: cached `{data: []}`
+    // for the TTL when OKX hadn't seen any liq events in the time window
+    // (legit for quiet markets, but indistinguishable from upstream
+    // failure). Empty responses now pass through so the next poll hits
+    // OKX cleanly.
+    if (liquidations.length > 0) {
+      cache.set(cacheKey, { body, ts: Date.now() });
       if (cache.size > 100) {
-        const entries: [string, { body: any; ts: number }][] = [];
-        cache.forEach((v, k) => entries.push([k, v]));
-        entries.sort((a, b) => a[1].ts - b[1].ts);
-        const toEvict = cache.size - 75;
-        entries.slice(0, toEvict).forEach(([k]) => cache.delete(k));
+        // Evict expired entries first
+        const now = Date.now();
+        cache.forEach((v, k) => { if (now - v.ts > CACHE_TTL) cache.delete(k); });
+        // If still over limit, evict oldest until at 75
+        if (cache.size > 100) {
+          const entries: [string, { body: any; ts: number }][] = [];
+          cache.forEach((v, k) => entries.push([k, v]));
+          entries.sort((a, b) => a[1].ts - b[1].ts);
+          const toEvict = cache.size - 75;
+          entries.slice(0, toEvict).forEach(([k]) => cache.delete(k));
+        }
       }
     }
 
     return NextResponse.json(body, {
-      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=30' },
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': liquidations.length > 0
+          ? 'public, s-maxage=15, stale-while-revalidate=30'
+          : 'no-store',
+      },
     });
   } catch (error) {
     console.error('Liquidations error:', error);
