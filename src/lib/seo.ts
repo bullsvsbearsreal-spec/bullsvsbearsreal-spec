@@ -286,16 +286,16 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/developers': {
     title: 'Crypto Derivatives API · InfoHub',
-    description: '26 endpoints, 32 exchanges, free 100 req/min tier. Real-time funding rates, OI, liquidations, fee-aware arbitrage grading, multi-venue klines fallback, on-chain whale data. OpenAPI 3.1 spec, X-RateLimit headers, no credit card required.',
+    description: `26 endpoints, ${ALL_EXCHANGES.length} exchanges, free 100 req/min tier. Real-time funding rates, OI, liquidations, fee-aware arbitrage grading, multi-venue klines fallback, on-chain whale data. OpenAPI 3.1 spec, X-RateLimit headers, no credit card required.`,
   },
   '/home': {
     title: 'Live Crypto Derivatives Dashboard',
-    description: 'Real-time funding rates, open interest, liquidations, and arbitrage opportunities across 32 exchanges. Track BTC/ETH/SOL/altcoin perpetual futures with terminal-style precision.',
+    description: `Real-time funding rates, open interest, liquidations, and arbitrage opportunities across ${ALL_EXCHANGES.length} exchanges. Track BTC/ETH/SOL/altcoin perpetual futures with terminal-style precision.`,
     ogVariant: 'tape',
   },
   '/spreads': {
     title: 'Price Spreads',
-    description: 'Real-time cross-exchange price spread tracker for crypto perpetual futures. Compare bid/ask prices across 32 exchanges to find arbitrage opportunities.',
+    description: `Real-time cross-exchange price spread tracker for crypto perpetual futures. Compare bid/ask prices across ${ALL_EXCHANGES.length} exchanges to find arbitrage opportunities.`,
   },
   '/spread-scanner': {
     title: 'Spread Scanner',
@@ -443,7 +443,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/leverage': {
     title: 'Leverage Dashboard',
-    description: 'OI-weighted funding rates, spot-vs-perp volume ratio, and aggregate leverage pressure across 32 venues. One lens on real positioning vs retail noise.',
+    description: `OI-weighted funding rates, spot-vs-perp volume ratio, and aggregate leverage pressure across ${ALL_EXCHANGES.length} venues. One lens on real positioning vs retail noise.`,
   },
   '/bounce': {
     title: 'bounce.tech on InfoHub · Leveraged Tokens + Rekt Profiles',

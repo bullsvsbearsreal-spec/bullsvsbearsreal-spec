@@ -66,9 +66,14 @@ export function useSpreadData({
     if (!t || t.source !== 'db') { onSetChartLoading(false); return; }
     onSetChartLoading(true);
     let cancelled = false;
-    const days = (t as any).days || 7;
-    const interval = (t as any).interval || '1h';
-    const limit = (t as any).limit || 168;
+    // Narrow to the db-source variant so TypeScript exposes the actual
+    // days/interval/limit fields. Was using `as any` casts that would
+    // silently fall through to the hardcoded defaults if the upstream
+    // type ever renamed those fields.
+    const tDb = t as Extract<typeof TFS[number], { source: 'db' }>;
+    const days = tDb.days;
+    const interval = tDb.interval;
+    const limit = tDb.limit;
 
     // All exchanges from VPS aggregator in one request
     fetch(`/api/klines-multi?symbol=${sym}&interval=${interval}&limit=${limit}`)
@@ -110,10 +115,11 @@ export function useSpreadData({
   useEffect(() => {
     const tfDef = TFS.find(x => x.key === tf);
     if (!tfDef || tfDef.source !== 'db') return;
+    const tfDb = tfDef as Extract<typeof TFS[number], { source: 'db' }>;
     const timer = setInterval(() => {
-      const iv = (tfDef as any).interval || '1h';
-      const lim = (tfDef as any).limit || 168;
-      const days = (tfDef as any).days || 7;
+      const iv = tfDb.interval;
+      const lim = tfDb.limit;
+      const days = tfDb.days;
       fetch(`/api/klines-multi?symbol=${sym}&interval=${iv}&limit=${lim}`)
         .then(r => r.ok ? r.json() : null)
         .then(json => {
@@ -134,8 +140,11 @@ export function useSpreadData({
     const missing = sel.filter(e => !cur[e] || cur[e].length === 0);
     if (missing.length === 0) return;
     const t = TFS.find(x => x.key === tf);
-    const interval = (t as any)?.interval || '1h';
-    const limit = (t as any)?.limit || 168;
+    // Narrow + defaults: live mode has no interval/limit, so fall back
+    // to the most common 1h/168 (7d) bucket for cross-exchange backfill.
+    const tDb = t && t.source === 'db' ? t : null;
+    const interval = tDb?.interval ?? '1h';
+    const limit = tDb?.limit ?? 168;
     let cancelled = false;
     // VPS returns all exchanges — re-fetch and merge any new ones
     fetch(`/api/klines-multi?symbol=${sym}&interval=${interval}&limit=${limit}`)

@@ -58,7 +58,16 @@ export default function TerminalShell({ children, className }: TerminalShellProp
             })
             .filter((x): x is TickerLite => !!x),
         );
-      } catch {}
+      } catch (e) {
+        // Was silent — empty catch hid network/JSON/processing errors.
+        // The MarketTape lives at the top of every page in the terminal
+        // shell, so when the fetch broke the tape silently disappeared
+        // with no signal. Log so we can detect the issue from Sentry +
+        // browser console (the 30s setInterval below will retry).
+        if (typeof console !== 'undefined') {
+          console.warn('[TerminalShell] tape fetch failed (will retry):', e);
+        }
+      }
     };
     load();
     const id = setInterval(load, 30_000);

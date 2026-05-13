@@ -3152,7 +3152,16 @@ export async function hasWhaleNotifBeenSent(ownerId: string, tradeEventId: numbe
       LIMIT 1
     `;
     return rows.length > 0;
-  } catch { return false; }
+  } catch (e) {
+    // CRITICAL: must NOT return `false` on a DB error — that signals
+    // "notification not sent" to the caller and re-fires the same
+    // Telegram alert on every subsequent cron tick (every 2 min)
+    // for the duration of the outage. Instead surface the failure to
+    // the caller (return `true` = "treat as sent, skip resend"), and
+    // log so the admin panel + Sentry capture the real problem.
+    console.error('[hasWhaleNotifBeenSent] DB error — fail-safe to TRUE to prevent duplicate pings:', e);
+    return true;
+  }
 }
 
 export async function logWhaleNotification(ownerId: string, tradeEventId: number, channel: string): Promise<void> {
