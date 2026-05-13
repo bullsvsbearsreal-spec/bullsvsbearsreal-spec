@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useRef, useState, useCallback, useSyncExternalStore } from 'react';
 import { useTraderBookmarks } from './useTraderBookmarks';
 
 /**
@@ -177,12 +177,17 @@ export function useTraderAlerts() {
   const storedFeed = useSyncExternalStore(subscribe, getFeedSnapshot, getFeedServerSnapshot);
   const storedEnabled = useSyncExternalStore(subscribe, getSettingsSnapshot, getSettingsServerSnapshot);
 
-  const feed: TraderAlert[] = (() => {
+  // useMemo keyed on storedFeed so consumers (smart-money page) get a
+  // stable array reference across renders. Same fix as useTraderBookmarks
+  // and useRecentTraders — the IIFE was producing a fresh array per call,
+  // which broke any downstream useMemo/useEffect deps that compared by
+  // reference.
+  const feed: TraderAlert[] = useMemo(() => {
     try {
       const parsed = JSON.parse(storedFeed);
       return Array.isArray(parsed) ? parsed : [];
     } catch { return []; }
-  })();
+  }, [storedFeed]);
 
   const enabled = storedEnabled === 'true';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useMemo, useSyncExternalStore } from 'react';
 
 /**
  * Tracks recently viewed traders (by address) in localStorage. Distinct from
@@ -63,12 +63,17 @@ function getServerSnapshot(): string {
 export function useRecentTraders() {
   const stored = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const recents: RecentTrader[] = (() => {
+  // useMemo keyed on the stored string so identity stays stable across
+  // renders. Same fix as useTraderBookmarks — consumers (smart-money page,
+  // trader-watch page) use `recents` in useMemo/useEffect deps. Without
+  // this, every parent re-render produced a fresh array reference,
+  // tearing down child effects unnecessarily and recomputing filters.
+  const recents: RecentTrader[] = useMemo(() => {
     try {
       const parsed = JSON.parse(stored);
       return Array.isArray(parsed) ? parsed : [];
     } catch { return []; }
-  })();
+  }, [stored]);
 
   /** Record a trader visit — dedupes existing entries and moves to front.
    *  Skip if rate-limited (debounce window) so rapid re-renders don't spam. */
