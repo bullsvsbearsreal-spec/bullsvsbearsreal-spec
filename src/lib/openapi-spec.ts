@@ -63,13 +63,27 @@ export const openApiSpec = {
       },
       FundingRow: {
         type: 'object',
+        // Was: only documented {symbol, exchange, fundingRate, fundingInterval,
+        // markPrice, type}. The actual /api/v1/funding response uses `rate`
+        // (not fundingRate), and includes rate8h, predictedRate, indexPrice,
+        // nextFundingTime, and assetClass. Partners codegenning types from
+        // this spec (openapi-typescript) had a broken contract.
         properties: {
           symbol: { type: 'string', example: 'BTC' },
           exchange: { type: 'string', example: 'Binance' },
-          fundingRate: { type: 'number', description: 'Percent per native interval' },
+          rate: { type: 'number', description: 'Percent per native funding interval' },
+          rate8h: { type: 'number', description: '8h-normalised percent (rate × 8 / 2 / 1 for 1h / 4h / 8h venues)' },
+          predictedRate: {
+            type: 'number',
+            nullable: true,
+            description: 'Predicted next-window rate as percent. Binance USDT-M / COIN-M / Bybit / Bitget derive via clamp((mark-index)/index, ±0.05%) + 0.01%. OKX uses its native nextFundingRate. Other venues null.',
+          },
+          markPrice: { type: 'number', nullable: true },
+          indexPrice: { type: 'number', nullable: true },
           fundingInterval: { type: 'string', enum: ['1h', '4h', '8h'] },
-          markPrice: { type: 'number' },
+          nextFundingTime: { type: 'integer', nullable: true, description: 'ms-epoch of next settlement' },
           type: { type: 'string', enum: ['cex', 'dex'] },
+          assetClass: { type: 'string', enum: ['crypto', 'stocks', 'forex', 'commodities'] },
         },
       },
       LiquidationRow: {
