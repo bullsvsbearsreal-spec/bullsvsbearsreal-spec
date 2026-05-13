@@ -200,8 +200,21 @@ export async function GET(_request: NextRequest) {
     meta: { timestamp: Date.now() },
   };
 
-  cache.set(cacheKey, { body, ts: Date.now() });
+  // Only pin the cache when at least one chain returned a real gwei.
+  // Was: cached `{data: [{gwei: 0, ...}, ...]}` for 15s when every public
+  // RPC was rate-limiting us simultaneously. UI showed "All chains 0 gwei"
+  // for the cache duration, which read as "gas is free" to the careful
+  // reader and "site is broken" to everyone else.
+  const anyRealGwei = rows.some(r => r.gwei > 0);
+  if (anyRealGwei) {
+    cache.set(cacheKey, { body, ts: Date.now() });
+  }
   return NextResponse.json(body, {
-    headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=15, stale-while-revalidate=60' },
+    headers: {
+      'X-Cache': 'MISS',
+      'Cache-Control': anyRealGwei
+        ? 'public, s-maxage=15, stale-while-revalidate=60'
+        : 'no-store',
+    },
   });
 }

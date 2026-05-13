@@ -125,14 +125,26 @@ export async function GET(request: NextRequest) {
         count: points?.length || 0,
       };
 
-      cache.set(cacheKey, { body, ts: Date.now() });
-      if (cache.size > 100) {
-        const keys = Array.from(cache.keys()).slice(0, 25);
-        for (const k of keys) cache.delete(k);
+      // Only pin the cache when we have data points. Was: cached
+      // `{points: [], count: 0}` for 2 min when the exchange API hiccuped
+      // mid-request. Chart pages would then render "no funding history"
+      // until cache expired, even for popular symbols like BTC where the
+      // data definitely exists.
+      if (body.count > 0) {
+        cache.set(cacheKey, { body, ts: Date.now() });
+        if (cache.size > 100) {
+          const keys = Array.from(cache.keys()).slice(0, 25);
+          for (const k of keys) cache.delete(k);
+        }
       }
 
       return NextResponse.json(body, {
-        headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=300' },
+        headers: {
+          'X-Cache': 'MISS',
+          'Cache-Control': body.count > 0
+            ? 'public, s-maxage=120, stale-while-revalidate=300'
+            : 'no-store',
+        },
       });
     } catch (error) {
       console.error(`Funding history (${exLower}) error:`, error);
