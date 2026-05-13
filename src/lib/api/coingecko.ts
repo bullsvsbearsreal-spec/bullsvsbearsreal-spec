@@ -113,7 +113,14 @@ export async function getGlobalData(): Promise<any> {
     if (!response.ok) throw new Error(`Global stats proxy failed: ${response.status}`);
     const result = await response.json();
 
-    if (result) {
+    // Don't cache the "unavailable" sentinel — /api/global-stats returns
+    // `{ unavailable: true, total_market_cap: { usd: 0 }, ... }` when every
+    // CoinGecko/CMC upstream is down. Caching that for 10 min meant the
+    // browser would render "$0 mcap / 0 active coins" as authoritative
+    // even after the API came back. The route's edge Cache-Control was
+    // already fixed (731e9c3a); this closes the in-process cache from
+    // the same source.
+    if (result && result.unavailable !== true) {
       setCache(cacheKey, result);
     }
     return result;
