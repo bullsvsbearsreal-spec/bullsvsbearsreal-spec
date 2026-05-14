@@ -250,9 +250,21 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    cache.set(cacheKey, { body, ts: Date.now() });
+    // Only pin cache when we have expiries. Was: cached empty
+    // `{expiries: [], summary: {atmIv30d: null}}` for 60s if Deribit's
+    // book_summary returned an empty array (rare but happens during
+    // their maintenance windows). Options page would render "no IV
+    // data" for the cache duration.
+    if (expiries.length > 0) {
+      cache.set(cacheKey, { body, ts: Date.now() });
+    }
     return NextResponse.json(body, {
-      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': expiries.length > 0
+          ? 'public, s-maxage=60, stale-while-revalidate=300'
+          : 'no-store',
+      },
     });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Unknown';

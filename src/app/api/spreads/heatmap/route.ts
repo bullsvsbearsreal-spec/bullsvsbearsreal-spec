@@ -53,17 +53,28 @@ export async function GET(req: NextRequest) {
       grid[r.dow][r.hour] = { pct: +r.avg_pct, usd: +r.avg_usd, samples: r.samples };
     }
 
-    const resp = { symbol, days, grid, totalSamples: rows.reduce((s: number, r: any) => s + r.samples, 0) };
-    cache.set(key, { data: resp, ts: Date.now() });
-    // Evict stale entries when cache grows large
-    if (cache.size > 100) {
-      const now = Date.now();
-      Array.from(cache.entries()).forEach(([k, v]) => {
-        if (now - v.ts > CACHE_MS) cache.delete(k);
-      });
+    const totalSamples = rows.reduce((s: number, r: any) => s + r.samples, 0);
+    const resp = { symbol, days, grid, totalSamples };
+    // Only pin cache when we have samples. Was: cached an all-zero grid
+    // for 5 min if the DB had no spread data for this symbol/window
+    // (recent table prune, no snapshots collected yet). Heatmap rendered
+    // a fully-grey grid with no signal.
+    if (totalSamples > 0) {
+      cache.set(key, { data: resp, ts: Date.now() });
+      // Evict stale entries when cache grows large
+      if (cache.size > 100) {
+        const now = Date.now();
+        Array.from(cache.entries()).forEach(([k, v]) => {
+          if (now - v.ts > CACHE_MS) cache.delete(k);
+        });
+      }
     }
     return NextResponse.json(resp, {
-      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+      headers: {
+        'Cache-Control': totalSamples > 0
+          ? 'public, s-maxage=300, stale-while-revalidate=600'
+          : 'no-store',
+      },
     });
   } catch (err: any) {
     console.error('[spreads/heatmap]', err);
