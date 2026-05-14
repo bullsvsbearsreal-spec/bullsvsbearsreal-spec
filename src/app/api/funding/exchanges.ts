@@ -461,13 +461,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           } else {
             interval = '8h';
           }
+          const markPrice = parseFloat(item.markPrice || '0') || 0;
+          const indexPrice = parseFloat(item.indexPrice || '0') || 0;
           return {
             symbol: normalized.symbol,
             exchange: 'Aster',
             fundingRate: ratePct,
+            // Aster premiumIndex exposes markPrice + indexPrice in the
+            // same shape as Binance's, so the standard formula applies.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
             fundingInterval: interval,
-            markPrice: parseFloat(item.markPrice || '0') || 0,
-            indexPrice: parseFloat(item.indexPrice || '0') || 0,
+            markPrice,
+            indexPrice,
             nextFundingTime: Number(item.nextFundingTime) || Date.now() + hrs * 3600 * 1000,
             type: 'dex' as const,
             assetClass: normalized.assetClass,
@@ -599,14 +604,20 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
               const prices = priceMap.get(m.underlying_asset);
               const isStock = m.market_type === 'stock' || m.market_type === 'rwa';
               const norm = normalizeSymbol(symbol, 'Aevo');
+              const markPrice = prices?.mark || 0;
+              const indexPrice = prices?.index || 0;
 
               return {
                 symbol: norm.symbol,
                 exchange: 'Aevo',
                 fundingRate: rate * 100, // native 1h fraction → %
+                // Aevo settles hourly. Same Binance-style premium formula
+                // applies — the partner trades 70 Aevo pairs and was
+                // seeing 0/70 predictedRate coverage.
+                predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
                 fundingInterval: '1h' as const,
-                markPrice: prices?.mark || 0,
-                indexPrice: prices?.index || 0,
+                markPrice,
+                indexPrice,
                 nextFundingTime: (parseInt(data.next_epoch) || 0) / 1e6 || Date.now() + 3600000,
                 type: 'dex' as const,
                 assetClass: isStock ? ('stocks' as AssetClass) : (norm.assetClass !== 'crypto' ? norm.assetClass : undefined),
@@ -686,13 +697,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const rawRate = (parseFloat(item.fundingRate) || 0) * 100;
           const fundingRate = VALID_INTERVALS.has(cycle) ? rawRate : rawRate * (intervalHours / cycle);
           const prices = priceMap.get(item.symbol);
+          const markPrice = prices?.fairPrice || 0;
+          const indexPrice = prices?.indexPrice || 0;
           return {
             symbol: item.symbol.replace('_USDT', ''),
             exchange: 'MEXC',
             fundingRate,
+            // MEXC ticker exposes fairPrice (mark) + indexPrice; same
+            // Binance-style formula applies.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
             fundingInterval: `${intervalHours}h` as '1h' | '4h' | '8h',
-            markPrice: prices?.fairPrice || 0,
-            indexPrice: prices?.indexPrice || 0,
+            markPrice,
+            indexPrice,
             nextFundingTime: item.nextSettleTime || Date.now() + intervalHours * 3600000,
             type: 'cex' as const,
           };
@@ -777,13 +793,19 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any) => {
           const rawSymbol = item.symbol.replace('-USDT', '');
           const normalized = normalizeSymbol(rawSymbol, 'bingx');
+          const markPrice = parseFloat(item.markPrice) || 0;
+          const indexPrice = parseFloat(item.indexPrice) || 0;
           return {
             symbol: normalized.symbol,
             exchange: 'BingX',
             fundingRate: (parseFloat(item.lastFundingRate) || 0) * 100,
+            // BingX premiumIndex returns markPrice + indexPrice — same
+            // Binance-style formula applies. Partners reported 0/494
+            // coverage; this populates the field for every USDT pair.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
             fundingInterval: '8h' as const,
-            markPrice: parseFloat(item.markPrice) || 0,
-            indexPrice: parseFloat(item.indexPrice) || 0,
+            markPrice,
+            indexPrice,
             nextFundingTime: item.nextFundingTime || Date.now() + 28800000,
             type: 'cex' as const,
             assetClass: normalized.assetClass,
@@ -832,13 +854,17 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         })
         .map((item: any) => {
           const normalized = normalizeSymbol(item.symbol, 'phemex');
+          const markPrice = parseFloat(item.markPriceRp) || 0;
+          const indexPrice = parseFloat(item.indexPriceRp) || 0;
           return {
             symbol: normalized.symbol,
             exchange: 'Phemex',
             fundingRate: (parseFloat(item.fundingRateRr) || 0) * 100,
+            // Phemex ticker exposes markPriceRp + indexPriceRp; same formula.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
             fundingInterval: '8h' as const,
-            markPrice: parseFloat(item.markPriceRp) || 0,
-            indexPrice: parseFloat(item.indexPriceRp) || 0,
+            markPrice,
+            indexPrice,
             nextFundingTime: Date.now() + 28800000,
             type: 'cex' as const,
             assetClass: normalized.assetClass,
@@ -974,13 +1000,17 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const json = await res.json();
           const r = json.result;
           if (!r) return null;
+          const markPrice = parseFloat(r.mark_price) || 0;
+          const indexPrice = parseFloat(r.index_price) || 0;
           return {
             symbol: inst.replace('-PERPETUAL', ''),
             exchange: 'Deribit',
             fundingRate: (parseFloat(r.funding_8h) || 0) * 100,
+            // Deribit ticker exposes mark_price + index_price; same formula.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
             fundingInterval: '8h' as const,
-            markPrice: parseFloat(r.mark_price) || 0,
-            indexPrice: parseFloat(r.index_price) || 0,
+            markPrice,
+            indexPrice,
             nextFundingTime: Date.now() + 28800000, // 8h settlement
             type: 'cex' as const,
           };
@@ -1099,16 +1129,23 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (!Array.isArray(items)) return [];
       return items
         .filter((item: any) => item.ticker_id && item.ticker_id.endsWith('_PERP') && item.funding_rate != null)
-        .map((item: any) => ({
-          symbol: item.ticker_id.replace(/_USDT_PERP$|_PERP$/, ''),
-          exchange: 'WhiteBIT',
-          fundingRate: (parseFloat(item.funding_rate) || 0) * 100,
-          fundingInterval: '8h' as const,
-          markPrice: parseFloat(item.last_price) || 0,
-          indexPrice: parseFloat(item.index_price) || 0,
-          nextFundingTime: item.next_funding_rate_timestamp ? item.next_funding_rate_timestamp * 1000 : Date.now() + 28800000,
-          type: 'cex' as const,
-        }))
+        .map((item: any) => {
+          const markPrice = parseFloat(item.last_price) || 0;
+          const indexPrice = parseFloat(item.index_price) || 0;
+          return {
+            symbol: item.ticker_id.replace(/_USDT_PERP$|_PERP$/, ''),
+            exchange: 'WhiteBIT',
+            fundingRate: (parseFloat(item.funding_rate) || 0) * 100,
+            // WhiteBIT exposes index_price; last_price stands in for
+            // mark on this venue (no separate mark field).
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
+            fundingInterval: '8h' as const,
+            markPrice,
+            indexPrice,
+            nextFundingTime: item.next_funding_rate_timestamp ? item.next_funding_rate_timestamp * 1000 : Date.now() + 28800000,
+            type: 'cex' as const,
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
@@ -1123,16 +1160,24 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (!Array.isArray(data)) return [];
       return data
         .filter((item: any) => (item.type === 'PERP' || item.instrument_type === 'PERP') && item.quote?.predicted_funding != null)
-        .map((item: any) => ({
-          symbol: item.symbol.replace(/-USD-PERP$|-PERP$/, ''),
-          exchange: 'Coinbase',
-          fundingRate: (parseFloat(item.quote.predicted_funding) || 0) * 100, // native 1h fraction → %
-          fundingInterval: '1h' as const,
-          markPrice: parseFloat(item.quote?.mark_price) || 0,
-          indexPrice: parseFloat(item.quote?.index_price) || 0,
-          nextFundingTime: Date.now() + 3600000,
-          type: 'cex' as const,
-        }))
+        .map((item: any) => {
+          const markPrice = parseFloat(item.quote?.mark_price) || 0;
+          const indexPrice = parseFloat(item.quote?.index_price) || 0;
+          return {
+            symbol: item.symbol.replace(/-USD-PERP$|-PERP$/, ''),
+            exchange: 'Coinbase',
+            fundingRate: (parseFloat(item.quote.predicted_funding) || 0) * 100, // native 1h fraction → %
+            // Coinbase Intl exposes mark + index in quote; same formula
+            // applies. Partners trade 223 Coinbase pairs and were
+            // seeing 0/223 predictedRate coverage.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
+            fundingInterval: '1h' as const,
+            markPrice,
+            indexPrice,
+            nextFundingTime: Date.now() + 3600000,
+            type: 'cex' as const,
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
@@ -1475,6 +1520,13 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             // Borrow-only pairs (hasFunding=false) correctly show 0% funding.
             // holdingFeeLong/Short include borrowing and are stored in L/S fields.
             fundingRate: fundingRateLong,
+            // gTrade uses a continuous velocity model — there's no discrete
+            // "next-window" rate the way Binance perps have. The current
+            // per-8h-normalized rate IS the rate that will accrue over the
+            // next hold period if OI doesn't change. Surface it as predicted
+            // so partners polling for next-window forecasts get a usable
+            // value here instead of null.
+            predictedRate: fundingRateLong,
             fundingRateLong: -holdingFeeLong,   // Earning convention: positive = earning for longs
             fundingRateShort: -holdingFeeShort, // Earning convention: positive = earning for shorts
             borrowingRate: totalBorrowRate8h > 0 ? totalBorrowRate8h : undefined,
@@ -1610,13 +1662,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const norm = normalizeSymbol(symbol, 'Extended');
           const fundingRate = (parseFloat(stats.fundingRate) || 0) * 100; // decimal → %
 
+          const markPrice = parseFloat(stats.markPrice) || 0;
+          const indexPrice = parseFloat(stats.indexPrice) || 0;
           return {
             symbol: norm.symbol,
             exchange: 'Extended',
             fundingRate,
+            // Extended exposes markPrice + indexPrice in marketStats;
+            // same Binance-style formula applies.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
             fundingInterval: '1h' as const,
-            markPrice: parseFloat(stats.markPrice) || 0,
-            indexPrice: parseFloat(stats.indexPrice) || 0,
+            markPrice,
+            indexPrice,
             nextFundingTime: Date.now() + 3600000, // Extended uses continuous funding (1h), no discrete settlement time
             type: 'dex' as const,
             assetClass: norm.assetClass !== 'crypto' ? norm.assetClass : undefined,
@@ -1669,12 +1726,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const markPrice = parseFloat(ticker.oraclePrice || ticker.markPrice || '0');
           if (!markPrice || markPrice <= 0) continue;
 
+          const indexPrice = parseFloat(ticker.indexPrice || '0') || markPrice;
           results.push({
             symbol,
             exchange: 'edgeX',
             fundingRate,
+            // Apply formula only when we have a real indexPrice (not the
+            // markPrice fallback that this fetcher uses for missing index).
+            predictedRate: ticker.indexPrice
+              ? binanceStylePredictedPercent(markPrice, indexPrice)
+              : undefined,
             markPrice,
-            indexPrice: parseFloat(ticker.indexPrice || '0') || markPrice,
+            indexPrice,
             nextFundingTime: (() => { const t = parseInt(ticker.nextFundingTime || '0'); return t > 0 ? (t < 1e12 ? t * 1000 : t) : Date.now() + 3600000; })(),
             fundingInterval: '1h',
             type: 'dex',
@@ -1909,13 +1972,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .filter((item: any) => item.symbol?.endsWith('_USDC_PERP') && item.fundingRate != null)
         .map((item: any) => {
           const symbol = item.symbol.replace('_USDC_PERP', '');
+          const markPrice = parseFloat(item.markPrice) || 0;
+          const indexPrice = parseFloat(item.indexPrice) || 0;
           return {
             symbol,
             exchange: 'Backpack',
             fundingRate: (parseFloat(item.fundingRate) || 0) * 100,
+            // Backpack markPrices endpoint exposes markPrice + indexPrice;
+            // same Binance-style formula applies.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
             fundingInterval: '1h' as const,
-            markPrice: parseFloat(item.markPrice) || 0,
-            indexPrice: parseFloat(item.indexPrice) || 0,
+            markPrice,
+            indexPrice,
             nextFundingTime: (() => { const t = parseInt(item.nextFundingTimestamp); return t > 0 ? (t < 1e12 ? t * 1000 : t) : Date.now() + 3600000; })(),
             type: 'dex' as const,
           };
@@ -1972,13 +2040,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .filter((item: any) => item.symbol?.endsWith('-USD-PERP') && item.funding_rate != null)
         .map((item: any) => {
           const symbol = item.symbol.replace('-USD-PERP', '');
+          const markPrice = parseFloat(item.mark_price) || 0;
+          const indexPrice = parseFloat(item.underlying_price) || 0;
           return {
             symbol,
             exchange: 'Paradex',
             fundingRate: (parseFloat(item.funding_rate) || 0) * 100,
+            // Paradex exposes mark_price + underlying_price (their index);
+            // same Binance-style formula applies.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
             fundingInterval: '8h' as const,
-            markPrice: parseFloat(item.mark_price) || 0,
-            indexPrice: parseFloat(item.underlying_price) || 0,
+            markPrice,
+            indexPrice,
             nextFundingTime: 0,
             type: 'dex' as const,
           };
