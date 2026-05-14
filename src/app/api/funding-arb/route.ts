@@ -29,6 +29,7 @@ interface RawFunding {
   symbol: string;
   exchange: string;
   fundingRate: number;         // already in percent (e.g. 0.05 = 0.05%)
+  predictedRate?: number;      // next-window forecast %
   fundingInterval?: '1h' | '4h' | '8h';
   markPrice?: number;
   type?: 'cex' | 'dex';
@@ -38,6 +39,7 @@ interface VenueQuote {
   exchange: string;
   rate: number;                // per-interval %
   rate8h: number;              // 8h-normalized for comparison
+  predicted8h: number | null;  // 8h-normalized predicted next-window rate
   interval: '1h' | '4h' | '8h';
   markPrice: number | null;
   type: 'cex' | 'dex';
@@ -49,7 +51,9 @@ interface ArbOpportunity {
   min: VenueQuote;             // cheapest funding (LONG this side to get paid / pay less)
   max: VenueQuote;             // most expensive funding (SHORT this side to collect)
   spread8h: number;            // in % per 8h
+  predictedSpread8h: number | null; // 8h-normalized next-window spread, null if either side lacks predictedRate
   annualized: number;          // spread8h × 3 × 365
+  predictedAnnualized: number | null; // annualized off predictedSpread8h
   venues: VenueQuote[];        // all quotes sorted by rate ascending
   direction: 'long_min_short_max' | 'symmetric'; // which leg pays
   dexOnOneSide: boolean;       // true if a CEX on one side + DEX on other
@@ -106,6 +110,13 @@ export async function GET(request: NextRequest) {
         exchange: r.exchange,
         rate,
         rate8h: normalizeTo8h(rate, interval),
+        // Surface the predicted next-window rate too, 8h-normalized for
+        // cross-venue comparison. Partners can compare current spread vs
+        // predicted spread to decide whether to enter NOW or wait for
+        // the next settlement to lock in a wider gap.
+        predicted8h: r.predictedRate != null && Number.isFinite(r.predictedRate)
+          ? normalizeTo8h(r.predictedRate, interval)
+          : null,
         interval,
         markPrice: r.markPrice ?? null,
         type: r.type ?? 'cex',
@@ -129,6 +140,16 @@ export async function GET(request: NextRequest) {
       const spread8h = max.rate8h - min.rate8h;
       if (spread8h < minSpread) return;
       const annualized = spread8h * 3 * 365;
+      // Predicted next-window spread — null when either leg lacks
+      // predictedRate (HTX, Lighter, etc.). Partners doing 'enter now
+      // vs wait for next settlement' decisions need this signal.
+      const predictedSpread8h =
+        min.predicted8h != null && max.predicted8h != null
+          ? max.predicted8h - min.predicted8h
+          : null;
+      const predictedAnnualized = predictedSpread8h != null
+        ? predictedSpread8h * 3 * 365
+        : null;
       const types = new Set(venues.map(v => v.type));
       opportunities.push({
         symbol,
@@ -136,7 +157,9 @@ export async function GET(request: NextRequest) {
         min,
         max,
         spread8h,
+        predictedSpread8h,
         annualized,
+        predictedAnnualized,
         venues,
         direction: 'long_min_short_max',
         dexOnOneSide: types.size > 1,
