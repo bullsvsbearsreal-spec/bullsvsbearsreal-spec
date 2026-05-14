@@ -179,7 +179,11 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingInterval: '8h' as const,
             markPrice,
             indexPrice,
-            nextFundingTime: Number(item.nextFundingTime) || Date.now(),
+            // Was: `|| Date.now()` — when Bybit's nextFundingTime was
+            // missing/zero, partners' countdown timers showed "funding now"
+            // immediately, which is nonsense for an 8h-settled venue.
+            // Fall back to 8h from now like the Binance branches do.
+            nextFundingTime: Number(item.nextFundingTime) || Date.now() + 8 * 3600_000,
             type: 'cex' as const,
           };
         })
@@ -243,7 +247,9 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                     predictedRate,
                     markPrice,
                     indexPrice: markPrice,
-                    nextFundingTime: Number(fr.nextFundingTime) || Date.now(),
+                    // Same fix as Bybit/Bitget — 8h from now when OKX
+                    // omits nextFundingTime, instead of 'now'.
+                    nextFundingTime: Number(fr.nextFundingTime) || Date.now() + 8 * 3600_000,
                     type: 'cex' as const,
                   };
                 }
@@ -286,7 +292,9 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingInterval: '8h' as const,
             markPrice,
             indexPrice,
-            nextFundingTime: Number(item.nextFundingTime) || Date.now(),
+            // Same fix as Bybit above — fall back to 8h from now, not
+            // 'now', when Bitget's nextFundingTime field is missing.
+            nextFundingTime: Number(item.nextFundingTime) || Date.now() + 8 * 3600_000,
             type: 'cex' as const,
           };
         })
