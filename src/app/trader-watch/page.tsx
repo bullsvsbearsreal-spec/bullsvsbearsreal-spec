@@ -21,8 +21,9 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { Star, RefreshCw, X, ExternalLink, ArrowUpDown, Plus, AlertTriangle } from 'lucide-react';
+import { Star, RefreshCw, X, ExternalLink, ArrowUpDown, Plus, AlertTriangle, Bell } from 'lucide-react';
 import { useTraderBookmarks, type TraderBookmark } from '@/hooks/useTraderBookmarks';
+import { useTraderAlerts } from '@/hooks/useTraderAlerts';
 import { TokenIconSimple } from '@/components/TokenIcon';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -226,6 +227,14 @@ async function fetchFundingMap(): Promise<Map<string, number>> {
 
 export default function TraderWatchPage() {
   const { bookmarks, remove } = useTraderBookmarks();
+  // Snake's core ask (from Telegram): "when they close their trade that
+  // means i can close my trade. it would be much easier if i can just have
+  // a watchlist in the mainpage and see all these different traders with
+  // their positions open." The positions table covers the WATCH side;
+  // useTraderAlerts polls bookmarks every 2 min and fires browser
+  // notifications + an in-page feed on open/close/resize. Wire both.
+  const { feed, clearFeed, enabled: alertsEnabled, toggleEnabled: toggleAlerts, lastCheck } =
+    useTraderAlerts();
   const [positions, setPositions] = useState<NormalizedPosition[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState<number | null>(null);
@@ -394,6 +403,18 @@ export default function TraderWatchPage() {
         <StatTile label="Shorts" value={`${totals.shortCount}`} tone="rekt" />
       </div>
 
+      {/* Tracked Activity feed — browser alerts on open/close/resize.
+          Snake's "when they close their trade I can close mine" UX. */}
+      <ActivityFeed
+        feed={feed}
+        clearFeed={clearFeed}
+        alertsEnabled={alertsEnabled}
+        toggleAlerts={toggleAlerts}
+        lastCheck={lastCheck}
+        nowTick={nowTick}
+        watchedCount={bookmarks.length}
+      />
+
       {/* Watched-traders strip */}
       <div className="mb-5 flex flex-wrap gap-2">
         {bookmarks.map(b => (
@@ -551,5 +572,103 @@ function PositionRow({ p }: { p: NormalizedPosition }) {
         </Link>
       </td>
     </tr>
+  );
+}
+
+/**
+ * Browser-side activity feed for bookmarked traders. Wired to
+ * useTraderAlerts which polls /api/hl-traders/[addr] every 2 min and
+ * diffs against the local snapshot to emit opened/closed/resize/flipped
+ * events. Snake's core requirement: see when a watched trader closes
+ * so you can mirror the exit.
+ */
+function ActivityFeed({
+  feed, clearFeed, alertsEnabled, toggleAlerts, lastCheck, nowTick, watchedCount,
+}: {
+  feed: ReturnType<typeof useTraderAlerts>['feed'];
+  clearFeed: ReturnType<typeof useTraderAlerts>['clearFeed'];
+  alertsEnabled: boolean;
+  toggleAlerts: () => void;
+  lastCheck: number | null;
+  nowTick: number;
+  watchedCount: number;
+}) {
+  if (watchedCount === 0) return null;
+  return (
+    <div className="mb-5 rounded-xl border border-white/[0.06] bg-hub-darker p-3">
+      <div className="flex items-center gap-2 mb-2 flex-wrap">
+        <Bell className="w-3.5 h-3.5 text-hub-yellow" />
+        <h2 className="text-xs font-semibold text-white uppercase tracking-wider">Tracked activity</h2>
+        <span className="text-[10px] text-neutral-500 font-mono">{feed.length} events</span>
+        {lastCheck && alertsEnabled && (
+          <span className="text-[10px] text-neutral-600">
+            · checked {Math.floor((nowTick - lastCheck) / 1000)}s ago
+          </span>
+        )}
+        <div className="ml-auto flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleAlerts}
+            className={`text-[10px] font-semibold px-2 py-0.5 rounded transition-colors ${
+              alertsEnabled
+                ? 'bg-green-500/15 text-green-400 hover:bg-green-500/25'
+                : 'bg-white/[0.04] text-neutral-400 hover:text-white'
+            }`}
+            title={alertsEnabled ? 'Disable polling' : 'Enable browser notifications for bookmarked traders'}
+          >
+            {alertsEnabled ? 'On' : 'Off'}
+          </button>
+          {feed.length > 0 && (
+            <button
+              type="button"
+              onClick={clearFeed}
+              className="text-[10px] text-neutral-600 hover:text-red-400 transition-colors"
+              title="Clear activity feed"
+            >
+              Clear
+            </button>
+          )}
+        </div>
+      </div>
+      {!alertsEnabled ? (
+        <div className="text-[11px] text-neutral-500 leading-relaxed">
+          Turn on alerts to get browser notifications when watched traders open, close, or resize positions.
+          Polls every 2 min. No backend — runs in your tab.
+        </div>
+      ) : feed.length === 0 ? (
+        <div className="text-[11px] text-neutral-500">
+          Watching {watchedCount} trader{watchedCount !== 1 ? 's' : ''}. No position changes yet — baseline snapshot captured.
+        </div>
+      ) : (
+        <div className="space-y-1 max-h-[200px] overflow-y-auto">
+          {feed.map(a => {
+            const kindColor =
+              a.kind === 'opened' ? 'text-green-400' :
+              a.kind === 'closed' ? 'text-neutral-400' :
+              a.kind === 'flipped' ? 'text-orange-400' :
+              a.kind === 'increased' ? 'text-blue-400' :
+              'text-red-400';
+            const ago = Math.floor((Date.now() - a.timestamp) / 1000);
+            const agoStr = ago < 60 ? `${ago}s` : ago < 3600 ? `${Math.floor(ago / 60)}m` : `${Math.floor(ago / 3600)}h`;
+            return (
+              <Link
+                key={a.id}
+                href={`/trader/${a.address}`}
+                className="flex items-center gap-2 px-2 py-1 rounded hover:bg-white/[0.03] transition-colors"
+              >
+                <span className={`text-[9px] font-bold uppercase tracking-wider ${kindColor} min-w-[56px]`}>
+                  {a.kind}
+                </span>
+                <span className="text-[11px] text-white font-semibold truncate min-w-0">
+                  {a.displayName || `${a.address.slice(0, 6)}…${a.address.slice(-4)}`}
+                </span>
+                <span className="text-[10px] text-neutral-400 truncate flex-1">{a.details}</span>
+                <span className="text-[9px] text-neutral-600 font-mono flex-shrink-0">{agoStr}</span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+    </div>
   );
 }
