@@ -53,11 +53,16 @@ export async function GET(request: NextRequest) {
     'Deribit': 'binance-formula', 'Extended': 'binance-formula', 'WhiteBIT': 'binance-formula',
     'Backpack': 'binance-formula', 'Paradex': 'binance-formula', 'edgeX': 'binance-formula',
     'KuCoin': 'binance-formula', 'Bitfinex': 'binance-formula',
+    // Gate.io: contracts endpoint exposes mark_price + index_price.
+    // Bitunix: uses lastPrice as index (approximation for thin pairs).
+    'Gate.io': 'binance-formula', 'Bitunix': 'binance-formula',
     'OKX': 'native', 'CoinEx': 'native', 'Hyperliquid': 'native', 'Orderly': 'native',
     'Kraken': 'native', 'dYdX': 'native',
+    // BitMEX: prefers their native indicativeFundingRate, falls back to
+    // Binance formula on (markPrice, indicativeSettlePrice).
+    'BitMEX': 'native',
     'gTrade': 'continuous',
-    'HTX': null, 'Bitunix': null, 'BitMEX': null, 'Gate.io': null,
-    'GMX': null, 'Variational': null, 'Nado': null, 'Lighter': null,
+    'HTX': null, 'GMX': null, 'Variational': null, 'Nado': null, 'Lighter': null,
   };
 
   const exchanges = ALL_EXCHANGES.map(name => {
