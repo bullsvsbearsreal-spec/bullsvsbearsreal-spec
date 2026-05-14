@@ -77,19 +77,21 @@ export async function authenticateV1Request(request: NextRequest): Promise<
   const authHeader = request.headers.get('authorization') || '';
   const match = authHeader.match(/^Bearer\s+(ih_.+)$/i);
   if (!match) {
-    return {
-      ok: false,
-      response: NextResponse.json(
-        { success: false, error: 'API key required. Pass Authorization: Bearer ih_xxx' },
-        {
-          status: 401,
-          headers: {
-            'WWW-Authenticate': 'Bearer realm="InfoHub API"',
-            ...FEE_MODEL_HEADERS,
-          },
-        },
-      ),
-    };
+    // Build via explicit headers.set so DO's edge layer doesn't drop
+    // custom X-Fee-Model-* headers — previous spread-into-init approach
+    // delivered WWW-Authenticate but silently dropped the X-Fee-Model
+    // pair on this 401 path (verified live May 2026). The invalid-key
+    // 401 below worked because it had no WWW-Authenticate; turns out
+    // mixing WWW-Authenticate with custom X-* in the init.headers object
+    // triggers some header normalisation that strips the X-* entries.
+    const noKeyRes = NextResponse.json(
+      { success: false, error: 'API key required. Pass Authorization: Bearer ih_xxx' },
+      { status: 401 },
+    );
+    noKeyRes.headers.set('WWW-Authenticate', 'Bearer realm="InfoHub API"');
+    noKeyRes.headers.set('X-Fee-Model-Version', FEE_MODEL_VERSION);
+    noKeyRes.headers.set('X-Fee-Model-Updated-At', FEE_MODEL_UPDATED_AT);
+    return { ok: false, response: noKeyRes };
   }
 
   const rawKey = match[1];
