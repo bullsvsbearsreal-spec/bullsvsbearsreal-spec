@@ -54,11 +54,22 @@ export async function GET(request: NextRequest) {
       );
       if (!res.ok) return NextResponse.json({ success: false, error: 'Upstream fetch failed' }, { status: 502 });
       raw = await res.json();
-      l1Cache.set(cacheKey, { data: raw, ts: Date.now() });
-      // Cap cache entries
-      if (l1Cache.size > 50) {
-        const oldest = Array.from(l1Cache.entries()).sort((a, b) => a[1].ts - b[1].ts)[0];
-        if (oldest) l1Cache.delete(oldest[0]);
+      // Don't pin a no-data response. /api/longshort returns
+      // `{ fallback: true, points: [] }` when both Binance and OKX are
+      // unavailable for the symbol; pinning that for 60s meant partners
+      // saw "balanced 50/50" as authoritative until the cache expired.
+      // Also skip when points is missing entirely (Binance 451-geoblock
+      // path returns `{ longRatio: undefined, shortRatio: undefined }`).
+      const hasData =
+        raw && !raw.fallback &&
+        (Array.isArray(raw.points) ? raw.points.length > 0 : raw.longRatio != null);
+      if (hasData) {
+        l1Cache.set(cacheKey, { data: raw, ts: Date.now() });
+        // Cap cache entries
+        if (l1Cache.size > 50) {
+          const oldest = Array.from(l1Cache.entries()).sort((a, b) => a[1].ts - b[1].ts)[0];
+          if (oldest) l1Cache.delete(oldest[0]);
+        }
       }
     }
 

@@ -39,7 +39,14 @@ export async function GET(request: NextRequest) {
       );
       if (!res.ok) return NextResponse.json({ success: false, error: 'Upstream fetch failed' }, { status: 502 });
       raw = await res.json();
-      l1Cache.set(currency, { data: raw, ts: Date.now() });
+      // Only pin cache when we got real options data. /api/options can
+      // return `{ instrumentCount: 0, ... }` when Deribit is in
+      // maintenance — pinning that for 60s meant /api/v1/options
+      // partners saw "no options data" as authoritative for the cache
+      // window after Deribit recovered.
+      if (raw && (raw.instrumentCount > 0 || (Array.isArray(raw.ivSmile) && raw.ivSmile.length > 0))) {
+        l1Cache.set(currency, { data: raw, ts: Date.now() });
+      }
     }
 
     // Derive ATM IV from ivSmile (strike closest to underlying price)
