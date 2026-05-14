@@ -129,13 +129,26 @@ export async function GET(request: NextRequest) {
     venues,
   };
 
-  if (cache.size > 100) {
-    const oldest = cache.keys().next().value;
-    if (oldest) cache.delete(oldest);
+  // Only pin cache when at least one venue returned a real book. Was:
+  // cached `{venues: [{available: false}, {available: false}, ...]}`
+  // for the 3s TTL when every exchange returned an error. Frontend
+  // would render "no liquidity" for the cache duration even after
+  // venues recovered. With s-maxage=3 + stale-while-revalidate=5 that's
+  // up to 8s of fake-empty.
+  const anyAvailable = venues.some(v => v.available);
+  if (anyAvailable) {
+    if (cache.size > 100) {
+      const oldest = cache.keys().next().value;
+      if (oldest) cache.delete(oldest);
+    }
+    cache.set(cacheKey, { data: body, ts: Date.now() });
   }
-  cache.set(cacheKey, { data: body, ts: Date.now() });
 
   return NextResponse.json(body, {
-    headers: { 'Cache-Control': 'public, s-maxage=3, stale-while-revalidate=5' },
+    headers: {
+      'Cache-Control': anyAvailable
+        ? 'public, s-maxage=3, stale-while-revalidate=5'
+        : 'no-store',
+    },
   });
 }
