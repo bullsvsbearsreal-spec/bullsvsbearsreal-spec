@@ -129,6 +129,11 @@ export async function GET() {
     ts: Date.now(),
   };
 
+  // Cache empty results too — funding flips are rare events, so an
+  // empty array is the legitimate "no flips this scan" result during
+  // quiet markets. Not caching would re-scan Binance per visitor.
+  // We can't cheaply distinguish "no flips" from "Binance fully down"
+  // since detectFlip returns null on either case.
   l1 = { body, ts: Date.now() };
 
   return NextResponse.json(body, {
