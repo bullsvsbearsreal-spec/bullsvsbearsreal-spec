@@ -8,6 +8,7 @@ import DataFreshness from '@/components/DataFreshness';
 import RefreshButton from '@/components/RefreshButton';
 import UsdDisplay from '@/components/UsdDisplay';
 import { Gauge, Info, TrendingUp, TrendingDown, Scale } from 'lucide-react';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 interface LeverageSymbolRow {
   symbol: string;
@@ -93,7 +94,7 @@ export default function LeveragePage() {
             </div>
           </div>
           <p className="text-sm text-neutral-500">
-            OI-weighted funding (what the heavy money actually pays) and spot-vs-perp volume — a single lens on leverage pressure across 32 venues.
+            OI-weighted funding (what the heavy money actually pays) and spot-vs-perp volume — a single lens on leverage pressure across {ALL_EXCHANGES.length} venues.
           </p>
         </div>
 

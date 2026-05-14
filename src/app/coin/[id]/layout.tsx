@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -8,7 +9,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const name = id.charAt(0).toUpperCase() + id.slice(1).replace(/-/g, ' ');
   const title = `${name} Price, Events & Market Data`;
-  const description = `Live ${name} price, market cap, trading volume, upcoming events, and token unlocks. Track ${name} across 32 exchanges on InfoHub.`;
+  const description = `Live ${name} price, market cap, trading volume, upcoming events, and token unlocks. Track ${name} across ${ALL_EXCHANGES.length} exchanges on InfoHub.`;
 
   return {
     title,

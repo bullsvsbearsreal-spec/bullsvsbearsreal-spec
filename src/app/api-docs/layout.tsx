@@ -1,4 +1,5 @@
 import { pageMetadata } from '@/lib/seo';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 export const metadata = pageMetadata('/api-docs');
 
@@ -6,7 +7,7 @@ const apiJsonLd = {
   '@context': 'https://schema.org',
   '@type': 'WebAPI',
   name: 'InfoHub Crypto Derivatives API',
-  description: 'REST API for real-time funding rates, open interest, tickers, spreads, liquidations, and arbitrage data across 32 exchanges.',
+  description: `REST API for real-time funding rates, open interest, tickers, spreads, liquidations, and arbitrage data across ${ALL_EXCHANGES.length} exchanges.`,
   url: 'https://info-hub.io/api-docs',
   provider: {
     '@type': 'Organization',

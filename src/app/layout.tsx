@@ -163,7 +163,7 @@ const jsonLd = {
       '@id': 'https://info-hub.io/#api',
       name: 'InfoHub Public API',
       url: 'https://info-hub.io/developers',
-      description: 'REST API for crypto derivatives data: 26 endpoints across 32 exchanges with fee transparency, aggregate modes, and OpenAPI 3.1 spec. Free tier 100 req/min, 5,000 req/day.',
+      description: `REST API for crypto derivatives data: 26 endpoints across ${ALL_EXCHANGES.length} exchanges with fee transparency, aggregate modes, and OpenAPI 3.1 spec. Free tier 100 req/min, 5,000 req/day.`,
       documentation: 'https://info-hub.io/developers/docs',
       provider: { '@id': 'https://info-hub.io/#org' },
       offers: {

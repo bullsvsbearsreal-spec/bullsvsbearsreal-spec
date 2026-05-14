@@ -37,7 +37,7 @@ const NAV_GROUPS: NavGroup[] = [
   { key: 'monitor', label: 'Monitor',
     icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 5-5"/></svg>,
     items: [
-      { id: 'funding',         label: 'Funding Rates',   href: '/funding',          hint: 'Live across 32 venues' },
+      { id: 'funding',         label: 'Funding Rates',   href: '/funding',          hint: 'Live across all venues' },
       { id: 'funding-heatmap', label: 'Funding Heatmap', href: '/funding-heatmap',   hint: 'Asset × venue grid' },
       { id: 'funding-countdown', label: 'Funding Countdown', href: '/funding-countdown', hint: 'Next settlement clocks' },
       { id: 'funding-paid',    label: 'Funding Paid · 30d', href: '/funding-paid',     hint: 'Most expensive longs' },

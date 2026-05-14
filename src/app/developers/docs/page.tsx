@@ -5,13 +5,20 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { Copy, Check, ArrowLeft, ChevronRight, ExternalLink, Link as LinkIcon } from 'lucide-react';
+import { ALL_EXCHANGES } from '@/lib/constants';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 
 /* Copy button for code blocks */
 function CopyBtn({ text }: { text: string }) {
   const [ok, setOk] = useState(false);
   return (
     <button
-      onClick={() => { navigator.clipboard.writeText(text); setOk(true); setTimeout(() => setOk(false), 1500); }}
+      onClick={async () => {
+        if (await copyToClipboard(text)) {
+          setOk(true);
+          setTimeout(() => setOk(false), 1500);
+        }
+      }}
       className="absolute top-2.5 right-2.5 text-gray-600 hover:text-gray-300 transition-colors bg-black/60 backdrop-blur-sm border border-white/[0.06] rounded-md p-1.5 z-10"
       title="Copy"
     >
@@ -496,7 +503,7 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
             </div>
 
             <Section id="funding" title="Funding Rates" method="GET" path="/api/v1/funding">
-              <p className="text-gray-400 mb-4">Real-time funding rates across 32 exchanges. Rates are expressed as percentages in the exchange's native interval.</p>
+              <p className="text-gray-400 mb-4">Real-time funding rates across {ALL_EXCHANGES.length} exchanges. Rates are expressed as percentages in the exchange&apos;s native interval.</p>
               <ParamTable params={[
                 ['symbols', 'string', 'all', 'Comma-separated symbols (e.g. BTC,ETH,SOL)'],
                 ['exchanges', 'string', 'all', 'Comma-separated exchanges (e.g. binance,bybit)'],

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import { Download, Copy, Check, ExternalLink, FileDown, Palette, Type, Image } from 'lucide-react';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 
 // Brand Colors
 const brandColors = {
@@ -40,10 +41,11 @@ const assets = [
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
-  const copy = () => {
-    navigator.clipboard.writeText(text);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+  const copy = async () => {
+    if (await copyToClipboard(text)) {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    }
   };
   return (
     <button onClick={copy} aria-label="Copy color value" className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">

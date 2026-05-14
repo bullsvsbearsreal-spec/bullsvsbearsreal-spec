@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT } from '@/lib/constants/exchanges';
+import { FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT, ALL_EXCHANGES } from '@/lib/constants/exchanges';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -27,7 +27,7 @@ export async function GET() {
       surfacedOn: ['/api/v1/arbitrage', '/api/v1/spreads', '/api/v1/funding-arb'],
     },
     endpoints: [
-      { path: '/api/v1/funding', method: 'GET', description: 'Real-time funding rates across 32 exchanges' },
+      { path: '/api/v1/funding', method: 'GET', description: `Real-time funding rates across ${ALL_EXCHANGES.length} exchanges` },
       { path: '/api/v1/funding/history', method: 'GET', description: 'Historical funding rate snapshots (up to 14 days)' },
       { path: '/api/v1/funding-arb', method: 'GET', description: 'Cross-exchange funding-rate arbitrage scanner with annualised yield' },
       { path: '/api/v1/arbitrage', method: 'GET', description: 'Funding rate arbitrage opportunities with feasibility grades' },

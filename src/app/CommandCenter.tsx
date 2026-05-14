@@ -22,6 +22,7 @@ import Footer from '@/components/Footer';
 import MarketTiles from '@/components/MarketTiles';
 import CoinSearch from '@/components/CoinSearch';
 import { CoinSearchResult } from '@/lib/api/coingecko';
+import { ALL_EXCHANGES } from '@/lib/constants';
 import { useApi } from '@/hooks/useSWRApi';
 import { useAggregatorHealth } from '@/hooks/useAggregatorHealth';
 import {
@@ -307,7 +308,7 @@ export default function CommandCenter() {
                 Command Center
               </h1>
               <p className="text-[13px] text-[var(--fg-3)] leading-relaxed max-w-2xl">
-                Real-time derivatives intelligence. Funding, OI, liquidations across 32 exchanges, one screen.
+                Real-time derivatives intelligence. Funding, OI, liquidations across {ALL_EXCHANGES.length} exchanges, one screen.
               </p>
             </div>
             {/* Was: unconditional green dot + "Live · streaming · 32 exchanges".

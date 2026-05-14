@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { KeyRound, Smartphone, Mail, Loader2, ToggleLeft, ToggleRight, Copy } from 'lucide-react';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 
 interface Props {
   email: string;
@@ -176,7 +177,7 @@ export default function TwoFactorSection({ email }: Props) {
                   {totpSecret}
                 </code>
                 <button
-                  onClick={() => navigator.clipboard.writeText(totpSecret)}
+                  onClick={() => { void copyToClipboard(totpSecret); }}
                   className="p-1.5 rounded bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors"
                   title="Copy secret"
                 >
@@ -228,8 +229,8 @@ export default function TwoFactorSection({ email }: Props) {
                 ))}
               </div>
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(totpBackupCodes.join('\n'));
+                onClick={async () => {
+                  await copyToClipboard(totpBackupCodes.join('\n'));
                   setShowBackupCodes(false);
                 }}
                 className="flex items-center gap-1.5 text-xs text-hub-yellow hover:text-hub-yellow-light transition-colors"

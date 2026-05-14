@@ -7,6 +7,7 @@ import {
   Thermometer, Fish, Rocket, Activity, Map, Percent, SlidersHorizontal,
   type LucideIcon,
 } from 'lucide-react';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 interface RelatedPage {
   name: string;
@@ -31,7 +32,7 @@ const RELATED: Record<string, RelatedPage[]> = {
   '/open-interest': [
     { name: 'OI Heatmap', href: '/oi-heatmap', desc: 'Visual OI across coins & exchanges', icon: Grid3X3 },
     { name: 'CVD', href: '/cvd', desc: 'Volume delta divergences', icon: LineChart },
-    { name: 'Funding Rates', href: '/funding', desc: 'Funding rates across 32 exchanges', icon: Percent },
+    { name: 'Funding Rates', href: '/funding', desc: `Funding rates across ${ALL_EXCHANGES.length} exchanges`, icon: Percent },
     { name: 'Liquidations', href: '/liquidations', desc: 'Real-time forced closures', icon: Zap },
   ],
   '/spreads': [

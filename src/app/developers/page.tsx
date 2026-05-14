@@ -12,6 +12,8 @@ import {
   ArrowRight, Terminal, Code2, Activity, Layers, LineChart,
   ChevronRight, Database, Wifi, ChevronDown, Hash, Scale,
 } from 'lucide-react';
+import { ALL_EXCHANGES } from '@/lib/constants';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 
 interface ApiKeyInfo {
   id: string;
@@ -126,7 +128,12 @@ function CopyBtn({ text }: { text: string }) {
   const [ok, setOk] = useState(false);
   return (
     <button
-      onClick={() => { navigator.clipboard.writeText(text); setOk(true); setTimeout(() => setOk(false), 1500); }}
+      onClick={async () => {
+        if (await copyToClipboard(text)) {
+          setOk(true);
+          setTimeout(() => setOk(false), 1500);
+        }
+      }}
       className="absolute top-2.5 right-2.5 text-gray-600 hover:text-gray-300 transition-colors bg-black/60 backdrop-blur-sm border border-white/[0.06] rounded-md p-1.5"
       title="Copy"
     >
@@ -287,7 +294,7 @@ const ENDPOINT_GROUPS = [
     bg: 'bg-blue-500/10',
     border: 'border-blue-500/10',
     endpoints: [
-      ['GET', '/api/v1/funding', 'Real-time funding rates across 32 exchanges'],
+      ['GET', '/api/v1/funding', `Real-time funding rates across ${ALL_EXCHANGES.length} exchanges`],
       ['GET', '/api/v1/openinterest', 'Open interest per venue (aggregate=1 + changes=1)'],
       ['GET', '/api/v1/tickers', 'Price & volume across all venues (aggregate=1)'],
       ['GET', '/api/v1/klines', 'OHLCV candles with Binance/Bybit/OKX fallback'],
@@ -367,8 +374,12 @@ const ENDPOINT_GROUPS = [
 // section). "30s typical" is the most common bucket — funding,
 // open-interest, tickers all sit there. Partners building latency budgets
 // off "3s" would have been misled by an order of magnitude.
+// Exchanges count derives from ALL_EXCHANGES so adding/removing a venue
+// updates this stat without anyone having to remember. Endpoints is
+// still hand-counted (26 public v1 routes as of May 2026 — the keys[/id]
+// route handlers aren't part of the public surface).
 const STATS = [
-  { value: 32, suffix: '', label: 'Exchanges', icon: Database },
+  { value: ALL_EXCHANGES.length, suffix: '', label: 'Exchanges', icon: Database },
   { value: 26, suffix: '', label: 'Endpoints', icon: Wifi },
   { value: 100, suffix: '/m', label: 'Free Requests', icon: Zap },
   { value: 30, suffix: 's', label: 'Typical Cache', icon: Clock },
@@ -426,9 +437,8 @@ export default function DevelopersPage() {
     } catch {}
   };
 
-  const copyKey = () => {
-    if (newKey) {
-      navigator.clipboard.writeText(newKey);
+  const copyKey = async () => {
+    if (newKey && await copyToClipboard(newKey)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
