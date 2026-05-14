@@ -236,9 +236,25 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
                 if (frJson.code === '0' && frJson.data.length > 0) {
                   const fr = frJson.data[0];
                   const markPrice = markPriceMap.get(inst.instId) || 0;
-                  const predictedRate = fr.nextFundingRate
-                    ? (parseFloat(fr.nextFundingRate) || 0) * 100
-                    : undefined;
+                  // OKX's nextFundingRate field is often returned as an
+                  // empty string "" when `method: 'current_period'` —
+                  // verified live May 2026. The same response carries the
+                  // raw `premium` and `interestRate` fields though, which
+                  // is exactly what their official formula uses:
+                  //   predicted = clamp(premium, ±0.05%) + interestRate
+                  // Apply that locally so OKX's 282 pairs get coverage
+                  // instead of returning null.
+                  let predictedRate: number | undefined;
+                  if (fr.nextFundingRate && fr.nextFundingRate !== '') {
+                    predictedRate = (parseFloat(fr.nextFundingRate) || 0) * 100;
+                  } else if (fr.premium != null && fr.interestRate != null) {
+                    const premium = parseFloat(fr.premium);
+                    const interest = parseFloat(fr.interestRate);
+                    if (Number.isFinite(premium) && Number.isFinite(interest)) {
+                      const clamped = Math.max(-0.0005, Math.min(0.0005, premium));
+                      predictedRate = (clamped + interest) * 100;
+                    }
+                  }
                   return {
                     symbol: inst.instId.replace('-USDT-SWAP', ''),
                     exchange: 'OKX',
