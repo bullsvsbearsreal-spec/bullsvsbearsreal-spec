@@ -354,12 +354,22 @@ export async function GET() {
       timestamp: Date.now(),
     };
 
-    // Update L1 cache
-    l1Cache = response;
-    l1CacheTime = Date.now();
+    // Only pin cache when we got data. Was: cached `{data: []}` for 5
+    // min when every Binance/OKX/Bybit kline endpoint failed (rare but
+    // happens during coordinated Cloudflare bot challenges). RSI
+    // heatmap froze on "no data" until cache expired.
+    if (data.length > 0) {
+      l1Cache = response;
+      l1CacheTime = Date.now();
+    }
 
     return NextResponse.json(response, {
-      headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+      headers: {
+        'X-Cache': 'MISS',
+        'Cache-Control': data.length > 0
+          ? 'public, s-maxage=60, stale-while-revalidate=300'
+          : 'no-store',
+      },
     });
   } catch (error) {
     console.error('[RSI]', error instanceof Error ? error.message : error);
