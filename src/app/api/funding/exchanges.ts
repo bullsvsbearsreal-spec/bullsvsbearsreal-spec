@@ -1723,21 +1723,37 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           if (!symbol || !isCryptoSymbol(symbol)) continue;
 
           const fundingRate = (parseFloat(ticker.fundingRate || '0') || 0) * 100;
-          const markPrice = parseFloat(ticker.oraclePrice || ticker.markPrice || '0');
+          // edgeX getTicker returns three distinct price fields:
+          //   - markPrice: the venue's mark for PnL / liquidation (Binance-style "mark")
+          //   - oraclePrice: oracle-derived spot reference (acts as the "index")
+          //   - lastPrice: last trade
+          // Previous code conflated markPrice and oraclePrice via fallback
+          // chain, which fed the formula (mark - index)/index = 0 → always
+          // +0.01% predicted. Pick mark and index explicitly now.
+          const markPriceRaw = parseFloat(ticker.markPrice || '0');
+          const oraclePriceRaw = parseFloat(ticker.oraclePrice || '0');
+          // Use markPrice when present, fall back to oraclePrice for venues
+          // that only return one of the two (older edgeX deployments).
+          const markPrice = markPriceRaw > 0 ? markPriceRaw : oraclePriceRaw;
           if (!markPrice || markPrice <= 0) continue;
-
-          const indexPrice = parseFloat(ticker.indexPrice || '0') || markPrice;
+          // indexPrice precedence: explicit indexPrice field > oraclePrice >
+          // (else give up on predictedRate to avoid the fake-0.01% bug).
+          const indexCandidateRaw = parseFloat(ticker.indexPrice || '0');
+          const indexPrice = indexCandidateRaw > 0
+            ? indexCandidateRaw
+            : (oraclePriceRaw > 0 && oraclePriceRaw !== markPrice ? oraclePriceRaw : 0);
           results.push({
             symbol,
             exchange: 'edgeX',
             fundingRate,
-            // Apply formula only when we have a real indexPrice (not the
-            // markPrice fallback that this fetcher uses for missing index).
-            predictedRate: ticker.indexPrice
+            // Only compute when we have a genuine, distinct index. Same
+            // mark and index gives premium = 0 → 0.01% on every pair,
+            // which was the original bug.
+            predictedRate: indexPrice > 0 && indexPrice !== markPrice
               ? binanceStylePredictedPercent(markPrice, indexPrice)
               : undefined,
             markPrice,
-            indexPrice,
+            indexPrice: indexPrice > 0 ? indexPrice : markPrice,
             nextFundingTime: (() => { const t = parseInt(ticker.nextFundingTime || '0'); return t > 0 ? (t < 1e12 ? t * 1000 : t) : Date.now() + 3600000; })(),
             fundingInterval: '1h',
             type: 'dex',
