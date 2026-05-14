@@ -249,14 +249,22 @@ export default function TraderWatchPage() {
     return () => clearInterval(id);
   }, []);
 
-  /** Refresh all bookmarked traders' positions in parallel. */
-  const refresh = useCallback(async () => {
+  /** Refresh all bookmarked traders' positions in parallel.
+   *  Accepts an optional aborted-ref so a stale fetch from before the
+   *  user removed a bookmark / unmounted doesn't setState on the new
+   *  bookmarks list. Was racing previously — when a 10s GMX fetch
+   *  completed after the user removed a bookmark, the now-deleted
+   *  trader's positions would briefly re-appear in the table until
+   *  the next 30s refresh cleared them. */
+  const refresh = useCallback(async (abortedRef?: { aborted: boolean }) => {
     if (bookmarks.length === 0) {
-      setPositions([]);
-      setLoading(false);
+      if (!abortedRef?.aborted) {
+        setPositions([]);
+        setLoading(false);
+      }
       return;
     }
-    setLoading(true);
+    if (!abortedRef?.aborted) setLoading(true);
 
     // Fan out per bookmark per venue. The bookmark's `venues` field
     // tells us which APIs to hit so we don't fetch HL for a GMX-only
@@ -277,6 +285,8 @@ export default function TraderWatchPage() {
       fetchFundingMap(),
     ]);
 
+    if (abortedRef?.aborted) return;
+
     const merged: NormalizedPosition[] = batches.flat().map(p => ({
       ...p,
       funding8hPct: fundingMap.get(p.symbol) ?? null,
@@ -296,11 +306,19 @@ export default function TraderWatchPage() {
     setLoading(false);
   }, [bookmarks]);
 
-  // Initial load + 30s refresh
+  // Initial load + 30s refresh.
+  // abortedRef cancels in-flight fetches when bookmarks change or the
+  // component unmounts. Without this, a slow fetch (some GMX subgraph
+  // calls take 5-10s) could complete after the user removed a bookmark
+  // and briefly resurrect the deleted trader's rows in the table.
   useEffect(() => {
-    refresh();
-    const id = setInterval(refresh, 30_000);
-    return () => clearInterval(id);
+    const abortedRef = { aborted: false };
+    refresh(abortedRef);
+    const id = setInterval(() => refresh(abortedRef), 30_000);
+    return () => {
+      abortedRef.aborted = true;
+      clearInterval(id);
+    };
   }, [refresh]);
 
   const sorted = useMemo(() => {
