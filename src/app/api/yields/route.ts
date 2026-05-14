@@ -31,8 +31,15 @@ export async function GET(request: NextRequest) {
   const projectFilter = searchParams.get('project')?.toLowerCase();
   const chainFilter = searchParams.get('chain');
   const stableOnly = searchParams.get('stablecoin') === 'true';
-  const minTvl = parseFloat(searchParams.get('minTvl') || '50000');
-  const minApy = parseFloat(searchParams.get('minApy') || '0');
+  // Was: `parseFloat(searchParams.get('minTvl') || '50000')` without a
+  // NaN guard. `?minTvl=abc` produced NaN; `p.tvlUsd >= NaN` is always
+  // false, so the route silently returned ZERO pools for any garbage
+  // input — looked like "DeFi has no yield opportunities". Now we
+  // explicitly check isFinite and fall back to the default.
+  const minTvlRaw = parseFloat(searchParams.get('minTvl') || '50000');
+  const minTvl = Number.isFinite(minTvlRaw) && minTvlRaw >= 0 ? minTvlRaw : 50000;
+  const minApyRaw = parseFloat(searchParams.get('minApy') || '0');
+  const minApy = Number.isFinite(minApyRaw) && minApyRaw >= 0 ? minApyRaw : 0;
   const lendingOnly = searchParams.get('lending') !== 'false'; // default true
   const limit = Math.min(parseInt(searchParams.get('limit') || '200') || 200, 500);
 
