@@ -319,6 +319,36 @@ export const openApiSpec = {
           type: { type: 'string', enum: ['cex', 'dex'] },
         },
       },
+      ExchangeInfo: {
+        type: 'object',
+        properties: {
+          name: { type: 'string', example: 'Binance' },
+          type: { type: 'string', enum: ['cex', 'dex'] },
+          fees: {
+            type: 'object',
+            nullable: true,
+            properties: {
+              takerPct: { type: 'number', description: 'Taker fee % per trade' },
+              makerPct: { type: 'number', description: 'Maker fee % per trade. May be negative for rebate venues (Nado, Hyperliquid VIP).' },
+              roundTripPct: { type: 'number', description: 'Taker × 2 (most common assumption)' },
+              roundTripTakerPct: { type: 'number' },
+              roundTripMakerPct: { type: 'number', description: 'May be negative for venues with maker rebate' },
+            },
+          },
+          fundingInterval: { type: 'string', enum: ['1h', '4h', '8h', 'unknown'], description: 'Settlement cadence for this venue' },
+          supportsPredictedRate: {
+            type: 'boolean',
+            description: 'Whether /api/v1/funding rows for this venue emit a non-null predictedRate field. Use this to filter your coverage matrix without probing /funding.',
+          },
+          predictedRateSource: {
+            type: 'string',
+            nullable: true,
+            enum: ['native', 'binance-formula', 'continuous', null],
+            description: "How predictedRate is derived: 'native' = venue exposes their own next-window prediction; 'binance-formula' = we compute clamp((mark-index)/index, ±0.05%) + 0.01% from venue's mark + index; 'continuous' = venue uses continuous velocity model (current rate IS next-window). null = venue doesn't expose usable inputs.",
+          },
+          tradeUrlPattern: { type: 'string', nullable: true, description: 'URL template with {SYMBOL} placeholder' },
+        },
+      },
     },
   },
   paths: {
@@ -533,10 +563,21 @@ export const openApiSpec = {
     '/exchanges': {
       get: {
         summary: 'Supported exchanges metadata',
-        description: 'Returns one row per supported exchange with type (cex/dex), maker + taker fees (% per trade), round-trip fee (taker × 2), funding interval, and trade URL pattern. The top-level meta.feeModel block emits the same { version, updatedAt, unit } the other fee-aware endpoints emit — use this endpoint as the canonical fee-schedule source and cache by version.',
+        description: 'Returns one row per supported exchange with type (cex/dex), maker + taker fees (% per trade), round-trip fee (taker × 2), funding interval, predictedRate coverage hint, and trade URL pattern. The top-level meta.feeModel block emits the same { version, updatedAt, unit } the other fee-aware endpoints emit — use this endpoint as the canonical fee-schedule source and cache by version. Use the per-row supportsPredictedRate field to know which venues will populate predictedRate on /api/v1/funding rows.',
         responses: {
           200: {
             description: 'OK',
+            content: {
+              'application/json': {
+                schema: {
+                  type: 'object',
+                  properties: {
+                    success: { type: 'boolean' },
+                    data: { type: 'array', items: { $ref: '#/components/schemas/ExchangeInfo' } },
+                  },
+                },
+              },
+            },
             headers: {
               'X-Fee-Model-Version': { description: 'Identifier for the fee schedule', schema: { type: 'string' } },
               'X-Fee-Model-Updated-At': { description: 'ISO timestamp of last revision', schema: { type: 'string', format: 'date-time' } },
