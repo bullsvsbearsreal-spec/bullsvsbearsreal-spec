@@ -942,13 +942,23 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           // fundingInterval is a number (1, 4, 8) representing hours
           const intervalNum = parseInt(item.fundingInterval) || 8;
           const interval = intervalNum === 1 ? '1h' : intervalNum === 4 ? '4h' : '8h';
+          const markPrice = parseFloat(item.markPrice) || 0;
+          const indexPrice = parseFloat(item.lastPrice) || 0;
           return {
             symbol: item.symbol.replace('USDT', ''),
             exchange: 'Bitunix',
             fundingRate: rate,
+            // Bitunix's API doesn't expose a separate index price — they
+            // serve lastPrice in that slot. For liquid pairs the result
+            // is close enough to a true mark-vs-index premium that the
+            // Binance formula gives a usable prediction; for thinly-
+            // traded pairs the lastPrice may be stale-vs-mid. Partner
+            // (AB-Samurai) asked for any signal here vs null on 620
+            // pairs — better an approximation than nothing.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
             fundingInterval: interval as '1h' | '4h' | '8h',
-            markPrice: parseFloat(item.markPrice) || 0,
-            indexPrice: parseFloat(item.lastPrice) || 0,
+            markPrice,
+            indexPrice,
             nextFundingTime: Number(item.nextFundingTime) || Date.now() + 28800000,
             type: 'cex' as const,
           };
@@ -1879,7 +1889,12 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     fetcher: async (fetchFn) => {
       const proxyUrl = process.env.PROXY_URL;
       if (!proxyUrl) return [];
-      const targetUrl = 'https://www.bitmex.com/api/v1/instrument?columns=symbol,fundingRate,fundingInterval,lastPrice,volume24h&filter=%7B%22state%22%3A%22Open%22%2C%22typ%22%3A%22FFWCSX%22%7D&count=500';
+      // Was requesting only `symbol,fundingRate,fundingInterval,lastPrice,
+      // volume24h` — but BitMEX exposes markPrice + indicativeSettlePrice
+      // (their index proxy) + indicativeFundingRate (next-window forecast)
+      // for free if you ask. Add them so we can populate predictedRate
+      // for all 61 BitMEX pairs (partner had 0/61 coverage).
+      const targetUrl = 'https://www.bitmex.com/api/v1/instrument?columns=symbol,fundingRate,fundingInterval,lastPrice,volume24h,markPrice,indicativeSettlePrice,indicativeFundingRate&filter=%7B%22state%22%3A%22Open%22%2C%22typ%22%3A%22FFWCSX%22%7D&count=500';
       const res = await fetchFn(`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent(targetUrl)}`, {}, 12000);
       if (!res.ok) return [];
       const data = await res.json();
@@ -1889,13 +1904,25 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((i: any) => {
           let sym = i.symbol.replace(/USD$/, '').replace(/USDT$/, '').replace(/_.*/, '');
           if (sym === 'XBT') sym = 'BTC';
+          const markPrice = parseFloat(i.markPrice) || parseFloat(i.lastPrice) || 0;
+          const indexPrice = parseFloat(i.indicativeSettlePrice) || 0;
+          // Prefer BitMEX's native indicativeFundingRate (their next-window
+          // forecast). Falls back to Binance-style formula when missing.
+          let predictedRate: number | undefined;
+          const ifr = parseFloat(i.indicativeFundingRate);
+          if (Number.isFinite(ifr) && ifr !== 0) {
+            predictedRate = ifr * 100;
+          } else {
+            predictedRate = binanceStylePredictedPercent(markPrice, indexPrice);
+          }
           return {
             symbol: sym,
             exchange: 'BitMEX',
             fundingRate: (parseFloat(i.fundingRate) || 0) * 100,
+            predictedRate,
             fundingInterval: '8h' as const,
-            markPrice: parseFloat(i.lastPrice) || 0,
-            indexPrice: 0,
+            markPrice,
+            indexPrice,
             nextFundingTime: 0,
             type: 'cex' as const,
           };
@@ -1917,16 +1944,23 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
       if (!Array.isArray(data)) return [];
       return data
         .filter((c: any) => c.funding_rate != null && c.name?.endsWith('_USDT'))
-        .map((c: any) => ({
-          symbol: c.name.replace('_USDT', ''),
-          exchange: 'Gate.io',
-          fundingRate: (parseFloat(c.funding_rate) || 0) * 100,
-          fundingInterval: '8h' as const,
-          markPrice: parseFloat(c.mark_price) || 0,
-          indexPrice: parseFloat(c.index_price) || 0,
-          nextFundingTime: (c.funding_next_apply || 0) * 1000,
-          type: 'cex' as const,
-        }))
+        .map((c: any) => {
+          const markPrice = parseFloat(c.mark_price) || 0;
+          const indexPrice = parseFloat(c.index_price) || 0;
+          return {
+            symbol: c.name.replace('_USDT', ''),
+            exchange: 'Gate.io',
+            fundingRate: (parseFloat(c.funding_rate) || 0) * 100,
+            // Gate.io contracts endpoint exposes mark_price + index_price;
+            // same Binance-style formula applies. Closes the 0/601 gap.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
+            fundingInterval: '8h' as const,
+            markPrice,
+            indexPrice,
+            nextFundingTime: (c.funding_next_apply || 0) * 1000,
+            type: 'cex' as const,
+          };
+        })
         .filter((i: any) => !isNaN(i.fundingRate));
     },
   },
