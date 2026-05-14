@@ -30,10 +30,41 @@ export async function GET(request: NextRequest) {
     'Variational': '1h',
   };
 
+  // Whether /api/v1/funding emits a populated `predictedRate` field for
+  // pairs on this venue. Saves partners the trial-and-error of hitting
+  // /funding and counting populated vs null. Added after AB-Samurai
+  // reported the discovery process (May 2026 coverage push).
+  //
+  // `source` describes how the value is derived:
+  //   - 'native'           — venue exposes a real next-window prediction
+  //                          field (CoinEx, OKX, Orderly, dYdX, HL).
+  //   - 'binance-formula'  — we compute clamp((mark-index)/index, ±0.05%)
+  //                          + 0.01% from the venue's own mark + index.
+  //   - 'continuous'       — venue uses a continuous velocity model;
+  //                          current rate IS the next-window expectation
+  //                          (gTrade).
+  //   - null               — venue doesn't expose mark + index in a way
+  //                          we can use; predictedRate is null on
+  //                          /funding rows for this venue.
+  const PREDICTED_RATE: Record<string, 'native' | 'binance-formula' | 'continuous' | null> = {
+    'Binance': 'binance-formula', 'Bybit': 'binance-formula', 'Bitget': 'binance-formula',
+    'BingX': 'binance-formula', 'Aster': 'binance-formula', 'Aevo': 'binance-formula',
+    'Coinbase': 'binance-formula', 'Phemex': 'binance-formula', 'MEXC': 'binance-formula',
+    'Deribit': 'binance-formula', 'Extended': 'binance-formula', 'WhiteBIT': 'binance-formula',
+    'Backpack': 'binance-formula', 'Paradex': 'binance-formula', 'edgeX': 'binance-formula',
+    'KuCoin': 'binance-formula', 'Bitfinex': 'binance-formula',
+    'OKX': 'native', 'CoinEx': 'native', 'Hyperliquid': 'native', 'Orderly': 'native',
+    'Kraken': 'native', 'dYdX': 'native',
+    'gTrade': 'continuous',
+    'HTX': null, 'Bitunix': null, 'BitMEX': null, 'Gate.io': null,
+    'GMX': null, 'Variational': null, 'Nado': null, 'Lighter': null,
+  };
+
   const exchanges = ALL_EXCHANGES.map(name => {
     const fees = EXCHANGE_FEES[name];
     const isDex = isExchangeDex(name);
     const tradeUrl = getExchangeTradeUrl(name, 'BTC');
+    const predictedSource = PREDICTED_RATE[name] ?? null;
 
     return {
       name,
@@ -55,6 +86,12 @@ export async function GET(request: NextRequest) {
         // `roundTripMakerPct` will be negative there.
       } : null,
       fundingInterval: FUNDING_INTERVALS[name] || 'unknown',
+      // Partner discoverability for the predictedRate coverage matrix.
+      // `true` means /api/v1/funding rows for this venue will have a
+      // non-null `predictedRate` field. `false` means it's intentionally
+      // null because the venue doesn't expose the needed inputs.
+      supportsPredictedRate: predictedSource !== null,
+      predictedRateSource: predictedSource,
       tradeUrlPattern: tradeUrl ? tradeUrl.replace('BTC', '{SYMBOL}') : null,
     };
   });
