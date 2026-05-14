@@ -391,7 +391,7 @@ function WatchPageInner() {
             </div>
           </div>
           <p className="text-sm text-neutral-500 max-w-2xl">
-            Get Telegram pings when any wallet you watch opens, closes, resizes, gets near liq, takes realized PnL, or pays funding — across Hyperliquid <em>and</em> gTrade (Arbitrum). Polled every 60s; pings deliver in &lt;90s.
+            Get Telegram pings when any wallet you watch opens, closes, resizes, gets near liq, takes realized PnL, or pays funding — across Hyperliquid <em>and</em> gTrade (Arbitrum). Polled every 60s; pings typically arrive within a minute or two.
           </p>
           {pingMsg && (
             <p className={`text-[11px] mt-2 ${pingState === 'error' ? 'text-rose-400' : 'text-emerald-400'}`}>
@@ -572,6 +572,14 @@ function WatchPageInner() {
                     }`}
                     onClick={() => setFilterAddr(isFiltered ? null : w.address)}
                     onKeyDown={e => {
+                      // Only fire the filter toggle when Enter/Space lands
+                      // directly on this <li>. Was: pressing Enter while
+                      // focused on the nested <Link>/<button> triggered
+                      // both the child's action (navigate / edit / remove)
+                      // AND mutated the filter state behind it. e.target
+                      // !== e.currentTarget catches all child-focused
+                      // keydowns regardless of nesting depth.
+                      if (e.target !== e.currentTarget) return;
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         setFilterAddr(isFiltered ? null : w.address);

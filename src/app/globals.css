@@ -394,10 +394,38 @@ option { background: #171717; color: #fff; }
     padding-left: 8px !important;
     padding-right: 8px !important;
   }
+  /* On phones, the nav-buttons row would push the right-hand icons off
+     screen. Let the nav scroll horizontally inside its own track so
+     search/alerts/sign-in stay reachable. */
+  header.terminal-header .terminal-header-nav {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  /* Collapse the search trigger to icon-only on phones so it doesn't
+     swallow the row. Hide the placeholder label + ⌘K hint. */
+  header.terminal-header .terminal-header-search-trigger {
+    min-width: 0 !important;
+    padding: 6px 8px !important;
+  }
+  header.terminal-header .terminal-header-search-trigger > span {
+    display: none !important;
+  }
   /* MarketTape sticky bar is OK at 28px — it stays */
   /* Make the StatusBar small-screen friendly */
   footer[aria-label="status-bar"], footer.status-bar {
     font-size: 9px !important;
+  }
+}
+
+/* Tablet / narrow-desktop band: 5 nav groups + 220px search trigger +
+   icon row don't fit under 1100px. Shrink the trigger and drop the ⌘K
+   hint chip so the row reflows without horizontal scroll. */
+@media (min-width: 768px) and (max-width: 1099px) {
+  header.terminal-header .terminal-header-search-trigger {
+    min-width: 140px !important;
+  }
+  header.terminal-header .terminal-header-search-trigger > span:last-child {
+    display: none !important;
   }
 }
 

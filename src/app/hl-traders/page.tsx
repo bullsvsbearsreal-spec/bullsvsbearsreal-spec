@@ -14,6 +14,7 @@ import {
   Trophy, Activity, ArrowLeftRight, ExternalLink, Copy, ChevronRight, X,
   Flame, Target, Zap, Download, Search, Layers,
 } from 'lucide-react';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -358,11 +359,11 @@ function TraderDrawer({ address, onClose }: { address: string; onClose: () => vo
   });
 
   const [copied, setCopied] = useState(false);
-  const copyAddr = () => {
-    navigator.clipboard.writeText(address).then(() => {
+  const copyAddr = async () => {
+    if (await copyToClipboard(address)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    });
+    }
   };
 
   return (

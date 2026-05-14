@@ -74,11 +74,17 @@ const difficultyColor: Record<string, string> = {
 /* ─── Platform stats ──────────────────────────────────────────── */
 
 const platformStats = [
+  // Floors are deliberately below current prod numbers so they stay
+  // honest across normal market drawdowns. As of May 2026 live prod
+  // shows ~6,700 perp pairs across 27 venues totaling ~$94B OI and the
+  // app exposes 130+ page routes — but printing those exact numbers
+  // here just goes stale. ALL_EXCHANGES is the only thing that derives
+  // itself.
   { icon: Globe, label: `${ALL_EXCHANGES.length} exchanges`, desc: 'CEX and DEX data in one place' },
   { icon: Activity, label: 'Real-time funding', desc: 'Live rates updated every 30-60s' },
-  { icon: Layers, label: '$60B+ open interest', desc: 'Across 2,800+ trading pairs' },
+  { icon: Layers, label: '$80B+ open interest', desc: 'Across 6,000+ trading pairs' },
   { icon: Zap, label: 'Liquidation tracking', desc: 'Cascades spotted as they happen' },
-  { icon: Database, label: '30+ dashboards', desc: 'Screener, heatmaps, options & more' },
+  { icon: Database, label: '50+ dashboards', desc: 'Screener, heatmaps, options & more' },
   { icon: BarChart3, label: 'Options analytics', desc: 'Max pain, IV smile, put/call ratios' },
 ];
 

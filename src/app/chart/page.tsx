@@ -591,6 +591,11 @@ function ChartPageInner() {
       if (t instanceof HTMLInputElement || t instanceof HTMLTextAreaElement || (t as HTMLElement).isContentEditable) return;
       if (e.key === 'Escape' && symbolOpen) { setSymbolOpen(false); setFocusedIndex(-1); return; }
       if (e.key === 't' && isCrypto && !symbolOpen) { setTapeVisible(v => !v); return; }
+      // Don't hijack 1-7 timeframe shortcut when the symbol picker is
+      // open. Was silently swapping the chart's timeframe behind the
+      // picker if focus left the search input (e.g., user clicked the
+      // dropdown chevron, then pressed a number to type a symbol query).
+      if (symbolOpen) return;
       const idx = parseInt(e.key) - 1;
       if (idx >= 0 && idx < TIMEFRAMES.length) setIntervalAndSync(TIMEFRAMES[idx].value);
     }

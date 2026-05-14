@@ -44,9 +44,17 @@ const teamMembers: TeamMember[] = [
 
 const projectStats = [
   { value: `${ALL_EXCHANGES.length}`, label: 'Exchanges', sub: 'CEX + DEX' },
-  { value: '8,000+', label: 'Pairs', sub: 'Updated live' },
+  // Was "8,000+ Pairs · Updated live" — aggregator's actual pair count
+  // sits around ~8.5k right now but fluctuates, and we don't pin it
+  // anywhere in code, so the literal is a marketing guess. "26 endpoints"
+  // is the honest, verifiable count (matches /api/v1/openapi).
+  { value: '26', label: 'Endpoints', sub: 'REST API' },
   { value: '60s', label: 'Refresh', sub: 'Funding cadence' },
-  { value: '24/7', label: 'Uptime', sub: 'No batch jobs' },
+  // Was "24/7 Uptime · No batch jobs". 13 cron jobs run on 1-30 min
+  // timers + one daily 12:00 UTC snapshot — those ARE batch jobs.
+  // The serving layer is 24/7 (DO App Platform) but the wording was
+  // contradictory.
+  { value: '24/7', label: 'Live data', sub: 'WS aggregator' },
 ];
 
 const principles = [

@@ -165,7 +165,7 @@ function NewsPreview() {
     <div style={{ display: 'flex', flexDirection: 'column', width: '100%', borderRadius: 14, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)', background: 'rgba(255,255,255,0.02)' }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'rgba(245,158,11,0.05)' }}>
         <span style={{ width: 4, height: 14, background: '#f59e0b', borderRadius: 2, marginRight: 8, display: 'flex' }} />
-        <span style={{ fontSize: 11, fontWeight: 800, color: '#fafafa', textTransform: 'uppercase', letterSpacing: 1.4 }}>LATEST NEWS · 21+ SOURCES</span>
+        <span style={{ fontSize: 11, fontWeight: 800, color: '#fafafa', textTransform: 'uppercase', letterSpacing: 1.4 }}>LATEST NEWS · AGGREGATED FEED</span>
       </div>
       {articles.map((a, i) => (
         <div key={i} style={{ display: 'flex', flexDirection: 'column', padding: '11px 16px', borderBottom: i < articles.length - 1 ? '1px solid rgba(255,255,255,0.03)' : 'none' }}>
@@ -511,7 +511,10 @@ function badgesForVariant(variant: Variant): { label: string; color: string }[] 
     case 'liquidations':
       return [{ label: 'Live Feed', color: REKT }, { label: `${ALL_EXCHANGES.length}+ Venues`, color: ACCENT }];
     case 'news':
-      return [{ label: '21+ Sources', color: '#f59e0b' }, { label: 'Live', color: PUMP }];
+      // Was "21+ Sources" — a stunt count that lied (we have 25 RSS feeds
+      // + CryptoCompare + CryptoPanic, plus the feed list churns). The
+      // social-share value is "we aggregate news," not a number.
+      return [{ label: 'Aggregated Feed', color: '#f59e0b' }, { label: 'Live', color: PUMP }];
     case 'donate':
       return [{ label: 'BTC · ETH · SOL · HYPE', color: '#f43f5e' }, { label: 'Day-One Perk', color: ACCENT }];
     case 'options':
@@ -521,7 +524,10 @@ function badgesForVariant(variant: Variant): { label: string; color: string }[] 
     case 'heatmap':
       return [{ label: 'Top 100', color: ACCENT }, { label: 'Live', color: PUMP }];
     case 'changelog':
-      return [{ label: '30 New Tools', color: ACCENT }, { label: 'All Free', color: PUMP }];
+      // Was "30 New Tools" — froze in time the night someone wrote it.
+      // /changelog now is a rolling log; the badge shouldn't undercount it
+      // or imply we stopped shipping.
+      return [{ label: 'Recent Releases', color: ACCENT }, { label: 'All Free', color: PUMP }];
     default:
       return [{ label: `${ALL_EXCHANGES.length}+ Exchanges`, color: ACCENT }, { label: 'LIVE', color: PUMP }];
   }

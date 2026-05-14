@@ -8,6 +8,7 @@ import Footer from '@/components/Footer';
 import BookmarkStar from '@/components/BookmarkStar';
 import TraderHistoryChart, { type PnlSeries } from '@/components/TraderHistoryChart';
 import { useRecordTraderVisit } from '@/hooks/useRecentTraders';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 import Link from 'next/link';
 import {
   Activity, ExternalLink, Copy, ChevronLeft, Layers,
@@ -288,12 +289,12 @@ export default function TraderUnifiedPage() {
   const address = /^0x[a-fA-F0-9]{40}$/.test(rawAddress) ? rawAddress.toLowerCase() : null;
 
   const [copied, setCopied] = useState(false);
-  const copyAddr = () => {
+  const copyAddr = async () => {
     if (!address) return;
-    navigator.clipboard.writeText(address).then(() => {
+    if (await copyToClipboard(address)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
-    });
+    }
   };
 
   // Three parallel fetches — GMX Arbitrum, GMX Avalanche, HL. All share

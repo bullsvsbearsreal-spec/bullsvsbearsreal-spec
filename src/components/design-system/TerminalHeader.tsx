@@ -234,12 +234,21 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
     router.push(r.href);
   };
   return (
-    <header style={{ position: 'sticky', top: 0, zIndex: 40, height: 48, flexShrink: 0, background: 'rgba(7,9,13,0.92)', backdropFilter: 'blur(8px)', borderBottom: '1px solid var(--hub-border)', display: 'flex', alignItems: 'center', padding: '0 14px', gap: 4 }}>
+    <header
+      aria-label="terminal-header"
+      className="terminal-header"
+      style={{ position: 'sticky', top: 0, zIndex: 40, height: 48, flexShrink: 0, background: 'rgba(7,9,13,0.92)', backdropFilter: 'blur(8px)', borderBottom: '1px solid var(--hub-border)', display: 'flex', alignItems: 'center', padding: '0 14px', gap: 4 }}
+    >
       <Link href="/home" aria-label="Home" style={{ display: 'inline-flex', alignItems: 'center', textDecoration: 'none', padding: '0 4px', height: '100%' }}>
         <BrandMark size="md" />
       </Link>
       <div style={{ width: 1, height: 24, background: 'var(--hub-border-subtle)', margin: '0 8px' }} />
-      <nav style={{ display: 'flex', alignItems: 'center', height: '100%' }}>
+      {/* The nav-group buttons (5 dropdowns × ~110px each) plus the
+          search trigger + 3 icon buttons + sign-in fill the full
+          1100-1200px width. Below that the nav was pushing the
+          right-hand cluster off-screen. Globals.css collapses these
+          on narrow viewports — see the "terminal-header" rules. */}
+      <nav className="terminal-header-nav" style={{ display: 'flex', alignItems: 'center', height: '100%', minWidth: 0, overflowX: 'auto', flexShrink: 1 }}>
         {NAV_GROUPS.map(g => {
           const isOpen = openKey === g.key;
           const groupActive = g.items.some(it => it.href === pathname);
@@ -331,8 +340,9 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
       <button
         type="button"
         aria-label="Open search palette"
+        className="terminal-header-search-trigger"
         onClick={() => { setSearchOpen(true); onSearch?.(); }}
-        style={{ background: 'var(--hub-darker)', border: '1px solid var(--hub-border)', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--fg-subtle)', fontFamily: 'var(--font-sans)', fontSize: 12, cursor: 'pointer', minWidth: 220 }}
+        style={{ background: 'var(--hub-darker)', border: '1px solid var(--hub-border)', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--fg-subtle)', fontFamily: 'var(--font-sans)', fontSize: 12, cursor: 'pointer', minWidth: 220, flexShrink: 0 }}
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
         <span style={{ flex: 1, textAlign: 'left' }}>Search or jump to…</span>

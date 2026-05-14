@@ -631,7 +631,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/momentum': {
     title: 'Momentum Screener',
-    description: 'Crypto momentum setup screener scoring coins on price move, volume surge, funding alignment, and OI backing. Surfaces long-biased and short-biased setups across 30+ venues.',
+    description: `Crypto momentum setup screener scoring coins on price move, volume surge, funding alignment, and OI backing. Surfaces long-biased and short-biased setups across ${ALL_EXCHANGES.length}+ venues.`,
   },
   '/liq-calculator': {
     title: 'Liquidation Calculator',

@@ -8,7 +8,11 @@ interface RecentChipsProps { recent: ChipItem[]; pinned: ChipItem[]; onClose?: (
 export default function RecentChips({ recent, pinned, onClose, className }: RecentChipsProps) {
   return (
     <div className={className} style={{ display: 'flex', alignItems: 'center', gap: 18, padding: '8px 18px', borderBottom: '1px solid var(--hub-border-subtle)', background: 'var(--hub-black)', flexShrink: 0, overflowX: 'auto' }}>
-      <ChipGroup label="Recent" iconClock items={recent} />
+      {/* Labeled "Popular" not "Recent" — the `recent` items passed by
+          TerminalShell are a curated static list of high-traffic routes,
+          not the user's actual visit history. "Recent" implied
+          auto-tracking that doesn't happen. */}
+      <ChipGroup label="Popular" iconClock items={recent} />
       <div style={{ width: 1, height: 18, background: 'var(--hub-border-subtle)', flexShrink: 0 }} />
       <ChipGroup label="Pinned" iconStar items={pinned} />
       <div style={{ flex: 1 }} />

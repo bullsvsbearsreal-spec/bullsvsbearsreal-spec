@@ -72,21 +72,27 @@ interface GMXDossier {
   openPositions: GMXPositionRow[];
 }
 
+// Matches the actual shape returned by `/api/hl-traders/[address]` —
+// see src/app/api/hl-traders/[address]/route.ts. The earlier version of
+// this type modeled HL's raw clearinghouseState payload (szi/entryPx/
+// markPx), which the route normalises away before responding. Result was
+// every HL trader showed an empty position list on /trader-watch.
 interface HLPositionRow {
   coin: string;
-  szi: number;       // signed: + long / - short
-  entryPx: number | null;
-  markPx: number | null;
-  unrealizedPnl: number | null;
-  positionValue: number;
-  leverage: { type: string; value: number };
-  liquidationPx: number | null;
-  roePct: number | null;
+  isLong: boolean;
+  size: number;                  // absolute base-asset size
+  sizeUsd: number;
+  entryPrice: number;
+  liquidationPrice: number | null;
+  unrealizedPnl: number;
+  roePct: number;
+  leverage: number | null;       // already-unwrapped numeric value
+  leverageType: string | null;
 }
 
 interface HLResponse {
   address: string;
-  positions: HLPositionRow[];
+  openPositions: HLPositionRow[];
 }
 
 interface FundingRow {
@@ -173,11 +179,17 @@ async function fetchHLPositions(address: string): Promise<NormalizedPosition[]> 
     });
     if (!res.ok) return [];
     const json = (await res.json()) as HLResponse;
-    const positions = json.positions ?? [];
+    const positions = json.openPositions ?? [];
     return positions.map(p => {
-      const isLong = p.szi >= 0;
-      const liq = p.liquidationPx;
-      const mark = p.markPx;
+      // HL's API doesn't surface mark directly on positions — derive it
+      // from entry + unrealizedPnl / signedSize. Matches the convention
+      // in CLAUDE.md ("HL clearinghouseState doesn't return mark price —
+      // derive via mark = entryPx + unrealizedPnl / szi").
+      const signedSize = p.isLong ? p.size : -p.size;
+      const mark = (signedSize !== 0 && Number.isFinite(p.entryPrice) && Number.isFinite(p.unrealizedPnl))
+        ? p.entryPrice + p.unrealizedPnl / signedSize
+        : null;
+      const liq = p.liquidationPrice;
       const liqDist = (liq != null && mark != null && mark > 0)
         ? (Math.abs(mark - liq) / mark) * 100
         : null;
@@ -186,15 +198,15 @@ async function fetchHLPositions(address: string): Promise<NormalizedPosition[]> 
         traderLabel: trunc(address),
         venue: 'HL' as const,
         symbol: (p.coin || '').toUpperCase(),
-        side: isLong ? 'long' : 'short',
-        sizeUsd: p.positionValue,
-        entryPrice: p.entryPx ?? 0,
+        side: p.isLong ? 'long' : 'short',
+        sizeUsd: p.sizeUsd,
+        entryPrice: p.entryPrice,
         markPrice: mark,
         unrealizedPnl: p.unrealizedPnl,
         pnlPct: p.roePct,
         liqPrice: liq,
         liqDistPct: liqDist,
-        leverage: p.leverage?.value ?? null,
+        leverage: p.leverage,
         funding8hPct: null,
       };
     });
@@ -361,7 +373,8 @@ export default function TraderWatchPage() {
           <h1 className="text-2xl font-bold text-white mb-2">No traders watched yet</h1>
           <p className="text-neutral-500 max-w-md mx-auto mb-8">
             Star traders on the leaderboards and they show up here — all their open
-            positions, funding exposure, and liq distance on one screen.
+            positions and funding exposure on one screen (plus liq distance for
+            Hyperliquid; GMX subsquid doesn&apos;t expose liq prices).
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <Link

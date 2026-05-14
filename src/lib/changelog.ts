@@ -60,7 +60,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       '6 trigger types per wallet: Position opened / closed / size changed / near liq / realized PnL / funding paid — each individually toggleable',
       'Tunable thresholds: size % delta, distance to liq, realized PnL $, funding $ — gear icon on each watched wallet opens the editor',
       'Test-ping button verifies your Telegram link works without waiting for a real event',
-      'Polled every 60s via the existing snapshot cron; events deliver in < 90s of the on-chain change',
+      'Polled every 60s via the existing snapshot cron; events typically deliver within a minute or two of the on-chain change',
       'Per-event venue tag (Hyperliquid / gTrade) so you know which book the move came from',
       'Multi-tenant — each user owns their own wallets + thresholds, capped at 25 per account',
       'Dedupe + mutex protection against concurrent runs so you never get duplicate pings',

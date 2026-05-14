@@ -5,6 +5,7 @@ import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { formatRateAdaptive, PERIOD_HOURS, PERIOD_LABELS } from '../../utils';
 import { isExchangeDex, getArbRoundTripFee } from '@/lib/constants';
+import { copyToClipboard } from '@/lib/copyToClipboard';
 import { ArrowUpDown, ArrowUp, ArrowDown, ChevronDown, ChevronRight, TrendingUp, BarChart3, DollarSign, Activity, Filter, AlertTriangle, Shield, TrendingDown, Download, Link2, Check, GitCompareArrows, Search, X } from 'lucide-react';
 import Pagination from '../Pagination';
 
@@ -256,7 +257,7 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
     URL.revokeObjectURL(url);
   };
 
-  const copyShareLink = () => {
+  const copyShareLink = async () => {
     const params = new URLSearchParams();
     if (gradeFilter !== 'all') params.set('grade', gradeFilter);
     if (venueFilter !== 'all') params.set('venue', venueFilter);
@@ -269,10 +270,10 @@ export default function FundingArbitrageView({ arbitrageData, oiMap, markPrices,
     const base = window.location.origin + window.location.pathname;
     const qs = params.toString();
     const url = qs ? `${base}?${qs}#arbitrage` : `${base}#arbitrage`;
-    navigator.clipboard.writeText(url).then(() => {
+    if (await copyToClipboard(url)) {
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 2000);
-    });
+    }
   };
 
   // Summary stats

@@ -232,7 +232,9 @@ export default function ETFPage() {
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
-            <DataFreshness exchangeCount={0} sources={['Polygon.io']} lastUpdated={lastUpdate} />
+            {/* Source was 'Polygon.io' but /api/etf actually fetches
+                query1.finance.yahoo.com. Mismatched attribution. */}
+            <DataFreshness exchangeCount={0} sources={['Yahoo Finance']} lastUpdated={lastUpdate} />
           </div>
         </div>
 

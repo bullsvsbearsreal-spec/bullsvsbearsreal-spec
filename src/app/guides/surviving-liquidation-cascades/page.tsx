@@ -6,6 +6,7 @@ import {
   ArrowLeft, Clock, AlertTriangle, CheckCircle2, ExternalLink,
   TrendingDown, Zap, Activity, Eye, Shield, Layers,
 } from 'lucide-react';
+import { ALL_EXCHANGES } from '@/lib/constants';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -200,7 +201,7 @@ export default function SurvivingLiquidationCascadesPage() {
                       positions — the longs are leveraged and bullish. That&apos;s fuel for a
                       LONG-side cascade if price reverses. Mirror for shorts. See{' '}
                       <Link href="/funding" className="text-hub-yellow hover:underline">/funding</Link>{' '}
-                      for live rates across 30+ venues.
+                      for live rates across {ALL_EXCHANGES.length}+ venues.
                     </>
                   ),
                 },
