@@ -392,10 +392,18 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const rate = parseFloat(market.nextFundingRate);
           if (isNaN(rate)) return null;
           const normalized = normalizeSymbol(key, 'dydx');
+          // dYdX's perpetualMarkets endpoint returns `nextFundingRate` which
+          // is semantically the predicted rate for the upcoming settlement —
+          // their indexer doesn't expose the last-applied funding rate
+          // separately. Surface the same value as predictedRate too so
+          // partners polling for next-window forecasts get a populated
+          // field on dYdX pairs.
+          const ratePct = rate * 100;
           return {
             symbol: normalized.symbol,
             exchange: 'dYdX',
-            fundingRate: rate * 100, // native 1h fraction → %
+            fundingRate: ratePct, // native 1h fraction → %
+            predictedRate: ratePct,
             fundingInterval: '1h' as const,
             markPrice: parseFloat(market.oraclePrice) || 0,
             indexPrice: parseFloat(market.oraclePrice) || 0,
@@ -973,13 +981,19 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const actualRate = overrides.has(item.symbol)
             ? (overrides.get(item.symbol) ?? 0) * 100
             : (parseFloat(item.fundingFeeRate) || 0) * 100;
+          const markPrice = parseFloat(item.markPrice) || 0;
+          const indexPrice = parseFloat(item.indexPrice) || 0;
           return {
             symbol: sym,
             exchange: 'KuCoin',
             fundingRate: actualRate,
+            // KuCoin /contracts/active returns markPrice + indexPrice on
+            // every USDTM perp. Same Binance-style formula applies — closes
+            // the 0/524 coverage gap partners flagged.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
             fundingInterval: '8h' as const,
-            markPrice: parseFloat(item.markPrice) || 0,
-            indexPrice: parseFloat(item.indexPrice) || 0,
+            markPrice,
+            indexPrice,
             nextFundingTime: Number(item.nextFundingRateTime) || (Date.now() + 28800000),
             type: 'cex' as const,
           };
@@ -1103,15 +1117,24 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any) => {
           let sym = item[0].replace(/^t/, '').replace('F0:USTF0', '');
           if (sym === 'XBT') sym = 'BTC';
+          const markPrice = parseFloat(item[15]) || 0;
+          const indexPrice = parseFloat(item[4]) || 0;
           return {
-          symbol: sym,
-          exchange: 'Bitfinex',
-          fundingRate: (parseFloat(item[12]) || 0) * 100, // [12] = CURRENT_FUNDING (8h rate)
-          fundingInterval: '8h' as const,
-          markPrice: parseFloat(item[15]) || 0,
-          indexPrice: parseFloat(item[4]) || 0,
-          nextFundingTime: item[8] || Date.now() + 28800000,
-          type: 'cex' as const,
+            symbol: sym,
+            exchange: 'Bitfinex',
+            fundingRate: (parseFloat(item[12]) || 0) * 100, // [12] = CURRENT_FUNDING (8h rate)
+            // Bitfinex deriv status exposes MARK_PRICE [15] + SPOT_PRICE [4]
+            // (the underlying that serves as the index proxy). Same
+            // Binance-style formula applies — closes the 0/48 gap.
+            // Bitfinex also clamps funding to ±0.25% via [22]/[23] but
+            // that's already factored into the realized rate; we still
+            // apply our standard ±0.05% formula clamp for the prediction.
+            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
+            fundingInterval: '8h' as const,
+            markPrice,
+            indexPrice,
+            nextFundingTime: item[8] || Date.now() + 28800000,
+            type: 'cex' as const,
           };
         })
         .filter((item: any) => !isNaN(item.fundingRate) && item.symbol.length > 0);

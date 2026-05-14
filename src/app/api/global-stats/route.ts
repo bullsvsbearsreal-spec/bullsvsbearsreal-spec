@@ -170,8 +170,15 @@ export async function GET() {
       result.altcoin_season_index = altSeasonIndex;
     }
 
-    lastGood = result;
-    if (isDBConfigured()) setCache(DB_CACHE_KEY, result, DB_CACHE_TTL).catch(e => console.warn('[global-stats] cache write failed:', e));
+    // Only pin lastGood / DB cache when we have real numbers. Was: cached
+    // a `{total_market_cap: { usd: 0 }, ...}` payload to DB when every
+    // upstream returned bogus data. lastGood would then serve "$0 mcap"
+    // to every caller until the next successful fetch.
+    const hasRealMcap = result.total_market_cap?.usd > 0;
+    if (hasRealMcap) {
+      lastGood = result;
+      if (isDBConfigured()) setCache(DB_CACHE_KEY, result, DB_CACHE_TTL).catch(e => console.warn('[global-stats] cache write failed:', e));
+    }
     return NextResponse.json(result, { headers: CACHE_HEADERS });
   }
 
