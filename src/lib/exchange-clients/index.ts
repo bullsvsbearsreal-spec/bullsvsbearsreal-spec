@@ -12,12 +12,14 @@ import { binanceClient } from './binance';
 import { bybitClient } from './bybit';
 import { okxClient } from './okx';
 import { bitgetClient } from './bitget';
+import { mexcClient } from './mexc';
 
 const CLIENTS: Record<SupportedExchange, ExchangeClient> = {
   Binance: binanceClient,
   Bybit: bybitClient,
   OKX: okxClient,
   Bitget: bitgetClient,
+  MEXC: mexcClient,
 };
 
 export function getExchangeClient(exchange: SupportedExchange): ExchangeClient {
