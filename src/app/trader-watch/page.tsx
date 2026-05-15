@@ -595,7 +595,11 @@ export default function TraderWatchPage() {
                 ))
               )}
               {sorted.map((p, i) => (
-                <PositionRow key={`${p.trader}-${p.venue}-${p.symbol}-${i}`} p={p} />
+                <PositionRow
+                  key={`${p.trader}-${p.venue}-${p.symbol}-${i}`}
+                  p={p}
+                  onTraderClick={(addr) => setFilterAddr(prev => prev === addr ? null : addr)}
+                />
               ))}
             </tbody>
           </table>
@@ -691,7 +695,7 @@ function Th({
   );
 }
 
-function PositionRow({ p }: { p: NormalizedPosition }) {
+function PositionRow({ p, onTraderClick }: { p: NormalizedPosition; onTraderClick: (addr: string) => void }) {
   const sideColor = p.side === 'long' ? 'text-green-400 bg-green-500/[0.08]' : 'text-red-400 bg-red-500/[0.08]';
   const pnlColor = (p.unrealizedPnl ?? 0) >= 0 ? 'text-green-400' : 'text-red-400';
   const liqColor = p.liqDistPct == null ? 'text-neutral-600'
@@ -707,12 +711,55 @@ function PositionRow({ p }: { p: NormalizedPosition }) {
     ? 'border-t border-red-500/30 bg-red-500/[0.04] hover:bg-red-500/[0.07]'
     : 'border-t border-white/[0.04] hover:bg-white/[0.02]';
 
+  // Funding direction: which way is the carry flowing for THIS side?
+  // Long + positive funding → trader pays (red, bleeding)
+  // Short + negative funding → trader pays (red, bleeding)
+  // Long + negative funding → trader receives (green, earning)
+  // Short + positive funding → trader receives (green, earning)
+  // null when funding data isn't available for this symbol. The watcher
+  // mirror-trading the position would see the same direction, so the
+  // color works for them too.
+  let fundingColor = 'text-neutral-500';
+  let fundingTitle: string | undefined;
+  if (p.funding8hPct != null) {
+    const paying = (p.side === 'long' && p.funding8hPct > 0) || (p.side === 'short' && p.funding8hPct < 0);
+    if (Math.abs(p.funding8hPct) < 0.001) {
+      // Near-zero — leave neutral
+    } else if (paying) {
+      fundingColor = 'text-red-400';
+      fundingTitle = `${p.side} pays ${Math.abs(p.funding8hPct).toFixed(3)}% every 8h`;
+    } else {
+      fundingColor = 'text-green-400';
+      fundingTitle = `${p.side} receives ${Math.abs(p.funding8hPct).toFixed(3)}% every 8h`;
+    }
+  }
+
+  // Venue badge — colored chip instead of grey monospace text.
+  const venueStyle =
+    p.venue === 'GMX' ? 'bg-blue-500/[0.10] text-blue-300 border-blue-400/20' :
+    p.venue === 'HL' ? 'bg-purple-500/[0.10] text-purple-300 border-purple-400/20' :
+    'bg-amber-500/[0.10] text-amber-300 border-amber-400/20';
+
   return (
     <tr className={rowClass}>
-      <td className="px-3 py-2.5 font-mono text-[11px] text-neutral-300 whitespace-nowrap">
-        {p.traderLabel}
+      <td className="px-3 py-2.5 font-mono text-[11px] whitespace-nowrap">
+        {/* Click trader label to filter — same action as the chip up
+            top. Lets the user pivot to a single-trader view from any
+            row without scrolling back up to the chip strip. */}
+        <button
+          type="button"
+          onClick={() => onTraderClick(p.trader)}
+          className="text-neutral-300 hover:text-hub-yellow transition-colors"
+          title="Filter table to this trader"
+        >
+          {p.traderLabel}
+        </button>
       </td>
-      <td className="px-3 py-2.5 font-mono text-[10px] text-neutral-500">{p.venue}</td>
+      <td className="px-3 py-2.5">
+        <span className={`inline-flex items-center text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${venueStyle}`}>
+          {p.venue}
+        </span>
+      </td>
       <td className="px-3 py-2.5">
         <span className="inline-flex items-center gap-1.5">
           <TokenIconSimple symbol={p.symbol} size={16} />
@@ -749,7 +796,10 @@ function PositionRow({ p }: { p: NormalizedPosition }) {
           </>
         )}
       </td>
-      <td className="px-3 py-2.5 font-mono text-neutral-400 whitespace-nowrap">
+      <td
+        className={`px-3 py-2.5 font-mono whitespace-nowrap ${fundingColor}`}
+        title={fundingTitle}
+      >
         {fmtPct(p.funding8hPct, { sign: true, digits: 3 })}
       </td>
       <td className="px-3 py-2.5">
@@ -838,7 +888,10 @@ function ActivityFeed({
               a.kind === 'flipped' ? 'text-orange-400' :
               a.kind === 'increased' ? 'text-blue-400' :
               'text-red-400';
-            const ago = Math.floor((Date.now() - a.timestamp) / 1000);
+            // Tick driven — was Date.now() inline, evaluated once per
+            // render so "30s ago" stayed frozen between the 30s refresh
+            // ticks and jumped suddenly. nowTick updates every 1s.
+            const ago = Math.floor((nowTick - a.timestamp) / 1000);
             const agoStr = ago < 60 ? `${ago}s` : ago < 3600 ? `${Math.floor(ago / 60)}m` : `${Math.floor(ago / 3600)}h`;
             return (
               <Link
