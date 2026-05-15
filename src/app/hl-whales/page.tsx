@@ -634,7 +634,11 @@ export default function HLWhalesPage() {
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg p-4 mb-4 animate-slide-down">
             <div className="flex items-center justify-between mb-3">
               <span className="text-white text-sm font-medium">Track a Hyperliquid Wallet</span>
-              <button onClick={() => setShowAddCustom(false)} className="text-neutral-500 hover:text-white transition-colors">
+              <button
+                onClick={() => setShowAddCustom(false)}
+                aria-label="Close add-wallet form"
+                className="text-neutral-500 hover:text-white transition-colors"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>

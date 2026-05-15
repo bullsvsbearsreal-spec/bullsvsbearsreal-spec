@@ -221,8 +221,20 @@ export async function GET(request: NextRequest) {
     meta: { timestamp: Date.now(), returned: trimmed.length },
   };
 
-  cache.set(cacheKey, { body, ts: Date.now() });
+  // Don't pin an all-empty listings response — if every upstream
+  // (Binance/OKX/Bybit announcements feed) failed this tick we'd serve
+  // "no recent listings anywhere" for 60s post-recovery. Listings is
+  // a low-cadence feed so a real day with zero new listings is rare —
+  // empty almost always means upstream blew up.
+  if (rows.length > 0) {
+    cache.set(cacheKey, { body, ts: Date.now() });
+  }
   return NextResponse.json(body, {
-    headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+    headers: {
+      'X-Cache': 'MISS',
+      'Cache-Control': rows.length > 0
+        ? 'public, s-maxage=60, stale-while-revalidate=300'
+        : 'no-store',
+    },
   });
 }

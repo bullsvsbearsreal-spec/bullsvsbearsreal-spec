@@ -237,8 +237,21 @@ export async function GET(request: NextRequest) {
     meta: { timestamp: Date.now(), minScore, returned: trimmed.length },
   };
 
-  cache.set(cacheKey, { body, ts: Date.now() });
+  // Don't pin an all-empty body — if every upstream (tickers / funding /
+  // OI) was down for this tick we'd otherwise serve "no momentum
+  // setups anywhere" for 90s even after upstreams recover. The empty
+  // case is still returned to the caller (with no-store on the
+  // Cache-Control) so they see fresh-but-empty rather than a stale
+  // zero from the L1 cache.
+  if (trimmed.length > 0) {
+    cache.set(cacheKey, { body, ts: Date.now() });
+  }
   return NextResponse.json(body, {
-    headers: { 'X-Cache': 'MISS', 'Cache-Control': 'public, s-maxage=90, stale-while-revalidate=180' },
+    headers: {
+      'X-Cache': 'MISS',
+      'Cache-Control': trimmed.length > 0
+        ? 'public, s-maxage=90, stale-while-revalidate=180'
+        : 'no-store',
+    },
   });
 }

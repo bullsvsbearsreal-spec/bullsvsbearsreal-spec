@@ -225,7 +225,13 @@ export default function SpreadsPage() {
                 <ExchangeLogo exchange={e} size={14} />
                 {e}
                 {state.tf !== 'live' && !hasChart && <span className="w-1.5 h-1.5 rounded-full bg-neutral-700 shrink-0" title="No chart data — table only" />}
-                <button onClick={() => actions.toggleExchange(e)} className="text-neutral-600 hover:text-white"><X className="w-3 h-3" /></button>
+                <button
+                  onClick={() => actions.toggleExchange(e)}
+                  aria-label={`Remove ${e} from comparison`}
+                  className="text-neutral-600 hover:text-white"
+                >
+                  <X className="w-3 h-3" />
+                </button>
               </span>
             );
           })}

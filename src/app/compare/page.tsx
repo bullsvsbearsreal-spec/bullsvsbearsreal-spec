@@ -180,7 +180,11 @@ export default function ComparePage() {
                 <TokenIconSimple symbol={sym} size={18} />
                 <span className="text-hub-yellow font-semibold text-sm">{sym}</span>
                 {selected.length > 1 && (
-                  <button onClick={() => handleRemove(sym)} className="text-hub-yellow/50 hover:text-hub-yellow transition-colors ml-1">
+                  <button
+                    onClick={() => handleRemove(sym)}
+                    aria-label={`Remove ${sym} from comparison`}
+                    className="text-hub-yellow/50 hover:text-hub-yellow transition-colors ml-1"
+                  >
                     <X className="w-3.5 h-3.5" />
                   </button>
                 )}

@@ -37,25 +37,26 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/orderflow',          priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/orderbook-imbalance', priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/cvd',                priority: 0.7, changeFrequency: 'hourly' as const },
-    { path: '/skew',               priority: 0.7, changeFrequency: 'hourly' as const },
+    // /skew, /funding-flips, /funding-leaderboard, /funding-predictor
+    // all 308-redirect to /options or /funding (consolidated May 2026).
+    // Keeping them in the sitemap just trains Google to keep crawling
+    // dead URLs — let the redirect-on-discovery do its job and drop
+    // them from the list.
     { path: '/premiums',           priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/funding-countdown',  priority: 0.7, changeFrequency: 'hourly' as const },
-    { path: '/funding-flips',      priority: 0.7, changeFrequency: 'hourly' as const },
-    { path: '/funding-leaderboard', priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/funding-paid',       priority: 0.7, changeFrequency: 'hourly' as const },
-    { path: '/funding-predictor',  priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/perp-dex-volume',    priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/volume-share',       priority: 0.7, changeFrequency: 'hourly' as const },
-    { path: '/whale-alert',        priority: 0.7, changeFrequency: 'hourly' as const },
+    // /whale-alert → /liquidations (consolidated May 2026).
     { path: '/hl-whales',          priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/hl-traders',         priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/hl-vaults',          priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/gmx-traders',        priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/smart-money',        priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/smart-money/leaderboard', priority: 0.7, changeFrequency: 'hourly' as const },
-    { path: '/smart-money-composite', priority: 0.7, changeFrequency: 'hourly' as const },
+    // /smart-money-composite → /smart-money (consolidated May 2026).
     { path: '/whale-liq',          priority: 0.7, changeFrequency: 'hourly' as const },
-    { path: '/wallet-tracker',     priority: 0.7, changeFrequency: 'hourly' as const },
+    // /wallet-tracker → /watch (consolidated May 2026).
     { path: '/watch',              priority: 0.7, changeFrequency: 'weekly' as const },
     { path: '/breakouts',          priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/momentum',           priority: 0.7, changeFrequency: 'hourly' as const },
@@ -86,7 +87,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // ─── Institutional flow + on-chain ────────────────────────────────
     { path: '/etf',                priority: 0.7, changeFrequency: 'daily' as const },
     { path: '/etf-flows',          priority: 0.7, changeFrequency: 'daily' as const },
-    { path: '/etf-counterfactual', priority: 0.6, changeFrequency: 'daily' as const },
+    // /etf-counterfactual → /etf-flows (consolidated May 2026).
     { path: '/bitcoin-treasuries', priority: 0.7, changeFrequency: 'daily' as const },
     { path: '/crypto-stocks',      priority: 0.6, changeFrequency: 'daily' as const },
     { path: '/stablecoin-flows',   priority: 0.7, changeFrequency: 'daily' as const },
@@ -98,8 +99,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/gas-tracker',        priority: 0.6, changeFrequency: 'hourly' as const },
     { path: '/protocol-revenue',   priority: 0.6, changeFrequency: 'daily' as const },
     { path: '/validators',         priority: 0.6, changeFrequency: 'daily' as const },
-    { path: '/restaking',          priority: 0.7, changeFrequency: 'daily' as const },
-    { path: '/restaking-delta',    priority: 0.6, changeFrequency: 'daily' as const },
+    // /restaking + /restaking-delta → /staking (consolidated May 2026).
     { path: '/staking',            priority: 0.6, changeFrequency: 'daily' as const },
     { path: '/yields',             priority: 0.7, changeFrequency: 'daily' as const },
     { path: '/social',             priority: 0.6, changeFrequency: 'hourly' as const },
@@ -119,9 +119,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/liquidation-levels', priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/rsi-heatmap',        priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/stock-heatmap',      priority: 0.6, changeFrequency: 'hourly' as const },
-    { path: '/rv-iv',              priority: 0.6, changeFrequency: 'hourly' as const },
-    { path: '/options-iv',         priority: 0.6, changeFrequency: 'hourly' as const },
-    { path: '/max-pain',           priority: 0.6, changeFrequency: 'hourly' as const },
+    // /rv-iv, /options-iv, /max-pain → /options (consolidated May 2026).
     { path: '/health',             priority: 0.4, changeFrequency: 'daily' as const },
 
     // ─── API + developer ──────────────────────────────────────────────

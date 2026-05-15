@@ -597,7 +597,11 @@ export default function ScreenerPage() {
                   onChange={(e) => updateCondition(idx, { value: parseFloat(e.target.value) || 0 })}
                   className="w-28 bg-white/[0.04] border border-white/[0.06] rounded-lg px-2 py-1 text-xs text-white focus:outline-none"
                 />
-                <button onClick={() => removeCondition(idx)} className="text-neutral-500 hover:text-red-400">
+                <button
+                  onClick={() => removeCondition(idx)}
+                  aria-label="Remove filter condition"
+                  className="text-neutral-500 hover:text-red-400"
+                >
                   <X className="w-3.5 h-3.5" />
                 </button>
               </div>

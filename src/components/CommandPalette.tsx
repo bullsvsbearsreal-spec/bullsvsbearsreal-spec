@@ -299,7 +299,11 @@ export default function CommandPalette({ onClose, onShowShortcuts }: CommandPale
             aria-expanded={allResults.length > 0}
           />
           {query && (
-            <button onClick={() => setQuery('')} className="p-1 rounded hover:bg-white/[0.06]">
+            <button
+              onClick={() => setQuery('')}
+              aria-label="Clear search"
+              className="p-1 rounded hover:bg-white/[0.06]"
+            >
               <X className="w-3.5 h-3.5 text-neutral-500" />
             </button>
           )}
