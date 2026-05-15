@@ -240,13 +240,32 @@ function WatchPageInner() {
   }, [status, load]);
 
   // Fetch top wallets from /smart-money to populate the "Suggested whales"
-  // section. Cached on the API side already; we re-fetch lazily on auth.
+  // section. Was: a single ?include=both call which always returned HL-only
+  // suggestions because HL whales have $100-200M lifetime PnL vs GMX top
+  // traders at $5-20M — HL always crowded out GMX. Christian's counter-
+  // traders (0xabF6, 0xB8ba…) live on Arbitrum GMX, so we now pull both
+  // venues separately and interleave 4+4 so the suggestion list is
+  // venue-diverse. Same API caching either way (smart-money caches per
+  // include= key).
   useEffect(() => {
     if (status !== 'authenticated') return;
-    fetch('/api/smart-money?limit=8&sort=realizedPnl').then(r => r.ok ? r.json() : null)
-      .then(j => {
-        if (!j?.data) return;
-        setSuggested(j.data.slice(0, 8).map((w: SuggestedWhale) => ({
+    const ac = new AbortController();
+    Promise.all([
+      fetch('/api/smart-money?limit=4&include=hl', { signal: ac.signal }).then(r => r.ok ? r.json() : null),
+      fetch('/api/smart-money?limit=4&include=gmx', { signal: ac.signal }).then(r => r.ok ? r.json() : null),
+    ])
+      .then(([hl, gmx]) => {
+        const hlRows: SuggestedWhale[] = (hl?.data ?? []).slice(0, 4);
+        const gmxRows: SuggestedWhale[] = (gmx?.data ?? []).slice(0, 4);
+        // Interleave HL + GMX so both venues are visible without the user
+        // having to scroll. If one venue returns empty, the other fills.
+        const merged: SuggestedWhale[] = [];
+        const max = Math.max(hlRows.length, gmxRows.length);
+        for (let i = 0; i < max; i++) {
+          if (hlRows[i])  merged.push(hlRows[i]);
+          if (gmxRows[i]) merged.push(gmxRows[i]);
+        }
+        setSuggested(merged.slice(0, 8).map(w => ({
           address: w.address,
           displayName: w.displayName ?? null,
           realizedPnl: w.realizedPnl,
@@ -256,6 +275,7 @@ function WatchPageInner() {
         })));
       })
       .catch(() => { /* non-critical, just don't show the section */ });
+    return () => ac.abort();
   }, [status]);
 
   const handleSubscribe = useCallback(async (addr: string, label: string | null) => {
