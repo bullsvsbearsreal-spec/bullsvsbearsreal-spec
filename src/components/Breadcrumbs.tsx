@@ -50,7 +50,8 @@ const PAGE_MAP: Record<string, PageMeta> = {
   '/longshort': { label: 'Long/Short', category: 'Risk' },
   '/cvd': { label: 'CVD', category: 'Risk' },
   '/orderflow': { label: 'Order Flow', category: 'Risk' },
-  '/whale-alert': { label: 'Whale Alert', category: 'Risk' },
+  // /whale-alert removed — page 308-redirects to /liquidations so the
+  // breadcrumb entry was unreachable dead code.
   '/hl-whales': { label: 'HL Whales', category: 'Risk' },
 
   // Research
@@ -71,7 +72,10 @@ const PAGE_MAP: Record<string, PageMeta> = {
   '/portfolio': { label: 'Portfolio', category: 'My Tools' },
   '/alerts': { label: 'Alerts', category: 'My Tools' },
   '/compare': { label: 'Compare', category: 'My Tools' },
-  '/wallet-tracker': { label: 'Wallet Tracker', category: 'My Tools' },
+  // /wallet-tracker removed (308 → /watch); /watch + /trader-watch are
+  // the live destinations Snake's pages send users to.
+  '/watch': { label: 'Wallet Watch', category: 'My Tools' },
+  '/trader-watch': { label: 'Trader Watch', category: 'My Tools' },
   '/brand': { label: 'Brand Kit', category: 'My Tools' },
   '/team': { label: 'Team', category: 'My Tools' },
   '/referrals': { label: 'Referrals', category: 'My Tools' },

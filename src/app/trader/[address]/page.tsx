@@ -496,10 +496,11 @@ export default function TraderUnifiedPage() {
                   Snowtrace <ExternalLink className="w-2.5 h-2.5" />
                 </a>
                 <span className="text-neutral-700">·</span>
-                <Link href={`/wallet-tracker?address=${address}`} className="text-neutral-400 hover:text-white">
-                  Track wallet
-                </Link>
-                <span className="text-neutral-700">·</span>
+                {/* "Track wallet" → /wallet-tracker?address=X was dead:
+                    /wallet-tracker now 308-redirects to /watch and the
+                    query string drops in transit. "Watch positions"
+                    below already routes correctly with ?add= which the
+                    /watch page consumes. Single CTA, no broken alias. */}
                 <Link href={`/watch?add=${address}`} className="text-hub-yellow hover:text-hub-yellow/80 inline-flex items-center gap-1 font-medium">
                   Watch positions (HL + gTrade)
                 </Link>

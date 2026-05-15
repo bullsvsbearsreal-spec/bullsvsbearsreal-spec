@@ -73,7 +73,10 @@ const pageRegistry: PageEntry[] = [
   { name: 'Exchange Comparison', href: '/exchange-comparison', icon: Building2, keywords: ['exchange', 'compare', 'comparison', 'fees', 'volume'], category: 'Markets' },
   // Sentiment
   { name: 'Fear & Greed', href: '/fear-greed', icon: Thermometer, keywords: ['fear', 'greed', 'sentiment', 'index', 'mood'], category: 'Sentiment' },
-  { name: 'Whale Alert', href: '/whale-alert', icon: Fish, keywords: ['whale', 'alert', 'large', 'transaction', 'transfer'], category: 'Sentiment' },
+  // /whale-alert → /liquidations (consolidated May 2026). Route directly
+  // to /liquidations so the search palette doesn't bounce users through
+  // a redirect — same keywords still surface the right page.
+  { name: 'Whale Alert', href: '/liquidations', icon: Fish, keywords: ['whale', 'alert', 'large', 'transaction', 'transfer', 'liquidation'], category: 'Sentiment' },
   { name: 'HL Whales', href: '/hl-whales', icon: Eye, keywords: ['hyperliquid', 'whale', 'traders', 'top', 'positions', 'pnl'], category: 'Sentiment' },
   { name: 'News', href: '/news', icon: Newspaper, keywords: ['news', 'article', 'headline', 'crypto', 'feed'], category: 'Sentiment' },
   // Portfolio
@@ -81,7 +84,9 @@ const pageRegistry: PageEntry[] = [
   { name: 'Compare Coins', href: '/compare', icon: GitCompare, keywords: ['compare', 'side by side', 'vs', 'versus', 'coins'], category: 'Portfolio' },
   { name: 'Alerts', href: '/alerts', icon: Bell, keywords: ['alert', 'notification', 'price', 'trigger', 'alarm'], category: 'Portfolio' },
   { name: 'Portfolio', href: '/portfolio', icon: Wallet, keywords: ['portfolio', 'positions', 'pnl', 'holdings', 'balance'], category: 'Portfolio' },
-  { name: 'Wallet Tracker', href: '/wallet-tracker', icon: SearchIcon, keywords: ['wallet', 'address', 'track', 'balance', 'multichain'], category: 'Portfolio' },
+  // /wallet-tracker → /watch (consolidated May 2026). Same direct-route
+  // treatment as Whale Alert above.
+  { name: 'Wallet Watch', href: '/watch', icon: SearchIcon, keywords: ['wallet', 'address', 'track', 'balance', 'multichain', 'watch', 'alerts'], category: 'Portfolio' },
   { name: 'Dashboard', href: '/dashboard', icon: BarChart3, keywords: ['dashboard', 'widgets', 'custom', 'home', 'overview'], category: 'Portfolio' },
   // More
   { name: 'Economic Calendar', href: '/economic-calendar', icon: Calendar, keywords: ['economic', 'calendar', 'events', 'fomc', 'cpi', 'macro'], category: 'More' },

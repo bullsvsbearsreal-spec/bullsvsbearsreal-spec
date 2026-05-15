@@ -44,7 +44,9 @@ const RELATED: Record<string, RelatedPage[]> = {
   '/fear-greed': [
     { name: 'Top Movers', href: '/top-movers', desc: 'Biggest gainers & losers', icon: Rocket },
     { name: 'Long/Short', href: '/longshort', desc: 'Market positioning bias', icon: ArrowLeftRight },
-    { name: 'Whale Alert', href: '/whale-alert', desc: 'Large on-chain transactions', icon: Fish },
+    // /whale-alert → /liquidations (May 2026 consolidation). Point
+    // directly at the live page to skip the redirect.
+    { name: 'Liquidations', href: '/liquidations', desc: 'Large liquidations + whale closures', icon: Fish },
     { name: 'Market Cycle', href: '/market-cycle', desc: 'Macro trend indicators', icon: Activity },
   ],
   '/top-movers': [
