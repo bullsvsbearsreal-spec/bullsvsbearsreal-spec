@@ -109,31 +109,37 @@ export default function EtfFlowsPage() {
     <>
       <Header />
       <main className="max-w-[1300px] mx-auto w-full px-4 py-6">
-        {/* Hero */}
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-violet-500/10 flex items-center justify-center">
-              <BarChart3 className="w-4 h-4 text-violet-400" />
+        {/* Hero — workflow vocabulary. */}
+        <header className="mb-5">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-violet-500/20 to-violet-500/[0.04] border border-violet-400/25 flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4 text-violet-300" />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Institutional · daily flows</span>
+              </div>
+              <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+                Spot ETF <span className="text-violet-300">flows</span>
+              </h1>
+              <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
+                Daily net inflows / outflows for spot {asset === 'btc' ? 'Bitcoin' : 'Ethereum'} ETFs,
+                broken out by issuer. Source:{' '}
+                <a href="https://farside.co.uk" target="_blank" rel="noopener" className="text-hub-yellow hover:underline">Farside Investors</a>.
+                Updated once per US trading day after the close — last{' '}
+                <span className="text-white font-medium">{data?.days.length ?? 0} days</span> shown.
+              </p>
             </div>
-            <h1 className="text-xl font-bold text-white">Spot ETF Flows</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              {data?.days.length ?? 0} days · daily net
-            </span>
             <button
               onClick={() => load(false)}
               disabled={refreshing}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] text-xs font-semibold transition-colors disabled:opacity-40 shrink-0 self-start lg:self-end"
             >
-              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-              refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
           </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Daily net inflows / outflows for spot {asset === 'btc' ? 'Bitcoin' : 'Ethereum'} ETFs,
-            broken out by issuer. Source: <a href="https://farside.co.uk" target="_blank" rel="noopener" className="text-hub-yellow hover:underline">Farside Investors</a>.
-            Updated once per US trading day after the close.
-          </p>
-        </div>
+        </header>
 
         {/* Asset toggle */}
         <div className="flex items-center gap-1 bg-white/[0.03] rounded-lg p-0.5 mb-4 w-fit">

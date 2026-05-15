@@ -121,29 +121,36 @@ export default function DominancePage() {
       <Header />
       <main id="main-content" className="text-white">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
-          {/* Title */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <h1 className="heading-page flex items-center gap-2">
-                <PieChart className="w-6 h-6 text-hub-yellow" />
-                Market Dominance
+          {/* Hero — workflow vocabulary. */}
+          <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/[0.04] border border-hub-yellow/20 flex items-center justify-center">
+                  <PieChart className="w-4 h-4 text-hub-yellow" />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Macro · market share</span>
+              </div>
+              <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+                Market <span className="text-hub-yellow">dominance</span>
               </h1>
-              <p className="text-sm text-neutral-500 mt-1">
-                BTC dominance, market share breakdown, and global crypto market stats
+              <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
+                BTC dominance, ETH dominance, stablecoin share, and the
+                global market-cap split — read the cycle rotation between
+                BTC, ETH, alts, and stables.
               </p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-end">
               <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['CoinGecko']} />
               <button
                 onClick={fetchData}
                 disabled={loading}
                 aria-label="Refresh data"
-                className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+                className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-neutral-300 hover:text-white transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
-          </div>
+          </header>
 
           {/* Loading skeleton */}
           {loading && !data && (
