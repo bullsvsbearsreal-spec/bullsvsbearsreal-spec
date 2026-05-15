@@ -145,8 +145,14 @@ async function fetchGMXPositions(address: string, chain: 'arbitrum' | 'avalanche
       signal: AbortSignal.timeout(10_000),
     });
     if (!res.ok) return [];
-    const json = (await res.json()) as { data?: GMXDossier };
-    const positions = json?.data?.openPositions ?? [];
+    // /api/gmx-traders/[address] returns the dossier at the top level
+    // ({ address, summary, openPositions, recentTrades, meta }) — there
+    // is no `data` envelope. The earlier `json?.data?.openPositions`
+    // path was always undefined → every GMX bookmark rendered an
+    // empty row count. Same bug shape as the HL fetcher fixed in
+    // commit 03cbe053.
+    const json = (await res.json()) as Partial<GMXDossier>;
+    const positions = json?.openPositions ?? [];
     return positions.map(p => {
       const pnl = p.unrealizedPnl;
       const pnlPct = p.pnlPct;
@@ -249,8 +255,19 @@ export default function TraderWatchPage() {
     useTraderAlerts();
   const [positions, setPositions] = useState<NormalizedPosition[]>([]);
   const [loading, setLoading] = useState(true);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<number | null>(null);
   const [sortKey, setSortKey] = useState<'pnl' | 'size' | 'liqDist' | 'symbol'>('size');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  // Click a bookmark chip to filter the table to just that trader's
+  // positions. Click again (or the explicit Clear button) to reset.
+  // Helps when one user is watching 6+ traders and the table balloons
+  // to 30+ rows — narrowing to one trader is the most common ask.
+  const [filterAddr, setFilterAddr] = useState<string | null>(null);
+  // Quick side filter — long-only / short-only / all. Most common
+  // use is "show me only the side I'm currently positioned" so the
+  // trader-watch becomes a mirror-trade dashboard.
+  const [sideFilter, setSideFilter] = useState<'all' | 'long' | 'short'>('all');
   // Ticking clock for "updated Xs ago" so the counter actually counts up
   // between auto-refresh ticks. Without this, the JSX `Date.now() -
   // lastRefresh` is evaluated once per React render — between refreshes
@@ -316,6 +333,12 @@ export default function TraderWatchPage() {
     setPositions(merged);
     setLastRefresh(Date.now());
     setLoading(false);
+    // `hasLoadedOnce` distinguishes "still loading the first batch"
+    // (show skeleton) from "loaded and there really are zero positions"
+    // (show empty state). Was: both states showed identical "no open
+    // positions" text, so a slow first fetch on a many-bookmark account
+    // looked like the page was broken.
+    setHasLoadedOnce(true);
   }, [bookmarks]);
 
   // Initial load + 30s refresh.
@@ -333,24 +356,54 @@ export default function TraderWatchPage() {
     };
   }, [refresh]);
 
+  // Filtered + sorted view. Filters run first (trader chip + side
+  // toggle) so the "sorted" array reflects exactly what hits the table.
+  // Sort direction flips per click on a sortable header — first click
+  // selects the column and uses the natural default direction (desc
+  // for $, asc for symbol/liqDist), second click on the same column
+  // reverses it. liqDist's natural direction is asc ("most at-risk
+  // first") which is the opposite of every other column.
   const sorted = useMemo(() => {
-    const arr = [...positions];
+    let arr = [...positions];
+    if (filterAddr) {
+      const lower = filterAddr.toLowerCase();
+      arr = arr.filter(p => p.trader === lower);
+    }
+    if (sideFilter !== 'all') {
+      arr = arr.filter(p => p.side === sideFilter);
+    }
+    const dirMul = sortDir === 'asc' ? -1 : 1;
     switch (sortKey) {
       case 'pnl':
-        arr.sort((a, b) => (b.unrealizedPnl ?? 0) - (a.unrealizedPnl ?? 0));
+        arr.sort((a, b) => ((b.unrealizedPnl ?? 0) - (a.unrealizedPnl ?? 0)) * dirMul);
         break;
       case 'size':
-        arr.sort((a, b) => b.sizeUsd - a.sizeUsd);
+        arr.sort((a, b) => (b.sizeUsd - a.sizeUsd) * dirMul);
         break;
       case 'liqDist':
-        arr.sort((a, b) => (a.liqDistPct ?? Infinity) - (b.liqDistPct ?? Infinity));
+        // liqDist sort is naturally "smallest first = most at-risk first."
+        // dirMul of 1 (desc default) gives that ordering; flip for asc.
+        arr.sort((a, b) => ((a.liqDistPct ?? Infinity) - (b.liqDistPct ?? Infinity)) * dirMul);
         break;
       case 'symbol':
-        arr.sort((a, b) => a.symbol.localeCompare(b.symbol));
+        arr.sort((a, b) => a.symbol.localeCompare(b.symbol) * dirMul);
         break;
     }
     return arr;
-  }, [positions, sortKey]);
+  }, [positions, sortKey, sortDir, filterAddr, sideFilter]);
+
+  const handleSort = useCallback((key: typeof sortKey) => {
+    setSortKey(prev => {
+      if (prev === key) {
+        // Same column clicked — flip direction.
+        setSortDir(d => (d === 'asc' ? 'desc' : 'asc'));
+        return prev;
+      }
+      // New column — reset to that column's natural default direction.
+      setSortDir('desc');
+      return key;
+    });
+  }, []);
 
   /* ── Stats summary across all watched traders ─────────────────── */
   const totals = useMemo(() => {
@@ -446,11 +499,59 @@ export default function TraderWatchPage() {
         watchedCount={bookmarks.length}
       />
 
-      {/* Watched-traders strip */}
-      <div className="mb-5 flex flex-wrap gap-2">
+      {/* Watched-traders strip. Each chip is also a filter — click to
+          narrow the table to just that trader, click again to clear.
+          The X button still removes the bookmark entirely. */}
+      <div className="mb-3 flex flex-wrap gap-2 items-center">
         {bookmarks.map(b => (
-          <BookmarkChip key={b.address} bookmark={b} onRemove={() => remove(b.address)} />
+          <BookmarkChip
+            key={b.address}
+            bookmark={b}
+            active={filterAddr === b.address}
+            onSelect={() => setFilterAddr(prev => prev === b.address ? null : b.address)}
+            onRemove={() => {
+              if (filterAddr === b.address) setFilterAddr(null);
+              remove(b.address);
+            }}
+          />
         ))}
+        {filterAddr && (
+          <button
+            type="button"
+            onClick={() => setFilterAddr(null)}
+            className="text-[10px] text-neutral-500 hover:text-white inline-flex items-center gap-1 px-2 py-1 rounded border border-white/[0.06] hover:border-white/[0.15] transition-colors"
+          >
+            <X className="w-2.5 h-2.5" />
+            Clear filter
+          </button>
+        )}
+      </div>
+
+      {/* Side filter chips — sit just above the table to make the
+          long/short scope obvious before scanning rows. */}
+      <div className="mb-3 flex items-center gap-2">
+        <span className="text-[10px] uppercase tracking-wider text-neutral-600 font-semibold">Side</span>
+        {(['all', 'long', 'short'] as const).map(s => (
+          <button
+            key={s}
+            type="button"
+            onClick={() => setSideFilter(s)}
+            className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded transition-colors ${
+              sideFilter === s
+                ? s === 'long' ? 'bg-green-500/20 text-green-400 border border-green-400/30'
+                : s === 'short' ? 'bg-red-500/20 text-red-400 border border-red-400/30'
+                : 'bg-white/[0.08] text-white border border-white/[0.15]'
+                : 'bg-white/[0.02] text-neutral-500 border border-white/[0.04] hover:text-white hover:border-white/[0.12]'
+            }`}
+          >
+            {s}
+          </button>
+        ))}
+        {(filterAddr || sideFilter !== 'all') && positions.length !== sorted.length && (
+          <span className="text-[10px] text-neutral-500 font-mono ml-1">
+            {sorted.length} of {positions.length} shown
+          </span>
+        )}
       </div>
 
       {/* Positions table */}
@@ -461,24 +562,37 @@ export default function TraderWatchPage() {
               <tr>
                 <Th>Trader</Th>
                 <Th>Venue</Th>
-                <Th onClick={() => setSortKey('symbol')}>Symbol</Th>
+                <Th sortKey="symbol" activeKey={sortKey} dir={sortDir} onSort={handleSort}>Symbol</Th>
                 <Th>Side</Th>
-                <Th onClick={() => setSortKey('size')}>Size</Th>
+                <Th sortKey="size" activeKey={sortKey} dir={sortDir} onSort={handleSort}>Size</Th>
                 <Th>Entry</Th>
                 <Th>Mark</Th>
-                <Th onClick={() => setSortKey('pnl')}>PnL</Th>
-                <Th onClick={() => setSortKey('liqDist')}>Liq</Th>
+                <Th sortKey="pnl" activeKey={sortKey} dir={sortDir} onSort={handleSort}>PnL</Th>
+                <Th sortKey="liqDist" activeKey={sortKey} dir={sortDir} onSort={handleSort}>Liq</Th>
                 <Th>Funding 8h</Th>
                 <Th>{''}</Th>
               </tr>
             </thead>
             <tbody>
-              {sorted.length === 0 && !loading && (
+              {sorted.length === 0 && hasLoadedOnce && (
                 <tr>
                   <td colSpan={11} className="py-8 text-center text-neutral-600 text-sm">
-                    no open positions across watched traders right now.
+                    {filterAddr || sideFilter !== 'all'
+                      ? 'no positions match the current filter.'
+                      : 'no open positions across watched traders right now.'}
                   </td>
                 </tr>
+              )}
+              {sorted.length === 0 && !hasLoadedOnce && (
+                // Skeleton rows so the table reserves the right height
+                // during initial load instead of jumping when data arrives.
+                Array.from({ length: 4 }).map((_, i) => (
+                  <tr key={`skel-${i}`} className="border-t border-white/[0.04]">
+                    <td colSpan={11} className="px-3 py-3">
+                      <div className="h-3 rounded bg-white/[0.04] animate-pulse" />
+                    </td>
+                  </tr>
+                ))
               )}
               {sorted.map((p, i) => (
                 <PositionRow key={`${p.trader}-${p.venue}-${p.symbol}-${i}`} p={p} />
@@ -487,10 +601,6 @@ export default function TraderWatchPage() {
           </table>
         </div>
       </div>
-
-      {loading && positions.length === 0 && (
-        <div className="text-center py-8 text-neutral-600 text-sm">loading positions…</div>
-      )}
     </div>
   );
 }
@@ -507,34 +617,75 @@ function StatTile({ label, value, tone }: { label: string; value: string; tone?:
   );
 }
 
-function BookmarkChip({ bookmark, onRemove }: { bookmark: TraderBookmark; onRemove: () => void }) {
+function BookmarkChip({
+  bookmark, active, onSelect, onRemove,
+}: {
+  bookmark: TraderBookmark;
+  active: boolean;
+  onSelect: () => void;
+  onRemove: () => void;
+}) {
   const label = bookmark.displayName?.trim() || trunc(bookmark.address);
   return (
-    <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-white/[0.06] text-xs font-mono">
-      <Star className="w-3 h-3 text-hub-yellow fill-current" />
-      <span className="text-white">{label}</span>
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono border transition-colors ${
+        active
+          ? 'bg-hub-yellow/[0.08] border-hub-yellow/40 text-white'
+          : 'bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.10]'
+      }`}
+    >
       <button
         type="button"
-        onClick={onRemove}
+        onClick={onSelect}
+        className="inline-flex items-center gap-1.5"
+        aria-pressed={active}
+        title={active ? 'Click to clear filter' : 'Click to filter table to this trader'}
+      >
+        <Star className={`w-3 h-3 ${active ? 'text-hub-yellow' : 'text-hub-yellow'} fill-current`} />
+        <span className="text-white">{label}</span>
+      </button>
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onRemove(); }}
         className="ml-1 text-neutral-600 hover:text-red-400"
-        aria-label="Remove trader"
+        aria-label={`Remove ${label} from watchlist`}
         title="Remove from watchlist"
       >
         <X className="w-3 h-3" />
       </button>
-    </div>
+    </span>
   );
 }
 
-function Th({ children, onClick }: { children: React.ReactNode; onClick?: () => void }) {
+/** Table header. Pass `sortKey + activeKey + dir + onSort` to make
+ *  the column sortable with an arrow indicator. Active column gets a
+ *  brighter color so the user can see which one is currently driving
+ *  the sort without having to remember. */
+function Th({
+  children, sortKey, activeKey, dir, onSort,
+}: {
+  children: React.ReactNode;
+  sortKey?: 'pnl' | 'size' | 'liqDist' | 'symbol';
+  activeKey?: 'pnl' | 'size' | 'liqDist' | 'symbol';
+  dir?: 'asc' | 'desc';
+  onSort?: (key: 'pnl' | 'size' | 'liqDist' | 'symbol') => void;
+}) {
+  const sortable = !!sortKey && !!onSort;
+  const isActive = sortable && sortKey === activeKey;
   return (
     <th
-      className={`text-left font-semibold px-3 py-2.5 whitespace-nowrap ${onClick ? 'cursor-pointer hover:text-neutral-300' : ''}`}
-      onClick={onClick}
+      className={`text-left font-semibold px-3 py-2.5 whitespace-nowrap ${sortable ? 'cursor-pointer hover:text-neutral-300' : ''} ${isActive ? 'text-hub-yellow' : ''}`}
+      onClick={sortable ? () => onSort!(sortKey) : undefined}
+      aria-sort={isActive ? (dir === 'asc' ? 'ascending' : 'descending') : undefined}
     >
       <span className="inline-flex items-center gap-1">
         {children}
-        {onClick && <ArrowUpDown className="w-2.5 h-2.5 opacity-40" />}
+        {sortable && !isActive && <ArrowUpDown className="w-2.5 h-2.5 opacity-40" />}
+        {sortable && isActive && (
+          <span className="text-[10px]" aria-hidden="true">
+            {dir === 'asc' ? '▲' : '▼'}
+          </span>
+        )}
       </span>
     </th>
   );
@@ -547,9 +698,17 @@ function PositionRow({ p }: { p: NormalizedPosition }) {
                  : p.liqDistPct < 5 ? 'text-red-400'
                  : p.liqDistPct < 15 ? 'text-amber-400'
                  : 'text-neutral-400';
+  // Subtle row-level highlight when a position is within 5% of liq
+  // — catches the eye when scanning a 20+ row table. Was: only the
+  // tiny AlertTriangle icon inside the Liq cell flagged it, easy to
+  // miss in a dense view.
+  const danger = p.liqDistPct != null && p.liqDistPct < 5;
+  const rowClass = danger
+    ? 'border-t border-red-500/30 bg-red-500/[0.04] hover:bg-red-500/[0.07]'
+    : 'border-t border-white/[0.04] hover:bg-white/[0.02]';
 
   return (
-    <tr className="border-t border-white/[0.04] hover:bg-white/[0.02]">
+    <tr className={rowClass}>
       <td className="px-3 py-2.5 font-mono text-[11px] text-neutral-300 whitespace-nowrap">
         {p.traderLabel}
       </td>
