@@ -9,7 +9,7 @@
  * the per-wallet trigger config.
  */
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useEffect, useState, useCallback, useRef, Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -145,6 +145,15 @@ function WatchPageInner() {
   const [loading, setLoading] = useState(true);
   const [addrInput, setAddrInput] = useState(prefillAddr);
   const [labelInput, setLabelInput] = useState('');
+  // Refs for the deep-link flow: when the user lands here from
+  // /trader/[address]'s "Watch positions" CTA the address is
+  // already filled — we scroll the add-form into view and focus
+  // the label input so they can type a friendly name and submit.
+  // Without this, the form sat mid-page below the suggested-whales
+  // section and users frequently missed that the address was even
+  // prefilled.
+  const formRef = useRef<HTMLElement | null>(null);
+  const labelInputRef = useRef<HTMLInputElement | null>(null);
   const [adding, setAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Wallet | null>(null);
@@ -153,6 +162,21 @@ function WatchPageInner() {
   const [suggested, setSuggested] = useState<SuggestedWhale[] | null>(null);
   const [addingAddr, setAddingAddr] = useState<string | null>(null);
   const [filterAddr, setFilterAddr] = useState<string | null>(null);
+
+  // Deep-link affordance: when `?add=` is present the user came from
+  // /trader/[address] expecting to add a wallet. Scroll the form into
+  // view + focus the label input (since the address is already filled).
+  // Runs once on mount — guarded by status so we don't try to focus
+  // anything while the auth/loading skeleton is rendering instead of
+  // the form.
+  useEffect(() => {
+    if (!prefillAddr || status !== 'authenticated') return;
+    const t = setTimeout(() => {
+      formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      labelInputRef.current?.focus();
+    }, 100);
+    return () => clearTimeout(t);
+  }, [prefillAddr, status]);
 
   const handleTestPing = useCallback(async () => {
     setPingState('sending');
@@ -418,10 +442,15 @@ function WatchPageInner() {
         )}
 
         {/* Add form */}
-        <section className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 mb-6">
+        <section ref={formRef} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 mb-6">
           <h2 className="text-xs font-bold uppercase tracking-[0.1em] text-white mb-3 flex items-center gap-2">
             <Plus className="w-3.5 h-3.5" />
             Add a wallet
+            {prefillAddr && (
+              <span className="text-[10px] font-normal text-hub-yellow normal-case tracking-normal">
+                · prefilled from trader profile
+              </span>
+            )}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_180px_auto] gap-2">
             <input
@@ -435,6 +464,7 @@ function WatchPageInner() {
               autoComplete="off" spellCheck={false}
             />
             <input
+              ref={labelInputRef}
               type="text" value={labelInput}
               onChange={e => setLabelInput(e.target.value)}
               placeholder="Label (optional)"
