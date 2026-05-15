@@ -187,15 +187,21 @@ export default function FundingHeatmapPage() {
       <Header />
       <main id="main-content" className="min-h-screen bg-hub-dark text-white">
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
-          {/* Title */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <h1 className="heading-page flex items-center gap-2">
-                <Calendar className="w-6 h-6 text-hub-yellow" />
-                Funding Rate Heatmap
+          {/* Hero — workflow vocabulary. */}
+          <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/[0.04] border border-hub-yellow/20 flex items-center justify-center">
+                  <Calendar className="w-4 h-4 text-hub-yellow" />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Market · funding</span>
+              </div>
+              <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+                Funding <span className="text-hub-yellow">heatmap</span>
               </h1>
-              <p className="text-sm text-neutral-500 mt-1">
-                Daily average funding rates across top symbols — spot trends and regime shifts
+              <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
+                Daily average funding rates across top symbols — spot trends and regime shifts.
+                Pick a window (7d / 14d / 30d) and hover for per-day per-symbol detail.
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -224,7 +230,7 @@ export default function FundingHeatmapPage() {
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
               </button>
             </div>
-          </div>
+          </header>
 
           {/* Stats bar */}
           {stats && (

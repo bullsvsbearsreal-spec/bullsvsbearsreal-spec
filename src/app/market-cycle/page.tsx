@@ -146,29 +146,36 @@ export default function MarketCyclePage() {
   return (
     <div className="w-full">
       <div id="main-content" className="w-full px-4 py-5">
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="heading-page flex items-center gap-2">
-              <Activity className="w-6 h-6 text-hub-yellow" />
-              Market Cycle Indicators
+        {/* Hero — workflow vocabulary. */}
+        <header className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-8">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 mb-2">
+              <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/[0.04] border border-hub-yellow/20 flex items-center justify-center">
+                <Activity className="w-4 h-4 text-hub-yellow" />
+              </div>
+              <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Macro · BTC</span>
+            </div>
+            <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+              Market <span className="text-hub-yellow">cycle</span>
             </h1>
-            <p className="text-neutral-600 text-xs mt-0.5">
-              Bitcoin on-chain models and technical cycle indicators
+            <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
+              Bitcoin on-chain models and technical cycle indicators —
+              Pi Cycle, MVRV-Z, NUPL, Mayer Multiple, and friends. Pick
+              the model and read where in the cycle we are.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0 self-start md:self-end">
             <DataFreshness exchangeCount={1} lastUpdated={lastUpdated} sources={['CoinGecko']} />
             <button
               onClick={refresh}
               disabled={refreshing}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-500 hover:text-white transition-colors text-xs"
+              className="inline-flex items-center gap-2 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] transition-colors text-xs font-semibold"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
               Refresh
             </button>
           </div>
-        </div>
+        </header>
 
         {/* Error Banner */}
         {error && (

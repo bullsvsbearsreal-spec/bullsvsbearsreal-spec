@@ -67,21 +67,30 @@ export default function AltseasonPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-purple-500/10 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-purple-400" />
+        <header className="mb-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-purple-500/25 to-purple-500/[0.05] border border-purple-400/25 flex items-center justify-center">
+                  <Sparkles className="w-4 h-4 text-purple-300" />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Cycle · sentiment</span>
+              </div>
+              <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+                <span className="text-purple-300">Altseason</span> index
+              </h1>
+              <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
+                % of top-50 altcoins outperforming BTC over the last{' '}
+                <span className="text-white font-medium">{data?.meta?.windowDays ?? 30} days</span>.
+                Above 75 = altseason · below 25 = Bitcoin season.
+              </p>
             </div>
-            <h1 className="text-xl font-bold text-white">Altseason Index</h1>
-            <div className="ml-auto flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0 self-start lg:self-end">
               <DataFreshness exchangeCount={summary?.totalAlts ?? 0} lastUpdated={data?.meta?.timestamp ?? null} sources={['CoinGecko']} />
               <RefreshButton onRefresh={refresh} isRefreshing={isRefreshing} />
             </div>
           </div>
-          <p className="text-sm text-neutral-500">
-            % of top-50 altcoins outperforming BTC over the last {data?.meta?.windowDays ?? 30} days. Above 75 = altseason. Below 25 = Bitcoin season.
-          </p>
-        </div>
+        </header>
 
         {/* Hero gauge */}
         {summary && (
