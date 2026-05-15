@@ -423,37 +423,48 @@ export default function FundingPage() {
 
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         <FeatureHint page="/funding" />
-        {/* Page header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-              Funding <span className="text-gradient">Rates</span>
-            </h1>
-            <p className="text-neutral-600 text-sm mt-1">
-              {ASSET_CLASS_SUBTITLES[assetClass]} across{' '}
-              <span className="text-neutral-400 font-medium">
-              {activeExchangeCount > 0
-                ? <>{activeExchangeCount} exchanges</>
-                : <>{ALL_EXCHANGES.length} exchanges</>
-              }
-              </span>
-              {' '}<span className="text-neutral-700">({activeDexCount > 0 ? activeDexCount : DEX_EXCHANGES.size} DEX)</span>
-            </p>
+        {/* Hero — icon tile + accent title + venue chips. Same vocab
+            as /funding-arb, /watch, /positions so the navigation
+            cluster has a consistent visual identity. */}
+        <header className="mb-6">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/[0.04] border border-hub-yellow/20 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-hub-yellow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+                  </svg>
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Market</span>
+              </div>
+              <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+                Funding <span className="text-hub-yellow">rates</span>
+              </h1>
+              <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
+                {ASSET_CLASS_SUBTITLES[assetClass]} across{' '}
+                <span className="text-white font-medium">
+                  {activeExchangeCount > 0 ? activeExchangeCount : ALL_EXCHANGES.length} exchanges
+                </span>
+                <span className="text-neutral-600">
+                  {' '}· {activeDexCount > 0 ? activeDexCount : DEX_EXCHANGES.size} DEX venues with per-side borrow rates surfaced
+                </span>.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0 self-start lg:self-end">
+              <DataFreshness exchangeCount={activeExchangeCount || ALL_EXCHANGES.length} lastUpdated={lastUpdate} />
+              <StaleIndicator lastUpdated={lastUpdate} isError={!!error} />
+              <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — real-time data from ${activeExchangeCount || ALL_EXCHANGES.length} exchanges`} />
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                aria-label="Refresh"
+                className="p-2 rounded-lg text-neutral-500 hover:text-white hover:bg-white/[0.04] transition-all disabled:opacity-50 border border-white/[0.06]"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <DataFreshness exchangeCount={activeExchangeCount || ALL_EXCHANGES.length} lastUpdated={lastUpdate} />
-            <StaleIndicator lastUpdated={lastUpdate} isError={!!error} />
-            <ShareButton text={`Check out ${assetClass} funding rates on InfoHub — real-time data from ${activeExchangeCount || ALL_EXCHANGES.length} exchanges`} />
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              aria-label="Refresh"
-              className="p-2 rounded-lg text-neutral-500 hover:text-white hover:bg-white/[0.04] transition-all disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
+        </header>
 
         {/* Asset Class Tabs */}
         <div className="flex items-center gap-1 mb-5 p-1 rounded-xl w-fit" style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.05)' }} role="tablist" aria-label="Asset class">

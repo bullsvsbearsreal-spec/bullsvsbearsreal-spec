@@ -783,32 +783,58 @@ export default function GMXTradersPage() {
       <Header />
 
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        {/* Page header */}
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-hub-yellow/10 flex items-center justify-center">
-              <Trophy className="w-4 h-4 text-hub-yellow" />
+        {/* Hero — same vocabulary as /hl-traders so the two
+            leaderboards read as a matched pair. */}
+        <header className="mb-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/[0.04] border border-hub-yellow/20 flex items-center justify-center">
+                  <Trophy className="w-4 h-4 text-hub-yellow" />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Leaderboard · GMX V2</span>
+              </div>
+              <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+                GMX <span className="text-hub-yellow">traders</span>
+              </h1>
+              <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
+                On-chain perpetual traders ranked by realised PnL, volume, and hit rate.
+                Star to add to your{' '}
+                <Link href="/trader-watch" className="text-hub-yellow hover:underline font-medium">/trader-watch</Link>{' '}
+                — see every bookmarked trader&apos;s open positions on one screen.
+              </p>
             </div>
-            <h1 className="text-xl font-bold text-white">GMX Traders</h1>
-            <span className="text-xs text-neutral-500 font-mono">GMX V2</span>
-            <div className="ml-auto flex items-center gap-1.5">
-              {/* Quick jump to /trader-watch when the user has any
-                  bookmarks. Snake's flow ends on /trader-watch — making
-                  it findable from the leaderboard removes the need to
-                  go through the top nav every time. Hidden when zero
-                  bookmarks so it doesn't compete for attention before
-                  it's useful. */}
+            <div className="flex items-center gap-1.5 flex-wrap shrink-0 self-start lg:self-end">
               {bookmarks.length > 0 && (
                 <Link
                   href="/trader-watch"
-                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-hub-yellow/10 border border-hub-yellow/30 text-hub-yellow hover:bg-hub-yellow/20 transition-colors text-[11px] font-semibold"
+                  className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-hub-yellow/10 border border-hub-yellow/30 text-hub-yellow hover:bg-hub-yellow/20 hover:border-hub-yellow/50 transition-colors text-[12px] font-semibold shadow-[0_2px_8px_-2px_rgba(255,165,0,0.15)]"
                   title="View bookmarked traders' open positions"
                 >
-                  <Eye className="w-3 h-3" />
+                  <Eye className="w-3.5 h-3.5" />
                   Watchlist
-                  <span className="font-mono opacity-80">{bookmarks.length}</span>
+                  <span className="font-mono opacity-80">· {bookmarks.length}</span>
                 </Link>
               )}
+              {/* Chain segmented control — modernized to match the
+                  sort control on /funding-arb. */}
+              <div className="inline-flex items-center gap-0.5 bg-white/[0.02] border border-white/[0.05] rounded-lg p-0.5" role="tablist" aria-label="Chain">
+                {CHAIN_OPTIONS.map(opt => (
+                  <button
+                    key={opt.id}
+                    role="tab"
+                    aria-selected={chain === opt.id}
+                    onClick={() => { setChain(opt.id); setSelectedAddress(null); }}
+                    className={`px-2.5 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-all ${
+                      chain === opt.id ? 'text-white' : 'text-neutral-500 hover:text-neutral-300'
+                    }`}
+                    style={chain === opt.id ? { backgroundColor: opt.accent, color: '#fff' } : undefined}
+                    aria-label={`Switch to ${opt.label}`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
               <DataFreshness
                 exchangeCount={1}
                 lastUpdated={data?.meta?.timestamp ?? null}
@@ -816,49 +842,30 @@ export default function GMXTradersPage() {
               />
               <RefreshButton onRefresh={refresh} isRefreshing={isRefreshing} />
             </div>
-            {/* Chain toggle — inline with title for tight header */}
-            <div className="flex items-center gap-0.5 bg-white/[0.03] rounded-md p-0.5 ml-1">
-              {CHAIN_OPTIONS.map(opt => (
-                <button
-                  key={opt.id}
-                  onClick={() => { setChain(opt.id); setSelectedAddress(null); }}
-                  className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider transition-colors ${
-                    chain === opt.id ? 'text-white' : 'text-neutral-500 hover:text-neutral-300'
-                  }`}
-                  style={chain === opt.id ? { backgroundColor: opt.accent, color: '#fff' } : undefined}
-                  aria-label={`Switch to ${opt.label}`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
           </div>
-          <p className="text-sm text-neutral-500">
-            The top on-chain perpetual traders ranked by realized PnL, volume, and hit rate. Click a row to see their open positions.
-          </p>
 
           {/* Address lookup — pastes any 0x address, routes to cross-platform view */}
-          <form onSubmit={handleLookup} className="mt-3 flex items-center gap-2">
-            <div className="relative flex-1 max-w-md">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-neutral-600 pointer-events-none" />
+          <form onSubmit={handleLookup} className="mt-4 flex items-center gap-2">
+            <div className="relative flex-1 max-w-md group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-neutral-600 group-focus-within:text-hub-yellow transition-colors pointer-events-none" />
               <input
                 type="text"
                 value={lookupAddr}
                 onChange={e => setLookupAddr(e.target.value)}
                 placeholder="Paste any 0x… address for cross-platform view"
-                className="w-full bg-white/[0.04] border border-white/[0.06] rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/40 font-mono"
+                className="w-full bg-white/[0.02] border border-white/[0.06] rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/40 focus:bg-white/[0.04] font-mono transition-colors"
                 aria-label="Lookup trader address"
               />
             </div>
             <button
               type="submit"
               disabled={!/^0x[a-fA-F0-9]{40}$/.test(lookupAddr.trim())}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-hub-yellow/15 text-hub-yellow hover:bg-hub-yellow/25 transition-colors disabled:opacity-30 disabled:cursor-not-allowed inline-flex items-center gap-1.5"
+              className="px-3 py-2 rounded-lg text-xs font-semibold bg-hub-yellow/15 text-hub-yellow hover:bg-hub-yellow/25 transition-colors disabled:opacity-30 disabled:cursor-not-allowed inline-flex items-center gap-1.5 border border-hub-yellow/20"
             >
               <Layers className="w-3 h-3" /> Lookup
             </button>
           </form>
-        </div>
+        </header>
 
         {/* Summary */}
         {data?.summary && <SummaryStrip summary={data.summary} />}

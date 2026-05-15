@@ -450,30 +450,43 @@ export default function TraderWatchPage() {
 
   return (
     <div id="main-content" className="px-4 sm:px-6 py-6 max-w-[1400px] mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 mb-5 flex-wrap">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Trader watch</h1>
-          <p className="text-neutral-500 text-sm mt-1">
-            {bookmarks.length} {bookmarks.length === 1 ? 'trader' : 'traders'} · {positions.length} open {positions.length === 1 ? 'position' : 'positions'}
-          </p>
-        </div>
-        <div className="flex items-center gap-3">
-          {lastRefresh && (
-            <span className="text-[11px] text-neutral-600 font-mono">
-              updated {Math.floor((nowTick - lastRefresh) / 1000)}s ago
-            </span>
-          )}
+      {/* Hero — Snake's page gets the same vocabulary as /funding-arb
+          + /watch + /positions: gradient icon tile, bold title with
+          accent color on the noun, live counters in the subline. */}
+      <header className="mb-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 mb-2">
+              <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/[0.04] border border-hub-yellow/20 flex items-center justify-center">
+                <Star className="w-4 h-4 text-hub-yellow fill-current" />
+              </div>
+              <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Watchlist</span>
+            </div>
+            <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+              Trader <span className="text-hub-yellow">watch</span>
+            </h1>
+            <p className="text-[13px] text-neutral-400 mt-2 font-mono">
+              <span className="text-white font-bold">{bookmarks.length}</span> {bookmarks.length === 1 ? 'trader' : 'traders'}
+              {' · '}
+              <span className="text-white font-bold">{positions.length}</span> open {positions.length === 1 ? 'position' : 'positions'}
+              {lastRefresh && (
+                <>
+                  {' · '}
+                  <span className="text-neutral-500">refreshed {Math.floor((nowTick - lastRefresh) / 1000)}s ago</span>
+                </>
+              )}
+            </p>
+          </div>
           <button
             onClick={() => refresh()}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-neutral-300 text-xs font-medium hover:bg-white/[0.08] disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-neutral-300 text-xs font-semibold hover:bg-white/[0.08] hover:text-white disabled:opacity-50 transition-colors shrink-0 self-start lg:self-end"
           >
-            <RefreshCw size={12} className={loading ? 'animate-spin' : ''} />
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             Refresh
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
@@ -612,11 +625,19 @@ export default function TraderWatchPage() {
 /* ─── Subcomponents ─────────────────────────────────────────────── */
 
 function StatTile({ label, value, tone }: { label: string; value: string; tone?: 'pump' | 'rekt' }) {
-  const color = tone === 'pump' ? 'text-green-400' : tone === 'rekt' ? 'text-red-400' : 'text-white';
+  // Accent-bar pattern matching /funding-arb, /watch, /positions.
+  // Same visual vocabulary across every stat strip in the workflow
+  // so trader-watch reads as part of the same family.
+  const accent = tone === 'pump' ? 'before:bg-green-400'
+               : tone === 'rekt' ? 'before:bg-red-400'
+               : 'before:bg-white/10';
+  const color = tone === 'pump' ? 'text-green-400'
+              : tone === 'rekt' ? 'text-red-400'
+              : 'text-white';
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-hub-darker px-4 py-3">
-      <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">{label}</div>
-      <div className={`text-lg font-bold font-mono ${color}`}>{value}</div>
+    <div className={`relative overflow-hidden rounded-xl border border-white/[0.06] bg-gradient-to-br from-white/[0.03] to-white/[0.01] px-4 py-3 before:absolute before:left-0 before:top-0 before:h-full before:w-[2px] ${accent}`}>
+      <div className="text-[10px] uppercase tracking-[0.14em] text-neutral-500 mb-1 font-semibold">{label}</div>
+      <div className={`text-lg font-bold font-mono tabular-nums ${color}`}>{value}</div>
     </div>
   );
 }

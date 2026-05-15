@@ -399,64 +399,93 @@ function WatchPageInner() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="text-white max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
-        {/* Header */}
+        {/* Hero — same visual language as /funding-arb. Big title
+            block on the left with a venue-coverage chip cluster
+            beneath, action buttons on the right. */}
         <header className="mb-6">
-          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-            <Eye className="w-5 h-5 text-hub-yellow" />
-            <h1 className="text-2xl font-bold bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">
-              Wallet Watch
-            </h1>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400 border border-emerald-400/30 bg-emerald-500/10 px-1.5 py-0.5 rounded">
-              Hyperliquid
-            </span>
-            <span className="text-[10px] font-mono uppercase tracking-wider text-cyan-300 border border-cyan-400/30 bg-cyan-500/10 px-1.5 py-0.5 rounded">
-              gTrade
-            </span>
-            <div className="ml-auto flex items-center gap-2">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/[0.04] border border-hub-yellow/20 flex items-center justify-center">
+                  <Eye className="w-4 h-4 text-hub-yellow" />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Watcher</span>
+              </div>
+              <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+                Wallet <span className="text-hub-yellow">watch</span>
+              </h1>
+              <div className="flex items-center gap-1.5 flex-wrap mt-3">
+                {[
+                  { label: 'Hyperliquid', tone: 'emerald' as const },
+                  { label: 'gTrade · Arbitrum', tone: 'cyan' as const },
+                  { label: 'GMX V2 · Arb + Avax', tone: 'violet' as const },
+                ].map(v => {
+                  const tone = v.tone === 'emerald' ? 'text-emerald-300 border-emerald-400/30 bg-emerald-500/[0.08]'
+                             : v.tone === 'cyan' ? 'text-cyan-300 border-cyan-400/30 bg-cyan-500/[0.08]'
+                             : 'text-violet-300 border-violet-400/30 bg-violet-500/[0.08]';
+                  return (
+                    <span key={v.label} className={`inline-flex items-center text-[9px] font-bold uppercase tracking-[0.14em] px-2 py-0.5 rounded-full border ${tone}`}>
+                      {v.label}
+                    </span>
+                  );
+                })}
+              </div>
+              <p className="text-[13px] text-neutral-400 mt-3 max-w-xl leading-relaxed">
+                Telegram pings when any wallet you watch opens, closes, resizes,
+                gets near liq, takes realized PnL, or pays funding. Polled
+                every 60s — pings typically arrive within a minute or two of
+                the on-chain change.
+              </p>
+            </div>
+
+            {/* Right: test-ping CTA. Higher visual weight than before
+                — was a small chip, now a proper action button. */}
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 onClick={handleTestPing}
                 disabled={pingState === 'sending'}
-                className={`inline-flex items-center gap-1.5 text-[11px] px-2.5 py-1.5 rounded-lg border transition-colors disabled:opacity-50 ${
+                className={`inline-flex items-center gap-2 text-[12px] font-semibold px-4 py-2 rounded-xl border transition-all disabled:opacity-50 ${
                   pingState === 'sent'
-                    ? 'bg-emerald-500/10 text-emerald-300 border-emerald-400/40'
+                    ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/40 shadow-[0_2px_8px_-2px_rgba(52,211,153,0.3)]'
                     : pingState === 'error'
-                      ? 'bg-rose-500/10 text-rose-300 border-rose-400/40'
-                      : 'bg-white/[0.04] text-neutral-300 border-white/[0.08] hover:bg-white/[0.06] hover:text-white'
+                      ? 'bg-rose-500/15 text-rose-300 border-rose-400/40'
+                      : 'bg-hub-yellow/10 text-hub-yellow border-hub-yellow/30 hover:bg-hub-yellow/20 hover:border-hub-yellow/50 shadow-[0_2px_8px_-2px_rgba(255,165,0,0.2)]'
                 }`}
                 title="Send a test message to your linked Telegram chat"
               >
                 {pingState === 'sending'
-                  ? <Loader2 className="w-3 h-3 animate-spin" />
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   : pingState === 'sent'
-                    ? <CheckCircle2 className="w-3 h-3" />
-                    : <Send className="w-3 h-3" />}
+                    ? <CheckCircle2 className="w-3.5 h-3.5" />
+                    : <Send className="w-3.5 h-3.5" />}
                 {pingState === 'sending' ? 'Sending…' : pingState === 'sent' ? 'Sent' : 'Test ping'}
               </button>
             </div>
           </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Get Telegram pings when any wallet you watch opens, closes, resizes, gets near liq, takes realized PnL, or pays funding — across Hyperliquid, gTrade (Arbitrum), <em>and</em> GMX V2 (Arbitrum + Avalanche). Polled every 60s; pings typically arrive within a minute or two.
-          </p>
           {pingMsg && (
-            <p className={`text-[11px] mt-2 ${pingState === 'error' ? 'text-rose-400' : 'text-emerald-400'}`}>
+            <p className={`text-[11px] mt-3 font-mono ${pingState === 'error' ? 'text-rose-400' : 'text-emerald-400'}`}>
               {pingMsg}
             </p>
           )}
         </header>
 
-        {/* Stats strip — only shown when there are wallets to summarise */}
+        {/* Stats strip — only shown when there are wallets to summarise.
+            Three accent-tinted cards (neutral / pump / accent) matching
+            the /funding-arb visual language. */}
         {wallets.length > 0 && (
           <div className="grid grid-cols-3 gap-2 mb-5">
-            <StatCell label="Watching" value={`${wallets.length}/25`} />
+            <StatCell label="Watching" value={`${wallets.length}/25`} sub="wallets · max 25" tone="neutral" />
             <StatCell
               label="Events · 24h"
               value={String(events24h)}
-              valueClass={events24h > 0 ? 'text-emerald-400' : 'text-neutral-500'}
+              sub={events24h > 0 ? 'pings delivered' : 'quiet day'}
+              tone={events24h > 0 ? 'pump' : 'neutral'}
             />
             <StatCell
               label="Last event"
               value={lastEventTs ? relTime(lastEventTs) : '—'}
-              valueClass={lastEventTs ? 'text-white' : 'text-neutral-500'}
+              sub={lastEventTs ? 'from any watched wallet' : 'awaiting first ping'}
+              tone={lastEventTs ? 'accent' : 'neutral'}
             />
           </div>
         )}
@@ -784,11 +813,30 @@ function WatchPageInner() {
 
 /** Compact stat tile for the page-wide summary strip — three are
  *  rendered in a row above the watchlist. */
-function StatCell({ label, value, valueClass }: { label: string; value: string; valueClass?: string }) {
+function StatCell({
+  label, value, sub, tone = 'neutral',
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: 'neutral' | 'pump' | 'rekt' | 'accent';
+}) {
+  // Left-edge accent bar tinted by tone — matches the /funding-arb
+  // SummaryStrip pattern so the two pages share a visual vocabulary
+  // for compact stat readouts.
+  const accent = tone === 'pump' ? 'before:bg-green-400'
+               : tone === 'rekt' ? 'before:bg-red-400'
+               : tone === 'accent' ? 'before:bg-hub-yellow'
+               : 'before:bg-white/10';
+  const valueColor = tone === 'pump' ? 'text-green-400'
+                   : tone === 'rekt' ? 'text-red-400'
+                   : tone === 'accent' ? 'text-hub-yellow'
+                   : 'text-white';
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
-      <div className="text-[9px] uppercase tracking-wider text-neutral-500 font-medium">{label}</div>
-      <div className={`text-base font-bold font-mono tabular-nums mt-0.5 ${valueClass ?? 'text-white'}`}>{value}</div>
+    <div className={`relative overflow-hidden rounded-xl border border-white/[0.06] bg-gradient-to-br from-white/[0.03] to-white/[0.01] p-3 before:absolute before:left-0 before:top-0 before:h-full before:w-[2px] ${accent}`}>
+      <div className="text-[10px] uppercase tracking-[0.14em] text-neutral-500 font-semibold">{label}</div>
+      <div className={`text-base font-bold font-mono tabular-nums mt-1 leading-tight ${valueColor}`}>{value}</div>
+      {sub && <div className="text-[9px] text-neutral-600 mt-0.5 truncate">{sub}</div>}
     </div>
   );
 }

@@ -264,52 +264,63 @@ export default function PositionsPage() {
     <>
       <Header />
       <main className="max-w-[1500px] mx-auto w-full px-4 py-6">
-        {/* Hero */}
-        <div className="mb-5 flex items-center gap-3 flex-wrap">
-          <div>
-            <h1 className="text-xl font-bold text-white">Positions</h1>
-            <p className="text-sm text-neutral-500 mt-0.5">
-              Unified view of your open positions across connected accounts. Funding columns
-              are direction-aware: green = funding favors your side, red = funding against you.
-            </p>
+        {/* Hero — same vocabulary as /funding-arb + /watch: big title
+            block on the left, action cluster on the right. Action
+            chips upgraded from tiny grey tiles to readable pill
+            buttons with hover state. */}
+        <header className="mb-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/[0.04] border border-hub-yellow/20 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-hub-yellow" />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Portfolio</span>
+              </div>
+              <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+                Open <span className="text-hub-yellow">positions</span>
+              </h1>
+              <p className="text-[13px] text-neutral-400 mt-3 max-w-xl leading-relaxed">
+                Unified view across every connected CEX key + DEX wallet.
+                Funding columns are direction-aware: green = funding favours
+                your side, red = funding against you.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap shrink-0">
+              {[
+                { href: '/positions/journal',  icon: '📔', label: 'Journal',  tip: 'Trade Journal — every closed trade with realised PnL chart.' },
+                { href: '/positions/tax',      icon: '🧾', label: 'Tax',      tip: 'Tax / Cost-Basis — FIFO realised PnL across all your wallets/keys.' },
+                { href: '/positions/simulate', icon: '🧮', label: 'Simulate', tip: 'What if I open this position? Pre-trade decision engine.' },
+              ].map(it => (
+                <Link
+                  key={it.href}
+                  href={it.href}
+                  title={it.tip}
+                  className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-hub-yellow hover:text-black hover:bg-hub-yellow px-2.5 py-1.5 rounded-lg border border-hub-yellow/30 bg-hub-yellow/[0.06] transition-colors"
+                >
+                  <span>{it.icon}</span>
+                  {it.label}
+                </Link>
+              ))}
+              <Link
+                href="/account/connections"
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-neutral-400 hover:text-white px-2.5 py-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] transition-colors"
+              >
+                Connections <ExternalLink className="w-2.5 h-2.5" />
+              </Link>
+              <button
+                onClick={() => load(false)}
+                disabled={refreshing}
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-neutral-400 hover:text-white px-2.5 py-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.05] transition-colors disabled:opacity-40"
+                title="Force a sync now"
+              >
+                <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </div>
           </div>
-          <div className="ml-auto flex items-center gap-2">
-            <Link
-              href="/positions/journal"
-              className="inline-flex items-center gap-1 text-xs text-hub-yellow hover:text-hub-yellow/80 px-2 py-1 rounded border border-hub-yellow/30 bg-hub-yellow/5"
-              title="Trade Journal — every closed trade with realised PnL chart."
-            >
-              📔 Journal
-            </Link>
-            <Link
-              href="/positions/tax"
-              className="inline-flex items-center gap-1 text-xs text-hub-yellow hover:text-hub-yellow/80 px-2 py-1 rounded border border-hub-yellow/30 bg-hub-yellow/5"
-              title="Tax / Cost-Basis — FIFO realised PnL across all your wallets/keys."
-            >
-              🧾 Tax
-            </Link>
-            <Link
-              href="/positions/simulate"
-              className="inline-flex items-center gap-1 text-xs text-hub-yellow hover:text-hub-yellow/80 px-2 py-1 rounded border border-hub-yellow/30 bg-hub-yellow/5"
-              title="What if I open this position? Pre-trade decision engine."
-            >
-              🧮 Simulate trade
-            </Link>
-            <Link
-              href="/account/connections"
-              className="inline-flex items-center gap-1 text-xs text-neutral-400 hover:text-hub-yellow"
-            >
-              Manage connections <ExternalLink className="w-3 h-3" />
-            </Link>
-            <button
-              onClick={() => load(false)}
-              disabled={refreshing}
-              className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
-            >
-              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} /> refresh
-            </button>
-          </div>
-        </div>
+        </header>
 
         {/* Loading skeleton on first paint */}
         {!data && !error && (
@@ -344,18 +355,18 @@ export default function PositionsPage() {
                  and one Ethereum L1 address covers Lighter — info that's
                  otherwise buried in /account/connections. */}
             <div className="max-w-2xl mx-auto mb-5 grid sm:grid-cols-2 gap-3 text-left">
-              <div className="rounded-md bg-white/[0.02] border border-white/[0.06] p-3">
-                <div className="text-[10px] uppercase tracking-wider text-emerald-400 font-semibold mb-1.5">CEX (API key)</div>
-                <div className="text-[11px] text-neutral-400 leading-relaxed">
-                  Binance · Bybit · OKX · Bitget
-                  <span className="block mt-1 text-[10px] text-neutral-600">Use READ-ONLY keys.</span>
+              <div className="rounded-xl bg-gradient-to-br from-emerald-500/[0.06] to-emerald-500/[0.01] border border-emerald-400/15 p-3.5">
+                <div className="text-[10px] uppercase tracking-[0.16em] text-emerald-400 font-bold mb-1.5">CEX · API key</div>
+                <div className="text-[11px] text-neutral-300 leading-relaxed">
+                  Binance · Bybit · OKX · Bitget · MEXC
+                  <span className="block mt-1.5 text-[10px] text-neutral-500">Use READ-ONLY keys. Trade + withdraw scopes off.</span>
                 </div>
               </div>
-              <div className="rounded-md bg-white/[0.02] border border-white/[0.06] p-3">
-                <div className="text-[10px] uppercase tracking-wider text-sky-400 font-semibold mb-1.5">DEX (wallet)</div>
-                <div className="text-[11px] text-neutral-400 leading-relaxed space-y-0.5">
+              <div className="rounded-xl bg-gradient-to-br from-sky-500/[0.06] to-sky-500/[0.01] border border-sky-400/15 p-3.5">
+                <div className="text-[10px] uppercase tracking-[0.16em] text-sky-400 font-bold mb-1.5">DEX · wallet</div>
+                <div className="text-[11px] text-neutral-300 leading-relaxed space-y-0.5">
                   <div><span className="text-neutral-500">Hyperliquid</span> · paste your HL 0x… address</div>
-                  <div><span className="text-neutral-500">Arbitrum</span> · GMX V2 (Arb + Avax) <span className="text-amber-400/70 text-[10px]">+ gTrade soon</span></div>
+                  <div><span className="text-neutral-500">Arbitrum</span> · GMX V2 (Arb + Avax) · gTrade</div>
                   <div><span className="text-neutral-500">Ethereum</span> · Lighter (L1 register addr)</div>
                 </div>
               </div>
@@ -487,11 +498,22 @@ export default function PositionsPage() {
 function SummaryCell({
   label, value, sub, valueColor,
 }: { label: string; value: string; sub?: string; valueColor?: string }) {
+  // Match the /funding-arb + /watch SummaryStrip pattern — accent
+  // strip on the left, tighter value/sub typography, gradient bg.
+  // Derive the accent from valueColor when supplied so the bar
+  // matches the value tone without needing an extra prop.
+  const accentBar = valueColor?.includes('emerald') || valueColor?.includes('green')
+    ? 'before:bg-green-400'
+    : valueColor?.includes('red')
+      ? 'before:bg-red-400'
+      : valueColor?.includes('yellow') || valueColor?.includes('hub-yellow')
+        ? 'before:bg-hub-yellow'
+        : 'before:bg-white/10';
   return (
-    <div className="card-premium p-3">
-      <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium">{label}</div>
-      <div className={`text-lg font-bold tabular-nums mt-0.5 ${valueColor ?? 'text-white'}`}>{value}</div>
-      {sub && <div className="text-[9px] text-neutral-600 mt-0.5">{sub}</div>}
+    <div className={`relative overflow-hidden rounded-xl border border-white/[0.06] bg-gradient-to-br from-white/[0.03] to-white/[0.01] p-3 before:absolute before:left-0 before:top-0 before:h-full before:w-[2px] ${accentBar}`}>
+      <div className="text-[10px] uppercase tracking-[0.14em] text-neutral-500 font-semibold">{label}</div>
+      <div className={`text-base font-bold tabular-nums mt-1 leading-tight ${valueColor ?? 'text-white'}`}>{value}</div>
+      {sub && <div className="text-[9px] text-neutral-600 mt-0.5 truncate">{sub}</div>}
     </div>
   );
 }
