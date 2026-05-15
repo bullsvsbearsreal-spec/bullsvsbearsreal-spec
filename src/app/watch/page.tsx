@@ -415,7 +415,7 @@ function WatchPageInner() {
             </div>
           </div>
           <p className="text-sm text-neutral-500 max-w-2xl">
-            Get Telegram pings when any wallet you watch opens, closes, resizes, gets near liq, takes realized PnL, or pays funding — across Hyperliquid <em>and</em> gTrade (Arbitrum). Polled every 60s; pings typically arrive within a minute or two.
+            Get Telegram pings when any wallet you watch opens, closes, resizes, gets near liq, takes realized PnL, or pays funding — across Hyperliquid, gTrade (Arbitrum), <em>and</em> GMX V2 (Arbitrum + Avalanche). Polled every 60s; pings typically arrive within a minute or two.
           </p>
           {pingMsg && (
             <p className={`text-[11px] mt-2 ${pingState === 'error' ? 'text-rose-400' : 'text-emerald-400'}`}>
@@ -456,7 +456,7 @@ function WatchPageInner() {
             <input
               type="text" value={addrInput}
               onChange={e => { setAddrInput(e.target.value); setError(null); }}
-              placeholder="0x… any Hyperliquid or gTrade wallet"
+              placeholder="0x… any Hyperliquid, gTrade, or GMX wallet"
               aria-label="Wallet address"
               aria-describedby={error ? 'watch-addr-error' : undefined}
               aria-invalid={!!error}
@@ -742,7 +742,7 @@ function WatchPageInner() {
 
         {/* Footer info */}
         <p className="mt-8 text-[11px] text-neutral-600 max-w-2xl text-center mx-auto">
-          Hyperliquid + gTrade Arbitrum. Events are polled every 60s — actual Telegram delivery typically &lt;90s after the on-chain change.{' '}
+          Hyperliquid + gTrade Arbitrum + GMX V2 (Arbitrum + Avalanche). Events are polled every 60s — actual Telegram delivery typically arrives within a minute or two of the on-chain change.{' '}
           <Link href="/profile?tab=notifications" className="text-hub-yellow hover:underline">Link Telegram</Link>{' '}
           if you haven&apos;t already, or alerts won&apos;t deliver.
         </p>
@@ -785,10 +785,16 @@ function TrigBadge({ label }: { label: string }) {
  *  venue strip so users can see at a glance which venue an event came
  *  from and whether the watcher has data for both venues yet. */
 function VenueChip({ venue, positions, compact = false }: { venue: Venue; positions?: number; compact?: boolean }) {
-  const tone = venue === 'gtrade'
-    ? 'bg-cyan-500/10 text-cyan-300 border-cyan-400/30'
-    : 'bg-emerald-500/10 text-emerald-400 border-emerald-400/30';
-  const label = venue === 'gtrade' ? 'gTrade' : 'Hyperliquid';
+  // GMX added May 2026 alongside HL + gTrade — same chip shape, just
+  // a distinct violet tone so christian can see which side an event
+  // came from when the same wallet has positions on both DEXes
+  // simultaneously (common for cross-protocol farmers).
+  const tone = venue === 'gtrade' ? 'bg-cyan-500/10 text-cyan-300 border-cyan-400/30'
+             : venue === 'gmx'    ? 'bg-violet-500/10 text-violet-300 border-violet-400/30'
+             : 'bg-emerald-500/10 text-emerald-400 border-emerald-400/30';
+  const label = venue === 'gtrade' ? 'gTrade'
+              : venue === 'gmx'    ? 'GMX'
+              : 'Hyperliquid';
   return (
     <span className={`inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border shrink-0 ${tone}`}>
       {label}

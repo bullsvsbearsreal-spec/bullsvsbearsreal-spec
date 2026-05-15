@@ -320,8 +320,13 @@ describe('formatEvent', () => {
       { kind: 'opened', symbol: 'BTC', payload: { side: 'long', sizeUsd: 40_000 } },
       addr, undefined, 'gtrade',
     );
+    const gmx = formatEvent(
+      { kind: 'opened', symbol: 'BTC', payload: { side: 'long', sizeUsd: 40_000 } },
+      addr, undefined, 'gmx',
+    );
     expect(hl).toContain('Hyperliquid');
     expect(gt).toContain('gTrade');
+    expect(gmx).toContain('GMX');
   });
 
   it('label takes priority over short address in the header line', () => {

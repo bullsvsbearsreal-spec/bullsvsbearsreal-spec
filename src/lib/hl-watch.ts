@@ -7,6 +7,13 @@
  *   - 'hyperliquid' — clearinghouseState via api.hyperliquid.xyz
  *   - 'gtrade'      — getTrades(address) on Arbitrum diamond, via the
  *                     existing src/lib/wallet-clients/gtrade.ts client.
+ *   - 'gmx'         — GMX V2 positions on Arbitrum + Avalanche via the
+ *                     gmxWalletClient (which already merges both chains
+ *                     and disambiguates collisions). Added May 2026 in
+ *                     response to christian needing Telegram pings on
+ *                     0xabF6 / 0xB8ba (his counter-traders on Arbitrum)
+ *                     — /trader-watch shows the same data but only
+ *                     while a tab's open.
  *
  * The cron polls each watched address every 60s for each venue, calls
  * `fetchVenueState(address, venue)` to grab current positions, then
@@ -15,16 +22,17 @@
  * to hl_position_events and fanned out to every subscribed user (with
  * per-trigger filtering applied) for Telegram delivery.
  *
- * Funding tracking is HL-only — gTrade borrow fees accrue on close and
- * the on-chain reader doesn't surface a running cumulative figure, so
- * funding_paid events never fire for gTrade addresses.
+ * Funding tracking is HL-only — gTrade + GMX V2 settle borrow/funding on
+ * close and the on-chain readers don't surface a running cumulative
+ * figure, so funding_paid events never fire for gTrade or GMX addresses.
  */
 
 import type { HLClearingHouseState, HLPosition } from '@/app/api/_shared/hyperliquid-types';
 import { gtradeWalletClient } from '@/lib/wallet-clients/gtrade';
+import { gmxWalletClient } from '@/lib/wallet-clients/gmx';
 
-export type Venue = 'hyperliquid' | 'gtrade';
-export const VENUES: Venue[] = ['hyperliquid', 'gtrade'];
+export type Venue = 'hyperliquid' | 'gtrade' | 'gmx';
+export const VENUES: Venue[] = ['hyperliquid', 'gtrade', 'gmx'];
 
 export type WatchEventKind =
   | 'opened'        // new symbol on the book
@@ -111,6 +119,7 @@ const HL_INFO_URL = 'https://api.hyperliquid.xyz/info';
 export async function fetchVenueState(address: string, venue: Venue): Promise<AccountSnapshot | null> {
   if (venue === 'hyperliquid') return fetchHLState(address);
   if (venue === 'gtrade')      return fetchGTradeState(address);
+  if (venue === 'gmx')         return fetchGMXState(address);
   return null;
 }
 
@@ -164,6 +173,54 @@ async function fetchGTradeState(address: string): Promise<AccountSnapshot | null
         };
       }),
       accountValue: 0, // gTrade trades are isolated-margin; no account-wide equity
+      ts: Date.now(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function fetchGMXState(address: string): Promise<AccountSnapshot | null> {
+  // gmxWalletClient.fetchPositions hits BOTH Arbitrum and Avalanche
+  // subsquids in parallel and tags Avalanche-only collisions with
+  // a "(Avax)" suffix, so we get one merged list per address. That
+  // matches the "one snapshot row per (address, venue) pair" DB
+  // shape — we don't need two separate gmx-arbitrum / gmx-avalanche
+  // venues for the differ to work, since the symbol field already
+  // disambiguates cross-chain duplicates.
+  try {
+    const positions = await gmxWalletClient.fetchPositions(address);
+    return {
+      address: address.toLowerCase(),
+      venue: 'gmx',
+      positions: positions.map(p => {
+        const szi = (p.side === 'short' ? -1 : 1) * (p.size ?? 0);
+        const entryPx = p.entryPrice ?? 0;
+        // GMX subsquid + tickers gives us a live mark — fall back to
+        // entry so liq-danger distance still has a value on partial
+        // ticks rather than computing distance against entry forever.
+        const markPx = p.markPrice ?? entryPx;
+        const reportedValue = Math.abs(p.positionValue ?? 0);
+        const fallbackValue = markPx > 0 ? Math.abs(szi * markPx) : 0;
+        return {
+          coin: p.symbol,
+          szi,
+          positionValue: reportedValue > 0 ? reportedValue : fallbackValue,
+          entryPx,
+          markPx,
+          liquidationPx: p.liquidationPrice ?? null,
+          unrealizedPnl: p.unrealizedPnl ?? 0,
+          // Same as gTrade — GMX V2 doesn't surface a running funding
+          // accumulator (funding settles on close). Setting this to 0
+          // means the funding delta is always 0 → funding_paid events
+          // never fire for GMX wallets, matching the user-visible
+          // promise documented at the top of this file.
+          cumFundingAllTime: 0,
+        };
+      }),
+      // GMX positions are isolated-margin per pool — no single
+      // account-wide equity figure to surface.
+      accountValue: 0,
       ts: Date.now(),
     };
   } catch {
@@ -434,7 +491,9 @@ export function applyThresholds(events: WatchEvent[], t: Thresholds): WatchEvent
 export function formatEvent(e: WatchEvent, address: string, label?: string, venue: Venue = 'hyperliquid'): string {
   const who = label ? `*${escapeMd(label)}* (\`${shortAddr(address)}\`)` : `\`${shortAddr(address)}\``;
   const sym = `*${escapeMd(e.symbol)}*`;
-  const venueTag = venue === 'gtrade' ? ' · _gTrade_' : ' · _Hyperliquid_';
+  const venueTag = venue === 'gtrade' ? ' · _gTrade_'
+                 : venue === 'gmx'    ? ' · _GMX_'
+                 : ' · _Hyperliquid_';
   switch (e.kind) {
     case 'opened': {
       const dir = e.payload.side === 'short' ? '🔻 SHORT' : '🟢 LONG';
