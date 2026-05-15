@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { Users2, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface SignalScore {
@@ -100,30 +101,29 @@ export default function CrowdednessPage() {
     <>
       <Header />
       <main className="max-w-[1300px] mx-auto w-full px-4 py-6">
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-pink-500/10 flex items-center justify-center">
-              <Users2 className="w-4 h-4 text-pink-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Crowdedness Index</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              {data?.rows.length ?? 0} coins · 0-100 scale
-            </span>
+        <PageHero
+          icon={Users2}
+          eyebrow={`Positioning · ${data?.rows.length ?? 0} coins · 0–100 scale`}
+          title="Crowdedness"
+          accentNoun="index"
+          accent="pink"
+          description={
+            <>Per-coin positioning crowdedness. Combines funding-rate magnitude,
+              7-day OI momentum, and Binance long/short ratio into one 0–100 score.
+              <span className="text-white"> Above 70 + long bias = crowded long, fade fuel.</span>{' '}
+              Above 70 + short bias = squeeze fuel. Below 30 = balanced.</>
+          }
+          actions={
             <button
               onClick={() => load(false)}
               disabled={refreshing}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] text-xs font-semibold transition-colors disabled:opacity-40"
             >
-              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-              refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Per-coin positioning crowdedness. Combines funding rate magnitude, 7-day OI momentum,
-            and Binance long/short ratio into one 0-100 score. Above 70 + long bias = crowded
-            long, fade fuel. Above 70 + short bias = crowded short, squeeze fuel. Below 30 = balanced.
-          </p>
-        </div>
+          }
+        />
 
         {/* Summary cards */}
         {data && data.rows.length > 0 && (

@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import DataFreshness from '@/components/DataFreshness';
 import { useApi } from '@/hooks/useSWRApi';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import ReferralBanner from '@/components/ReferralBanner';
 import { formatUSD, formatPercent, formatCompact } from '@/lib/utils/format';
 import { useFlash } from '@/hooks/useFlash';
@@ -197,46 +198,50 @@ export default function ETFPage() {
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         {/* Title + Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 flex items-center justify-center">
-              <Landmark className="w-4 h-4 text-hub-yellow" />
-            </div>
-            <div>
-              <h1 className="heading-page">Crypto ETF Tracker</h1>
-              <p className="text-neutral-500 text-sm mt-0.5">
-                US spot {type === 'btc' ? 'Bitcoin' : 'Ethereum'} ETFs — prices, volumes, and fees
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex bg-white/[0.04] rounded-lg p-0.5 gap-0.5">
-              {(['btc', 'eth'] as const).map((t) => (
-                <button
-                  key={t}
-                  onClick={() => setType(t)}
-                  className={`px-4 py-1.5 rounded-md text-xs font-medium transition-all ${
-                    type === t
-                      ? 'bg-hub-yellow text-black shadow-glow-sm'
-                      : 'text-neutral-400 hover:text-white hover:bg-white/[0.06]'
-                  }`}
-                >
-                  {t.toUpperCase()}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-            {/* Source was 'Polygon.io' but /api/etf actually fetches
-                query1.finance.yahoo.com. Mismatched attribution. */}
-            <DataFreshness exchangeCount={0} sources={['Yahoo Finance']} lastUpdated={lastUpdate} />
-          </div>
-        </div>
+        <PageHero
+          icon={Landmark}
+          eyebrow="Institutional · spot ETFs"
+          title="Crypto"
+          accentNoun="ETFs"
+          accent="violet"
+          description={
+            <>US spot {type === 'btc' ? 'Bitcoin' : 'Ethereum'} ETFs — prices,
+              volumes, and fees. Source: Yahoo Finance. Switch BTC ↔ ETH on the right.</>
+          }
+          className="mb-6"
+          actions={
+            <>
+              <div className="inline-flex items-center gap-0.5 bg-white/[0.02] border border-white/[0.05] rounded-lg p-0.5" role="tablist" aria-label="ETF type">
+                {(['btc', 'eth'] as const).map((t) => (
+                  <button
+                    key={t}
+                    role="tab"
+                    aria-selected={type === t}
+                    onClick={() => setType(t)}
+                    className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-all ${
+                      type === t
+                        ? 'bg-hub-yellow text-black shadow-[0_2px_8px_-2px_rgba(255,165,0,0.4)]'
+                        : 'text-neutral-500 hover:text-white'
+                    }`}
+                  >
+                    {t.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                aria-label="Refresh"
+                className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-neutral-300 hover:text-white transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+              {/* Source was 'Polygon.io' but /api/etf actually fetches
+                  query1.finance.yahoo.com. Mismatched attribution. */}
+              <DataFreshness exchangeCount={0} sources={['Yahoo Finance']} lastUpdated={lastUpdate} />
+            </>
+          }
+        />
 
         {/* Loading */}
         {loading && !data && (

@@ -6,7 +6,8 @@ import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
 import DataFreshness from '@/components/DataFreshness';
-import { RefreshCw, AlertTriangle, Info } from 'lucide-react';
+import PageHero from '@/components/PageHero';
+import { RefreshCw, AlertTriangle, Info, GitMerge } from 'lucide-react';
 import { savePriceSnapshot } from '@/lib/storage/priceHistory';
 
 const NON_CRYPTO_CORR = new Set(['XAU', 'XAG', 'XAUT', 'PAXG', 'XPT', 'XPD', 'EUR', 'GBP', 'JPY', 'USOIL', 'UKOIL', 'CL']);
@@ -257,25 +258,32 @@ export default function CorrelationPage() {
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <div>
-            <h1 className="heading-page">Correlation Matrix</h1>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              Cross-exchange 24h price change correlation between top {count} symbols
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <DataFreshness exchangeCount={data?.totalExchanges ?? 1} lastUpdated={lastUpdate} />
-            <button
-              onClick={refresh}
-              disabled={isRefreshing}
-              className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={GitMerge}
+          eyebrow="Stats · cross-exchange"
+          title="Correlation"
+          accentNoun="matrix"
+          accent="hub-yellow"
+          description={
+            <>Cross-exchange 24h price-change correlation between the top{' '}
+              <span className="text-white font-medium">{count} symbols</span>. Use to gauge
+              whether your basket is genuinely diversified or just sitting on one beta.</>
+          }
+          className="mb-4"
+          actions={
+            <>
+              <DataFreshness exchangeCount={data?.totalExchanges ?? 1} lastUpdated={lastUpdate} />
+              <button
+                onClick={refresh}
+                disabled={isRefreshing}
+                aria-label="Refresh"
+                className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-40"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </>
+          }
+        />
 
         {/* Stats row */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">

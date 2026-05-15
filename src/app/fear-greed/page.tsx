@@ -7,7 +7,8 @@ import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import RelatedPages from '@/components/RelatedPages';
 import { useApi } from '@/hooks/useSWRApi';
-import { RefreshCw, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
+import PageHero from '@/components/PageHero';
+import { RefreshCw, TrendingUp, TrendingDown, AlertTriangle, Activity } from 'lucide-react';
 import { useFlash } from '@/hooks/useFlash';
 
 const FearGreedChart = dynamic(() => import('./components/FearGreedChart'), { ssr: false });
@@ -145,30 +146,36 @@ export default function FearGreedPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="heading-page">Fear & Greed Index</h1>
-            <p className="text-neutral-600 text-xs mt-0.5">
-              Crypto market sentiment over time
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {lastUpdate && (
-              <span className="text-neutral-600 text-xs">
-                Updated {lastUpdate.toLocaleTimeString()}
-              </span>
-            )}
-            <button
-              onClick={refresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-500 hover:text-white transition-colors text-xs"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={Activity}
+          eyebrow="Sentiment · index"
+          title="Fear &"
+          accentNoun="Greed"
+          accent="red"
+          description={
+            <>Composite crypto market sentiment over time — volatility, momentum,
+              social, dominance, and survey signals rolled into one number 0–100.
+              Below 25 = extreme fear · above 75 = extreme greed.</>
+          }
+          className="mb-8"
+          actions={
+            <>
+              {lastUpdate && (
+                <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
+                  Updated {lastUpdate.toLocaleTimeString()}
+                </span>
+              )}
+              <button
+                onClick={refresh}
+                disabled={isRefreshing}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] transition-colors text-xs font-semibold disabled:opacity-40"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </>
+          }
+        />
 
         {error && (
           <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">

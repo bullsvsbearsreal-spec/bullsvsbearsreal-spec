@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { Compass, RefreshCw, Activity } from 'lucide-react';
 
 interface SignalReading {
@@ -97,31 +98,29 @@ export default function CyclePhasePage() {
     <>
       <Header />
       <main className="max-w-[1100px] mx-auto w-full px-4 py-6">
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-amber-500/10 flex items-center justify-center">
-              <Compass className="w-4 h-4 text-amber-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">BTC Cycle Phase</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              composite of 5 signals
-            </span>
+        <PageHero
+          icon={Compass}
+          eyebrow="Macro · composite of 5 signals"
+          title="BTC cycle"
+          accentNoun="phase"
+          accent="orange"
+          description={
+            <>Where in the cycle are we? Synthesises Hash Ribbons + Puell Multiple
+              + MVRV Z-score + funding regime + price-vs-200d-SMA into a single
+              phase tag. Each signal scored independently; composite averaged
+              with confidence based on signal availability.</>
+          }
+          actions={
             <button
               onClick={() => load(false)}
               disabled={refreshing}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] text-xs font-semibold transition-colors disabled:opacity-40"
             >
-              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-              refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Where in the cycle are we? Synthesizes Hash Ribbons + Puell Multiple
-            + MVRV Z-score + funding regime + price-vs-200d-SMA into a single
-            phase tag. Each signal scored independently; composite averaged
-            with confidence based on signal availability.
-          </p>
-        </div>
+          }
+        />
 
         {error && (
           <div className="card-premium p-4 text-center mb-4">

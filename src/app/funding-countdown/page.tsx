@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { Clock, RefreshCw, Activity } from 'lucide-react';
 
 interface CountdownRow {
@@ -111,32 +112,29 @@ export default function FundingCountdownPage() {
     <>
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        {/* Hero */}
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-orange-500/10 flex items-center justify-center">
-              <Clock className="w-4 h-4 text-orange-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Funding Countdown</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              {data?.rows.length ?? 0} feeds · live
-            </span>
+        <PageHero
+          icon={Clock}
+          eyebrow={`Settlement clocks · ${data?.rows.length ?? 0} feeds`}
+          title="Funding"
+          accentNoun="countdown"
+          accent="orange"
+          description={
+            <>Live next-settlement clocks per exchange × symbol. Time until each
+              exchange charges/credits funding for open positions. Most CEX settle
+              every 8h on offset schedules; Hyperliquid + dYdX settle hourly.</>
+          }
+          actions={
             <button
               onClick={() => load(false)}
               disabled={refreshing}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
               aria-label="Refresh"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] text-xs font-semibold transition-colors disabled:opacity-40"
             >
-              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-              refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Live next-settlement clocks per exchange × symbol. Time until each
-            exchange charges/credits funding for open positions. Most CEX
-            settle every 8h on offset schedules; Hyperliquid settles hourly.
-          </p>
-        </div>
+          }
+        />
 
         {/* Next imminent banner */}
         {nextImminent && (() => {
