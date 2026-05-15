@@ -130,17 +130,26 @@ export const openApiSpec = {
         properties: {
           symbol: { type: 'string', example: 'BTC' },
           venueCount: { type: 'integer' },
-          spread8h: { type: 'number', description: 'Max - min funding rate normalised to 8h' },
+          spread8h: { type: 'number', description: 'GROSS max - min funding rate normalised to 8h. Does not include pool borrow rates.' },
           predictedSpread8h: {
             type: 'number',
             nullable: true,
             description: 'Predicted next-window spread (max.predicted8h - min.predicted8h), 8h-normalized. Null when either leg lacks predictedRate (e.g. HTX, Lighter). Compare to spread8h to decide whether to enter NOW or wait for the next settlement.',
           },
-          annualized: { type: 'number', description: 'spread8h × 3 × 365' },
+          annualized: { type: 'number', description: 'spread8h × 3 × 365 (gross)' },
           predictedAnnualized: {
             type: 'number',
             nullable: true,
             description: 'predictedSpread8h × 3 × 365, null when predictedSpread8h is null',
+          },
+          netSpread8h: {
+            type: 'number',
+            description: 'NET-of-borrow 8h spread = spread8h - totalBorrow8h. Subtracts pool-borrow cost on both DEX legs (gTrade/GMX charge borrow regardless of side; CEXes contribute 0). May be negative when borrow exceeds the funding gap — common on high-utilization gTrade pools.',
+          },
+          netAnnualized: { type: 'number', description: 'netSpread8h × 3 × 365' },
+          totalBorrow8h: {
+            type: 'number',
+            description: 'Sum of pool-borrow rates on both legs (8h-normalised %). Lets callers show "spread / borrow / net" breakdowns without recomputing.',
           },
           min: { $ref: '#/components/schemas/VenueQuote' },
           max: { $ref: '#/components/schemas/VenueQuote' },
@@ -328,6 +337,10 @@ export const openApiSpec = {
             type: 'number',
             nullable: true,
             description: 'Predicted next-window rate, 8h-normalised. Null when the venue does not expose predictedRate (see /exchanges supportsPredictedRate). Sourced from the same field as /funding\'s predictedRate, just normalised.',
+          },
+          borrow8h: {
+            type: 'number',
+            description: '8h-normalised pool-borrow rate (positive percent). 0 for CEXes (no symmetric borrow). For DEXes (gTrade, GMX) this is the cost of renting pool liquidity that the trader pays regardless of long/short side — a delta-neutral funding farm has to subtract this from the spread to get the actual net carry.',
           },
           interval: { type: 'string', enum: ['1h', '4h', '8h'] },
           markPrice: { type: 'number', nullable: true },

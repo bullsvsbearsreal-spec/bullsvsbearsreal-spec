@@ -29,16 +29,27 @@ export const dynamic = 'force-dynamic';
  * Query params:
  *   ?min_venues=3       2..40, only include symbols with >= N venues (default 3)
  *   ?min_spread=0.01    minimum spread (% per 8h) to include (default 0.01 = 1bp)
- *   ?sort=annualized    annualized | spread | venues  (default: annualized)
+ *   ?sort=annualized    annualized | spread | net | venues  (default: annualized)
+ *                       'net' = sort by netAnnualized (spread minus borrow on both
+ *                       DEX legs). Use for funding-farm decisions on gTrade/GMX
+ *                       where pool borrow rates frequently flip a 100%+ gross
+ *                       opportunity into a negative carry.
  *   ?limit=100          max symbols returned, 1..500 (default 100)
  *
  * Response shape:
  *   {
  *     success: true,
- *     data: [{ symbol, venueCount, min, max, spread8h, annualized, venues, ... }],
+ *     data: [{ symbol, venueCount, min, max, spread8h, annualized,
+ *              netSpread8h, netAnnualized, totalBorrow8h, venues, ... }],
  *     summary: { totalSymbols, displayed, topAnnualized, topSymbol, medianSpread, dexCrossSymbols },
  *     meta: { timestamp, minVenues, minSpread, sort, limit, feeModel }
  *   }
+ *
+ * Each venue in `venues[]` + `min` + `max` carries a `borrow8h` field
+ * (8h-normalised pool-borrow %, 0 for CEXes since they don't charge a
+ * symmetric borrow). Subtract `totalBorrow8h` from `spread8h` to get
+ * `netSpread8h` — that calculation is also done server-side and the
+ * derived fields are on every row.
  *
  * Auth: Bearer ih_xxx (free tier OK).
  *

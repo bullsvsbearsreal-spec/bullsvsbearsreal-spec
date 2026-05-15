@@ -30,6 +30,13 @@ interface RawFunding {
   exchange: string;
   fundingRate: number;         // already in percent (e.g. 0.05 = 0.05%)
   predictedRate?: number;      // next-window forecast %
+  // Symmetric borrowing fee (mostly DEXes — gTrade, GMX). Both sides
+  // pay this regardless of direction, so it's a pure cost layered on
+  // top of funding for anyone running a delta-neutral funding-farm.
+  // Surfaced on FundingData by the GMX + gTrade fetchers in
+  // src/app/api/funding/exchanges.ts. CEXes don't have a borrowing
+  // fee per se and leave this undefined.
+  borrowingRate?: number;
   fundingInterval?: '1h' | '4h' | '8h';
   markPrice?: number;
   type?: 'cex' | 'dex';
@@ -40,6 +47,11 @@ interface VenueQuote {
   rate: number;                // per-interval %
   rate8h: number;              // 8h-normalized for comparison
   predicted8h: number | null;  // 8h-normalized predicted next-window rate
+  // 8h-normalized borrow cost for this venue. 0 for CEXes (no borrow).
+  // For DEXes this is the gross-cost-of-renting-pool-liquidity that
+  // a funding farmer has to subtract from the funding spread to get
+  // the actual net carry. Reported as a positive number.
+  borrow8h: number;
   interval: '1h' | '4h' | '8h';
   markPrice: number | null;
   type: 'cex' | 'dex';
@@ -50,10 +62,21 @@ interface ArbOpportunity {
   venueCount: number;
   min: VenueQuote;             // cheapest funding (LONG this side to get paid / pay less)
   max: VenueQuote;             // most expensive funding (SHORT this side to collect)
-  spread8h: number;            // in % per 8h
+  spread8h: number;            // in % per 8h, GROSS of borrow fees
   predictedSpread8h: number | null; // 8h-normalized next-window spread, null if either side lacks predictedRate
   annualized: number;          // spread8h × 3 × 365
   predictedAnnualized: number | null; // annualized off predictedSpread8h
+  // NET-of-borrow spread for the long_min_short_max trade. Equals
+  // spread8h minus borrow on both legs (CEX leg contributes 0).
+  // This is the number Christian + snake actually care about — the
+  // gross spread overstates carry on DEX legs by 30-60% APR for many
+  // alts where pool utilization is high. May be negative when borrow
+  // exceeds the funding gap.
+  netSpread8h: number;
+  netAnnualized: number;
+  // Total borrow cost on both legs (8h-normalized %). Lets the UI
+  // show "spread 0.18% / borrow 0.05% / net 0.13%" breakdowns.
+  totalBorrow8h: number;
   venues: VenueQuote[];        // all quotes sorted by rate ascending
   direction: 'long_min_short_max' | 'symmetric'; // which leg pays
   dexOnOneSide: boolean;       // true if a CEX on one side + DEX on other
@@ -75,8 +98,13 @@ export async function GET(request: NextRequest) {
   const minVenues = Math.max(2, Math.min(40, parseInt(searchParams.get('min_venues') || '3', 10) || 3));
   const minSpread = Math.max(0, parseFloat(searchParams.get('min_spread') || '0.01') || 0.01);
   const sortRaw = (searchParams.get('sort') || 'annualized').toLowerCase();
-  const sort = (['spread', 'annualized', 'venues'].includes(sortRaw) ? sortRaw : 'annualized') as
-    'spread' | 'annualized' | 'venues';
+  // 'net' sorts by netAnnualized (spread minus borrow). For funding-farm
+  // operators this is the one that matters — many alt pairs on gTrade /
+  // GMX show 100%+ gross annualized that's actually negative after
+  // borrow drag. The 'annualized' default stays the same so existing
+  // callers and the API contract don't break.
+  const sort = (['spread', 'annualized', 'net', 'venues'].includes(sortRaw) ? sortRaw : 'annualized') as
+    'spread' | 'annualized' | 'net' | 'venues';
   const limit = Math.max(1, Math.min(500, parseInt(searchParams.get('limit') || '100', 10) || 100));
 
   const cacheKey = `funding-arb:${minVenues}:${minSpread}:${sort}:${limit}`;
@@ -106,6 +134,14 @@ export async function GET(request: NextRequest) {
       if (!r.symbol || /^\d+$/.test(r.symbol)) continue;
       const interval = (r.fundingInterval as '1h' | '4h' | '8h') || '8h';
       const rate = r.fundingRate;
+      // Borrow rate 8h-normalization: GMX reports a 1h rate (its continuous
+      // model), gTrade reports an 8h rate. Use the venue's own funding
+      // interval as the normalization basis — borrow accrues over the
+      // same window that funding does. CEXes leave borrowingRate
+      // undefined → 0 contribution to the net.
+      const borrow8h = r.borrowingRate != null && Number.isFinite(r.borrowingRate)
+        ? normalizeTo8h(Math.abs(r.borrowingRate), interval)
+        : 0;
       const quote: VenueQuote = {
         exchange: r.exchange,
         rate,
@@ -117,6 +153,7 @@ export async function GET(request: NextRequest) {
         predicted8h: r.predictedRate != null && Number.isFinite(r.predictedRate)
           ? normalizeTo8h(r.predictedRate, interval)
           : null,
+        borrow8h,
         interval,
         markPrice: r.markPrice ?? null,
         type: r.type ?? 'cex',
@@ -151,6 +188,15 @@ export async function GET(request: NextRequest) {
         ? predictedSpread8h * 3 * 365
         : null;
       const types = new Set(venues.map(v => v.type));
+      // Net-of-borrow: a delta-neutral funding farmer pays borrow on
+      // BOTH legs (long-leg and short-leg, on the venue side that
+      // has borrow). For a long-DEX / short-CEX trade only the DEX
+      // leg charges borrow, so total borrow drag = min.borrow8h +
+      // max.borrow8h, with CEX legs contributing 0 (already enforced
+      // at venue-quote build time).
+      const totalBorrow8h = min.borrow8h + max.borrow8h;
+      const netSpread8h = spread8h - totalBorrow8h;
+      const netAnnualized = netSpread8h * 3 * 365;
       opportunities.push({
         symbol,
         venueCount: venues.length,
@@ -160,6 +206,9 @@ export async function GET(request: NextRequest) {
         predictedSpread8h,
         annualized,
         predictedAnnualized,
+        netSpread8h,
+        netAnnualized,
+        totalBorrow8h,
         venues,
         direction: 'long_min_short_max',
         dexOnOneSide: types.size > 1,
@@ -169,6 +218,7 @@ export async function GET(request: NextRequest) {
     // Sort
     if (sort === 'venues') opportunities.sort((a, b) => b.venueCount - a.venueCount);
     else if (sort === 'spread') opportunities.sort((a, b) => b.spread8h - a.spread8h);
+    else if (sort === 'net') opportunities.sort((a, b) => b.netAnnualized - a.netAnnualized);
     else opportunities.sort((a, b) => b.annualized - a.annualized);
 
     const trimmed = opportunities.slice(0, limit);

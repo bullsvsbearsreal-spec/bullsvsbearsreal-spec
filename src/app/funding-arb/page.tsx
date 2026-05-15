@@ -17,12 +17,18 @@ import { EXCHANGE_FEES, FEE_MODEL_VERSION } from '@/lib/constants/exchanges';
 
 /* ─── Types ─────────────────────────────────────────────────────── */
 
-type Sort = 'spread' | 'annualized' | 'venues';
+type Sort = 'spread' | 'annualized' | 'net' | 'venues';
 
 interface VenueQuote {
   exchange: string;
   rate: number;
   rate8h: number;
+  // 8h-normalised pool-borrow %, 0 for CEXes (no symmetric borrow on
+  // a typical perp account). Populated by /api/funding-arb from the
+  // upstream GMX + gTrade fetchers which already track borrow as a
+  // separate signal. Optional in the type because older API revs
+  // didn't include it — UI defaults to 0 on a missing field.
+  borrow8h?: number;
   interval: '1h' | '4h' | '8h';
   markPrice: number | null;
   type: 'cex' | 'dex';
@@ -35,6 +41,12 @@ interface ArbRow {
   max: VenueQuote;
   spread8h: number;
   annualized: number;
+  // Net-of-borrow fields — see /api/funding-arb route docstring for
+  // semantics. Optional because the field shape was added May 2026
+  // and SWR can serve a cached payload without them on first paint.
+  netSpread8h?: number;
+  netAnnualized?: number;
+  totalBorrow8h?: number;
   venues: VenueQuote[];
   direction: string;
   dexOnOneSide: boolean;
@@ -155,6 +167,16 @@ function VenueTable({ venues }: { venues: VenueQuote[] }) {
 
 function ArbRowView({ row, expanded, onToggle }: { row: ArbRow; expanded: boolean; onToggle: () => void }) {
   const aprColor = row.annualized >= 100 ? 'text-green-400' : row.annualized >= 20 ? 'text-green-400/70' : 'text-neutral-300';
+  // Net-after-borrow APR is the number Christian + snake actually act
+  // on for funding-farm pairs. The gross can be 150% while net is
+  // -20% on a high-utilisation gTrade pool. Show both columns
+  // explicitly so the user can't miss which one is real.
+  const hasBorrowData = (row.totalBorrow8h ?? 0) > 0;
+  const netApr = row.netAnnualized ?? row.annualized;
+  const netAprColor = netApr >= 50 ? 'text-green-400'
+                    : netApr >= 10 ? 'text-green-400/70'
+                    : netApr >= 0 ? 'text-neutral-300'
+                    : 'text-red-400';
   return (
     <div>
       <button
@@ -178,6 +200,14 @@ function ArbRowView({ row, expanded, onToggle }: { row: ArbRow; expanded: boolea
             LONG <span className="text-green-400/80">{row.min.exchange}</span> {fmtPct(row.min.rate8h, 3)}
             <span className="mx-1 text-neutral-700">·</span>
             SHORT <span className="text-red-400/80">{row.max.exchange}</span> {fmtPct(row.max.rate8h, 3)}
+            {hasBorrowData && (
+              <>
+                <span className="mx-1 text-neutral-700">·</span>
+                <span className="text-amber-500/70" title="Pool borrow rate paid on both DEX legs">
+                  borrow {fmtPct(row.totalBorrow8h ?? 0, 3)}
+                </span>
+              </>
+            )}
           </div>
         </div>
         <div className="text-right w-[90px]">
@@ -190,8 +220,19 @@ function ArbRowView({ row, expanded, onToggle }: { row: ArbRow; expanded: boolea
           <div className={`font-mono font-bold text-sm tabular-nums ${aprColor}`}>
             {fmtAPR(row.annualized)}
           </div>
-          <div className="text-[9px] text-neutral-600 font-mono">APR est.</div>
+          <div className="text-[9px] text-neutral-600 font-mono">APR gross</div>
         </div>
+        {/* Net APR column — only renders when borrow data is present
+            so symbols where both legs are CEXes don't get a redundant
+            "same number twice" column. */}
+        {hasBorrowData && (
+          <div className="text-right w-[80px]">
+            <div className={`font-mono font-bold text-sm tabular-nums ${netAprColor}`} title="Annualized after pool borrow on both DEX legs (excludes trading fees + slippage)">
+              {fmtAPR(netApr)}
+            </div>
+            <div className="text-[9px] text-neutral-600 font-mono">APR net*</div>
+          </div>
+        )}
         {expanded ? (
           <ChevronDown className="w-3 h-3 text-neutral-500 flex-shrink-0" />
         ) : (
@@ -308,7 +349,8 @@ export default function FundingArbPage() {
           </div>
           <p className="text-sm text-neutral-500">
             Cross-exchange funding-rate divergences. Long the cheap side, short the expensive side, collect the spread per 8h cycle.
-            Annualized APR is theoretical — subtract fees, borrow cost, and slippage.
+            Gross APR is theoretical — when both legs include a DEX (gTrade / GMX) we now subtract their pool borrow rates and surface a separate &ldquo;APR net&rdquo; column.
+            Trading fees + slippage still aren&apos;t modelled here — use <Link href="/arbitrage" className="text-hub-yellow hover:underline">/arbitrage</Link> for the fee-graded view.
           </p>
         </div>
 
@@ -318,7 +360,7 @@ export default function FundingArbPage() {
         <div className="flex flex-col lg:flex-row lg:items-center gap-3 mb-3">
           {/* Sort */}
           <div className="flex items-center gap-1">
-            {(['annualized', 'spread', 'venues'] as const).map(s => (
+            {(['annualized', 'net', 'spread', 'venues'] as const).map(s => (
               <button
                 key={s}
                 onClick={() => setSort(s)}
@@ -326,7 +368,10 @@ export default function FundingArbPage() {
                   sort === s ? 'bg-hub-yellow/15 text-hub-yellow' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
                 }`}
               >
-                {s === 'annualized' ? 'Top APR' : s === 'spread' ? 'Widest Spread' : 'Most Venues'}
+                {s === 'annualized' ? 'Top APR (gross)'
+                  : s === 'net' ? 'Top APR (net of borrow)'
+                  : s === 'spread' ? 'Widest Spread'
+                  : 'Most Venues'}
               </button>
             ))}
           </div>
