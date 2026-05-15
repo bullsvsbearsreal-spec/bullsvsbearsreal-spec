@@ -124,15 +124,23 @@ export default function SpreadsPage() {
         {/* Connection status banner */}
         {state.wsEnabled && <ConnectionBanner status={wsStatus} wsCount={wsCount} selCount={state.sel.length} />}
 
-        {/* ── Title ── */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
-              <ArrowLeftRight className="w-7 h-7 text-hub-yellow" />
-              Exchange <span className="text-gradient">Spreads</span>
+        {/* Hero — same vocabulary as the rest of the workflow pages. */}
+        <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-6">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 mb-2">
+              <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/[0.04] border border-hub-yellow/20 flex items-center justify-center">
+                <ArrowLeftRight className="w-4 h-4 text-hub-yellow" />
+              </div>
+              <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Scanner</span>
+            </div>
+            <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+              Exchange <span className="text-hub-yellow">spreads</span>
             </h1>
-            <p className="text-neutral-500 text-sm mt-1">
-              Cross-exchange price comparison across <span className="text-neutral-400 font-medium">{ALL_EXCHANGES.length} exchanges</span> ({CEX_EXCHANGES.length} CEX + {DEX_EXCHANGES.length} DEX)
+            <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
+              Cross-exchange price comparison across{' '}
+              <span className="text-white font-medium">{ALL_EXCHANGES.length} venues</span>
+              <span className="text-neutral-600"> · {CEX_EXCHANGES.length} CEX + {DEX_EXCHANGES.length} DEX</span>.
+              WebSocket-driven live updates when streaming, REST fallback when paused.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -170,7 +178,7 @@ export default function SpreadsPage() {
               onThresholdChange={actions.setAlertThreshold}
             />
           </div>
-        </div>
+        </header>
 
         {/* Arb Calculator (collapsible) */}
         {state.showCalc && (

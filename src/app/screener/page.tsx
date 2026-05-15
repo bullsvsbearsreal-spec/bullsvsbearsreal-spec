@@ -414,38 +414,46 @@ export default function ScreenerPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
-        {/* Title Row */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-          <div>
-            <h1 className="heading-page">Screener</h1>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              {/* Was: hardcoded "30 of 32" — that's a lie when aggregator
-                  health changes, and stale-looking when all 32 are up.
-                  Now we read the live connected/total from the same
-                  /health hook that drives the status bar. */}
+        {/* Hero — same vocabulary as the rest of the workflow. */}
+        <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-5">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 mb-2">
+              <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/[0.04] border border-hub-yellow/20 flex items-center justify-center">
+                <svg className="w-4 h-4 text-hub-yellow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="4" y1="6" x2="20" y2="6" /><line x1="6" y1="12" x2="18" y2="12" /><line x1="9" y1="18" x2="15" y2="18" />
+                </svg>
+              </div>
+              <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Scanner</span>
+            </div>
+            <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+              <span className="text-hub-yellow">Screener</span>
+            </h1>
+            <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
               {loading && rows.length === 0
                 ? agg.total > 0
-                  ? `Scanning symbols across ${agg.connected} of ${agg.total} tracked venues…`
+                  ? <>Scanning symbols across <span className="text-white font-medium">{agg.connected} of {agg.total}</span> tracked venues…</>
                   : 'Scanning symbols…'
-                : `Filter ${rows.length} symbols by funding, OI, volume, and price action`}
+                : <>
+                    Filter <span className="text-white font-medium">{rows.length} symbols</span> by funding,
+                    open interest, volume, and price action. Build saved presets and copy direct links to a
+                    filter set.
+                  </>}
             </p>
           </div>
-          <div className="flex items-center gap-2">
-            {/* Was: hardcoded exchangeCount={26} — wrong number, never
-                changed regardless of how many venues actually responded. */}
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-end">
             <DataFreshness exchangeCount={agg.connected || ALL_EXCHANGES.length} lastUpdated={lastUpdate} />
             <button
               onClick={fetchData}
               disabled={loading}
               aria-label="Refresh screener data"
               aria-busy={loading}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08] transition-colors"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] transition-colors"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
               Refresh
             </button>
           </div>
-        </div>
+        </header>
 
         {/* Stats Bar */}
         {stats && (

@@ -335,30 +335,37 @@ export default function AlertsPage() {
       <Header />
       <main id="main-content" className="text-white">
         <div className="max-w-[1000px] mx-auto px-4 sm:px-6 py-6">
-          {/* Title */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <h1 className="heading-page flex items-center gap-2">
-                <Bell className="w-6 h-6 text-hub-yellow" />
-                Alerts
+          {/* Hero — same vocabulary as the rest of the workflow. */}
+          <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/[0.04] border border-hub-yellow/20 flex items-center justify-center">
+                  <Bell className="w-4 h-4 text-hub-yellow" />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Triggers</span>
                 {undismissedCount > 0 && (
-                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-xs font-bold text-white">
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-500/90 text-[10px] font-bold text-white shadow-[0_0_12px_-2px_rgba(239,68,68,0.6)]">
                     {undismissedCount}
                   </span>
                 )}
+              </div>
+              <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+                <span className="text-hub-yellow">Alerts</span>
               </h1>
-              <p className="text-sm text-neutral-500 mt-1">
-                Set conditions on price, funding rate, OI, or 24h change. Checked every 60 seconds.
+              <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
+                Set conditions on price, funding rate, open interest, or 24h change.
+                Checked every 60 seconds — pings deliver via Email, Telegram, Discord,
+                or WhatsApp (configure below).
               </p>
             </div>
             <button
               onClick={() => setShowForm(!showForm)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-hub-yellow text-black text-sm font-semibold hover:bg-hub-yellow-light transition-colors"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-hub-yellow text-black text-sm font-semibold hover:bg-hub-yellow-light transition-colors shadow-[0_4px_14px_-4px_rgba(255,165,0,0.5)] shrink-0 self-start sm:self-end"
             >
               {showForm ? <X className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
-              {showForm ? 'Cancel' : 'New Alert'}
+              {showForm ? 'Cancel' : 'New alert'}
             </button>
-          </div>
+          </header>
 
           {/* Sign-in banner for email alerts */}
           {!session && (

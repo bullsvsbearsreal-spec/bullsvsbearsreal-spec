@@ -455,18 +455,24 @@ export default function TraderUnifiedPage() {
           </Link>
         </div>
 
-        {/* Header */}
-        <div className="card-premium p-4 mb-4">
+        {/* Header — modernized with gradient surround + bigger title +
+            prominent BookmarkStar. Was a flat card with a small label
+            and tiny star icon; users missed the bookmark affordance. */}
+        <div className="relative overflow-hidden rounded-2xl border border-hub-yellow/15 bg-gradient-to-br from-hub-yellow/[0.04] via-white/[0.02] to-transparent p-4 mb-4">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <Layers className="w-4 h-4 text-hub-yellow" />
-                <h1 className="text-lg font-bold text-white">Cross-Platform Trader</h1>
-                {hl.data?.displayName && (
-                  <span className="text-sm text-hub-yellow/70 font-semibold">· {hl.data.displayName}</span>
-                )}
+              <div className="inline-flex items-center gap-2 mb-2">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/25 to-hub-yellow/[0.06] border border-hub-yellow/25 flex items-center justify-center">
+                  <Layers className="w-4 h-4 text-hub-yellow" />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Cross-platform trader</span>
               </div>
-              <div className="flex items-center gap-2">
+              <h1 className="text-2xl sm:text-[28px] font-extrabold tracking-tight text-white leading-[1.1]">
+                {hl.data?.displayName ?? (
+                  <span className="font-mono text-xl sm:text-[24px]">{address.slice(0, 10)}…{address.slice(-6)}</span>
+                )}
+              </h1>
+              <div className="flex items-center gap-2 mt-2.5 flex-wrap">
                 <BookmarkStar
                   address={address}
                   displayName={hl.data?.displayName}
@@ -475,13 +481,18 @@ export default function TraderUnifiedPage() {
                     ...(gmxAvax.data?.openPositions?.length || gmxAvax.data?.summary?.totalTrades ? ['gmx-avalanche'] : []),
                     ...(hl.data?.openPositions?.length || Object.keys(hl.data?.summary?.performance ?? {}).length ? ['hyperliquid'] : []),
                   ]}
-                  size={14}
+                  size={16}
+                  className="!p-1.5 !rounded-lg bg-white/[0.04] border border-white/[0.06] hover:bg-white/[0.08]"
                 />
-                <span className="font-mono text-xs text-neutral-300">{address}</span>
-                <button onClick={copyAddr} className="text-neutral-500 hover:text-hub-yellow transition-colors" aria-label="Copy address">
+                <span className="font-mono text-[11px] text-neutral-300 px-2 py-1 rounded-md bg-white/[0.04] border border-white/[0.06]">{address}</span>
+                <button
+                  onClick={copyAddr}
+                  className="inline-flex items-center gap-1 text-[11px] text-neutral-500 hover:text-hub-yellow transition-colors px-2 py-1 rounded-md hover:bg-white/[0.04]"
+                  aria-label="Copy address"
+                >
                   <Copy className="w-3 h-3" />
+                  {copied ? <span className="text-green-400 font-mono">copied</span> : 'Copy'}
                 </button>
-                {copied && <span className="text-[10px] text-green-400 font-mono">copied</span>}
               </div>
               <div className="flex items-center gap-3 mt-2 text-[11px] flex-wrap">
                 <a href={`https://debank.com/profile/${address}`} target="_blank" rel="noopener noreferrer" className="text-neutral-400 hover:text-white inline-flex items-center gap-1">
