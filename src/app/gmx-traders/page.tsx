@@ -8,12 +8,13 @@ import Footer from '@/components/Footer';
 import DataFreshness from '@/components/DataFreshness';
 import RefreshButton from '@/components/RefreshButton';
 import BookmarkStar from '@/components/BookmarkStar';
+import { useTraderBookmarks } from '@/hooks/useTraderBookmarks';
 import UsdDisplay from '@/components/UsdDisplay';
 import Link from 'next/link';
 import {
   Trophy, Activity, ArrowLeftRight,
   ExternalLink, Copy, ChevronRight, X, Flame, Target,
-  Download, Search, Layers,
+  Download, Search, Layers, Eye,
 } from 'lucide-react';
 import { copyToClipboard } from '@/lib/copyToClipboard';
 
@@ -289,12 +290,14 @@ function TraderRow({
   onClick,
   isSelected,
   spark,
+  chain,
 }: {
   t: GMXTrader;
   rank: number;
   onClick: () => void;
   isSelected: boolean;
   spark?: number[];
+  chain: 'arbitrum' | 'avalanche';
 }) {
   const pnlColor = t.realizedPnl > 0 ? 'text-green-400' : t.realizedPnl < 0 ? 'text-red-400' : 'text-neutral-400';
   const wrColor = t.winRate >= 60 ? 'text-green-400' : t.winRate >= 45 ? 'text-yellow-400' : 'text-red-400';
@@ -318,6 +321,17 @@ function TraderRow({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
+          {/* Inline bookmark — was tucked inside the dossier card so the
+              user had to click into a trader to bookmark them. Snake's
+              flow ("scan leaderboard, star the interesting ones, open
+              /trader-watch") wants one click here, not two. The
+              BookmarkStar already stopPropagation's so it doesn't also
+              fire the row's onClick. */}
+          <BookmarkStar
+            address={t.address}
+            venues={[`gmx-${chain}`]}
+            size={13}
+          />
           <span className="font-mono text-xs text-white font-medium">{shortAddr(t.address)}</span>
           {rank === 1 && <Trophy className="w-3 h-3 text-hub-yellow" />}
           {t.winRate >= 85 && t.totalTrades >= 50 && <Target className="w-3 h-3 text-green-400" aria-label="Sniper" />}
@@ -652,6 +666,10 @@ function TraderDrawer({ address, chain, onClose }: { address: string; chain: Cha
 export default function GMXTradersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  // Pull bookmark count so the "watching N traders" CTA can stay in
+  // sync with the localStorage state — including changes from another
+  // tab (useTraderBookmarks subscribes to the storage event).
+  const { bookmarks } = useTraderBookmarks();
 
   // Read initial state from URL so leaderboard views are shareable.
   const initialSort = (searchParams.get('sort') as SortKey) || 'pnl';
@@ -773,7 +791,24 @@ export default function GMXTradersPage() {
             </div>
             <h1 className="text-xl font-bold text-white">GMX Traders</h1>
             <span className="text-xs text-neutral-500 font-mono">GMX V2</span>
-            <div className="ml-auto flex items-center gap-1">
+            <div className="ml-auto flex items-center gap-1.5">
+              {/* Quick jump to /trader-watch when the user has any
+                  bookmarks. Snake's flow ends on /trader-watch — making
+                  it findable from the leaderboard removes the need to
+                  go through the top nav every time. Hidden when zero
+                  bookmarks so it doesn't compete for attention before
+                  it's useful. */}
+              {bookmarks.length > 0 && (
+                <Link
+                  href="/trader-watch"
+                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-hub-yellow/10 border border-hub-yellow/30 text-hub-yellow hover:bg-hub-yellow/20 transition-colors text-[11px] font-semibold"
+                  title="View bookmarked traders' open positions"
+                >
+                  <Eye className="w-3 h-3" />
+                  Watchlist
+                  <span className="font-mono opacity-80">{bookmarks.length}</span>
+                </Link>
+              )}
               <DataFreshness
                 exchangeCount={1}
                 lastUpdated={data?.meta?.timestamp ?? null}
@@ -954,6 +989,7 @@ export default function GMXTradersPage() {
                   onClick={() => setSelectedAddress(t.address)}
                   isSelected={selectedAddress === t.address}
                   spark={sparklines[t.address.toLowerCase()]}
+                  chain={chain}
                 />
               ))}
             </div>

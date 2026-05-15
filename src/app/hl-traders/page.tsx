@@ -12,9 +12,10 @@ import UsdDisplay from '@/components/UsdDisplay';
 import Link from 'next/link';
 import {
   Trophy, Activity, ArrowLeftRight, ExternalLink, Copy, ChevronRight, X,
-  Flame, Target, Zap, Download, Search, Layers,
+  Flame, Target, Zap, Download, Search, Layers, Eye,
 } from 'lucide-react';
 import { copyToClipboard } from '@/lib/copyToClipboard';
+import { useTraderBookmarks } from '@/hooks/useTraderBookmarks';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -271,6 +272,15 @@ function TraderRow({
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 min-w-0">
+          {/* Inline bookmark — matches the /gmx-traders leaderboard so
+              users can star a trader without clicking through to the
+              dossier card. Snake's flow lives across both venues. */}
+          <BookmarkStar
+            address={t.address}
+            displayName={t.displayName}
+            venues={['hyperliquid']}
+            size={13}
+          />
           {t.displayName ? (
             <span className="text-white text-xs font-semibold truncate">{t.displayName}</span>
           ) : (
@@ -503,6 +513,7 @@ function TraderDrawer({ address, onClose }: { address: string; onClose: () => vo
 export default function HLTradersPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { bookmarks } = useTraderBookmarks();
   const initialSort = (searchParams.get('sort') as SortKey) || 'pnl';
   const initialPeriod = (searchParams.get('period') as Period) || 'week';
 
@@ -579,7 +590,20 @@ export default function HLTradersPage() {
             </div>
             <h1 className="text-xl font-bold text-white">Hyperliquid Traders</h1>
             <span className="text-xs text-neutral-500 font-mono">Hyperliquid Mainnet</span>
-            <div className="ml-auto flex items-center gap-1">
+            <div className="ml-auto flex items-center gap-1.5">
+              {/* Watchlist quick-jump — mirrors /gmx-traders. Bookmarks
+                  are venue-agnostic so the same chip appears here. */}
+              {bookmarks.length > 0 && (
+                <Link
+                  href="/trader-watch"
+                  className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-hub-yellow/10 border border-hub-yellow/30 text-hub-yellow hover:bg-hub-yellow/20 transition-colors text-[11px] font-semibold"
+                  title="View bookmarked traders' open positions"
+                >
+                  <Eye className="w-3 h-3" />
+                  Watchlist
+                  <span className="font-mono opacity-80">{bookmarks.length}</span>
+                </Link>
+              )}
               <DataFreshness
                 exchangeCount={1}
                 lastUpdated={data?.meta?.timestamp ?? null}
