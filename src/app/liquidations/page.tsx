@@ -190,30 +190,36 @@ export default function LiquidationsPage() {
         <div className="px-4 sm:px-6 lg:px-8 pt-6 pb-4">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-3 mb-5">
             {/* Title & status */}
-            <div>
-              <div className="flex items-center gap-2.5 mb-1">
-                <h1 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-                  Liquidations
-                </h1>
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-red-500/20 to-red-500/[0.04] border border-red-400/25 flex items-center justify-center">
+                  <svg className="w-4 h-4 text-red-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="23 18 13.5 8.5 8.5 13.5 1 6" /><polyline points="17 18 23 18 23 12" />
+                  </svg>
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Risk · live feed</span>
                 {connectedCount > 0 && (
-                  <span className="flex items-center gap-1.5 text-[11px] font-medium text-green-400/90 bg-green-500/10 border border-green-500/15 px-2 py-0.5 rounded-full">
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-green-400 bg-green-500/10 border border-green-500/15 px-2 py-0.5 rounded-full">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
                     {connectedCount} live
                   </span>
                 )}
               </div>
-              <p className="text-sm text-neutral-500">
-                Real-time liquidation data across{' '}
+              <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+                <span className="text-red-400">Liquidations</span>
+              </h1>
+              <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
+                Real-time liquidation feed across{' '}
                 <span
-                  className="border-b border-dotted border-neutral-600 cursor-help"
-                  title="Only the venues that expose a public liquidation stream are listed here. Several of our 32 tracked exchanges (notably some DEXes and OTC-style venues) don't broadcast liq events, so they're excluded from this page even though they appear elsewhere on InfoHub."
+                  className="border-b border-dotted border-neutral-600 cursor-help text-white font-medium"
+                  title="Only the venues that expose a public liquidation stream are listed here. Several of our tracked exchanges (notably some DEXes and OTC-style venues) don't broadcast liq events, so they're excluded from this page even though they appear elsewhere on InfoHub."
                 >
                   {WS_EXCHANGES.length} exchanges
                 </span>
-                {' '}with live streams
+                {' '}with WebSocket streams
                 {marketLabel && (
                   <span className={`ml-2 ${marketLabel.color}`}>
-                    &mdash; {marketLabel.text}
+                    · {marketLabel.text}
                   </span>
                 )}
               </p>

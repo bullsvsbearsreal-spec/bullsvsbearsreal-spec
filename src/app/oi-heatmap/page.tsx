@@ -296,25 +296,37 @@ export default function OIHeatmapPage() {
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
-        {/* Page header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <div>
-            <h1 className="heading-page">OI Change Heatmap</h1>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              Open interest sized by total OI, colored by 24h change
+        {/* Hero — same vocabulary as the rest of the workflow. */}
+        <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 mb-2">
+              <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/[0.04] border border-hub-yellow/20 flex items-center justify-center">
+                <svg className="w-4 h-4 text-hub-yellow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" />
+                </svg>
+              </div>
+              <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Market · OI flux</span>
+            </div>
+            <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+              OI <span className="text-hub-yellow">heatmap</span>
+            </h1>
+            <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
+              Open interest sized by total OI, coloured by 24h change. Hover a tile
+              to inspect per-venue OI + funding context.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 shrink-0 self-start sm:self-end">
             <DataFreshness exchangeCount={uniqueExchangeCount || 1} lastUpdated={lastUpdate} />
             <button
               onClick={refresh}
               disabled={isRefreshing}
-              className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+              className="p-2 rounded-xl text-neutral-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] transition-colors"
+              aria-label="Refresh"
             >
               <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
             </button>
           </div>
-        </div>
+        </header>
 
         {/* Summary cards */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">

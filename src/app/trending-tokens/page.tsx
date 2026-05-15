@@ -108,21 +108,29 @@ export default function TrendingTokensPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-pink-500/10 flex items-center justify-center">
-              <Rocket className="w-4 h-4 text-pink-400" />
+        <header className="mb-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-pink-500/20 to-pink-500/[0.04] border border-pink-400/25 flex items-center justify-center">
+                  <Rocket className="w-4 h-4 text-pink-300" />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Memecoin radar</span>
+              </div>
+              <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+                Trending <span className="text-pink-300">tokens</span>
+              </h1>
+              <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
+                Boosted &amp; promoted tokens on DexScreener enriched with live market data —
+                price, volume, txn count, buy/sell ratio, age. Raw memecoin screener for hunters.
+              </p>
             </div>
-            <h1 className="text-xl font-bold text-white">Trending Tokens</h1>
-            <div className="ml-auto flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0 self-start lg:self-end">
               <DataFreshness exchangeCount={data?.summary?.tokenCount ?? 0} lastUpdated={data?.meta?.timestamp ?? null} sources={['DexScreener']} />
               <RefreshButton onRefresh={refresh} isRefreshing={isRefreshing} />
             </div>
           </div>
-          <p className="text-sm text-neutral-500">
-            Boosted / promoted tokens on DexScreener enriched with live market data. Price, volume, txn count, buy/sell ratio, age. Raw memecoin screener.
-          </p>
-        </div>
+        </header>
 
         {data?.summary && (
           <div

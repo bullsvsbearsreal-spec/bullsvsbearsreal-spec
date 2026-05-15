@@ -855,17 +855,22 @@ export default function OptionsPage() {
       <Header />
       <main id="main-content" className="max-w-[1440px] mx-auto px-4 sm:px-6 py-5">
 
-        {/* ─── Page Header ─── */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/5 flex items-center justify-center border border-hub-yellow/20">
-                <Target className="w-4.5 h-4.5 text-hub-yellow" />
+        {/* Hero — same vocabulary as the rest of the workflow. */}
+        <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
+          <div className="min-w-0">
+            <div className="inline-flex items-center gap-2 mb-2">
+              <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/[0.04] border border-hub-yellow/20 flex items-center justify-center">
+                <Target className="w-4 h-4 text-hub-yellow" />
               </div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">Options</h1>
+              <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Derivatives</span>
             </div>
-            <p className="text-neutral-500 text-sm ml-12">
-              Max pain, OI distribution & IV across {activeCount} options venues
+            <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+              <span className="text-hub-yellow">Options</span>
+            </h1>
+            <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
+              Max pain, open-interest distribution, implied vol smile & RV vs IV across{' '}
+              <span className="text-white font-medium">{activeCount} options venues</span>.
+              Currency selector to the right — BTC, ETH, SOL.
             </p>
           </div>
 
@@ -897,7 +902,7 @@ export default function OptionsPage() {
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
-        </div>
+        </header>
 
         {/* ─── Loading skeleton ─── */}
         {loading && !data && (

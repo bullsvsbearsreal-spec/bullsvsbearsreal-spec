@@ -60,21 +60,30 @@ export default function MomentumPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-orange-500/10 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-orange-400" />
+        <header className="mb-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <div className="inline-flex items-center gap-2 mb-2">
+                <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-orange-500/20 to-orange-500/[0.04] border border-orange-400/25 flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-orange-300" />
+                </div>
+                <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Scanner</span>
+              </div>
+              <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
+                <span className="text-orange-300">Momentum</span> setups
+              </h1>
+              <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
+                Setups where multiple momentum signals converge: price move,
+                volume surge, funding aligned with direction, real OI backing.
+                Scored <span className="text-white font-medium">0–100</span> — 60+ is the meaningful threshold.
+              </p>
             </div>
-            <h1 className="text-xl font-bold text-white">Momentum Screener</h1>
-            <div className="ml-auto flex items-center gap-1">
+            <div className="flex items-center gap-1 shrink-0 self-start lg:self-end">
               <DataFreshness exchangeCount={data?.meta?.returned ?? 0} lastUpdated={data?.meta?.timestamp ?? null} sources={['Aggregated']} />
               <RefreshButton onRefresh={refresh} isRefreshing={isRefreshing} />
             </div>
           </div>
-          <p className="text-sm text-neutral-500">
-            Setups where multiple momentum signals converge: price move, volume surge, funding aligned with direction, real OI backing. Scored 0-100.
-          </p>
-        </div>
+        </header>
 
         {data?.summary && (
           <div
