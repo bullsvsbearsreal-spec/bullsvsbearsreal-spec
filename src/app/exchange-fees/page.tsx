@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import {
   DollarSign, Info, ExternalLink, Crown, Sparkles,
   TrendingDown, Calculator, Search,
@@ -146,22 +147,26 @@ export default function ExchangeFeesPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-green-500/10 flex items-center justify-center">
-              <DollarSign className="w-4 h-4 text-green-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Exchange Fee Comparison</h1>
-            <span className="ml-2 text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              {FEES.length} venues · refreshed manually
+        <PageHero
+          icon={DollarSign}
+          eyebrow="Fees · maker/taker schedule"
+          eyebrowExtra={
+            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
+              {FEES.length} venues · curated
             </span>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Spot + perp maker/taker fees across the {FEES.length} biggest CEX and DEX venues.
-            Retail entry tier shown by default. VIP / volume floors shown where known (hover any
-            row). Updated periodically by hand.
-          </p>
-        </div>
+          }
+          title="Exchange"
+          accentNoun="fees"
+          accent="emerald"
+          description={
+            <>Spot + perp maker/taker fees across the{' '}
+              <span className="text-white font-medium">{FEES.length} biggest</span> CEX and DEX venues.
+              Retail entry tier shown by default. VIP / volume floors shown where known
+              (hover any row). Updated periodically by hand.
+            </>
+          }
+          className="mb-4"
+        />
 
         {/* Winner highlights */}
         <div

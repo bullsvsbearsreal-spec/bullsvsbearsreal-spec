@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
+import PageHero from '@/components/PageHero';
 import Footer from '@/components/Footer';
 import { LineChart, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 
@@ -69,32 +70,31 @@ export default function CmeBasisPage() {
     <>
       <Header />
       <main className="max-w-[1100px] mx-auto w-full px-4 py-6">
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-indigo-500/10 flex items-center justify-center">
-              <LineChart className="w-4 h-4 text-indigo-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">CME Basis</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              futures vs spot · annualized
-            </span>
+        <PageHero
+          icon={LineChart}
+          eyebrow="Institutional · futures vs spot"
+          title="CME"
+          accentNoun="basis"
+          accent="violet"
+          description={
+            <>CME front-month BTC and ETH futures premium vs spot, annualized
+              to expiry. The basis = the implied cash-and-carry rate
+              institutional arbitrageurs can earn by being long spot and short
+              futures. Hot basis (<span className="text-white font-medium">&gt;15% APR</span>)
+              marks risk-on regimes; backwardation often marks lows.
+            </>
+          }
+          actions={
             <button
               onClick={() => load(false)}
               disabled={refreshing}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] text-xs font-semibold transition-colors disabled:opacity-40"
             >
-              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-              refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            CME front-month BTC and ETH futures premium vs spot, annualized to
-            expiry. The basis = the implied cash-and-carry rate institutional
-            arbitrageurs can earn by being long spot and short futures. Hot
-            basis (&gt; 15% APR) marks risk-on regimes; backwardation often
-            marks lows.
-          </p>
-        </div>
+          }
+        />
 
         {error && (
           <div className="card-premium p-4 text-center mb-4">

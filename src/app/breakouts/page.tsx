@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import DataFreshness from '@/components/DataFreshness';
 import RefreshButton from '@/components/RefreshButton';
 import UsdDisplay from '@/components/UsdDisplay';
+import PageHero from '@/components/PageHero';
 import { Rocket, Info, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 
 interface BreakoutRow {
@@ -85,21 +86,29 @@ export default function BreakoutsPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-hub-yellow/10 flex items-center justify-center">
-              <Rocket className="w-4 h-4 text-hub-yellow" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Breakout Scanner</h1>
-            <div className="ml-auto flex items-center gap-1">
+        <PageHero
+          icon={Rocket}
+          eyebrow="Scanner · price action"
+          title="Breakout"
+          accentNoun="scanner"
+          accent="hub-yellow"
+          description={
+            <>
+              Coins near ATH, breaking out of 24h highs, in strong multi-window uptrends,
+              or bleeding toward all-time lows.
+              {data?.summary && (
+                <> <span className="text-white font-medium">{data.summary.matchingSignals}</span> matches in the current <span className="text-white font-medium">{kind}</span> view.</>
+              )}
+            </>
+          }
+          actions={
+            <>
               <DataFreshness exchangeCount={data?.summary?.universeSize ?? 0} lastUpdated={data?.meta?.timestamp ?? null} sources={['CoinGecko']} />
               <RefreshButton onRefresh={refresh} isRefreshing={isRefreshing} />
-            </div>
-          </div>
-          <p className="text-sm text-neutral-500">
-            Coins near ATH, breaking out of 24h highs, in strong multi-window uptrends, or bleeding toward all-time lows. {data?.summary && `${data.summary.matchingSignals} matches in the current ${kind} view.`}
-          </p>
-        </div>
+            </>
+          }
+          className="mb-4"
+        />
 
         <div className="flex items-center gap-1 bg-white/[0.03] rounded-lg p-0.5 w-fit mb-3 flex-wrap">
           {(['ath', 'breakout', 'strong-trend', 'breakdown', 'recovery'] as const).map(k => {

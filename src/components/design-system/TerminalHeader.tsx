@@ -5,13 +5,44 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
 import BrandMark from './BrandMark';
 
-// Popular symbols for the search palette — all open in /chart
-const POPULAR_SYMBOLS = [
+// Popular pre-indexed symbols for the search palette — all open in /chart.
+// Bucket by asset class so the fallback below can route into the right tab
+// (crypto / stocks / forex / commodities) when the user types something
+// not on the curated list.
+const POPULAR_CRYPTO = [
   'BTC', 'ETH', 'SOL', 'BNB', 'XRP', 'DOGE', 'ADA', 'AVAX',
   'LINK', 'DOT', 'TRX', 'TON', 'SHIB', 'SUI', 'NEAR', 'APT',
   'LTC', 'BCH', 'HYPE', 'PEPE', 'WIF', 'BONK', 'JUP', 'TAO',
   'OP', 'ARB', 'SEI', 'TIA', 'INJ', 'UNI', 'AAVE', 'PENDLE',
 ];
+
+// Frequently-searched stocks (US-listed). The platform's /chart page
+// supports any TradingView-resolvable ticker, but the palette previously
+// only knew crypto — typing "CSX" / "AAPL" / "MSTR" returned zero
+// results even though the page itself can load them. Curated list
+// here gives keyword-search a fast path; the truly-anything fallback
+// below catches the long tail.
+const POPULAR_STOCKS = [
+  'AAPL', 'MSFT', 'GOOGL', 'AMZN', 'NVDA', 'TSLA', 'META',
+  'COIN', 'MSTR', 'HOOD', 'MARA', 'RIOT', 'CLSK', 'BITX',
+  'SPY', 'QQQ', 'IWM', 'DIA',
+  // Christian + co watch these for macro context
+  'CSX', 'JPM', 'BAC', 'GS', 'XLF',
+];
+
+const POPULAR_FOREX = ['DXY', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
+
+const POPULAR_COMMODITIES = ['XAUUSD', 'XAGUSD', 'CL1!', 'NG1!', 'HG1!'];
+
+// Heuristic to detect "user typed a ticker we don't pre-index" so the
+// palette can offer a graceful "open in chart" fallback rather than
+// returning zero results. Conservative: 2–6 chars, mostly letters,
+// optionally with a trailing digit or '!' for futures.
+function looksLikeTicker(s: string): boolean {
+  if (!s) return false;
+  const trimmed = s.trim().toUpperCase();
+  return /^[A-Z]{2,6}([0-9]{1,3}!?)?$/.test(trimmed);
+}
 
 interface NavItem { id: string; label: string; href: string; hint?: string; }
 interface NavGroup { key: string; label: string; icon: React.ReactNode; items: NavItem[]; }
@@ -166,6 +197,10 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
   useEffect(() => { setAvatarError(false); }, [userImage]);
 
   // Build search index — flatten NAV_GROUPS pages + popular symbols
+  // (crypto / stocks / forex / commodities) + a graceful fallback for
+  // unknown tickers so typing "CSX" / "AAPL" / "XAGUSD" lands the user
+  // on /chart rather than showing "no matches" for a symbol the chart
+  // page actually supports.
   const searchResults = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     const pages = NAV_GROUPS.flatMap(g => g.items.map(it => ({
@@ -176,19 +211,44 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
       href: it.href,
       group: g.label,
     })));
-    const symbols = POPULAR_SYMBOLS.map(s => ({
+    const symbolList: Array<{ s: string; ac: 'crypto' | 'stocks' | 'forex' | 'commodities' }> = [
+      ...POPULAR_CRYPTO.map(s => ({ s, ac: 'crypto' as const })),
+      ...POPULAR_STOCKS.map(s => ({ s, ac: 'stocks' as const })),
+      ...POPULAR_FOREX.map(s => ({ s, ac: 'forex' as const })),
+      ...POPULAR_COMMODITIES.map(s => ({ s, ac: 'commodities' as const })),
+    ];
+    const symbols = symbolList.map(({ s, ac }) => ({
       kind: 'symbol' as const,
-      key: `sym:${s}`,
+      key: `sym:${ac}:${s}`,
       label: s,
-      hint: 'Open in /chart',
-      href: `/chart?s=${encodeURIComponent(s)}`,
-      group: 'Symbols',
+      hint: ac === 'crypto' ? 'Open in /chart'
+          : ac === 'stocks' ? 'Stock · /chart'
+          : ac === 'forex' ? 'FX · /chart'
+          : 'Commodity · /chart',
+      href: `/chart?s=${encodeURIComponent(s)}${ac === 'crypto' ? '' : `&ac=${ac}`}`,
+      group: ac === 'crypto' ? 'Crypto' : ac === 'stocks' ? 'Stocks' : ac === 'forex' ? 'FX' : 'Commodities',
     }));
     const all = [...symbols, ...pages];
     if (!q) return all.slice(0, 14);
-    return all
+    const matched = all
       .filter(r => r.label.toLowerCase().includes(q) || r.hint.toLowerCase().includes(q) || r.href.toLowerCase().includes(q))
       .slice(0, 30);
+    // Long-tail fallback: when nothing matched and the query looks
+    // like a ticker, offer to open it in /chart. The chart page
+    // resolves TradingView's full symbol set, so this works for
+    // anything not on the curated list above.
+    if (matched.length === 0 && looksLikeTicker(searchQuery)) {
+      const ticker = searchQuery.trim().toUpperCase();
+      return [{
+        kind: 'symbol' as const,
+        key: `sym:fallback:${ticker}`,
+        label: ticker,
+        hint: 'Open in /chart (any TradingView-resolvable ticker)',
+        href: `/chart?s=${encodeURIComponent(ticker)}`,
+        group: 'Open',
+      }];
+    }
+    return matched;
   }, [searchQuery]);
 
   // ⌘K / Ctrl+K to open, Esc to close
