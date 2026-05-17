@@ -19,6 +19,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PageHero from '@/components/PageHero';
+import { tweetIntent } from '@/lib/tweetIntent';
 import { Trophy, Send, ArrowRight, TrendingUp, Twitter } from 'lucide-react';
 
 interface LeaderboardEntry {
@@ -175,7 +176,7 @@ export default function InviteLeaderboardPage() {
           // proof (people are more likely to retweet a "I'm #3 on X"
           // post than a generic "check out X" one).
           const tweetText = `I'm ranked #${myEntry.rank} on the InfoHub referral leaderboard with ${myEntry.verified} verified referrals. derivatives terminal across every venue, free tier covers basically everything: https://info-hub.io/invite`;
-          const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+          const tweetUrl = tweetIntent({ text: tweetText });
           return (
             <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/[0.05] px-4 py-3 mb-3 flex items-center gap-3 flex-wrap">
               <Trophy className="w-4 h-4 text-emerald-400 shrink-0" />

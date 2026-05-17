@@ -19,6 +19,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PageHero from '@/components/PageHero';
+import { tweetIntent } from '@/lib/tweetIntent';
 import {
   Send, Copy, Check, ExternalLink, Twitter, MessageCircle,
   TrendingUp, Users, Gift, Lock, MessageSquare,
@@ -156,7 +157,7 @@ export default function InvitePage() {
   // Pre-written share copy. Specific enough that it doesn't read like
   // generic-influencer ad copy; vague enough that anyone can ship it.
   const tweetText = `Been using InfoHub for crypto derivatives data — funding rates, OI, liq levels, all on one terminal. Free tier covers basically everything. Sign up here: ${shareUrl}`;
-  const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+  const tweetUrl = tweetIntent({ text: tweetText });
 
   const dmText = `Hey — I've been using InfoHub for funding rates, OI, and liq data lately. Worth a look:\n${shareUrl}`;
 
