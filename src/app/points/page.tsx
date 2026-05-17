@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -371,25 +372,24 @@ export default function PointsHubPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        {/* Header */}
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-7 h-7 rounded-md bg-hub-yellow/10 flex items-center justify-center">
-              <Gem className="w-4 h-4 text-hub-yellow" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Points &amp; Airdrop Hub</h1>
-            <span className="text-xs text-neutral-500 font-mono">{PROGRAMS.length} programs tracked</span>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-3xl">
-            Curated list of active points programs with mechanics, timing, and direct checker links. Paste your wallet below to open each program&apos;s &ldquo;check me&rdquo; page pre-filled where supported.
-          </p>
-          <div className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-neutral-500">
-            <span className="w-1 h-1 rounded-full bg-amber-500" />
-            <span>Registry last verified {REGISTRY_VERIFIED}</span>
-            <span className="text-neutral-700">·</span>
-            <span>always confirm status on each program&apos;s official page before committing capital</span>
-          </div>
-        </div>
+        <PageHero
+          icon={Gem}
+          eyebrow={`${PROGRAMS.length} programs tracked`}
+          title="Points &"
+          accentNoun="airdrops"
+          accent="hub-yellow"
+          description={
+            <>
+              <span>Curated list of active points programs with mechanics, timing, and direct checker links. Paste your wallet below to open each program&apos;s &ldquo;check me&rdquo; page pre-filled where supported.</span>
+              <span className="mt-2 inline-flex items-center gap-1.5 text-[10px] text-neutral-500">
+                <span className="w-1 h-1 rounded-full bg-amber-500" />
+                <span>Registry last verified {REGISTRY_VERIFIED}</span>
+                <span className="text-neutral-700">·</span>
+                <span>always confirm status on each program&apos;s official page before committing capital</span>
+              </span>
+            </>
+          }
+        />
 
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">

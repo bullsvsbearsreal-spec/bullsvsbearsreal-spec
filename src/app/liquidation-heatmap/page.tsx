@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import ReferralBanner from '@/components/ReferralBanner';
 import DataFreshness from '@/components/DataFreshness';
 import { useApi } from '@/hooks/useSWRApi';
@@ -515,32 +516,30 @@ export default function LiquidationHeatmapPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="heading-page flex items-center gap-2">
-              <Flame className="w-6 h-6 text-hub-yellow" />
-              Liquidation Heatmap
-            </h1>
-            <p className="text-neutral-600 text-xs mt-0.5">
-              Forced liquidation density across exchanges
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <DataFreshness exchangeCount={0} sources={['Binance', 'OKX', 'HTX', 'gTrade', 'Deribit']} lastUpdated={lastUpdate} />
-            <span className="text-[10px] font-mono text-green-400 bg-green-400/10 px-2 py-0.5 rounded">
-              Auto-refresh {timeframe === '7d' ? '5m' : '30s'}
-            </span>
-            <button
-              onClick={refresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-500 hover:text-white transition-colors text-xs"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={Flame}
+          eyebrow="Risk map"
+          title="Liquidation"
+          accentNoun="heatmap"
+          accent="red"
+          description="Forced-liquidation density across exchanges. Bright cells = clusters of stops getting taken out — historically rich zones for fade entries and stop-hunt setups."
+          actions={
+            <>
+              <DataFreshness exchangeCount={0} sources={['Binance', 'OKX', 'HTX', 'gTrade', 'Deribit']} lastUpdated={lastUpdate} />
+              <span className="text-[10px] font-mono text-green-400 bg-green-400/10 px-2 py-0.5 rounded">
+                Auto-refresh {timeframe === '7d' ? '5m' : '30s'}
+              </span>
+              <button
+                onClick={refresh}
+                disabled={isRefreshing}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-500 hover:text-white transition-colors text-xs"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </>
+          }
+        />
 
         {/* Controls row */}
         <div className="flex flex-wrap items-center gap-3 mb-6">

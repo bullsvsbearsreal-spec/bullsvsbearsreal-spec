@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import ReferralBanner from '@/components/ReferralBanner';
 import { RefreshCw, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
 import { useFlash } from '@/hooks/useFlash';
@@ -95,27 +96,27 @@ export default function StablecoinFlowsPage() {
       <Header />
       <main id="main-content" className="text-white">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
-          {/* Title */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <h1 className="heading-page flex items-center gap-2">
-                <DollarSign className="w-6 h-6 text-hub-yellow" />
-                Stablecoin Flows
-              </h1>
-              <p className="text-sm text-neutral-500 mt-1">
-                Track stablecoin market caps, chain distribution, and weekly/monthly changes
-              </p>
-            </div>
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['DefiLlama']} />
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              aria-label="Refresh data"
-              className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
+          <PageHero
+            icon={DollarSign}
+            eyebrow="On-chain liquidity"
+            title="Stablecoin"
+            accentNoun="flows"
+            accent="emerald"
+            description="Track stablecoin market caps, chain distribution, and weekly/monthly changes. Inflows lead spot demand — outflows often precede dumps."
+            actions={
+              <>
+                <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['DefiLlama']} />
+                <button
+                  onClick={fetchData}
+                  disabled={loading}
+                  aria-label="Refresh data"
+                  className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+              </>
+            }
+          />
 
           {loading && !data && (
             <div className="space-y-4">

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { Shield, RefreshCw } from 'lucide-react';
 
 interface ValidatorRow {
@@ -81,30 +82,24 @@ export default function ValidatorsPage() {
     <>
       <Header />
       <main className="max-w-[1300px] mx-auto w-full px-4 py-6">
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-blue-500/10 flex items-center justify-center">
-              <Shield className="w-4 h-4 text-blue-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Validator Economics</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              {data ? Object.values(data.byAsset).flat().length : 0} pools · LST + restaking
-            </span>
+        <PageHero
+          icon={Shield}
+          eyebrow={`${data ? Object.values(data.byAsset).flat().length : 0} pools · LST + restaking`}
+          title="Validator"
+          accentNoun="economics"
+          accent="cyan"
+          description="Liquid staking and restaking yields per asset. APY = base staking reward + extra token rewards (where applicable). TVL filtered to > $5M to keep noise out."
+          actions={
             <button
               onClick={() => load(false)}
               disabled={refreshing}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+              className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
             >
               <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
               refresh
             </button>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Liquid staking and restaking yields per asset.
-            APY = base staking reward + extra token rewards (where applicable).
-            TVL filtered to &gt; $5M to keep noise out.
-          </p>
-        </div>
+          }
+        />
 
         {data && (
           <div className="card-premium p-3 mb-4 flex items-center justify-between flex-wrap gap-2">

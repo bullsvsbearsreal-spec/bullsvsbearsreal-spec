@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import ReferralBanner from '@/components/ReferralBanner';
 import Pagination from '@/components/Pagination';
 import { TokenIconSimple } from '@/components/TokenIcon';
@@ -183,31 +184,26 @@ export default function RSIHeatmapPage() {
       <Header />
 
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
-        {/* Page header */}
-        <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-orange-500/10 flex items-center justify-center">
-              <Activity className="w-4 h-4 text-orange-400" />
-            </div>
-            <div>
-              <h1 className="heading-page">RSI Heatmap</h1>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                {data.length > 0 && <span className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]" />}
-                <span className="text-neutral-500 text-sm">Relative Strength Index across multiple timeframes</span>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Binance']} />
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={Activity}
+          eyebrow="Momentum"
+          title="RSI"
+          accentNoun="heatmap"
+          accent="orange"
+          description="Relative Strength Index across 1h / 4h / 1d for every Binance perp — sortable, filterable, and color-coded so overbought/oversold extremes pop out at a glance."
+          actions={
+            <>
+              <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Binance']} />
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </>
+          }
+        />
 
         {/* Stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">

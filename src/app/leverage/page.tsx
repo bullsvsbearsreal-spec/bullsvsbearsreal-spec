@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useApi } from '@/hooks/useSWRApi';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import DataFreshness from '@/components/DataFreshness';
 import RefreshButton from '@/components/RefreshButton';
 import UsdDisplay from '@/components/UsdDisplay';
@@ -82,21 +83,20 @@ export default function LeveragePage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-pink-500/10 flex items-center justify-center">
-              <Gauge className="w-4 h-4 text-pink-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Leverage Dashboard</h1>
-            <div className="ml-auto flex items-center gap-1">
+        <PageHero
+          icon={Gauge}
+          eyebrow="Risk lens"
+          title="Leverage"
+          accentNoun="dashboard"
+          accent="pink"
+          description={<>OI-weighted funding (what the heavy money actually pays) and spot-vs-perp volume — a single lens on leverage pressure across {ALL_EXCHANGES.length} venues.</>}
+          actions={
+            <>
               <DataFreshness exchangeCount={data?.meta?.symbolsTracked ?? 0} lastUpdated={data?.meta?.timestamp ?? null} sources={['Aggregated', 'CoinGecko']} />
               <RefreshButton onRefresh={refresh} isRefreshing={isRefreshing} />
-            </div>
-          </div>
-          <p className="text-sm text-neutral-500">
-            OI-weighted funding (what the heavy money actually pays) and spot-vs-perp volume — a single lens on leverage pressure across {ALL_EXCHANGES.length} venues.
-          </p>
-        </div>
+            </>
+          }
+        />
 
         {summary && (
           <div

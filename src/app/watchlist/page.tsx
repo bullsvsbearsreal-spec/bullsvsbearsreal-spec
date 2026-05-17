@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
 import { RefreshCw, Plus, X, Star, Copy, Check, AlertTriangle, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
@@ -244,41 +245,34 @@ export default function WatchlistPage() {
       <Header />
 
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
-        {/* ---------- title bar --------------------------------------- */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="heading-page flex items-center gap-2">
-              <Star className="w-5 h-5 text-hub-yellow" />
-              Watchlist
-            </h1>
-            <p className="text-neutral-500 text-sm mt-1">
-              Track your favorite coins across all exchanges
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {/* Export */}
-            <button
-              onClick={handleExport}
-              disabled={!watchlist.length}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium bg-white/[0.06] hover:bg-white/[0.1] text-neutral-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
-              {copied ? 'Copied' : 'Export'}
-            </button>
-
-            {/* Refresh */}
-            <button
-              onClick={refreshAll}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium bg-white/[0.06] hover:bg-white/[0.1] text-neutral-400 hover:text-white transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" />
-              Refresh
-            </button>
-
-            <DataFreshness exchangeCount={watchlist.length} lastUpdated={lastUpdate} />
-          </div>
-        </div>
+        <PageHero
+          icon={Star}
+          eyebrow="My tools"
+          title="Personal"
+          accentNoun="watchlist"
+          accent="hub-yellow"
+          description="Track your favorite tickers across every venue — price, 24h change, average funding, and aggregate open interest in one row."
+          actions={
+            <>
+              <button
+                onClick={handleExport}
+                disabled={!watchlist.length}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium bg-white/[0.06] hover:bg-white/[0.1] text-neutral-400 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {copied ? 'Copied' : 'Export'}
+              </button>
+              <button
+                onClick={refreshAll}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-medium bg-white/[0.06] hover:bg-white/[0.1] text-neutral-400 hover:text-white transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                Refresh
+              </button>
+              <DataFreshness exchangeCount={watchlist.length} lastUpdated={lastUpdate} />
+            </>
+          }
+        />
 
         {/* ---------- add bar ----------------------------------------- */}
         <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">

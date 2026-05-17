@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { Layers, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface Sector {
@@ -102,31 +103,24 @@ export default function SectorsPage() {
     <>
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        {/* Hero */}
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-cyan-500/10 flex items-center justify-center">
-              <Layers className="w-4 h-4 text-cyan-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Sector Rotation</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              {data?.sectors.length ?? 0} sectors · 24h
-            </span>
+        <PageHero
+          icon={Layers}
+          eyebrow={`${data?.sectors.length ?? 0} sectors · 24h`}
+          title="Sector"
+          accentNoun="rotation"
+          accent="cyan"
+          description="Which crypto sectors money is flowing into right now. Heatmap by 24-hour market-cap change — green = inflow, red = outflow. Watch for fast rotations between AI, DeFi, L2s, RWA, memes — they signal where the next leg is forming."
+          actions={
             <button
               onClick={() => load(false)}
               disabled={refreshing}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+              className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
             >
               <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
               refresh
             </button>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Which crypto sectors money is flowing into right now. Heatmap by 24-hour
-            market-cap change — green = inflow, red = outflow. Watch for fast rotations
-            between AI, DeFi, L2s, RWA, memes — they signal where the next leg is forming.
-          </p>
-        </div>
+          }
+        />
 
         {/* Top stat strip */}
         {data && data.sectors.length > 0 && (

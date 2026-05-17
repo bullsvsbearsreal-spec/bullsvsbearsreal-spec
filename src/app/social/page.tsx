@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { AtSign, ExternalLink, RefreshCw, Filter, Twitter } from 'lucide-react';
 
 interface SocialPost {
@@ -93,31 +94,25 @@ export default function SocialPage() {
     <>
       <Header />
       <main className="max-w-[1100px] mx-auto w-full px-4 py-6">
-        {/* Hero */}
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-7 h-7 rounded-md bg-sky-500/10 flex items-center justify-center">
-              <Twitter className="w-4 h-4 text-sky-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">KOL Feed</h1>
-            <span className="ml-2 text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              live · {data?.posts.length ?? 0} posts
-            </span>
+        <PageHero
+          icon={Twitter}
+          eyebrow={`live · ${data?.posts.length ?? 0} posts`}
+          title="KOL"
+          accentNoun="feed"
+          accent="cyan"
+          description="Curated crypto + macro voices on X, polled every 15 min via RSS. All links go to x.com — read in context, no algorithm reshuffling timing."
+          actions={
             <button
               onClick={() => load(false)}
               disabled={refreshing}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+              className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
               aria-label="Refresh"
             >
               <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
               refresh
             </button>
-          </div>
-          <p className="text-sm text-neutral-500">
-            Curated crypto + macro voices on X, polled every 15 min via RSS.
-            All links go to x.com.
-          </p>
-        </div>
+          }
+        />
 
         {/* Filter row */}
         <div className="card-premium p-3 mb-4">
