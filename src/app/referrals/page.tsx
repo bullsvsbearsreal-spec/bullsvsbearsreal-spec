@@ -1,7 +1,7 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
-import { ExternalLink, Gift, Users, Send, ArrowRight } from 'lucide-react';
+import { ExternalLink, Gift, Users, Send, ArrowRight, Trophy } from 'lucide-react';
 
 /* ── Referral Partner ──────────────────────────────────────────────── */
 
@@ -152,14 +152,23 @@ export default function ReferralsPage() {
               You get fee discounts, we keep building InfoHub. Win-win.
             </p>
 
-            <Link
-              href="/invite"
-              className="group mt-6 inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg bg-emerald-500/[0.08] border border-emerald-400/25 text-emerald-300 hover:bg-emerald-500/[0.15] transition-colors"
-            >
-              <Send className="w-3.5 h-3.5" />
-              Want to refer friends to InfoHub instead?
-              <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
-            </Link>
+            <div className="mt-6 flex items-center gap-2 justify-center flex-wrap">
+              <Link
+                href="/invite"
+                className="group inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg bg-emerald-500/[0.08] border border-emerald-400/25 text-emerald-300 hover:bg-emerald-500/[0.15] transition-colors"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Want to refer friends to InfoHub instead?
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <Link
+                href="/invite/leaderboard"
+                className="group inline-flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-neutral-400 hover:text-emerald-300 hover:border-emerald-400/25 transition-colors"
+              >
+                <Trophy className="w-3.5 h-3.5" />
+                Leaderboard
+              </Link>
+            </div>
           </div>
         </section>
 
