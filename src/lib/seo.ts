@@ -346,8 +346,8 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: 'Learn how to profit from funding rate arbitrage across crypto derivatives exchanges. Step-by-step strategy guide with real examples.',
   },
   '/login': {
-    title: 'Log In',
-    description: 'Sign in to your InfoHub account to access watchlists, alerts, portfolio tracking, and personalized derivatives data.',
+    title: 'Log in — InfoHub',
+    description: 'Sign in to your InfoHub account to access watchlists, alerts, portfolio tracking, and personalized derivatives data across every major venue.',
   },
   '/signup': {
     title: 'Sign up — InfoHub',
