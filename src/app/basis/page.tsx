@@ -3,6 +3,7 @@
 import { useState, useCallback, useMemo, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import ReferralBanner from '@/components/ReferralBanner';
 import Pagination from '@/components/Pagination';
 import { TokenIconSimple } from '@/components/TokenIcon';
@@ -528,38 +529,27 @@ export default function BasisPage() {
 
       <main id="main-content" className="max-w-[1440px] mx-auto px-4 sm:px-6 py-5">
 
-        {/* ─── Page Header ─── */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-6">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/5 flex items-center justify-center border border-hub-yellow/20">
-                <ArrowUpDown className="w-4.5 h-4.5 text-hub-yellow" />
-              </div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">Basis / Premium</h1>
-            </div>
-            <p className="text-neutral-500 text-sm ml-12">
-              Futures-spot price spread across {exchanges.length} exchanges
-              {basisData.length > 0 && (
-                <span className="inline-flex items-center gap-1.5 ml-2">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.5)]" />
-                  <span className="text-neutral-600">{basisData.length} pairs</span>
-                </span>
-              )}
-            </p>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-            <DataFreshness exchangeCount={exchanges.length} lastUpdated={lastUpdate} />
-            <StaleIndicator lastUpdated={lastUpdate} isError={!!error} />
-          </div>
-        </div>
+        <PageHero
+          icon={ArrowUpDown}
+          eyebrow={basisData.length > 0 ? `${basisData.length} pairs live` : 'Spread scanner'}
+          title="Basis /"
+          accentNoun="premium"
+          accent="hub-yellow"
+          description={<>Futures-spot price spread across {exchanges.length} exchanges. Wide positive basis = market paying for leveraged longs; wide negative = paying for hedges. Spike-then-collapse is a classic mean-reversion entry.</>}
+          actions={
+            <>
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+              <DataFreshness exchangeCount={exchanges.length} lastUpdated={lastUpdate} />
+              <StaleIndicator lastUpdated={lastUpdate} isError={!!error} />
+            </>
+          }
+        />
 
         {/* ─── Loading skeleton ─── */}
         {loading && basisData.length === 0 && (

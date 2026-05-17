@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { ALL_EXCHANGES } from '@/lib/constants';
 import { HelpCircle, ChevronDown, Search, X } from 'lucide-react';
 
@@ -273,18 +274,15 @@ export default function FAQPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
-        {/* Title */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 flex items-center justify-center">
-            <HelpCircle className="w-4 h-4 text-hub-yellow" />
-          </div>
-          <div>
-            <h1 className="heading-page">Frequently Asked Questions</h1>
-            <p className="text-neutral-500 text-sm mt-0.5">
-              {faqs.length} answers across {CATEGORIES.length} categories
-            </p>
-          </div>
-        </div>
+        <PageHero
+          icon={HelpCircle}
+          eyebrow={`${faqs.length} answers · ${CATEGORIES.length} categories`}
+          title="Frequently asked"
+          accentNoun="questions"
+          accent="hub-yellow"
+          description="Quick answers about how InfoHub sources data, what features cost what, and how each tool actually works under the hood."
+          className="mb-6"
+        />
 
         {/* Search Bar */}
         <div className="relative mb-8 max-w-xl">

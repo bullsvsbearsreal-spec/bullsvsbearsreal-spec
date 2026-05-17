@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
+import PageHero from '@/components/PageHero';
 import DataFreshness from '@/components/DataFreshness';
 import { useApi } from '@/hooks/useSWRApi';
 import Footer from '@/components/Footer';
@@ -148,29 +149,27 @@ export default function ComparePage() {
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="heading-page flex items-center gap-2">
-              <GitCompareArrows className="w-5 h-5 text-hub-yellow" />
-              Compare
-            </h1>
-            <p className="text-neutral-500 text-sm mt-1">
-              Side-by-side comparison across all exchanges
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <DataFreshness exchangeCount={uniqueExchangeCount || 1} lastUpdated={lastUpdate} />
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              aria-label="Refresh data"
-              className="p-1.5 text-neutral-500 hover:text-white transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={GitCompareArrows}
+          eyebrow="Multi-asset"
+          title="Compare"
+          accentNoun="tokens"
+          accent="hub-yellow"
+          description="Pick up to six coins and see price, 24h change, volume, average funding, and aggregate OI side-by-side — useful for relative-strength bets and pair selection."
+          actions={
+            <>
+              <DataFreshness exchangeCount={uniqueExchangeCount || 1} lastUpdated={lastUpdate} />
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                aria-label="Refresh data"
+                className="p-1.5 text-neutral-500 hover:text-white transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </>
+          }
+        />
 
         {/* Coin Selector */}
         <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">

@@ -1,5 +1,6 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { FileText } from 'lucide-react';
 import { pageMetadata } from '@/lib/seo';
 
@@ -69,18 +70,15 @@ export default function TermsPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
-        {/* Title */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 flex items-center justify-center">
-            <FileText className="w-4 h-4 text-hub-yellow" />
-          </div>
-          <div>
-            <h1 className="heading-page">Terms & Conditions</h1>
-            <p className="text-neutral-500 text-sm mt-0.5">
-              Last updated: March 2026
-            </p>
-          </div>
-        </div>
+        <PageHero
+          icon={FileText}
+          eyebrow="Last updated · March 2026"
+          title="Terms &"
+          accentNoun="conditions"
+          accent="hub-yellow"
+          description="The legal stuff that governs your use of InfoHub — what we provide, what we don't, and what you agree to when you sign in or use the data."
+          className="mb-6"
+        />
 
         {/* Sections */}
         <div className="space-y-4">

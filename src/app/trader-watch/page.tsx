@@ -22,6 +22,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Star, RefreshCw, X, ExternalLink, ArrowUpDown, Plus, AlertTriangle, Bell } from 'lucide-react';
+import PageHero from '@/components/PageHero';
 import { useTraderBookmarks, type TraderBookmark } from '@/hooks/useTraderBookmarks';
 import { useTraderAlerts } from '@/hooks/useTraderAlerts';
 import { TokenIconSimple } from '@/components/TokenIcon';
@@ -453,40 +454,36 @@ export default function TraderWatchPage() {
       {/* Hero — Snake's page gets the same vocabulary as /funding-arb
           + /watch + /positions: gradient icon tile, bold title with
           accent color on the noun, live counters in the subline. */}
-      <header className="mb-5">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-          <div className="min-w-0">
-            <div className="inline-flex items-center gap-2 mb-2">
-              <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-hub-yellow/20 to-hub-yellow/[0.04] border border-hub-yellow/20 flex items-center justify-center">
-                <Star className="w-4 h-4 text-hub-yellow fill-current" />
-              </div>
-              <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Watchlist</span>
-            </div>
-            <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
-              Trader <span className="text-hub-yellow">watch</span>
-            </h1>
-            <p className="text-[13px] text-neutral-400 mt-2 font-mono">
-              <span className="text-white font-bold">{bookmarks.length}</span> {bookmarks.length === 1 ? 'trader' : 'traders'}
-              {' · '}
-              <span className="text-white font-bold">{positions.length}</span> open {positions.length === 1 ? 'position' : 'positions'}
-              {lastRefresh && (
-                <>
-                  {' · '}
-                  <span className="text-neutral-500">refreshed {Math.floor((nowTick - lastRefresh) / 1000)}s ago</span>
-                </>
-              )}
-            </p>
-          </div>
+      <PageHero
+        icon={Star}
+        eyebrow="Watchlist"
+        title="Trader"
+        accentNoun="watch"
+        accent="hub-yellow"
+        description={
+          <span className="font-mono">
+            <span className="text-white font-bold">{bookmarks.length}</span> {bookmarks.length === 1 ? 'trader' : 'traders'}
+            {' · '}
+            <span className="text-white font-bold">{positions.length}</span> open {positions.length === 1 ? 'position' : 'positions'}
+            {lastRefresh && (
+              <>
+                {' · '}
+                <span className="text-neutral-500">refreshed {Math.floor((nowTick - lastRefresh) / 1000)}s ago</span>
+              </>
+            )}
+          </span>
+        }
+        actions={
           <button
             onClick={() => refresh()}
             disabled={loading}
-            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-neutral-300 text-xs font-semibold hover:bg-white/[0.08] hover:text-white disabled:opacity-50 transition-colors shrink-0 self-start lg:self-end"
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-neutral-300 text-xs font-semibold hover:bg-white/[0.08] hover:text-white disabled:opacity-50 transition-colors"
           >
             <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
             Refresh
           </button>
-        </div>
-      </header>
+        }
+      />
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">

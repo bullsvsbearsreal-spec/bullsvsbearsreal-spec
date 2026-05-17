@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Download, Copy, Check, ExternalLink, FileDown, Palette, Type, Image } from 'lucide-react';
+import PageHero from '@/components/PageHero';
+import { Download, Copy, Check, ExternalLink, FileDown, Palette, Type, Image, Sparkles } from 'lucide-react';
 import { copyToClipboard } from '@/lib/copyToClipboard';
 
 // Brand Colors
@@ -101,32 +102,33 @@ export default function BrandPage() {
       <Header />
 
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
-        {/* Page Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <span className="px-2.5 py-1 rounded-full text-[10px] font-semibold bg-hub-yellow/10 text-hub-yellow border border-hub-yellow/20">
-              Official Assets
-            </span>
-          </div>
-          <h1 className="heading-page">Brand Kit</h1>
-          <p className="text-neutral-600 text-xs mt-0.5">
-            Download official logos, colors, and brand assets for use in articles, integrations, and partner materials.
-          </p>
-          <div className="flex items-center gap-6 mt-4">
-            <div className="flex items-center gap-2 text-neutral-500 text-xs">
-              <Image className="w-3.5 h-3.5 text-hub-yellow/60" />
-              <span>7 logo assets</span>
-            </div>
-            <div className="flex items-center gap-2 text-neutral-500 text-xs">
-              <Palette className="w-3.5 h-3.5 text-hub-yellow/60" />
-              <span>13 brand colors</span>
-            </div>
-            <div className="flex items-center gap-2 text-neutral-500 text-xs">
-              <Type className="w-3.5 h-3.5 text-hub-yellow/60" />
-              <span>2 typefaces</span>
-            </div>
-          </div>
-        </div>
+        <PageHero
+          icon={Sparkles}
+          eyebrow="Official assets"
+          title="Brand"
+          accentNoun="kit"
+          accent="hub-yellow"
+          description={
+            <>
+              <span>Download official logos, colors, and brand assets for use in articles, integrations, and partner materials.</span>
+              <span className="flex items-center gap-6 mt-3">
+                <span className="flex items-center gap-2 text-neutral-500 text-xs">
+                  <Image className="w-3.5 h-3.5 text-hub-yellow/60" />
+                  <span>7 logo assets</span>
+                </span>
+                <span className="flex items-center gap-2 text-neutral-500 text-xs">
+                  <Palette className="w-3.5 h-3.5 text-hub-yellow/60" />
+                  <span>13 brand colors</span>
+                </span>
+                <span className="flex items-center gap-2 text-neutral-500 text-xs">
+                  <Type className="w-3.5 h-3.5 text-hub-yellow/60" />
+                  <span>2 typefaces</span>
+                </span>
+              </span>
+            </>
+          }
+          className="mb-8"
+        />
 
         {/* Quick Download Banner */}
         <section className="mb-8">
