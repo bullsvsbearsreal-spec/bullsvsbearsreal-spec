@@ -50,13 +50,13 @@ function ResetPasswordForm() {
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error || 'Something went wrong');
+        setError(data.error || 'Could not reset your password. The link may have expired — request a new one.');
         return;
       }
 
       setSuccess(true);
     } catch {
-      setError('Something went wrong');
+      setError('Network error — could not reach the server. Check your connection and try again.');
     } finally {
       setLoading(false);
     }

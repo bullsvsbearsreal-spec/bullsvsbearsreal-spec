@@ -83,7 +83,7 @@ function LoginPageInner() {
       // Step 4: No 2FA — sign in directly
       await completeSignIn();
     } catch {
-      setError('Something went wrong');
+      setError('Network error — could not reach the server. Check your connection and try again.');
       setLoading(false);
     }
   }
@@ -103,7 +103,7 @@ function LoginPageInner() {
         window.location.href = callbackUrl;
       }
     } catch {
-      setError('Something went wrong');
+      setError('Network error — could not reach the server. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -189,7 +189,7 @@ function LoginPageInner() {
       setLoading(true);
       await completeSignIn(data.nonce);
     } catch {
-      setError('Something went wrong');
+      setError('Network error — could not verify the code. Check your connection and try again.');
     } finally {
       setVerifying(false);
     }

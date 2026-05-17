@@ -24,13 +24,13 @@ export default function ForgotPasswordPage() {
 
       if (!res.ok) {
         const data = await res.json();
-        setError(data.error || 'Something went wrong');
+        setError(data.error || 'Could not send the reset link. Please try again in a moment.');
         return;
       }
 
       setSent(true);
     } catch {
-      setError('Something went wrong');
+      setError('Network error — could not reach the server. Check your connection and try again.');
     } finally {
       setLoading(false);
     }

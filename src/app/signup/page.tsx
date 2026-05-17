@@ -106,7 +106,7 @@ function SignupContent() {
         }
       }
     } catch {
-      setError('Something went wrong');
+      setError('Network error — could not reach the server. Check your connection and try again.');
     } finally {
       setLoading(false);
     }
@@ -181,7 +181,7 @@ function SignupContent() {
       // No password (URL-based verify) or sign-in failed — redirect to login
       window.location.href = '/login?verified=true';
     } catch {
-      setError('Something went wrong');
+      setError('Network error — could not verify the code. Check your connection and try again.');
     } finally {
       setVerifying(false);
     }
