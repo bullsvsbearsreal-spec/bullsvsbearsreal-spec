@@ -248,16 +248,23 @@ export default function FAQPage() {
     });
   };
 
+  // Pre-build a lowercase search index so each keystroke filters
+  // without re-lowering every Q/A/category. Cheap one-time pass that
+  // keeps every search render O(N) on the original strings instead of
+  // O(3N) lowercase + O(N) includes.
+  const searchIndex = useMemo(
+    () => faqs.map((faq) => ({
+      faq,
+      hay: `${faq.q} ${faq.a} ${faq.category}`.toLowerCase(),
+    })),
+    [],
+  );
+
   const filteredFaqs = useMemo(() => {
-    if (!search.trim()) return faqs;
-    const terms = search.toLowerCase().trim();
-    return faqs.filter(
-      (faq) =>
-        faq.q.toLowerCase().includes(terms) ||
-        faq.a.toLowerCase().includes(terms) ||
-        faq.category.toLowerCase().includes(terms)
-    );
-  }, [search]);
+    const terms = search.trim().toLowerCase();
+    if (!terms) return faqs;
+    return searchIndex.filter((e) => e.hay.includes(terms)).map((e) => e.faq);
+  }, [search, searchIndex]);
 
   const groupedByCategory = useMemo(() => {
     const grouped: Record<FAQCategory, FAQEntry[]> = {
@@ -275,9 +282,30 @@ export default function FAQPage() {
   const resultCount = filteredFaqs.length;
   const isSearching = search.trim().length > 0;
 
+  // FAQPage JSON-LD — opts the page into Google's rich-result
+  // treatment so questions can render directly in SERP without the
+  // user even visiting the page. Schema.org spec:
+  // https://schema.org/FAQPage — note that hidden Q/A is fine (the
+  // browser's accordion toggle doesn't disqualify), but the answer
+  // text must be plain (no HTML).
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: faqs.map((faq) => ({
+      '@type': 'Question',
+      name: faq.q,
+      acceptedAnswer: { '@type': 'Answer', text: faq.a },
+    })),
+  };
+
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
         <PageHero
           icon={HelpCircle}
