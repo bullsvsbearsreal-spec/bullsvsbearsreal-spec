@@ -785,7 +785,7 @@ export default function ScreenerPage() {
                           ? 'No symbols match — try a different search'
                           : conditions.length > 0
                           ? 'No symbols match your filters — try adjusting criteria'
-                          : 'No data available.'}
+                          : 'No live data right now. The aggregator is between snapshots — refresh in a moment.'}
                       </span>
                     </div>
                   </td>
