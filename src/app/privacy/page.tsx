@@ -39,7 +39,7 @@ const sections = [
   },
   {
     title: 'Security',
-    body: 'We take reasonable measures to protect the information we store. Passwords are hashed using industry-standard algorithms. All data is transmitted over HTTPS. However, no system is perfectly secure, and we cannot guarantee absolute security of your data.',
+    body: 'We take reasonable measures to protect the information we store. Passwords are hashed with bcrypt. All data is transmitted over HTTPS, and exchange API keys are encrypted at rest with AES-256-GCM and decrypted only at the moment we query positions. No system is perfectly secure — we cannot guarantee absolute security of your data, but we hold ourselves to the same care a small bank would.',
   },
   {
     title: 'Data Breach Notification',
