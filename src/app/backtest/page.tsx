@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { TestTube, RefreshCw, AlertTriangle, ChevronDown, Calculator, TrendingUp } from 'lucide-react';
 
 type Strategy = 'dca' | 'funding-carry';
@@ -178,24 +179,14 @@ export default function BacktestPage() {
     <>
       <Header />
       <main className="max-w-[1400px] mx-auto px-4 py-6">
-        {/* Hero */}
-        <div className="relative overflow-hidden rounded-2xl border border-purple-400/20 bg-gradient-to-br from-purple-500/[0.08] via-violet-500/[0.04] to-transparent px-5 py-5 mb-5">
-          <div className="absolute inset-0 opacity-[0.08]"
-            style={{ background: 'radial-gradient(circle at 80% 50%, #a78bfa, transparent 60%)' }} />
-          <div className="relative flex items-center gap-2.5 mb-1.5">
-            <TestTube className="w-5 h-5 text-purple-400" />
-            <h1 className="text-2xl font-bold bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">
-              Strategy Backtest Lab
-            </h1>
-            <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-purple-400/15 text-purple-300 font-bold border border-purple-400/30">
-              beta
-            </span>
-          </div>
-          <p className="relative text-sm text-neutral-400 max-w-3xl">
-            What if you&rsquo;d run this strategy? Pure historical-data simulation — no fees, slippage,
-            or live execution. Treat the numbers as ballpark, not investment advice.
-          </p>
-        </div>
+        <PageHero
+          icon={TestTube}
+          eyebrow="Beta"
+          title="Strategy backtest"
+          accentNoun="lab"
+          accent="purple"
+          description={<>What if you&rsquo;d run this strategy? Pure historical-data simulation — no fees, slippage, or live execution. Treat the numbers as ballpark, not investment advice.</>}
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* Form */}

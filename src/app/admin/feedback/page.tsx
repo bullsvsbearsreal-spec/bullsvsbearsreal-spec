@@ -16,6 +16,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { ArrowLeft, Bug, RefreshCw, Check, X as XIcon, AlertTriangle, ExternalLink, Filter } from 'lucide-react';
 
 interface BugReport {
@@ -160,23 +161,30 @@ export default function AdminFeedbackPage() {
         <Link href="/admin" className="text-[11px] text-neutral-500 hover:text-hub-yellow inline-flex items-center gap-1 mb-2">
           <ArrowLeft className="w-3 h-3" /> back to admin
         </Link>
-        <div className="flex items-center gap-2 mb-1">
-          <Bug className="w-5 h-5 text-amber-400" />
-          <h1 className="text-2xl font-bold text-white">User Bug Reports</h1>
-          <button
-            onClick={load}
-            disabled={loading}
-            className="ml-auto inline-flex items-center gap-1 text-[11px] text-neutral-500 hover:text-white"
-          >
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> refresh
-          </button>
-        </div>
-        <p className="text-sm text-neutral-500 mb-4">
-          Submitted via the per-page Report widget. {counts.high > 0 && (
-            <span className="text-red-400 font-medium">{counts.high} high-severity open · </span>
-          )}
-          Triage with one click.
-        </p>
+        <PageHero
+          icon={Bug}
+          eyebrow="Admin · triage"
+          title="User bug"
+          accentNoun="reports"
+          accent="orange"
+          description={
+            <>
+              Submitted via the per-page Report widget. {counts.high > 0 && (
+                <span className="text-red-400 font-medium">{counts.high} high-severity open · </span>
+              )}
+              Triage with one click.
+            </>
+          }
+          actions={
+            <button
+              onClick={load}
+              disabled={loading}
+              className="inline-flex items-center gap-1 text-[11px] text-neutral-500 hover:text-white"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> refresh
+            </button>
+          }
+        />
 
         {error && (
           <div className="card-premium p-3 border border-red-400/30 bg-red-500/5 text-sm text-red-300 mb-4 inline-flex items-start gap-2">
