@@ -6,6 +6,7 @@ import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import { RefreshCw, Building2, TrendingUp, TrendingDown, ChevronDown, ChevronUp } from 'lucide-react';
 import DataFreshness from '@/components/DataFreshness';
+import PageHero from '@/components/PageHero';
 import { useFlash } from '@/hooks/useFlash';
 import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import { formatCompact } from '@/lib/utils/format';
@@ -192,28 +193,32 @@ export default function ExchangeReservesPage() {
       <Header />
       <main id="main-content" className="text-white">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-6">
-          {/* Title */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <div>
-              <h1 className="heading-page flex items-center gap-2">
-                <Building2 className="w-6 h-6 text-hub-yellow" />
-                Exchange Reserves
-              </h1>
-              <p className="text-sm text-neutral-500 mt-1">
-                Total assets held by major centralized exchanges — proof of reserves transparency
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <DataFreshness exchangeCount={data?.exchangeCount ?? 0} lastUpdated={lastUpdate} sources={['DefiLlama']} />
-              <button
-                onClick={fetchData}
-                disabled={loading}
-                className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              </button>
-            </div>
-          </div>
+          <PageHero
+            icon={Building2}
+            eyebrow="Custody · proof of reserves"
+            title="Exchange"
+            accentNoun="reserves"
+            accent="hub-yellow"
+            description={
+              <>Total assets held by major centralised exchanges — the
+                transparency feed traders use to gauge custody concentration risk.
+                Sourced from on-chain wallet attestations via DefiLlama.</>
+            }
+            className="mb-6"
+            actions={
+              <>
+                <DataFreshness exchangeCount={data?.exchangeCount ?? 0} lastUpdated={lastUpdate} sources={['DefiLlama']} />
+                <button
+                  onClick={fetchData}
+                  disabled={loading}
+                  aria-label="Refresh"
+                  className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+                </button>
+              </>
+            }
+          />
 
           {loading && !data && (
             <div className="flex items-center justify-center py-20">

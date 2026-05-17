@@ -6,6 +6,7 @@ import Footer from '@/components/Footer';
 import DataFreshness from '@/components/DataFreshness';
 import RefreshButton from '@/components/RefreshButton';
 import UsdDisplay from '@/components/UsdDisplay';
+import PageHero from '@/components/PageHero';
 import { Fuel, Info, CheckCircle2, AlertTriangle, Zap } from 'lucide-react';
 
 interface GasRow {
@@ -70,21 +71,25 @@ export default function GasTrackerPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-orange-500/10 flex items-center justify-center">
-              <Fuel className="w-4 h-4 text-orange-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Gas Tracker</h1>
-            <div className="ml-auto flex items-center gap-1">
+        <PageHero
+          icon={Fuel}
+          eyebrow="On-chain · L1 + L2 gas"
+          title="Gas"
+          accentNoun="tracker"
+          accent="orange"
+          description={
+            <>Live gas prices across Ethereum mainnet and major L2s. Cost estimates
+              assume <span className="text-white font-medium">21k gas</span> for transfers and
+              <span className="text-white font-medium"> 150k gas</span> for a simple Uniswap-v3 swap.</>
+          }
+          className="mb-4"
+          actions={
+            <>
               <DataFreshness exchangeCount={data?.data?.length ?? 0} lastUpdated={data?.meta?.timestamp ?? null} sources={['Public RPC', 'CoinGecko']} />
               <RefreshButton onRefresh={refresh} isRefreshing={isRefreshing} />
-            </div>
-          </div>
-          <p className="text-sm text-neutral-500">
-            Live gas prices across Ethereum mainnet + major L2s. Cost estimates assume 21k gas for transfers, 150k for a simple Uniswap-v3 swap.
-          </p>
-        </div>
+            </>
+          }
+        />
 
         {data?.summary && (
           <div

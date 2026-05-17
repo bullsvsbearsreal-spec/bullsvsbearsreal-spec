@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useApi } from '@/hooks/useSWRApi';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import DataFreshness from '@/components/DataFreshness';
 import RefreshButton from '@/components/RefreshButton';
 import UsdDisplay from '@/components/UsdDisplay';
@@ -82,21 +83,25 @@ export default function PerpDexVolumePage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-hub-yellow/10 flex items-center justify-center">
-              <Trophy className="w-4 h-4 text-hub-yellow" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Perp DEX Volume Race</h1>
-            <div className="ml-auto flex items-center gap-1">
+        <PageHero
+          icon={Trophy}
+          eyebrow="On-chain derivatives · market share"
+          title="Perp DEX"
+          accentNoun="volume"
+          accent="hub-yellow"
+          description={
+            <>On-chain perp DEX market share — who&apos;s catching the rotation
+              out of CEXes. Fee revenue is used as a proxy; implied volume assumes
+              a blended <span className="text-white font-medium">0.035% taker rate</span>.</>
+          }
+          className="mb-4"
+          actions={
+            <>
               <DataFreshness exchangeCount={data?.summary?.protocolCount ?? 0} lastUpdated={data?.meta?.timestamp ?? null} sources={['DeFiLlama']} />
               <RefreshButton onRefresh={refresh} isRefreshing={isRefreshing} />
-            </div>
-          </div>
-          <p className="text-sm text-neutral-500">
-            On-chain perp DEX market share. Fee revenue is used as a proxy; implied volume assumes a blended 0.035% taker rate.
-          </p>
-        </div>
+            </>
+          }
+        />
 
         {data?.summary && (
           <div
