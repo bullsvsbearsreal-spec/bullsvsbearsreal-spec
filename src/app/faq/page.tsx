@@ -46,6 +46,11 @@ const faqs: FAQEntry[] = [
     q: 'How can I contribute?',
     a: 'Join our Telegram community or DM us on X. Feature requests, bug reports, exchange suggestions \u2014 we take all of it seriously.',
   },
+  {
+    category: 'General',
+    q: 'Can I refer friends to InfoHub?',
+    a: 'Yes \u2014 every signed-in user has a personal invite link at /invite. Friends who sign up through your link are counted on your dashboard, and you both get early access to upcoming Pro tier features. The link is the same forever, so bookmark /invite and re-use it. (Separate from /referrals, which is exchange affiliate links \u2014 those are for getting fee discounts when signing up to Bybit, MEXC, Hyperliquid, etc.)',
+  },
 
   /* ── Data & Features ── */
   {
