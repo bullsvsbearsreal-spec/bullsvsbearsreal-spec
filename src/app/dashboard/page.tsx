@@ -37,6 +37,7 @@ import {
   Calendar, TrendingUp, TrendingDown, Layers,
   CheckCircle2, AlertCircle, ExternalLink, Clock,
 } from 'lucide-react';
+import { getInviteCta } from '@/lib/inviteCta';
 
 // ── Suspension flag ──────────────────────────────────────────────────
 // Flip to false to re-enable the real command center. The original
@@ -455,33 +456,36 @@ function RealDashboardPage() {
 
           {/* Invite-success banner — only shows once they've referred at least
               one person. Closes the feedback loop: 'I shared the link, did
-              anyone actually sign up?' answered without leaving the dashboard. */}
-          {inviteStats && inviteStats.signups > 0 && (
-            <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/5 px-4 py-3 flex items-center gap-3 flex-wrap">
-              <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-emerald-300">
-                  {inviteStats.signups} {inviteStats.signups === 1 ? 'friend has' : 'friends have'} signed up via your link
-                  {inviteStats.verified > 0 && (
-                    <span className="text-emerald-400/70 font-normal">
-                      {' · '}{inviteStats.verified} verified
-                    </span>
-                  )}
+              anyone actually sign up?' answered without leaving the dashboard.
+              CTA threshold (3+ verified → leaderboard) lives in lib/inviteCta.ts
+              so the pivot logic is unit-tested + single-sourced. */}
+          {(() => {
+            if (!inviteStats) return null;
+            const cta = getInviteCta(inviteStats);
+            if (!cta) return null;
+            return (
+              <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/5 px-4 py-3 flex items-center gap-3 flex-wrap">
+                <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium text-emerald-300">
+                    {inviteStats.signups} {inviteStats.signups === 1 ? 'friend has' : 'friends have'} signed up via your link
+                    {inviteStats.verified > 0 && (
+                      <span className="text-emerald-400/70 font-normal">
+                        {' · '}{inviteStats.verified} verified
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-neutral-400">{cta.subline}</div>
                 </div>
-                <div className="text-xs text-neutral-400">
-                  {inviteStats.verified >= 3
-                    ? <>You&apos;re in serious leaderboard territory — see where you rank.</>
-                    : <>Keep sharing to climb the referral leaderboard.</>}
-                </div>
+                <Link
+                  href={cta.href}
+                  className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200 px-3 py-1.5 rounded-lg border border-emerald-400/40 hover:bg-emerald-500/10"
+                >
+                  {cta.label} <ArrowRight className="w-3 h-3" />
+                </Link>
               </div>
-              <Link
-                href={inviteStats.verified >= 3 ? '/invite/leaderboard' : '/invite'}
-                className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200 px-3 py-1.5 rounded-lg border border-emerald-400/40 hover:bg-emerald-500/10"
-              >
-                {inviteStats.verified >= 3 ? 'See leaderboard' : 'See details'} <ArrowRight className="w-3 h-3" />
-              </Link>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ─── 6-cell stats grid ─────────────────────────────────── */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
