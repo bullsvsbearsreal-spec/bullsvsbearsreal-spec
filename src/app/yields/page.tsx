@@ -10,6 +10,7 @@ import { formatCompact } from '@/lib/utils/format';
 import { useApi } from '@/hooks/useSWRApi';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import WatchlistStar from '@/components/WatchlistStar';
+import PageHero from '@/components/PageHero';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
 
@@ -258,15 +259,21 @@ export default function YieldsPage() {
     <div className="min-h-screen bg-[#0a0a0f] text-white">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
-        {/* Title */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Coins className="w-6 h-6 text-amber-400" />
-            <h1 className="text-xl font-semibold">DeFi Yields</h1>
-            {data && <span className="text-xs text-neutral-500">{filtered.length} pools</span>}
-          </div>
-          {lastUpdate && <DataFreshness exchangeCount={filtered.length} lastUpdated={lastUpdate} sources={['DefiLlama']} />}
-        </div>
+        <PageHero
+          icon={Coins}
+          eyebrow={data ? `Yields · ${filtered.length} pools` : 'Yields · loading'}
+          title="DeFi"
+          accentNoun="yields"
+          accent="orange"
+          description={
+            <>Stable + LP + restaking pools across DeFi, ranked by APY.
+              Risk-aware: TVL floor + audit signal + IL bracket so the
+              farmable list is much shorter than the &ldquo;screenshot a 400%
+              APY&rdquo; list.</>
+          }
+          className="mb-6"
+          actions={lastUpdate ? <DataFreshness exchangeCount={filtered.length} lastUpdated={lastUpdate} sources={['DefiLlama']} /> : null}
+        />
 
         {/* Stats Bar */}
         {stats && (

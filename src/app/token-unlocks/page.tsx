@@ -10,6 +10,7 @@ import WatchlistStar from '@/components/WatchlistStar';
 import { useApi } from '@/hooks/useSWRApi';
 import { TokenUnlock, UNLOCK_TYPES, formatUnlockAmount, formatUnlockValue, getDaysUntilUnlock, formatUnlockDate } from '@/lib/api/tokenunlocks';
 import { RefreshCw, AlertTriangle, Calendar, List, Filter, Search, ChevronLeft, ChevronRight, X, ExternalLink, Zap } from 'lucide-react';
+import PageHero from '@/components/PageHero';
 import DataFreshness from '@/components/DataFreshness';
 import { useFlash } from '@/hooks/useFlash';
 import Image from 'next/image';
@@ -407,45 +408,46 @@ export default function TokenUnlocksPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
-        {/* Page header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-hub-yellow/10 flex items-center justify-center">
-              <Calendar className="w-5 h-5 text-hub-yellow" />
-            </div>
-            <div>
-              <h1 className="heading-page">Token Unlocks Calendar</h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                <p className="text-neutral-600 text-xs">
-                  Upcoming token vesting schedules across {new Set(allUnlocks.map(u => u.coinSymbol)).size} tokens
-                </p>
-                {priceSource && (
-                  <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium ${
-                    priceSource === 'coingecko'
-                      ? 'bg-emerald-500/10 text-emerald-400'
-                      : 'bg-neutral-500/10 text-neutral-400'
-                  }`}>
-                    <Zap className="w-2.5 h-2.5" />
-                    {priceSource === 'coingecko' ? 'Live CoinGecko Prices' : 'Static Prices'}
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {lastUpdate && (
-              <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['TokenUnlocks']} />
-            )}
-            <button
-              onClick={refresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-500 hover:text-white transition-colors text-xs"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={Calendar}
+          eyebrow="Vesting · supply pressure"
+          eyebrowExtra={
+            priceSource && (
+              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full border text-[9px] font-bold uppercase tracking-wider ${
+                priceSource === 'coingecko'
+                  ? 'bg-emerald-500/[0.08] text-emerald-400 border-emerald-400/30'
+                  : 'bg-neutral-500/[0.08] text-neutral-400 border-neutral-500/30'
+              }`}>
+                <Zap className="w-2.5 h-2.5" />
+                {priceSource === 'coingecko' ? 'Live CG prices' : 'Static prices'}
+              </span>
+            )
+          }
+          title="Token"
+          accentNoun="unlocks"
+          accent="hub-yellow"
+          description={
+            <>Upcoming vesting schedules across{' '}
+              <span className="text-white font-medium">
+                {new Set(allUnlocks.map(u => u.coinSymbol)).size} tokens
+              </span>. Cliff + team + investor events surface first since they drive
+              the biggest sell pressure.</>
+          }
+          className="mb-6"
+          actions={
+            <>
+              {lastUpdate && <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['TokenUnlocks']} />}
+              <button
+                onClick={refresh}
+                disabled={isRefreshing}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] transition-colors text-xs font-semibold"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </>
+          }
+        />
 
         {error && (
           <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">

@@ -7,6 +7,7 @@ import Footer from '@/components/Footer';
 import DataFreshness from '@/components/DataFreshness';
 import RefreshButton from '@/components/RefreshButton';
 import UsdDisplay from '@/components/UsdDisplay';
+import PageHero from '@/components/PageHero';
 import { Layers, Info, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface StakingRow {
@@ -73,21 +74,25 @@ export default function StakingPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-blue-500/10 flex items-center justify-center">
-              <Layers className="w-4 h-4 text-blue-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Staking + Restaking Yields</h1>
-            <div className="ml-auto flex items-center gap-1">
+        <PageHero
+          icon={Layers}
+          eyebrow="Staking · LST · LRT"
+          title="Staking + restaking"
+          accentNoun="yields"
+          accent="cyan"
+          description={
+            <>Liquid staking (LST), liquid restaking (LRT), and synthetic-yield
+              protocols (Ethena, Usual) ranked by TVL. Base + reward APY, 30d mean,
+              7d change.</>
+          }
+          className="mb-4"
+          actions={
+            <>
               <DataFreshness exchangeCount={data?.summary?.protocolCount ?? 0} lastUpdated={data?.meta?.timestamp ?? null} sources={['DeFiLlama']} />
               <RefreshButton onRefresh={refresh} isRefreshing={isRefreshing} />
-            </div>
-          </div>
-          <p className="text-sm text-neutral-500">
-            Liquid staking (LST), liquid restaking (LRT), and synthetic-yield protocols (Ethena, Usual) ranked by TVL. Base + reward APY, 30d mean, 7d change.
-          </p>
-        </div>
+            </>
+          }
+        />
 
         {data?.summary && (
           <div
