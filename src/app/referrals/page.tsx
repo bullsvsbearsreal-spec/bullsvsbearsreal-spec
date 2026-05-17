@@ -1,6 +1,7 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { ExternalLink, Gift, Users } from 'lucide-react';
+import Link from 'next/link';
+import { ExternalLink, Gift, Users, Send, ArrowRight } from 'lucide-react';
 
 /* ── Referral Partner ──────────────────────────────────────────────── */
 
@@ -150,6 +151,15 @@ export default function ReferralsPage() {
               Sign up to exchanges through our team&apos;s referral links.
               You get fee discounts, we keep building InfoHub. Win-win.
             </p>
+
+            <Link
+              href="/invite"
+              className="group mt-6 inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg bg-emerald-500/[0.08] border border-emerald-400/25 text-emerald-300 hover:bg-emerald-500/[0.15] transition-colors"
+            >
+              <Send className="w-3.5 h-3.5" />
+              Want to refer friends to InfoHub instead?
+              <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+            </Link>
           </div>
         </section>
 

@@ -8,6 +8,7 @@ import { Resend } from 'resend';
 import { validatePassword } from '@/lib/auth/password';
 import { isDBConfigured, getSQL } from '@/lib/db';
 import { signupLimiter, isValidEmail, getClientIP } from '@/lib/auth/rate-limit';
+import { isValidInviteCodeShape } from '@/lib/invite';
 
 // Suspension flag — must match `SUSPENDED` in /signup/page.tsx. With
 // the page hidden behind a maintenance notice, callers shouldn't be
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, email, password } = body;
+    const { name, email, password, referredByCode } = body;
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
@@ -55,6 +56,12 @@ export async function POST(req: Request) {
 
     // Limit name length
     const safeName = typeof name === 'string' ? name.trim().slice(0, 100) : null;
+
+    // Validate referral code shape — we only store if the code matches
+    // the expected format. A bad-shaped code is silently dropped (no
+    // signup-failure for typos in the share link) so a friend who
+    // gets a mangled URL can still complete registration.
+    const safeReferralCode = isValidInviteCodeShape(referredByCode) ? referredByCode : null;
 
     const pw = validatePassword(password);
     if (!pw.ok) {
@@ -77,8 +84,8 @@ export async function POST(req: Request) {
     const hash = await bcrypt.hash(password, 12);
     const id = crypto.randomUUID();
     const rows = await db`
-      INSERT INTO users (id, name, email, password_hash)
-      VALUES (${id}, ${safeName}, ${email}, ${hash})
+      INSERT INTO users (id, name, email, password_hash, referred_by_code)
+      VALUES (${id}, ${safeName}, ${email}, ${hash}, ${safeReferralCode})
       RETURNING id, name, email
     `;
 

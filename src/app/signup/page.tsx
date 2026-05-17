@@ -37,6 +37,10 @@ function SignupContent() {
   const rawCallback = searchParams.get('callbackUrl') || '/';
   // Prevent open redirect — only allow relative paths (no protocol-relative // either)
   const callbackUrl = rawCallback.startsWith('/') && !rawCallback.startsWith('//') ? rawCallback : '/';
+  // Optional invite/referral code from a shared link (?ref=XXXXXXXXXX).
+  // Persisted across the verify step via state so the API call has it
+  // even if the user clicks "resend code" and waits a few minutes.
+  const referralCode = (searchParams.get('ref') || '').toUpperCase().slice(0, 16) || null;
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState(verifyEmail || '');
@@ -82,7 +86,12 @@ function SignupContent() {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          ...(referralCode ? { referredByCode: referralCode } : {}),
+        }),
       });
 
       const data = await res.json();
@@ -241,6 +250,12 @@ function SignupContent() {
             <span className="text-neutral-700">·</span>
             <span>private by default</span>
           </div>
+          {referralCode && step === 'form' && (
+            <div className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-mono px-2 py-1 rounded bg-hub-yellow/[0.08] border border-hub-yellow/20 text-hub-yellow">
+              <span className="opacity-70">invited via</span>
+              <span className="font-bold tracking-wider">{referralCode}</span>
+            </div>
+          )}
         </div>
 
         {/* Card with subtle gradient border */}

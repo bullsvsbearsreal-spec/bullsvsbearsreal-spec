@@ -46,6 +46,7 @@ export default function robots(): MetadataRoute.Robots {
           '/watch',
           '/watchlist',
           '/alerts',
+          '/invite',
           // Admin
           '/admin',
           '/admin-panel',

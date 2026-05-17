@@ -653,6 +653,11 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Trader Watch · Live positions',
     description: 'Watch traders across GMX, Hyperliquid, and gTrade on one screen. Star any trader and see their open positions, leverage, liq distance, and funding exposure live — no more 5 tabs to copy-trade.',
   },
+  '/invite': {
+    title: 'Invite Friends · Your referral link',
+    description: 'Grab your personal InfoHub invite link and share it with friends. Track signups, see who verified, and unlock early access to upcoming Pro tier features.',
+    noIndex: true, // auth-gated page; nothing useful for search engines
+  },
 };
 
 export function pageMetadata(path: string): Metadata {

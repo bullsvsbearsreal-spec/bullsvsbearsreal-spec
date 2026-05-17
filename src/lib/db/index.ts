@@ -302,6 +302,12 @@ async function _doInitDB(): Promise<void> {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified TIMESTAMPTZ DEFAULT NULL`;
   // User roles (admin, user)
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`;
+  // User-to-user referrals: stores the inviter's invite code (the HMAC
+  // string from lib/invite.ts), not a user ID — keeps the link opaque
+  // and avoids a self-FK that PostgreSQL would have to validate on
+  // every signup. Counts roll up via index on this column.
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_code TEXT`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_users_referred_by_code ON users(referred_by_code) WHERE referred_by_code IS NOT NULL`;
   // Seed admin accounts
   const adminEmail = process.env.ADMIN_EMAIL || 'ocelotcex1638a@gmail.com';
   await sql`UPDATE users SET role = 'admin' WHERE email = ${adminEmail} AND role != 'admin'`;
