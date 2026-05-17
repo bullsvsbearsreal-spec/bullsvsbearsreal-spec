@@ -219,7 +219,7 @@ export default function CVDPage() {
               </p>
               <p>
                 Rising CVD = buyers dominating (bullish). Falling CVD = sellers dominating (bearish).
-                CVD divergence from price is a powerful reversal signal.
+                CVD divergence from price often precedes reversals.
               </p>
               <p>Data from Binance spot aggregate trades. Updates every 15 seconds.</p>
             </div>
