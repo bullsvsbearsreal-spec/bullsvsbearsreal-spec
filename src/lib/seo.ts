@@ -350,8 +350,8 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: 'Sign in to your InfoHub account to access watchlists, alerts, portfolio tracking, and personalized derivatives data.',
   },
   '/signup': {
-    title: 'Sign Up',
-    description: 'Create a free InfoHub account. Get access to real-time crypto derivatives data, alerts, watchlists, and more.',
+    title: 'Sign up — InfoHub',
+    description: 'Create your free InfoHub account in 30 seconds. Real-time funding rates, OI, liquidations, and arbitrage tools across every major venue. Personal alerts + watchlists included. No card needed.',
   },
   '/profile': {
     title: 'Profile',
