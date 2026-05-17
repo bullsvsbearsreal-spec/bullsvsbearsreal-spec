@@ -220,6 +220,7 @@ export default function ReferralsPage() {
                       <img
                         src={`/exchanges/${ex.exchange}.png`}
                         alt={ex.displayName}
+                        loading="lazy"
                         className="w-5 h-5 object-contain"
                       />
                     </div>
@@ -248,6 +249,7 @@ export default function ReferralsPage() {
                           <img
                             src={partner.image}
                             alt={partner.display}
+                            loading="lazy"
                             className="w-4 h-4 rounded-full object-cover"
                           />
                           {partner.display}
