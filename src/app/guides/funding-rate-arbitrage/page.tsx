@@ -121,7 +121,7 @@ export default function FundingRateArbitragePage() {
             </div>
             <p className="text-neutral-300 text-sm leading-relaxed mb-3">
               Most exchanges settle funding every <strong className="text-white">8 hours</strong> (00:00, 08:00, 16:00 UTC).
-              Some DEXes like Hyperliquid and Drift settle <strong className="text-white">hourly</strong>.
+              Some DEXes like <strong className="text-white">Hyperliquid</strong> settle <strong className="text-white">hourly</strong>.
               gTrade accrues continuously per block.
             </p>
             <p className="text-neutral-300 text-sm leading-relaxed">
