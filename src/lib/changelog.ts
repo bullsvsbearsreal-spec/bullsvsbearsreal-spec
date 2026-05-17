@@ -23,9 +23,27 @@ export interface ChangelogEntry {
 }
 
 /**
- * Last reviewed: 2026-05-09
+ * Last reviewed: 2026-05-17
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    date: '2026-05-17',
+    title: 'Invite friends · personal referral links',
+    summary: 'Every signed-in user now gets a unique invite link to share with friends. Track signups and verified accounts on /invite.',
+    tags: ['new'],
+    bullets: [
+      '/invite — your personal share link with one-click copy + pre-written tweet / DM templates',
+      'Stable code per user (HMAC of your account ID) — bookmark it, the same link works forever',
+      '?ref=CODE accepted on /signup — friends who land on the signup page see an "invited via" chip',
+      'Stats card on /invite shows total signups + email-verified subset, refreshed per visit',
+      'Discoverable from the home page "My Tools" group, the user menu (Header dropdown), and the cmd-K palette',
+      'No URL leak risk — codes are opaque HMACs, not user IDs in base36',
+    ],
+    links: [
+      { label: 'Grab your invite link', href: '/invite' },
+      { label: 'Exchange referrals (separate)', href: '/referrals' },
+    ],
+  },
   {
     date: '2026-05-11',
     title: 'Public API · fee transparency + aggregate modes + new endpoints',
