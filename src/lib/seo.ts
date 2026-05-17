@@ -658,6 +658,10 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: 'Grab your personal InfoHub invite link and share it with friends. Track signups, see who verified, and unlock early access to upcoming Pro tier features.',
     noIndex: true, // auth-gated page; nothing useful for search engines
   },
+  '/invite/leaderboard': {
+    title: 'Referral Leaderboard — InfoHub',
+    description: 'Top 20 InfoHub users by verified referrals. Anonymized — entries show only the first 4 chars of each invite code. Want to climb? Grab your link at /invite.',
+  },
 };
 
 export function pageMetadata(path: string): Metadata {

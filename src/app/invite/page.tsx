@@ -342,13 +342,21 @@ export default function InvitePage() {
           </p>
         </section>
 
-        {/* ── Footer link to exchange referrals ─────────────── */}
-        <p className="text-[11px] text-neutral-500 text-center mb-8">
-          Looking for exchange affiliate links instead?{' '}
-          <Link href="/referrals" className="text-hub-yellow hover:underline">
-            See the partner referrals page →
-          </Link>
-        </p>
+        {/* ── Footer links ────────────────────────────────────── */}
+        <div className="text-[11px] text-neutral-500 text-center mb-8 space-y-1">
+          <p>
+            See who&apos;s climbing the rankings →{' '}
+            <Link href="/invite/leaderboard" className="text-emerald-300 hover:underline">
+              referral leaderboard
+            </Link>
+          </p>
+          <p>
+            Looking for exchange affiliate links instead?{' '}
+            <Link href="/referrals" className="text-hub-yellow hover:underline">
+              See the partner referrals page →
+            </Link>
+          </p>
+        </div>
       </main>
       <Footer />
     </div>

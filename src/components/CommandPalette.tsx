@@ -108,6 +108,7 @@ const pageRegistry: PageEntry[] = [
   { name: 'Compare Traders', href: '/compare-traders', icon: GitCompareArrows, keywords: ['compare', 'traders', 'wallet', 'side by side'], category: 'Sentiment' },
   { name: 'Trader Watch · Bookmarked positions', href: '/trader-watch', icon: Star, keywords: ['trader', 'watch', 'star', 'bookmark', 'follow', 'copy trade', 'snake', 'shake', 'gmx', 'hyperliquid', 'gtrade', 'positions'], category: 'Sentiment' },
   { name: 'Invite Friends · Get your referral link', href: '/invite', icon: Gift, keywords: ['invite', 'referral', 'share', 'friend', 'refer', 'invite friend', 'invite code', 'invite link', 'share link', 'tell a friend'], category: 'More' },
+  { name: 'Referral Leaderboard', href: '/invite/leaderboard', icon: Trophy, keywords: ['referral leaderboard', 'top referrers', 'invite leaderboard', 'ranking', 'top invites'], category: 'More' },
   { name: 'Liquidation Levels', href: '/liquidation-levels', icon: AlertTriangle, keywords: ['liquidation', 'levels', 'cluster', 'cascade', 'forecast'], category: 'Trading' },
   { name: 'Smart Money', href: '/smart-money', icon: Brain, keywords: ['smart money', 'alpha', 'whales', 'pnl', 'win rate'], category: 'Sentiment' },
   { name: 'Points Hub', href: '/points', icon: Gem, keywords: ['points', 'airdrop', 'farm', 'season', 'hyperliquid', 'aster', 'paradex', 'lighter'], category: 'Markets' },
