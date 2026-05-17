@@ -106,6 +106,7 @@ const pageRegistry: PageEntry[] = [
   { name: 'GMX Traders', href: '/gmx-traders', icon: Trophy, keywords: ['gmx', 'traders', 'leaderboard', 'arbitrum', 'avalanche', 'pnl'], category: 'Sentiment' },
   { name: 'HL Traders', href: '/hl-traders', icon: Zap, keywords: ['hyperliquid', 'traders', 'leaderboard', 'pnl'], category: 'Sentiment' },
   { name: 'Compare Traders', href: '/compare-traders', icon: GitCompareArrows, keywords: ['compare', 'traders', 'wallet', 'side by side'], category: 'Sentiment' },
+  { name: 'Trader Watch · Bookmarked positions', href: '/trader-watch', icon: Star, keywords: ['trader', 'watch', 'star', 'bookmark', 'follow', 'copy trade', 'snake', 'shake', 'gmx', 'hyperliquid', 'gtrade', 'positions'], category: 'Sentiment' },
   { name: 'Liquidation Levels', href: '/liquidation-levels', icon: AlertTriangle, keywords: ['liquidation', 'levels', 'cluster', 'cascade', 'forecast'], category: 'Trading' },
   { name: 'Smart Money', href: '/smart-money', icon: Brain, keywords: ['smart money', 'alpha', 'whales', 'pnl', 'win rate'], category: 'Sentiment' },
   { name: 'Points Hub', href: '/points', icon: Gem, keywords: ['points', 'airdrop', 'farm', 'season', 'hyperliquid', 'aster', 'paradex', 'lighter'], category: 'Markets' },
