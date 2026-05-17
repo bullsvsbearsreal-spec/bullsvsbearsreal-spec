@@ -694,13 +694,44 @@ function PreferencesTab({
 
 function ReferralsTab() {
   return (
-    <SectionCard title="Referrals" icon={Gift} description="Curated exchange and on-chain referral links — sign up through them and you (and InfoHub) earn fee rebates.">
-      <Link
-        href="/referrals"
-        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-hub-yellow text-black text-sm font-semibold hover:bg-hub-yellow/90 transition-colors"
-      >
-        Browse referrals <ArrowRight className="w-3.5 h-3.5" />
-      </Link>
+    <SectionCard
+      title="Referrals"
+      icon={Gift}
+      description="Two flavors: your personal invite link for bringing friends to InfoHub, and curated exchange affiliate links so you earn fee rebates while signing up to venues."
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <Link
+          href="/invite"
+          className="group rounded-lg border border-emerald-400/20 bg-emerald-500/[0.04] hover:border-emerald-400/40 hover:bg-emerald-500/[0.08] transition-colors p-4 flex flex-col"
+        >
+          <div className="inline-flex items-center gap-2 mb-1">
+            <Gift className="w-4 h-4 text-emerald-400" />
+            <span className="text-sm font-bold text-white">Invite friends</span>
+          </div>
+          <p className="text-[12px] text-neutral-400 mb-3 leading-relaxed">
+            Your personal share link. Track signups + verified accounts.
+          </p>
+          <span className="mt-auto inline-flex items-center gap-1 text-[12px] font-semibold text-emerald-300 group-hover:text-emerald-200">
+            Get your link <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+          </span>
+        </Link>
+
+        <Link
+          href="/referrals"
+          className="group rounded-lg border border-hub-yellow/20 bg-hub-yellow/[0.04] hover:border-hub-yellow/40 hover:bg-hub-yellow/[0.08] transition-colors p-4 flex flex-col"
+        >
+          <div className="inline-flex items-center gap-2 mb-1">
+            <Gift className="w-4 h-4 text-hub-yellow" />
+            <span className="text-sm font-bold text-white">Exchange referrals</span>
+          </div>
+          <p className="text-[12px] text-neutral-400 mb-3 leading-relaxed">
+            Curated affiliate links to Bybit, MEXC, Hyperliquid, and more.
+          </p>
+          <span className="mt-auto inline-flex items-center gap-1 text-[12px] font-semibold text-hub-yellow group-hover:text-hub-yellow/80">
+            Browse partners <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+          </span>
+        </Link>
+      </div>
     </SectionCard>
   );
 }
