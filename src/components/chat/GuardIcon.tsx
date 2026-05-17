@@ -7,6 +7,7 @@ export default function GuardIcon({ className = 'w-6 h-6' }: { className?: strin
     <img
       src="/chat/mk2.png"
       alt="Hub"
+      loading="lazy"
       className={`rounded-full object-cover ${className}`}
       onError={(e) => {
         // Fallback: hide image and show parent's background

@@ -36,6 +36,7 @@ function ForexIcon({ base, quote, size, className }: { base: string; quote: stri
         alt={`${quote.toUpperCase()} flag`}
         width={flagSize}
         height={flagSize}
+        loading="lazy"
         className="absolute rounded-full"
         style={{ right: 0, bottom: 0 }}
       />
@@ -45,6 +46,7 @@ function ForexIcon({ base, quote, size, className }: { base: string; quote: stri
         alt={`${base.toUpperCase()} flag`}
         width={flagSize}
         height={flagSize}
+        loading="lazy"
         className="absolute rounded-full ring-1 ring-[#0a0a0a]"
         style={{ left: 0, top: 0, zIndex: 1 }}
       />
