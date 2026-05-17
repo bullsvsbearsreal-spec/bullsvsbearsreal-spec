@@ -58,6 +58,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/whale-liq',          priority: 0.7, changeFrequency: 'hourly' as const },
     // /wallet-tracker → /watch (consolidated May 2026).
     { path: '/watch',              priority: 0.7, changeFrequency: 'weekly' as const },
+    { path: '/trader-watch',       priority: 0.6, changeFrequency: 'daily' as const },
     { path: '/breakouts',          priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/momentum',           priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/outperformers',      priority: 0.7, changeFrequency: 'hourly' as const },
