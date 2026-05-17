@@ -913,12 +913,18 @@ function PlanUsagePanel({
       </div>
 
       {planName === 'Free' && (
-        <div className="mt-4 pt-3 border-t border-white/[0.04]">
+        <div className="mt-4 pt-3 border-t border-white/[0.04] space-y-2">
           <Link
             href="/profile?tab=billing"
             className="block text-center text-xs font-semibold py-2 rounded-lg bg-hub-yellow/10 text-hub-yellow hover:bg-hub-yellow/20 transition-all border border-hub-yellow/20"
           >
             Upgrade to Pro →
+          </Link>
+          <Link
+            href="/invite"
+            className="block text-center text-[11px] text-neutral-500 hover:text-emerald-300 transition-colors"
+          >
+            Or invite friends for early access →
           </Link>
         </div>
       )}
