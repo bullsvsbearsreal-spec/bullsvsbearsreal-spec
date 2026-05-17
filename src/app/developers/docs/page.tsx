@@ -1114,7 +1114,7 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
     "surfacedOn": ["/api/v1/arbitrage", "/api/v1/spreads", "/api/v1/funding-arb"]
   },
   "endpoints": [
-    { "path": "/api/v1/funding", "method": "GET", "description": "Real-time funding rates across 32 exchanges" }
+    { "path": "/api/v1/funding", "method": "GET", "description": "Real-time funding rates across ${ALL_EXCHANGES.length} exchanges" }
   ],
   "tiers": {
     "free": { "rateLimit": "100 req/min", "dailyLimit": "5,000 req/day" },
