@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PageHero from '@/components/PageHero';
 import { ALL_EXCHANGES } from '@/lib/constants';
-import { HelpCircle, ChevronDown, Search, X } from 'lucide-react';
+import { HelpCircle, ChevronDown, Search, X, Link as LinkIcon } from 'lucide-react';
 
 /* -- Types --------------------------------------------------------------- */
 
@@ -152,6 +152,21 @@ const categoryDescriptions: Record<FAQCategory, string> = {
 
 /* -- FAQ Item Component --------------------------------------------------- */
 
+/**
+ * Slugify a question into a stable URL fragment so users can deep-
+ * link to a specific Q from blog posts / Discord. e.g. "What is
+ * InfoHub?" → "what-is-infohub". Stable across renders because it
+ * runs on the question string, not an index.
+ */
+function slugify(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/['"`]/g, '')                    // strip apostrophes / quotes
+    .replace(/[^a-z0-9]+/g, '-')              // non-alphanumerics → -
+    .replace(/^-+|-+$/g, '')                  // trim leading/trailing -
+    .slice(0, 60);                            // keep URLs reasonable
+}
+
 function FAQItem({
   question,
   answer,
@@ -163,32 +178,70 @@ function FAQItem({
   isOpen: boolean;
   onToggle: () => void;
 }) {
+  const slug = slugify(question);
+
+  const copyAnchor = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    const url = `${window.location.origin}/faq#${slug}`;
+    try {
+      navigator.clipboard.writeText(url);
+      // Also update the address bar so the user sees the anchor land
+      window.history.replaceState(null, '', `#${slug}`);
+    } catch {
+      // Older browsers / blocked clipboard — fall back to just
+      // updating the URL so the user can manually copy from the bar.
+      window.history.replaceState(null, '', `#${slug}`);
+    }
+  };
+
   return (
-    <button
-      onClick={onToggle}
-      aria-expanded={isOpen}
-      className="w-full text-left rounded-xl bg-[#0d0d0d] border border-white/[0.06] hover:border-white/[0.1] transition-all duration-200 group"
+    <div
+      id={slug}
+      className="scroll-mt-20 rounded-xl bg-[#0d0d0d] border border-white/[0.06] hover:border-white/[0.1] transition-all duration-200 group"
     >
-      <div className="flex items-center justify-between gap-4 px-5 py-4">
-        <h3 className="text-sm font-semibold text-white group-hover:text-hub-yellow transition-colors">
-          {question}
-        </h3>
-        <ChevronDown
-          className={`w-4 h-4 text-neutral-500 flex-shrink-0 transition-transform duration-200 ${
-            isOpen ? 'rotate-180 text-hub-yellow' : ''
-          }`}
-        />
-      </div>
-      <div
-        className={`overflow-hidden transition-all duration-200 ${
-          isOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
-        }`}
+      <button
+        onClick={onToggle}
+        aria-expanded={isOpen}
+        className="w-full text-left"
       >
-        <p className="text-xs text-neutral-400 leading-relaxed px-5 pb-4 pr-12">
-          {answer}
-        </p>
-      </div>
-    </button>
+        <div className="flex items-center justify-between gap-4 px-5 py-4">
+          <h3 className="text-sm font-semibold text-white group-hover:text-hub-yellow transition-colors flex items-center gap-2">
+            {question}
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label={`Copy link to: ${question}`}
+              title="Copy link to this question"
+              onClick={copyAnchor}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  copyAnchor(e as unknown as React.MouseEvent);
+                }
+              }}
+              className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity text-neutral-600 hover:text-hub-yellow cursor-pointer"
+            >
+              <LinkIcon className="w-3 h-3" />
+            </span>
+          </h3>
+          <ChevronDown
+            className={`w-4 h-4 text-neutral-500 flex-shrink-0 transition-transform duration-200 ${
+              isOpen ? 'rotate-180 text-hub-yellow' : ''
+            }`}
+          />
+        </div>
+        <div
+          className={`overflow-hidden transition-all duration-200 ${
+            isOpen ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+          }`}
+        >
+          <p className="text-xs text-neutral-400 leading-relaxed px-5 pb-4 pr-12">
+            {answer}
+          </p>
+        </div>
+      </button>
+    </div>
   );
 }
 
@@ -235,6 +288,29 @@ function CategorySection({
 export default function FAQPage() {
   const [search, setSearch] = useState('');
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
+
+  // On mount, if URL has a #slug fragment, find the matching question
+  // by slug and auto-open it. Browser scroll-to-anchor handles the
+  // actual scroll via the `scroll-mt-20` class on each item.
+  useEffect(() => {
+    const hash = window.location.hash.replace(/^#/, '');
+    if (!hash) return;
+    const match = faqs.find(
+      (f) => f.q
+        .toLowerCase()
+        .replace(/['"`]/g, '')
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 60) === hash,
+    );
+    if (match) {
+      setOpenItems((prev) => new Set(prev).add(match.q));
+      // Re-trigger scroll after the open animation expands the panel
+      setTimeout(() => {
+        document.getElementById(hash)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 50);
+    }
+  }, []);
 
   const toggleItem = (key: string) => {
     setOpenItems((prev) => {
