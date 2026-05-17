@@ -78,7 +78,7 @@ function AssetCard({ name, file, preview, desc, size, format }: { name: string; 
     <div className="group bg-white/[0.04] hover:bg-white/[0.06] border border-white/[0.06] hover:border-hub-yellow/30 rounded-xl p-5 transition-all">
       <div className="flex items-center justify-between mb-4">
         <div className="w-12 h-12 rounded-xl bg-white/[0.06] flex items-center justify-center group-hover:bg-hub-yellow/10 transition-colors">
-          <img src={preview} alt={name} className="w-8 h-8 object-contain" />
+          <img src={preview} alt={name} loading="lazy" className="w-8 h-8 object-contain" />
         </div>
         <span className="text-xs font-mono text-neutral-600 bg-white/[0.06] px-2 py-1 rounded-lg">{size}</span>
       </div>
@@ -164,7 +164,7 @@ export default function BrandPage() {
             {/* Wordmark Logo */}
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-8">
               <div className="bg-hub-darker rounded-xl p-12 mb-6 flex items-center justify-center">
-                <img src="/infohub-wordmark.png" alt="InfoHub Wordmark" className="h-16 object-contain" />
+                <img src="/infohub-wordmark.png" alt="InfoHub Wordmark" loading="lazy" className="h-16 object-contain" />
               </div>
               <div className="flex items-center justify-between">
                 <div>
@@ -186,7 +186,7 @@ export default function BrandPage() {
             {/* Full Logo */}
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-8">
               <div className="bg-hub-darker rounded-xl p-12 mb-6 flex items-center justify-center">
-                <img src="/infohub-logo.png" alt="InfoHub Full Logo" className="h-24 object-contain" />
+                <img src="/infohub-logo.png" alt="InfoHub Full Logo" loading="lazy" className="h-24 object-contain" />
               </div>
               <div className="flex items-center justify-between">
                 <div>
@@ -203,7 +203,7 @@ export default function BrandPage() {
             {/* Icon Only */}
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-8">
               <div className="bg-hub-darker rounded-xl p-12 mb-6 flex items-center justify-center">
-                <img src="/icon-512.png" alt="InfoHub Icon" className="w-24 h-24 object-contain" />
+                <img src="/icon-512.png" alt="InfoHub Icon" loading="lazy" className="w-24 h-24 object-contain" />
               </div>
               <div className="flex items-center justify-between">
                 <div>
@@ -222,28 +222,28 @@ export default function BrandPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-6 text-center group hover:border-hub-yellow/30 transition-colors">
               <div className="bg-white/[0.04] rounded-xl p-6 mb-4 flex items-center justify-center">
-                <img src="/icon-512.png" alt="Default" className="w-16 h-16 group-hover:scale-110 transition-transform" />
+                <img src="/icon-512.png" alt="Default" loading="lazy" className="w-16 h-16 group-hover:scale-110 transition-transform" />
               </div>
               <p className="text-white text-sm font-medium">Default</p>
               <p className="text-neutral-600 text-xs">Dark backgrounds</p>
             </div>
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-6 text-center group hover:border-hub-yellow/30 transition-colors">
               <div className="bg-hub-darker rounded-xl p-6 mb-4 flex items-center justify-center">
-                <img src="/icon-512.png" alt="On Dark" className="w-16 h-16 group-hover:scale-110 transition-transform" />
+                <img src="/icon-512.png" alt="On Dark" loading="lazy" className="w-16 h-16 group-hover:scale-110 transition-transform" />
               </div>
               <p className="text-white text-sm font-medium">On Dark</p>
               <p className="text-neutral-600 text-xs">Dark variant</p>
             </div>
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-6 text-center group hover:border-hub-yellow/30 transition-colors">
               <div className="bg-white rounded-xl p-6 mb-4 flex items-center justify-center">
-                <img src="/icon-512.png" alt="On Light" className="w-16 h-16 group-hover:scale-110 transition-transform" />
+                <img src="/icon-512.png" alt="On Light" loading="lazy" className="w-16 h-16 group-hover:scale-110 transition-transform" />
               </div>
               <p className="text-white text-sm font-medium">On Light</p>
               <p className="text-neutral-600 text-xs">Light backgrounds</p>
             </div>
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-6 text-center group hover:border-hub-yellow/30 transition-colors">
               <div className="bg-gradient-to-br from-hub-yellow to-hub-orange rounded-xl p-6 mb-4 flex items-center justify-center">
-                <img src="/icon-512.png" alt="On Color" className="w-16 h-16 group-hover:scale-110 transition-transform" />
+                <img src="/icon-512.png" alt="On Color" loading="lazy" className="w-16 h-16 group-hover:scale-110 transition-transform" />
               </div>
               <p className="text-white text-sm font-medium">On Color</p>
               <p className="text-neutral-600 text-xs">Brand backgrounds</p>
