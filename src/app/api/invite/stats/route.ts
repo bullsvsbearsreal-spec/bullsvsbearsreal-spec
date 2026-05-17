@@ -20,7 +20,7 @@ export const preferredRegion = 'bom1';
 
 import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { isDBConfigured, getSQL } from '@/lib/db';
+import { isDBConfigured, getSQL, initDB } from '@/lib/db';
 import { computeInviteCode } from '@/lib/invite';
 
 export async function GET() {
@@ -48,6 +48,13 @@ export async function GET() {
   }
 
   try {
+    // Ensure the referred_by_code column / index exist before COUNTing
+    // against them — the first /invite visit after a fresh deploy might
+    // otherwise hit a 42703 (undefined column). initDB is idempotent +
+    // cached, so the cost is just one Promise resolution after the
+    // first call in this process.
+    await initDB();
+
     const db = getSQL();
     const rows = await db<{ signups: string; verified: string }[]>`
       SELECT

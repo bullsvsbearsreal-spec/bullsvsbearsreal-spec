@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { Resend } from 'resend';
 import { validatePassword } from '@/lib/auth/password';
-import { isDBConfigured, getSQL } from '@/lib/db';
+import { isDBConfigured, getSQL, initDB } from '@/lib/db';
 import { signupLimiter, isValidEmail, getClientIP } from '@/lib/auth/rate-limit';
 import { isValidInviteCodeShape } from '@/lib/invite';
 
@@ -71,6 +71,11 @@ export async function POST(req: Request) {
     if (!isDBConfigured()) {
       return NextResponse.json({ error: 'Server configuration error' }, { status: 500 });
     }
+
+    // Make sure pending migrations have run before INSERT — the
+    // referred_by_code column may not exist yet on the first request
+    // after a deploy. initDB is idempotent + cached after the first call.
+    await initDB();
 
     const db = getSQL();
 
