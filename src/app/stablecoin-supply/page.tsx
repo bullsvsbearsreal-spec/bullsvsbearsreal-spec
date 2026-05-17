@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { Coins, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface StableRow {
@@ -84,31 +85,29 @@ export default function StablecoinSupplyPage() {
     <>
       <Header />
       <main className="max-w-[1200px] mx-auto w-full px-4 py-6">
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-emerald-500/10 flex items-center justify-center">
-              <Coins className="w-4 h-4 text-emerald-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Stablecoin Supply</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              {data?.rows.length ?? 0} USD pegs · 30d
-            </span>
+        <PageHero
+          icon={Coins}
+          eyebrow={`Liquidity · ${data?.rows.length ?? 0} USD pegs · 30d`}
+          title="Stablecoin"
+          accentNoun="supply"
+          accent="emerald"
+          description={
+            <>Circulating supply per stablecoin with <span className="text-white">1d / 7d / 30d</span> change.
+              Total stablecoin supply is the cleanest liquidity-onramp signal —
+              growth = new dollars entering crypto, contraction = liquidity
+              leaving the system.</>
+          }
+          actions={
             <button
               onClick={() => load(false)}
               disabled={refreshing}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] text-xs font-semibold transition-colors disabled:opacity-40"
             >
-              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-              refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Circulating supply per stablecoin with 1d / 7d / 30d change.
-            Total stablecoin supply is the cleanest liquidity-onramp signal —
-            growth = new dollars entering crypto, contraction = liquidity
-            leaving the system.
-          </p>
-        </div>
+          }
+        />
 
         {data && (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-4">

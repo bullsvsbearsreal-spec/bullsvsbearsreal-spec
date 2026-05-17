@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { CalendarDays, RefreshCw, ExternalLink, AlertTriangle, Sparkles } from 'lucide-react';
 
 interface TgeEntry {
@@ -116,30 +117,29 @@ export default function TgeCalendarPage() {
     <>
       <Header />
       <main className="max-w-[1300px] mx-auto w-full px-4 py-6">
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-fuchsia-500/10 flex items-center justify-center">
-              <CalendarDays className="w-4 h-4 text-fuchsia-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">TGE Calendar</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              {data?.upcoming.length ?? 0} upcoming · {data?.recent.length ?? 0} recent
-            </span>
+        <PageHero
+          icon={CalendarDays}
+          eyebrow={`Events · ${data?.upcoming.length ?? 0} upcoming · ${data?.recent.length ?? 0} recent`}
+          title="TGE"
+          accentNoun="calendar"
+          accent="pink"
+          description={
+            <>Upcoming Token Generation Events with FDV estimates, initial
+              unlock %, and vesting cliffs. Curated by hand to filter out noise.
+              Plus a &ldquo;recently launched&rdquo; rail of tokens added to
+              CoinGecko in the past <span className="text-white">14 days</span>.</>
+          }
+          actions={
             <button
               onClick={() => load(false)}
               disabled={refreshing}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] text-xs font-semibold transition-colors disabled:opacity-40"
             >
-              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-              refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Upcoming Token Generation Events with FDV estimates, initial unlock %,
-            and vesting cliffs. Curated by hand to filter out noise. Plus a
-            &quot;recently launched&quot; rail of tokens added to CoinGecko in the past 14 days.
-          </p>
-        </div>
+          }
+        />
 
         {error && (
           <div className="card-premium p-4 text-center mb-4">

@@ -13,6 +13,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { Cpu, RefreshCw, AlertTriangle, Sparkles } from 'lucide-react';
 
 interface HistoryPoint { time: number; value: number }
@@ -179,31 +180,30 @@ export default function HashRibbonsPage() {
     <>
       <Header />
       <main className="max-w-[1100px] mx-auto w-full px-4 py-6">
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-orange-500/10 flex items-center justify-center">
-              <Cpu className="w-4 h-4 text-orange-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Hash Ribbons</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              30d / 60d hash MA
-            </span>
+        <PageHero
+          icon={Cpu}
+          eyebrow="On-chain · miner cycle"
+          title="Hash"
+          accentNoun="ribbons"
+          accent="orange"
+          description={
+            <>Charles Edwards&apos; miner-capitulation indicator. When the
+              <span className="text-white"> 30-day</span> hash-rate average crosses below the
+              <span className="text-white"> 60-day</span>, weak miners are unplugging. The
+              <em> recovery cross</em> (30d back above 60d) is the historical buy
+              signal — it has marked most BTC cycle bottoms since 2013.</>
+          }
+          actions={
             <button
               onClick={() => load(false)}
               disabled={refreshing}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] text-xs font-semibold transition-colors disabled:opacity-40"
             >
-              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-              refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Charles Edwards&apos; miner-capitulation indicator. When the 30-day hash-rate
-            average crosses below the 60-day, weak miners are unplugging. The
-            <em> recovery cross</em> (30d back above 60d) is the historical buy
-            signal — it has marked most BTC cycle bottoms since 2013.
-          </p>
-        </div>
+          }
+        />
 
         {error && (
           <div className="card-premium p-4 text-center mb-4">
