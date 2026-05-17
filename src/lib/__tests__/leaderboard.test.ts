@@ -78,6 +78,48 @@ describe('rankReferrers', () => {
   });
 });
 
+describe('rankReferrers — edge cases', () => {
+  it('handles partial ties (some entries tied, others not)', () => {
+    const out = rankReferrers([
+      { codePrefix: 'A', signups: 5, verified: 3 },
+      { codePrefix: 'B', signups: 5, verified: 3 }, // tied with A
+      { codePrefix: 'C', signups: 5, verified: 3 }, // tied with A + B
+      { codePrefix: 'D', signups: 1, verified: 1 },
+    ]);
+    expect(out[0].rank).toBe(1);
+    expect(out[1].rank).toBe(1);
+    expect(out[2].rank).toBe(1);
+    // 1224-style: D skips past 2, 3, 4 — gets rank 4
+    expect(out[3].rank).toBe(4);
+  });
+
+  it('breaks tie on signups when verified matches', () => {
+    const out = rankReferrers([
+      { codePrefix: 'LOW', signups: 1, verified: 5 },
+      { codePrefix: 'HIGH', signups: 100, verified: 5 },
+    ]);
+    expect(out[0].codePrefix).toBe('HIGH');
+    expect(out[0].rank).toBe(1);
+    expect(out[1].rank).toBe(2);
+  });
+
+  it('handles 0-verified entries (sorted by signups when verified ties at 0)', () => {
+    const out = rankReferrers([
+      { codePrefix: 'NEW', signups: 10, verified: 0 },
+      { codePrefix: 'OLD', signups: 5, verified: 0 },
+    ]);
+    expect(out[0].codePrefix).toBe('NEW');
+    expect(out[1].codePrefix).toBe('OLD');
+  });
+
+  it('handles single entry with zero counts (does not crash)', () => {
+    const out = rankReferrers([
+      { codePrefix: 'NIL', signups: 0, verified: 0 },
+    ]);
+    expect(out).toEqual([{ codePrefix: 'NIL', signups: 0, verified: 0, rank: 1 }]);
+  });
+});
+
 describe('findRank', () => {
   const sample = rankReferrers([
     { codePrefix: 'TOP1', signups: 10, verified: 8 },
