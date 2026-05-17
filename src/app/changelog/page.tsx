@@ -8,7 +8,8 @@ import Footer from '@/components/Footer';
 import PageHero from '@/components/PageHero';
 import Link from 'next/link';
 import { CHANGELOG, type ChangelogEntry, type ChangelogTag } from '@/lib/changelog';
-import { Sparkles, ArrowRight, Printer, Shield } from 'lucide-react';
+import { slugify } from '@/lib/slugify';
+import { Sparkles, ArrowRight, Printer, Shield, Link as LinkIcon } from 'lucide-react';
 
 const TAG_TONES: Record<ChangelogTag, string> = {
   new:        'bg-emerald-500/15 text-emerald-300 border-emerald-400/30',
@@ -24,8 +25,12 @@ function fmtDate(iso: string): string {
 }
 
 function EntryCard({ entry }: { entry: ChangelogEntry }) {
+  // Stable, shareable URL fragment per entry — slug from the title.
+  // Means '/changelog#invite-friends-personal-referral-links' deep-
+  // links to the relevant card.
+  const id = slugify(entry.title);
   return (
-    <article className="card-premium p-5 mb-3">
+    <article id={id} className="card-premium p-5 mb-3 scroll-mt-20 group">
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <time className="font-mono text-[11px] text-neutral-500 uppercase tracking-wider">
           {fmtDate(entry.date)}
@@ -38,6 +43,24 @@ function EntryCard({ entry }: { entry: ChangelogEntry }) {
             {t}
           </span>
         ))}
+        <a
+          href={`#${id}`}
+          aria-label={`Copy link to: ${entry.title}`}
+          title="Copy link to this entry"
+          className="ml-auto inline-flex items-center justify-center w-6 h-6 rounded-md text-neutral-700 hover:text-hub-yellow hover:bg-white/[0.04] opacity-0 group-hover:opacity-100 transition-all print:hidden"
+          onClick={(e) => {
+            // Copy the full absolute URL to clipboard so the user can
+            // paste it anywhere (Discord, X, docs) without losing the
+            // host. window.location.hash updates anyway from the
+            // default anchor click — we just augment with the clipboard.
+            try {
+              navigator.clipboard.writeText(`${window.location.origin}/changelog#${id}`);
+            } catch { /* no-op fallback */ }
+            // Let default anchor scroll happen.
+          }}
+        >
+          <LinkIcon className="w-3 h-3" />
+        </a>
       </div>
       <h2 className="text-lg font-bold text-white mb-1.5 tracking-tight">{entry.title}</h2>
       <p className="text-sm text-neutral-400 leading-relaxed mb-3">{entry.summary}</p>
