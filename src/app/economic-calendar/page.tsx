@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
+import PageHero from '@/components/PageHero';
 import {
   EVENT_CATEGORIES,
   IMPACT_COLORS,
@@ -410,39 +411,37 @@ export default function EconomicCalendarPage() {
   return (
     <div className="w-full">
       <div id="main-content" className="w-full px-4 py-5">
-        {/* Page header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
-          <div>
-            <h1 className="heading-page">
-              Economic Calendar
-            </h1>
-            <p className="text-neutral-600 text-xs mt-0.5">
-              Track major economic events that move crypto and traditional
-              markets
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {lastUpdate && (
-              <span className="text-neutral-700 text-xs">
-                Updated{' '}
-                {lastUpdate.toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </span>
-            )}
-            <button
-              onClick={refresh}
-              disabled={isRefreshing}
-              className="p-2 rounded-lg bg-white/[0.04] border border-white/[0.06] text-neutral-400 hover:text-white transition-colors disabled:opacity-40"
-              aria-label="Refresh data"
-            >
-              <RefreshCw
-                className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`}
-              />
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={Calendar}
+          eyebrow="Macro · events"
+          title="Economic"
+          accentNoun="calendar"
+          accent="hub-yellow"
+          description={
+            <>Major economic events that move crypto and TradFi — CPI prints,
+              FOMC, NFP, central-bank decisions. Times in your local zone, severity
+              bands flag the high-impact prints so you can scan ahead.</>
+          }
+          className="mb-4"
+          actions={
+            <>
+              {lastUpdate && (
+                <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
+                  Updated{' '}
+                  {lastUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              <button
+                onClick={refresh}
+                disabled={isRefreshing}
+                className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-40"
+                aria-label="Refresh data"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </>
+          }
+        />
 
         {/* TODAY'S EVENTS banner — impossible to miss FOMC etc. */}
         {(() => {

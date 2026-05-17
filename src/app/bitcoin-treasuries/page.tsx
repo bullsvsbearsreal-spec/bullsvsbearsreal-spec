@@ -6,6 +6,7 @@ import DataFreshness from '@/components/DataFreshness';
 import { useApi } from '@/hooks/useSWRApi';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
+import PageHero from '@/components/PageHero';
 import { formatUSD, formatCompact } from '@/lib/utils/format';
 import { useFlash } from '@/hooks/useFlash';
 import {
@@ -284,37 +285,39 @@ export default function BitcoinTreasuriesPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
-        {/* Title + Controls */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 flex items-center justify-center">
-              <Bitcoin className="w-4 h-4 text-hub-yellow" />
-            </div>
-            <div>
-              <h1 className="heading-page">Bitcoin Treasuries</h1>
-              <p className="text-neutral-500 text-sm mt-0.5">
-                Corporate, ETF, and government Bitcoin holdings
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-            {/* This isn't an exchange feed — it's a curated list of public
-                companies holding BTC. Use the `sources` prop so the widget
-                renders "BitcoinTreasuries.NET" rather than "1 exchanges". */}
-            <DataFreshness
-              exchangeCount={0}
-              sources={['BitcoinTreasuries.NET']}
-              lastUpdated={lastUpdate}
-            />
-          </div>
-        </div>
+        <PageHero
+          icon={Bitcoin}
+          eyebrow="Institutional · BTC holdings"
+          title="Bitcoin"
+          accentNoun="treasuries"
+          accent="hub-yellow"
+          description={
+            <>Corporate, ETF, and government Bitcoin holdings — ranked by
+              BTC count + USD value, broken out by category so you can see
+              which cohort is accumulating vs distributing this cycle.</>
+          }
+          className="mb-6"
+          actions={
+            <>
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                aria-label="Refresh"
+                className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-neutral-300 hover:text-white transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+              {/* This isn't an exchange feed — it's a curated list of public
+                  companies holding BTC. Use the `sources` prop so the widget
+                  renders "BitcoinTreasuries.NET" rather than "1 exchanges". */}
+              <DataFreshness
+                exchangeCount={0}
+                sources={['BitcoinTreasuries.NET']}
+                lastUpdated={lastUpdate}
+              />
+            </>
+          }
+        />
 
         {/* Loading skeleton */}
         {loading && !data && (

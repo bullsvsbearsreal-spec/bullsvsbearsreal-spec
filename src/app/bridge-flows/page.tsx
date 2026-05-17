@@ -14,6 +14,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { Globe2, RefreshCw, AlertTriangle, ArrowRight } from 'lucide-react';
 
 interface ChainPairFlow {
@@ -110,29 +111,34 @@ export default function BridgeFlowsPage() {
     <>
       <Header />
       <main className="max-w-[1400px] mx-auto px-4 py-6">
-        <div className="mb-4 flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2">
-              <Globe2 className="w-5 h-5 text-cyan-400" />
-              <h1 className="text-2xl font-bold text-white">Bridge Flow Map</h1>
-              <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-cyan-400/15 text-cyan-400 font-bold">
-                wormhole
-              </span>
-            </div>
-            <p className="text-sm text-neutral-500 mt-1 max-w-3xl">
-              Cross-chain capital flow in real time. Source: Wormhole — the most-used cross-chain
-              messaging protocol. Strong leading indicator: capital flows INTO a chain ahead of
-              price moves and narrative rotation.
-            </p>
-          </div>
-          <button
-            onClick={load}
-            disabled={loading}
-            className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
-          >
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> refresh
-          </button>
-        </div>
+        <PageHero
+          icon={Globe2}
+          eyebrow="On-chain · cross-chain capital"
+          eyebrowExtra={
+            <span className="inline-flex items-center text-[9px] font-bold uppercase tracking-[0.14em] px-2 py-0.5 rounded-full border border-cyan-400/30 bg-cyan-500/[0.08] text-cyan-300">
+              Wormhole
+            </span>
+          }
+          title="Bridge"
+          accentNoun="flows"
+          accent="cyan"
+          description={
+            <>Cross-chain capital flow in real time. Source: Wormhole — the
+              most-used cross-chain messaging protocol. Strong leading indicator:
+              capital flows INTO a chain ahead of price moves and narrative rotation.</>
+          }
+          className="mb-4"
+          actions={
+            <button
+              onClick={load}
+              disabled={loading}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] text-xs font-semibold transition-colors disabled:opacity-40"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          }
+        />
 
         {/* Time-span chip */}
         <div className="flex items-center gap-2 mb-4">

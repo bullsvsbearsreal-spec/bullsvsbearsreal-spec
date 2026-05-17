@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
+import PageHero from '@/components/PageHero';
 import { RefreshCw, Info, Activity, TrendingUp, TrendingDown, Hash, ArrowLeftRight } from 'lucide-react';
 import { formatCompact } from '@/lib/utils/format';
 import { useFlash } from '@/hooks/useFlash';
@@ -58,37 +59,39 @@ export default function CVDPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
-        {/* Title */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-hub-yellow/10 flex items-center justify-center">
-              <Activity className="w-4 h-4 text-hub-yellow" />
-            </div>
-            <div>
-              <h1 className="heading-page">Cumulative Volume Delta</h1>
-              <p className="text-neutral-500 text-sm mt-0.5 flex items-center gap-1.5">
-                Buy vs sell pressure — are buyers or sellers in control?
-                {data && (
-                  <span className="flex items-center gap-1 text-green-400 text-[11px]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-                    Live
-                  </span>
-                )}
-              </p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Binance']} />
-            <button
-              onClick={fetchData}
-              disabled={loading}
-              aria-label="Refresh data"
-              className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={Activity}
+          eyebrow="Orderflow · CVD"
+          eyebrowExtra={
+            data && (
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-green-400 bg-green-500/10 border border-green-500/15 px-2 py-0.5 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+                live
+              </span>
+            )
+          }
+          title="Cumulative volume"
+          accentNoun="delta"
+          accent="hub-yellow"
+          description={
+            <>Buy vs sell pressure — are buyers or sellers in control? Positive divergence
+              (price flat, CVD rising) hints at accumulation; negative divergence hints at distribution.</>
+          }
+          className="mb-6"
+          actions={
+            <>
+              <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Binance']} />
+              <button
+                onClick={fetchData}
+                disabled={loading}
+                aria-label="Refresh data"
+                className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-neutral-300 hover:text-white transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </>
+          }
+        />
 
         {/* Symbol selector */}
         <div className="flex flex-wrap gap-2 mb-6">

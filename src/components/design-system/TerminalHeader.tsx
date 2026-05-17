@@ -34,15 +34,9 @@ const POPULAR_FOREX = ['DXY', 'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
 
 const POPULAR_COMMODITIES = ['XAUUSD', 'XAGUSD', 'CL1!', 'NG1!', 'HG1!'];
 
-// Heuristic to detect "user typed a ticker we don't pre-index" so the
-// palette can offer a graceful "open in chart" fallback rather than
-// returning zero results. Conservative: 2–6 chars, mostly letters,
-// optionally with a trailing digit or '!' for futures.
-function looksLikeTicker(s: string): boolean {
-  if (!s) return false;
-  const trimmed = s.trim().toUpperCase();
-  return /^[A-Z]{2,6}([0-9]{1,3}!?)?$/.test(trimmed);
-}
+// Pure-function helpers (looksLikeTicker etc.) live in searchHelpers.ts
+// so they can be unit-tested without dragging in React's JSX runtime.
+import { looksLikeTicker } from './searchHelpers';
 
 interface NavItem { id: string; label: string; href: string; hint?: string; }
 interface NavGroup { key: string; label: string; icon: React.ReactNode; items: NavItem[]; }

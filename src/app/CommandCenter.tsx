@@ -253,17 +253,13 @@ export default function CommandCenter() {
     return { COINS, EXCHS, lookup: (sym: string, ex: string) => map.get(`${sym}|${ex}`) ?? null };
   }, [fundingRaw]);
 
-  // Liquidations recent feed (slide-in rows)
-  const { data: liqRecent } = useApi<{ data?: Array<{ symbol: string; exchange: string; side: 'long' | 'short'; valueUsd: number; price: number; ts: number }> }>({
-    key: 'cc:liq-recent',
-    fetcher: async () => {
-      const res = await fetch('/api/openinterest');
-      // Reuse OI for now — real liq feed needs a different endpoint
-      if (!res.ok) throw new Error('liq-recent');
-      return { data: [] };
-    },
-    refreshInterval: 30_000,
-  });
+  // Liquidations recent-feed hook removed (May 2026) — it polled
+  // /api/openinterest every 30s, swallowed the entire 600+KB response,
+  // and the resulting `liqRecent` binding was never consumed anywhere
+  // in this file. Pure waste: thousands of unused-payload fetches per
+  // landing-page session × every signed-in user. When the real
+  // liquidations slide-in rows ship, wire it to /api/liquidations
+  // (which is actually a liquidation feed) — not /api/openinterest.
 
   return (
     <div className="min-h-screen bg-hub-black">
