@@ -6,8 +6,9 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
-import { RefreshCw, Plus, X, Edit2, Trash2, AlertTriangle } from 'lucide-react';
+import { RefreshCw, Plus, X, Edit2, Trash2, AlertTriangle, Wallet } from 'lucide-react';
 import DataFreshness from '@/components/DataFreshness';
+import PageHero from '@/components/PageHero';
 import { useFlash } from '@/hooks/useFlash';
 import { formatUSD, formatPercent, formatQty, formatPrice } from '@/lib/utils/format';
 import { TokenIconSimple } from '@/components/TokenIcon';
@@ -211,35 +212,41 @@ export default function PortfolioPage() {
       <Header />
 
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
-        {/* Page header */}
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="heading-page">Portfolio Tracker</h1>
-            <p className="text-neutral-500 text-sm mt-1">
-              Track your holdings and unrealised P&amp;L in real time
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Manual portfolio — prices come from CoinGecko, not exchanges. */}
-            <DataFreshness exchangeCount={0} sources={['CoinGecko']} lastUpdated={lastUpdate} />
-            <button
-              onClick={refresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors text-xs"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-            <button
-              onClick={openAddModal}
-              className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-hub-yellow text-black font-semibold text-xs hover:brightness-110 transition"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Add Position
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={Wallet}
+          eyebrow="Portfolio · manual holdings"
+          title="Portfolio"
+          accentNoun="tracker"
+          accent="hub-yellow"
+          description={
+            <>Track your holdings and unrealised P&amp;L in real time. Manual
+              entry — for API-key auto-sync use{' '}
+              <a href="/positions" className="text-hub-yellow hover:underline font-medium">/positions</a>{' '}
+              instead.</>
+          }
+          className="mb-6"
+          actions={
+            <>
+              {/* Manual portfolio — prices come from CoinGecko, not exchanges. */}
+              <DataFreshness exchangeCount={0} sources={['CoinGecko']} lastUpdated={lastUpdate} />
+              <button
+                onClick={refresh}
+                disabled={isRefreshing}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-neutral-300 hover:text-white transition-colors text-xs font-semibold"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+              <button
+                onClick={openAddModal}
+                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-hub-yellow text-black font-semibold text-xs hover:brightness-110 transition shadow-[0_4px_14px_-4px_rgba(255,165,0,0.5)]"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Add position
+              </button>
+            </>
+          }
+        />
 
         {priceError && (
           <div className="bg-red-500/5 border border-red-500/20 rounded-lg p-3 mb-4 flex items-center gap-2 text-red-400 text-sm">

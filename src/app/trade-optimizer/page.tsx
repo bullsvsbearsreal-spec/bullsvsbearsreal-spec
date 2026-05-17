@@ -16,6 +16,7 @@ import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import FreshnessLabel from '@/components/FreshnessLabel';
+import PageHero from '@/components/PageHero';
 import { Crosshair, RefreshCw, ExternalLink, TrendingUp, TrendingDown, ChevronDown, Search } from 'lucide-react';
 import { getExchangeTradeUrl, FEE_MODEL_VERSION } from '@/lib/constants/exchanges';
 
@@ -486,35 +487,34 @@ export default function TradeOptimizerPage() {
     <>
       <Header />
       <main className="max-w-[1200px] mx-auto w-full px-4 py-6">
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-emerald-500/10 flex items-center justify-center">
-              <Crosshair className="w-4 h-4 text-emerald-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Trade Optimizer</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              fees + spread + impact + funding
-            </span>
-            <div className="ml-auto flex items-center gap-3">
+        <PageHero
+          icon={Crosshair}
+          eyebrow="Tools · fees + spread + impact + funding"
+          title="Trade"
+          accentNoun="optimizer"
+          accent="emerald"
+          description={
+            <>Given a position you want to open, find the cheapest venue when
+              you factor in <em>everything</em> — taker fees, current spread, market
+              impact at your size, and the funding you&apos;d pay (or receive) over
+              your hold.</>
+          }
+          actions={
+            <>
               {execution?.timestamp && (
                 <FreshnessLabel ts={execution.timestamp} refreshIntervalMs={10_000} />
               )}
               <button
                 onClick={load}
                 disabled={loading}
-                className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] text-xs font-semibold transition-colors disabled:opacity-40"
               >
-                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
-                refresh
+                <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                Refresh
               </button>
-            </div>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Given a position you want to open, find the cheapest venue when
-            you factor in <em>everything</em> — taker fees, current spread, market
-            impact at your size, and the funding you&apos;d pay (or receive) over your hold.
-          </p>
-        </div>
+            </>
+          }
+        />
 
         {/* Inputs */}
         <div className="card-premium p-4 mb-4 space-y-3">

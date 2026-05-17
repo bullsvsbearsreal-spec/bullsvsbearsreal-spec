@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UsdDisplay from '@/components/UsdDisplay';
+import PageHero from '@/components/PageHero';
 import { Ruler, Info, AlertTriangle, CheckCircle2, Target } from 'lucide-react';
 
 type Side = 'long' | 'short';
@@ -106,17 +107,20 @@ export default function PositionSizePage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-teal-500/10 flex items-center justify-center">
-              <Ruler className="w-4 h-4 text-teal-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Position Size Calculator</h1>
-          </div>
-          <p className="text-sm text-neutral-500">
-            Given account size + risk tolerance + entry + stop, compute the exact position you should take. Plus R:R ratio, expected value, and Kelly sizing.
-          </p>
-        </div>
+        <PageHero
+          icon={Ruler}
+          eyebrow="Tools · pre-trade sizing"
+          title="Position"
+          accentNoun="sizer"
+          accent="cyan"
+          description={
+            <>Given account size + risk tolerance + entry + stop, compute the
+              exact position you should take. Plus R:R ratio, expected value,
+              and Kelly sizing — the four numbers that decide whether a setup
+              is actually worth taking.</>
+          }
+          className="mb-4"
+        />
 
         <div className="grid md:grid-cols-2 gap-4">
           {/* Core Inputs */}
