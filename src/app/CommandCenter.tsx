@@ -36,7 +36,7 @@ const NAV_GROUPS = [
   {
     label: 'Scan',
     items: [
-      { name: 'Funding Rates',   href: '/funding',         icon: Percent,   badge: '33' },
+      { name: 'Funding Rates',   href: '/funding',         icon: Percent,   badge: String(ALL_EXCHANGES.length) },
       { name: 'Funding Heatmap', href: '/funding-heatmap', icon: Grid3X3 },
       { name: 'Spreads',         href: '/spreads',         icon: ArrowLeftRight },
     ],
