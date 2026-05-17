@@ -210,6 +210,7 @@ function RealDashboardPage() {
   const [watch, setWatch] = useState<{ wallets: WatchedWallet[]; events: WatchEvent[] } | null>(null);
   const [telegramLinked, setTelegramLinked] = useState<boolean | null>(null);
   const [equityHistory, setEquityHistory] = useState<Array<{ t: number; value: number; pnl: number }>>([]);
+  const [inviteStats, setInviteStats] = useState<{ signups: number; verified: number } | null>(null);
   // True until the first load() resolves — used to suppress "no data" empty
   // states during the initial fetch so users with data don't see a brief
   // misleading "Connect a wallet" CTA flash before the API responds.
@@ -222,7 +223,7 @@ function RealDashboardPage() {
     const opts = signal ? { signal } : undefined;
     const fetchJson = (url: string) =>
       fetch(url, opts).then(r => (r.ok ? r.json() : null)).catch(() => null);
-    const [s, p, w, k, watchRes, tg, history] = await Promise.allSettled([
+    const [s, p, w, k, watchRes, tg, history, inv] = await Promise.allSettled([
       fetchJson('/api/user/stats'),
       fetchJson('/api/account/positions'),
       fetchJson('/api/account/wallets'),
@@ -230,6 +231,7 @@ function RealDashboardPage() {
       fetchJson('/api/watch/wallets'),
       fetchJson('/api/telegram/link-code'),
       fetchJson('/api/account/history?days=30'),
+      fetchJson('/api/invite/stats'),
     ]);
     // Bail if aborted mid-flight — don't setState on an unmounted component.
     if (signal?.aborted) return;
@@ -246,6 +248,9 @@ function RealDashboardPage() {
     if (stillAlive() && tg.status === 'fulfilled' && tg.value) setTelegramLinked(!!tg.value.linked);
     if (stillAlive() && history.status === 'fulfilled' && history.value?.points) {
       setEquityHistory(history.value.points);
+    }
+    if (stillAlive() && inv.status === 'fulfilled' && inv.value && typeof inv.value.signups === 'number') {
+      setInviteStats({ signups: inv.value.signups, verified: inv.value.verified });
     }
     if (stillAlive()) setInitialized(true);
   }, [userId]);
@@ -444,6 +449,34 @@ function RealDashboardPage() {
                 className="inline-flex items-center gap-1 text-xs font-semibold text-amber-300 hover:text-amber-200 px-3 py-1.5 rounded-lg border border-amber-400/40 hover:bg-amber-500/10"
               >
                 Link now <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+          )}
+
+          {/* Invite-success banner — only shows once they've referred at least
+              one person. Closes the feedback loop: 'I shared the link, did
+              anyone actually sign up?' answered without leaving the dashboard. */}
+          {inviteStats && inviteStats.signups > 0 && (
+            <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/5 px-4 py-3 flex items-center gap-3 flex-wrap">
+              <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-emerald-300">
+                  {inviteStats.signups} {inviteStats.signups === 1 ? 'friend has' : 'friends have'} signed up via your link
+                  {inviteStats.verified > 0 && (
+                    <span className="text-emerald-400/70 font-normal">
+                      {' · '}{inviteStats.verified} verified
+                    </span>
+                  )}
+                </div>
+                <div className="text-xs text-neutral-400">
+                  Keep sharing to climb the upcoming referral leaderboard.
+                </div>
+              </div>
+              <Link
+                href="/invite"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200 px-3 py-1.5 rounded-lg border border-emerald-400/40 hover:bg-emerald-500/10"
+              >
+                See details <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
           )}
