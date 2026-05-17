@@ -28,6 +28,23 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-05-17',
+    title: 'Referral leaderboard · social proof for sharers',
+    summary: 'Public top-20 ranking of users by verified referrals at /invite/leaderboard. Anonymized — entries show only the first 4 chars of each invite code. Pairs with the invite-friends system shipped earlier today.',
+    tags: ['new'],
+    bullets: [
+      '/invite/leaderboard — top 20 by verified count, then signups as tiebreaker',
+      'Gold / silver / bronze medal styling for top 3, monospace rank numbers below',
+      'Public + no-auth + edge-cached (5min) — the page loads instantly for anyone',
+      'Code-prefix-only entries: the full invite code never crosses the wire (would let anyone use someone else\'s link)',
+      'Cross-linked from /invite footer + cmd-K palette (search "leaderboard" or "referral")',
+    ],
+    links: [
+      { label: 'See the leaderboard', href: '/invite/leaderboard' },
+      { label: 'Grab your link', href: '/invite' },
+    ],
+  },
+  {
+    date: '2026-05-17',
     title: 'Invite friends · personal referral links',
     summary: 'Every signed-in user now gets a unique invite link to share with friends. Track signups and verified accounts on /invite.',
     tags: ['new'],

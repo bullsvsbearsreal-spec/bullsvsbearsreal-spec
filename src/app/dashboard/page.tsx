@@ -469,14 +469,16 @@ function RealDashboardPage() {
                   )}
                 </div>
                 <div className="text-xs text-neutral-400">
-                  Keep sharing to climb the upcoming referral leaderboard.
+                  {inviteStats.verified >= 3
+                    ? <>You&apos;re in serious leaderboard territory — see where you rank.</>
+                    : <>Keep sharing to climb the referral leaderboard.</>}
                 </div>
               </div>
               <Link
-                href="/invite"
+                href={inviteStats.verified >= 3 ? '/invite/leaderboard' : '/invite'}
                 className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200 px-3 py-1.5 rounded-lg border border-emerald-400/40 hover:bg-emerald-500/10"
               >
-                See details <ArrowRight className="w-3 h-3" />
+                {inviteStats.verified >= 3 ? 'See leaderboard' : 'See details'} <ArrowRight className="w-3 h-3" />
               </Link>
             </div>
           )}
