@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { Flame, RefreshCw, ExternalLink, TrendingUp, TrendingDown, Clock } from 'lucide-react';
 
 interface MemeToken {
@@ -90,30 +91,29 @@ export default function MemecoinRadarPage() {
     <>
       <Header />
       <main className="max-w-[1200px] mx-auto w-full px-4 py-6">
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-orange-500/10 flex items-center justify-center">
-              <Flame className="w-4 h-4 text-orange-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Memecoin Radar</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              Solana · {data?.tokens.length ?? 0} hot · live
-            </span>
+        <PageHero
+          icon={Flame}
+          eyebrow={`Solana · ${data?.tokens.length ?? 0} hot · live`}
+          title="Memecoin"
+          accentNoun="radar"
+          accent="orange"
+          description={
+            <>Hot Solana memecoins ranked by 1-hour velocity (volume × |1h price move|).
+              Filtered to pairs with at least <span className="text-white">$25k liquidity</span> and
+              <span className="text-white"> $5k of 1h volume</span>. Click any row to open the pair
+              on DexScreener. PvP gambling at your own risk.</>
+          }
+          actions={
             <button
               onClick={() => load(false)}
               disabled={refreshing}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] text-xs font-semibold transition-colors disabled:opacity-40"
             >
-              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-              refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Hot Solana memecoins ranked by 1-hour velocity (volume × |1h price move|).
-            Filtered to pairs with at least $25k liquidity and $5k of 1h volume.
-            Click any row to open the pair on DexScreener. PvP gambling at your own risk.
-          </p>
-        </div>
+          }
+        />
 
         {error && (
           <div className="card-premium p-4 text-center mb-4">

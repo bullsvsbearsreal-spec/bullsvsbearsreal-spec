@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import DataFreshness from '@/components/DataFreshness';
 import RefreshButton from '@/components/RefreshButton';
+import PageHero from '@/components/PageHero';
 import { Bell, Info, ExternalLink } from 'lucide-react';
 
 interface ListingRow {
@@ -96,21 +97,25 @@ export default function ListingsPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-yellow-500/10 flex items-center justify-center">
-              <Bell className="w-4 h-4 text-yellow-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Exchange Listings</h1>
-            <div className="ml-auto flex items-center gap-1">
+        <PageHero
+          icon={Bell}
+          eyebrow="CEX · announcements"
+          title="Exchange"
+          accentNoun="listings"
+          accent="hub-yellow"
+          description={
+            <>New listings + delistings from major CEXes, aggregated from
+              official announcements. Updated every minute — useful for catching
+              the first 60 seconds of a Binance perp launch.</>
+          }
+          className="mb-4"
+          actions={
+            <>
               <DataFreshness exchangeCount={exchanges.length} lastUpdated={data?.meta?.timestamp ?? null} sources={['Aggregated']} />
               <RefreshButton onRefresh={refresh} isRefreshing={isRefreshing} />
-            </div>
-          </div>
-          <p className="text-sm text-neutral-500">
-            New listings + delistings from major CEXes, aggregated from official announcements. Updated every minute.
-          </p>
-        </div>
+            </>
+          }
+        />
 
         {data?.summary && (
           <div
