@@ -19,7 +19,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PageHero from '@/components/PageHero';
-import { Trophy, Send, ArrowRight, TrendingUp } from 'lucide-react';
+import { Trophy, Send, ArrowRight, TrendingUp, Twitter } from 'lucide-react';
 
 interface LeaderboardEntry {
   rank: number;
@@ -170,25 +170,41 @@ export default function InviteLeaderboardPage() {
         {/* 'You are here' callout when signed-in user appears on the
             board — gives them an at-a-glance confirmation + a path to
             share their rank. */}
-        {myEntry && (
-          <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/[0.05] px-4 py-3 mb-3 flex items-center gap-3 flex-wrap">
-            <Trophy className="w-4 h-4 text-emerald-400 shrink-0" />
-            <div className="flex-1 min-w-0">
-              <div className="text-sm font-medium text-emerald-300">
-                You&apos;re ranked #{myEntry.rank} on the leaderboard
+        {myEntry && (() => {
+          // Pre-build the tweet template. Includes the rank as social
+          // proof (people are more likely to retweet a "I'm #3 on X"
+          // post than a generic "check out X" one).
+          const tweetText = `I'm ranked #${myEntry.rank} on the InfoHub referral leaderboard with ${myEntry.verified} verified referrals. derivatives terminal across every venue, free tier covers basically everything: https://info-hub.io/invite`;
+          const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+          return (
+            <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/[0.05] px-4 py-3 mb-3 flex items-center gap-3 flex-wrap">
+              <Trophy className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="text-sm font-medium text-emerald-300">
+                  You&apos;re ranked #{myEntry.rank} on the leaderboard
+                </div>
+                <div className="text-xs text-neutral-400">
+                  {myEntry.verified} verified · {myEntry.signups} signups via your link
+                </div>
               </div>
-              <div className="text-xs text-neutral-400">
-                {myEntry.verified} verified · {myEntry.signups} signups via your link
-              </div>
+              <a
+                href={tweetUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-300 hover:text-sky-200 px-3 py-1.5 rounded-lg border border-sky-400/40 bg-sky-500/[0.05] hover:bg-sky-500/[0.1]"
+              >
+                <Twitter className="w-3.5 h-3.5" />
+                Tweet rank
+              </a>
+              <Link
+                href="/invite"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200 px-3 py-1.5 rounded-lg border border-emerald-400/40 hover:bg-emerald-500/10"
+              >
+                Share link <ArrowRight className="w-3 h-3" />
+              </Link>
             </div>
-            <Link
-              href="/invite"
-              className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200 px-3 py-1.5 rounded-lg border border-emerald-400/40 hover:bg-emerald-500/10"
-            >
-              Share your link <ArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-        )}
+          );
+        })()}
 
         {entries.length > 0 && (
           <>
