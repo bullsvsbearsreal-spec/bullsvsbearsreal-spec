@@ -21,7 +21,7 @@ import Footer from '@/components/Footer';
 import PageHero from '@/components/PageHero';
 import {
   Send, Copy, Check, ExternalLink, Twitter, MessageCircle,
-  TrendingUp, Users, Gift, Lock,
+  TrendingUp, Users, Gift, Lock, MessageSquare,
 } from 'lucide-react';
 
 interface InviteStats {
@@ -160,6 +160,12 @@ export default function InvitePage() {
 
   const dmText = `Hey — I've been using InfoHub for funding rates, OI, and liq data lately. Worth a look:\n${shareUrl}`;
 
+  // Telegram share — same body as the DM template since it goes into a
+  // chat context. ?url and ?text are concatenated by Telegram into one
+  // message preview.
+  const telegramShareText = `Been using InfoHub — derivatives terminal with funding rates, OI, and liq data across every venue. Free tier covers basically everything.`;
+  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(telegramShareText)}`;
+
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
@@ -286,6 +292,34 @@ export default function InvitePage() {
                 {dmText}
               </pre>
               <CopyButton value={dmText} label="Copy text" className="!bg-white/[0.06] !text-neutral-300 hover:!bg-white/[0.1]" />
+            </div>
+
+            {/* Telegram — most crypto-native channel; one click opens
+                Telegram's share dialog with the link + caption pre-filled. */}
+            <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3">
+              <div className="flex items-center gap-2 mb-2">
+                <MessageSquare className="w-3.5 h-3.5 text-cyan-400" />
+                <span className="text-[11px] font-semibold text-neutral-300 uppercase tracking-wider">
+                  Telegram
+                </span>
+              </div>
+              <p className="text-[12px] text-neutral-300 leading-relaxed mb-3 break-words">
+                {telegramShareText}{' '}
+                <span className="text-cyan-300/80 underline-offset-2 break-all">{shareUrl}</span>
+              </p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <a
+                  href={telegramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-[12px] font-semibold px-3 py-1.5 rounded-lg bg-cyan-500/15 border border-cyan-400/30 text-cyan-300 hover:bg-cyan-500/25 transition-colors"
+                >
+                  <MessageSquare className="w-3.5 h-3.5" />
+                  Open Telegram share
+                  <ExternalLink className="w-3 h-3 opacity-60" />
+                </a>
+                <CopyButton value={`${telegramShareText} ${shareUrl}`} label="Copy text" className="!bg-white/[0.06] !text-neutral-300 hover:!bg-white/[0.1]" />
+              </div>
             </div>
           </div>
         </section>
