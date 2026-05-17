@@ -71,7 +71,7 @@ export default function AuthPromptBanner({
     <div className={`relative bg-gradient-to-r from-hub-yellow/[0.06] to-hub-orange/[0.04] border border-hub-yellow/20 rounded-xl px-4 py-3 ${className}`}>
       <div className="flex items-center gap-3">
         <div className="w-9 h-9 rounded-lg bg-hub-yellow/15 flex items-center justify-center flex-shrink-0">
-          <Icon className="w-4.5 h-4.5 text-hub-yellow" />
+          <Icon className="w-[18px] h-[18px] text-hub-yellow" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-white">{config.title}</p>

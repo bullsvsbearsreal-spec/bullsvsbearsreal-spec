@@ -116,7 +116,7 @@ export default function PredictionMarketsPage() {
               <div className="max-w-2xl">
                 <div className="flex items-center gap-2 mb-3">
                   <div className="w-9 h-9 rounded-xl bg-purple-500/10 flex items-center justify-center flex-shrink-0 ring-1 ring-purple-500/20">
-                    <Crosshair className="w-4.5 h-4.5 text-purple-400" />
+                    <Crosshair className="w-[18px] h-[18px] text-purple-400" />
                   </div>
                   <span className="text-[10px] uppercase tracking-widest text-purple-400 font-semibold">
                     Cross-Platform Scanner
