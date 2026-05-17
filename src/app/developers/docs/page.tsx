@@ -268,7 +268,7 @@ export default function DocsPage() {
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-hub-yellow to-hub-orange">Documentation</span>
               </h1>
               <p className="text-gray-400 text-base max-w-2xl mb-4">
-                Complete reference for the InfoHub Public API. Real-time derivatives data from 32 exchanges, aggregated into 26 REST endpoints.
+                Complete reference for the InfoHub Public API. Real-time derivatives data from {ALL_EXCHANGES.length} exchanges, aggregated into 26 REST endpoints.
               </p>
               <div className="flex items-center gap-3 flex-wrap mb-6">
                 <div className="flex items-center gap-2 bg-white/[0.02] border border-white/[0.06] rounded-lg px-3 py-2">

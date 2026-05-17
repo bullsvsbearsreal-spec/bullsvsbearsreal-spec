@@ -6,6 +6,8 @@
  * Pure CSS animation (the dot keyframes are in globals.css). No JS
  * needed — this can render before hydration.
  */
+import { ALL_EXCHANGES } from '@/lib/constants';
+
 export default function Loading() {
   return (
     <div className="min-h-screen bg-hub-black flex items-center justify-center font-mono">
@@ -14,7 +16,7 @@ export default function Loading() {
           [boot] streaming<span className="animate-loading-dots" />
         </span>
         <span className="text-neutral-600 text-[10px]">
-          infohub · 32 venues · real-time
+          infohub · {ALL_EXCHANGES.length} venues · real-time
         </span>
       </div>
     </div>

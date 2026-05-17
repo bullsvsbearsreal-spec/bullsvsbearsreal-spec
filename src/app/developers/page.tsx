@@ -527,10 +527,10 @@ export default function DevelopersPage() {
                 </h1>
 
                 <p className="text-gray-400 text-base sm:text-lg leading-relaxed mb-4 max-w-lg">
-                  Funding rates, open interest, liquidations, spreads, options, and arbitrage aggregated from 32 exchanges into a single REST API.
+                  Funding rates, open interest, liquidations, spreads, options, and arbitrage aggregated from {ALL_EXCHANGES.length} exchanges into a single REST API.
                 </p>
                 <p className="text-gray-500 text-sm leading-relaxed mb-8 max-w-lg">
-                  One call instead of 32 API keys, 32 rate limiters, 32 schemas, and the rolling pager you'd otherwise build when a venue's WS dies at 3am.
+                  One call instead of {ALL_EXCHANGES.length} API keys, {ALL_EXCHANGES.length} rate limiters, {ALL_EXCHANGES.length} schemas, and the rolling pager you&apos;d otherwise build when a venue&apos;s WS dies at 3am.
                 </p>
 
                 <div className="flex flex-wrap items-center gap-3 mb-10">
@@ -1024,7 +1024,7 @@ console.log(data);`,
             />
             <FaqItem
               q="Do I need separate API keys for each exchange?"
-              a="No. One InfoHub API key gives you aggregated data from all 32 exchanges. That's the whole point."
+              a={`No. One InfoHub API key gives you aggregated data from all ${ALL_EXCHANGES.length} exchanges. That's the whole point.`}
             />
             <FaqItem
               q="Is there a WebSocket API?"
@@ -1053,7 +1053,7 @@ console.log(data);`,
               <div>
                 <h3 className="text-xl sm:text-2xl font-bold text-white mb-2">Ready to build?</h3>
                 <p className="text-gray-400 text-sm max-w-md">
-                  Create a free API key and start fetching real-time data from 32 exchanges in minutes.
+                  Create a free API key and start fetching real-time data from {ALL_EXCHANGES.length} exchanges in minutes.
                 </p>
               </div>
               {session?.user ? (

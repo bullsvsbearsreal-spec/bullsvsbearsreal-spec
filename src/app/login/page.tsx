@@ -5,6 +5,7 @@ import { signIn } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
+import { ALL_EXCHANGES } from '@/lib/constants';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowRight, Shield, Smartphone } from 'lucide-react';
 
 function LoginPageInner() {
@@ -249,7 +250,7 @@ function LoginPageInner() {
           <div className="mt-4 flex items-center gap-2 text-[10px] text-neutral-600 font-mono">
             <span className="inline-flex items-center gap-1.5">
               <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-              32 venues
+              {ALL_EXCHANGES.length} venues
             </span>
             <span className="text-neutral-700">·</span>
             <span>live data</span>

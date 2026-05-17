@@ -42,6 +42,18 @@ export default function NotFound() {
           >
             Screener
           </Link>
+          <Link
+            href="/funding-arb"
+            className="px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg font-medium text-sm hover:bg-white/10 transition-colors"
+          >
+            Funding arb
+          </Link>
+          <Link
+            href="/trader-watch"
+            className="px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg font-medium text-sm hover:bg-white/10 transition-colors"
+          >
+            Trader watch
+          </Link>
         </div>
       </main>
       <Footer />
