@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import DataFreshness from '@/components/DataFreshness';
 import RefreshButton from '@/components/RefreshButton';
+import PageHero from '@/components/PageHero';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { Zap, TrendingUp, TrendingDown, Activity, AlertTriangle, Info } from 'lucide-react';
 
@@ -277,29 +278,29 @@ export default function LiquidationLevelsPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        {/* Header */}
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-red-400/10 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-red-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Liquidation Levels</h1>
-            <span className="text-xs text-neutral-500 font-mono">
-              {data ? `spot ${fmtPrice(data.spotPrice)}` : '—'}
-            </span>
-            <div className="ml-auto flex items-center gap-1">
+        <PageHero
+          icon={Zap}
+          eyebrow={data ? `Risk · spot ${fmtPrice(data.spotPrice)}` : 'Risk · liq map'}
+          title="Liquidation"
+          accentNoun="levels"
+          accent="red"
+          description={
+            <>Where did traders get rekt? Where&apos;s the next cluster?
+              Historical liquidations from OKX vs forecast clusters derived
+              from open interest × leverage distribution.</>
+          }
+          className="mb-4"
+          actions={
+            <>
               <DataFreshness
                 exchangeCount={1}
                 lastUpdated={data?.meta?.timestamp ?? null}
                 sources={data?.empirical?.source === 'okx' ? ['OKX + aggregate OI'] : ['Cached + aggregate OI']}
               />
               <RefreshButton onRefresh={refresh} isRefreshing={isRefreshing} />
-            </div>
-          </div>
-          <p className="text-sm text-neutral-500">
-            Where did traders get rekt? Where's the next cluster? Historical liquidations from OKX vs. forecast clusters from open interest × leverage distribution.
-          </p>
-        </div>
+            </>
+          }
+        />
 
         {/* Symbol + window pickers */}
         <div className="flex items-center gap-3 mb-3 flex-wrap">
