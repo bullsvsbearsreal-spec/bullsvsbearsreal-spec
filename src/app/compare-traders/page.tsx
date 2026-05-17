@@ -7,6 +7,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UsdDisplay from '@/components/UsdDisplay';
 import { useTraderBookmarks } from '@/hooks/useTraderBookmarks';
+import PageHero from '@/components/PageHero';
 import Link from 'next/link';
 import { Layers, Plus, X, ExternalLink, ChevronLeft, Minus, GitCompareArrows } from 'lucide-react';
 
@@ -276,19 +277,19 @@ export default function CompareTradersPage() {
           <Link href="/hl-traders" className="text-[11px] text-neutral-500 hover:text-white">HL Traders</Link>
         </div>
 
-        {/* Header */}
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-7 h-7 rounded-md bg-hub-yellow/10 flex items-center justify-center">
-              <GitCompareArrows className="w-4 h-4 text-hub-yellow" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Compare Traders</h1>
-            <span className="text-xs text-neutral-500 font-mono">{addresses.length}/3 loaded</span>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-3xl">
-            Pick up to 3 wallets and see their stats side-by-side across GMX V2 (Arb + Avax) and Hyperliquid. Bigger numbers in each row are highlighted in yellow.
-          </p>
-        </div>
+        <PageHero
+          icon={GitCompareArrows}
+          eyebrow={`Side-by-side · ${addresses.length}/3 loaded`}
+          title="Compare"
+          accentNoun="traders"
+          accent="hub-yellow"
+          description={
+            <>Pick up to <span className="text-white font-medium">3 wallets</span> and
+              see their stats side-by-side across GMX V2 (Arb + Avax) and Hyperliquid.
+              Bigger numbers in each row are highlighted in yellow.</>
+          }
+          className="mb-4"
+        />
 
         {/* Add trader form */}
         <div className="card-premium p-3 mb-4 space-y-2">

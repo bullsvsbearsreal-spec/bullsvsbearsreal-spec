@@ -15,6 +15,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { CalendarClock, RefreshCw, AlertTriangle } from 'lucide-react';
 
 interface UnlockEvent {
@@ -125,31 +126,29 @@ export default function CliffWatchPage() {
     <>
       <Header />
       <main className="max-w-[1200px] mx-auto w-full px-4 py-6">
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-rose-500/10 flex items-center justify-center">
-              <CalendarClock className="w-4 h-4 text-rose-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Cliff Watch</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              {filtered.length} events · next {windowDays}
-            </span>
+        <PageHero
+          icon={CalendarClock}
+          eyebrow={`Events · ${filtered.length} unlocks · next ${windowDays}`}
+          title="Cliff"
+          accentNoun="watch"
+          accent="red"
+          description={
+            <>Upcoming token-unlock events ranked by impact (% of circulating supply).
+              Cliff + team + investor events surfaced first since they tend to drive
+              the biggest sell pressure. Linear + ecosystem unlocks are noted but
+              ranked lower because they&apos;ve already been priced in.</>
+          }
+          actions={
             <button
               onClick={() => load(false)}
               disabled={refreshing}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] text-xs font-semibold transition-colors disabled:opacity-40"
             >
-              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-              refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Upcoming token-unlock events ranked by impact (% of circulating supply).
-            Cliff + team + investor events surfaced first since they tend to drive
-            the biggest sell pressure. Linear + ecosystem unlocks are noted but
-            ranked lower because they&apos;ve already been priced in.
-          </p>
-        </div>
+          }
+        />
 
         {/* Window toggle + summary cards */}
         <div className="flex items-center gap-3 mb-3 flex-wrap">

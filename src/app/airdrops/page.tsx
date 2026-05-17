@@ -4,7 +4,9 @@ import { useState, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
+import PageHero from '@/components/PageHero';
 import { useApi } from '@/hooks/useSWRApi';
+import { Gift } from 'lucide-react';
 import {
   Search, Filter, ChevronDown, ChevronLeft, ChevronRight,
   ExternalLink, Star, Clock, CheckCircle2, AlertCircle,
@@ -545,36 +547,49 @@ export default function AirdropsPage() {
   return (
     <div className="w-full flex flex-col">
       <div id="main-content" className="flex-1 w-full px-4 py-5 space-y-6">
-        {/* Page header */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-white">Airdrops</h1>
-            <p className="text-sm text-neutral-500 mt-1">
-              Track upcoming and active crypto airdrops with eligibility guides
-            </p>
-          </div>
-          <div className="flex items-center gap-4 text-xs">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-green-500" />
-              <span className="text-neutral-400">{counts.active} Active</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-yellow-500" />
-              <span className="text-neutral-400">{counts.upcoming} Upcoming</span>
-            </div>
-            <span className="text-neutral-600">{counts.total} Total</span>
-            {/* Hand-curated list, NOT auto-refreshed — displaying "Updated Xh
-                ago" via DataFreshness made the page look broken (1430h+ ago,
-                red dot) when it was working as designed. Show the curator-
-                review date as a plain label instead. */}
-            {data?.dataAsOf && (
-              <span className="text-[10px] text-neutral-500">
-                <span className="w-1 h-1 rounded-full bg-emerald-500/60 inline-block mr-1.5 align-middle" />
-                Hand-curated · last reviewed {data.dataAsOf}
-              </span>
-            )}
-          </div>
-        </div>
+        <PageHero
+          icon={Gift}
+          eyebrow="Curated · eligibility guides"
+          title="Airdrop"
+          accentNoun="hunter"
+          accent="pink"
+          description={
+            <>Track upcoming and active crypto airdrops with eligibility guides.
+              Hand-curated rather than auto-scraped, so the &ldquo;not yet eligible&rdquo;
+              and &ldquo;sybil-resistance&rdquo; columns reflect what actually works
+              in practice.</>
+          }
+          actions={
+            <>
+              <div className="inline-flex items-center gap-3 text-[11px] px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06]">
+                <span className="inline-flex items-center gap-1.5 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-green-500" />
+                  <span className="text-white tabular-nums">{counts.active}</span>
+                  <span className="text-neutral-500 uppercase tracking-wider text-[9px]">active</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-yellow-500" />
+                  <span className="text-white tabular-nums">{counts.upcoming}</span>
+                  <span className="text-neutral-500 uppercase tracking-wider text-[9px]">upcoming</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 font-semibold">
+                  <span className="text-white tabular-nums">{counts.total}</span>
+                  <span className="text-neutral-500 uppercase tracking-wider text-[9px]">total</span>
+                </span>
+              </div>
+              {/* Hand-curated list, NOT auto-refreshed — displaying "Updated Xh
+                  ago" via DataFreshness made the page look broken (1430h+ ago,
+                  red dot) when it was working as designed. Show the curator-
+                  review date as a plain label instead. */}
+              {data?.dataAsOf && (
+                <span className="text-[10px] text-neutral-500 font-mono">
+                  <span className="w-1 h-1 rounded-full bg-emerald-500/60 inline-block mr-1.5 align-middle" />
+                  reviewed {data.dataAsOf}
+                </span>
+              )}
+            </>
+          }
+        />
 
         {/* Tab bar */}
         <div className="flex items-center gap-1 border-b border-white/[0.06]">

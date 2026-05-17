@@ -9,7 +9,8 @@ import { useApi } from '@/hooks/useSWRApi';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import { EXCHANGE_FEES } from '@/lib/constants/exchanges';
-import { RefreshCw, AlertTriangle, BarChart3, Table } from 'lucide-react';
+import PageHero from '@/components/PageHero';
+import { RefreshCw, AlertTriangle, BarChart3, Table, Building2 } from 'lucide-react';
 import { formatUSD } from '@/lib/utils/format';
 import DataFreshness from '@/components/DataFreshness';
 
@@ -198,25 +199,32 @@ export default function ExchangeComparisonPage() {
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <div>
-            <h1 className="heading-page">Exchange Comparison</h1>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              Compare {sorted.length} exchanges by OI, funding rates, and symbol coverage
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <DataFreshness exchangeCount={sorted.length} lastUpdated={lastUpdate} />
-            <button
-              onClick={refresh}
-              disabled={isRefreshing}
-              className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={Building2}
+          eyebrow="Markets · venue comparison"
+          title="Exchange"
+          accentNoun="comparison"
+          accent="hub-yellow"
+          description={
+            <>Compare <span className="text-white font-medium">{sorted.length} exchanges</span> by
+              OI, funding rates, and symbol coverage. Sort by any column to find your
+              best venue for a given pair or strategy.</>
+          }
+          className="mb-4"
+          actions={
+            <>
+              <DataFreshness exchangeCount={sorted.length} lastUpdated={lastUpdate} />
+              <button
+                onClick={refresh}
+                disabled={isRefreshing}
+                aria-label="Refresh"
+                className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-40"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </>
+          }
+        />
 
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-3 mb-4">

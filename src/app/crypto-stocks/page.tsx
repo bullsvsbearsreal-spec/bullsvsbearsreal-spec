@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { Building2, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 
 interface StockRow {
@@ -117,31 +118,29 @@ export default function CryptoStocksPage() {
     <>
       <Header />
       <main className="max-w-[1300px] mx-auto w-full px-4 py-6">
-        <div className="mb-5">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-blue-500/10 flex items-center justify-center">
-              <Building2 className="w-4 h-4 text-blue-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Crypto Stocks</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
-              {data?.rows.length ?? 0} tickers · 90d
-            </span>
+        <PageHero
+          icon={Building2}
+          eyebrow={`Equities · ${data?.rows.length ?? 0} tickers · 90d window`}
+          title="Crypto"
+          accentNoun="stocks"
+          accent="cyan"
+          description={
+            <>Crypto-related equities — exchanges, miners, treasury companies,
+              spot ETFs, brokers — vs BTC over the past 90 days. Beta = how
+              much the stock moves per 1.0 BTC move. Correlation = direction-only
+              fit. Many traders use these as leveraged BTC proxies.</>
+          }
+          actions={
             <button
               onClick={() => load(false)}
               disabled={refreshing}
-              className="ml-auto inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] text-xs font-semibold transition-colors disabled:opacity-40"
             >
-              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-              refresh
+              <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
             </button>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-2xl">
-            Crypto-related equities — exchanges, miners, treasury companies, spot
-            ETFs, brokers — vs BTC over the past 90 days. Beta = how much the
-            stock moves per 1.0 BTC move. Correlation = direction-only fit.
-            Many traders use these as leveraged BTC proxies.
-          </p>
-        </div>
+          }
+        />
 
         {/* BTC reference banner */}
         {data && data.btc.price != null && (
