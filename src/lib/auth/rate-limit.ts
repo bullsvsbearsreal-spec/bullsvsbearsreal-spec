@@ -2,10 +2,11 @@
  * Hybrid rate limiter for auth endpoints.
  * Uses in-memory as fast first check + DB for persistence across instances.
  *
- * On Vercel serverless, in-memory state is lost between cold starts and
- * not shared across instances. The DB layer ensures limits are enforced
- * consistently, while the in-memory layer avoids DB round-trips for
- * repeated abuse from the same instance.
+ * On any platform with cold starts (DO App Platform restarts, scale-out
+ * across multiple instances), in-memory state is per-instance and not
+ * shared. The DB layer ensures limits are enforced consistently, while
+ * the in-memory layer avoids DB round-trips for repeated abuse from
+ * the same instance.
  */
 
 import { isDBConfigured, getSQL } from '@/lib/db';
