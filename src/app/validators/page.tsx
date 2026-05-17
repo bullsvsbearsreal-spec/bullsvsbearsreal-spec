@@ -192,7 +192,7 @@ export default function ValidatorsPage() {
           (stETH, jitoSOL) you can use elsewhere; restaking adds an extra reward
           layer on top via EigenLayer / Symbiotic / Karak. APY shown is the gross
           rate before slashing risk and platform fees. Source:{' '}
-          <a href="https://defillama.com/yields" target="_blank" rel="noopener" className="text-hub-yellow hover:underline">DefiLlama Yields</a>.
+          <a href="https://defillama.com/yields" target="_blank" rel="noopener noreferrer" className="text-hub-yellow hover:underline">DefiLlama Yields</a>.
         </div>
       </main>
       <Footer />

@@ -203,7 +203,7 @@ export default function StablecoinSupplyPage() {
           on the total = ~$5B of fresh dollars freshly minted, usually parking
           on exchanges before getting deployed into spot or perps. Sustained
           contraction (USDT redemptions, USDC outflows) historically precedes
-          chop or down-moves. Source: <a href="https://defillama.com/stablecoins" target="_blank" rel="noopener" className="text-hub-yellow hover:underline">DefiLlama</a>.
+          chop or down-moves. Source: <a href="https://defillama.com/stablecoins" target="_blank" rel="noopener noreferrer" className="text-hub-yellow hover:underline">DefiLlama</a>.
         </div>
       </main>
       <Footer />

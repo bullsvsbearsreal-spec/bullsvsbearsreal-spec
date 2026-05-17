@@ -189,7 +189,7 @@ export default function MemecoinRadarPage() {
           combining 1h volume and 1h price move so genuine momentum (high vol +
           big % move) ranks above tokens with one but not the other. Liquidity
           floor of $25k filters the worst rugs. Mcap = circulating × price (or FDV
-          if circ unknown). Source: <a href="https://dexscreener.com" target="_blank" rel="noopener" className="text-hub-yellow hover:underline">DexScreener</a>.
+          if circ unknown). Source: <a href="https://dexscreener.com" target="_blank" rel="noopener noreferrer" className="text-hub-yellow hover:underline">DexScreener</a>.
           Cached 60s. <em>Memecoins are extremely high-risk. Do your own research.</em>
         </div>
       </main>

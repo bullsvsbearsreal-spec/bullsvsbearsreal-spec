@@ -125,7 +125,7 @@ export default function EtfFlowsPage() {
               <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
                 Daily net inflows / outflows for spot {asset === 'btc' ? 'Bitcoin' : 'Ethereum'} ETFs,
                 broken out by issuer. Source:{' '}
-                <a href="https://farside.co.uk" target="_blank" rel="noopener" className="text-hub-yellow hover:underline">Farside Investors</a>.
+                <a href="https://farside.co.uk" target="_blank" rel="noopener noreferrer" className="text-hub-yellow hover:underline">Farside Investors</a>.
                 Updated once per US trading day after the close — last{' '}
                 <span className="text-white font-medium">{data?.days.length ?? 0} days</span> shown.
               </p>
@@ -353,7 +353,7 @@ export default function EtfFlowsPage() {
           Negative = redemptions. Daily net flow is one of the cleanest demand
           indicators since the spot ETFs launched. Multi-day inflow streaks
           historically coincide with strong rallies; sustained outflows precede pullbacks.
-          Source: <a href="https://farside.co.uk" target="_blank" rel="noopener" className="text-hub-yellow hover:underline">Farside Investors</a>.
+          Source: <a href="https://farside.co.uk" target="_blank" rel="noopener noreferrer" className="text-hub-yellow hover:underline">Farside Investors</a>.
           Cached 30 minutes.
         </div>
       </main>

@@ -286,7 +286,7 @@ export default function DocsPage() {
                 <a
                   href="https://info-hub.io/api/v1/openapi"
                   target="_blank"
-                  rel="noopener"
+                  rel="noopener noreferrer"
                   className="flex items-center gap-2 bg-white/[0.02] border border-white/[0.06] hover:border-amber-500/40 hover:bg-amber-500/[0.04] rounded-lg px-3 py-2 transition-colors group"
                 >
                   <span className="text-[10px] text-gray-500 group-hover:text-amber-400/80 uppercase tracking-wider font-medium transition-colors">OpenAPI 3.1</span>

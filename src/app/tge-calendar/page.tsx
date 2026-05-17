@@ -333,7 +333,7 @@ export default function TgeCalendarPage() {
           rest vests with the cliff shown. Low init + short cliff = max sell pressure
           early. Recently launched is auto-pulled from CoinGecko&apos;s &quot;recently added&quot;
           category. Cached 30 minutes. Spot something missing?{' '}
-          <a href="https://x.com/info_hub69" target="_blank" rel="noopener" className="text-hub-yellow hover:underline">DM @info_hub69</a>.
+          <a href="https://x.com/info_hub69" target="_blank" rel="noopener noreferrer" className="text-hub-yellow hover:underline">DM @info_hub69</a>.
         </div>
       </main>
       <Footer />

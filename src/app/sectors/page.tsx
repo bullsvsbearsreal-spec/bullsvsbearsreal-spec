@@ -225,7 +225,7 @@ export default function SectorsPage() {
 
         <div className="mt-4 p-3 bg-white/[0.02] rounded-lg text-[11px] text-neutral-500 leading-relaxed">
           Curated set of {sorted.length || 0} sectors with &gt;$50M market cap.
-          Source: <a href="https://www.coingecko.com" target="_blank" rel="noopener" className="text-hub-yellow hover:underline">CoinGecko</a> categories.
+          Source: <a href="https://www.coingecko.com" target="_blank" rel="noopener noreferrer" className="text-hub-yellow hover:underline">CoinGecko</a> categories.
           24h % is the aggregate market-cap change. Refreshes every 5 minutes.
         </div>
       </main>
