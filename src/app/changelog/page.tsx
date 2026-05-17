@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import Link from 'next/link';
 import { CHANGELOG, type ChangelogEntry, type ChangelogTag } from '@/lib/changelog';
 import { Sparkles, ArrowRight, Printer, Shield } from 'lucide-react';
@@ -158,32 +159,27 @@ export default function ChangelogPage() {
     <>
       <Header />
       <main id="main-content" className="max-w-[900px] mx-auto w-full px-4 py-8 print:py-0 print:max-w-full">
-        <header className="mb-6 print:mb-4">
-          <div className="flex items-center gap-2 mb-2 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-hub-yellow/10 flex items-center justify-center print:bg-transparent print:border print:border-black">
-              <Sparkles className="w-4 h-4 text-hub-yellow print:text-black" />
-            </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight print:text-black">Changelog</h1>
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono ml-2 print:text-neutral-700">
-              {CHANGELOG.length} releases
-            </span>
+        <PageHero
+          icon={Sparkles}
+          eyebrow={`${CHANGELOG.length} releases`}
+          title="Product"
+          accentNoun="changelog"
+          accent="hub-yellow"
+          description="What we've shipped recently. New features, fixes, and improvements to the InfoHub data terminal. No marketing fluff — what changed and why it matters."
+          actions={
             <button
               onClick={handlePrint}
-              className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-neutral-300 hover:text-white hover:border-hub-yellow/30 transition-all text-xs font-medium print:hidden"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-neutral-300 hover:text-white hover:border-hub-yellow/30 transition-all text-xs font-medium print:hidden"
               title="Print or save as PDF"
             >
               <Printer className="w-3.5 h-3.5" />
               Print / Save PDF
             </button>
-          </div>
-          <p className="text-sm text-neutral-500 max-w-xl leading-relaxed print:text-neutral-700">
-            What we&apos;ve shipped recently. New features, fixes, and improvements to the InfoHub
-            data terminal. No marketing fluff — what changed and why it matters.
-          </p>
-          <p className="hidden print:block text-[10px] text-neutral-500 mt-2">
-            Generated from <span className="font-mono">info-hub.io/changelog</span> · {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
-          </p>
-        </header>
+          }
+        />
+        <p className="hidden print:block text-[10px] text-neutral-500 -mt-3 mb-4">
+          Generated from <span className="font-mono">info-hub.io/changelog</span> · {new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
+        </p>
 
         <section>
           {CHANGELOG.map((entry, i) => (

@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import {
   Key,
   Wallet,
@@ -15,6 +16,7 @@ import {
   ExternalLink,
   Bell,
   BellOff,
+  Plug,
 } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 
@@ -149,14 +151,19 @@ export default function ConnectionsPage() {
     <>
       <Header />
       <main className="max-w-[900px] mx-auto w-full px-4 py-6">
-        {/* Hero */}
-        <div className="mb-5">
-          <h1 className="text-xl font-bold text-white">Connections</h1>
-          <p className="text-sm text-neutral-500 mt-1">
-            Connect your CEX API keys and wallet addresses so InfoHub can show you a unified
-            portfolio view at <a href="/positions" className="text-hub-yellow hover:underline">/positions</a>.
-          </p>
-        </div>
+        <PageHero
+          icon={Plug}
+          eyebrow="Account"
+          title="Exchange"
+          accentNoun="connections"
+          accent="cyan"
+          description={
+            <>
+              Connect your CEX API keys and wallet addresses so InfoHub can show you a unified
+              portfolio view at <a href="/positions" className="text-hub-yellow hover:underline">/positions</a>.
+            </>
+          }
+        />
 
         {/* Security explainer */}
         <div className="card-premium p-3 mb-5 border border-amber-500/20 bg-amber-500/[0.03]">

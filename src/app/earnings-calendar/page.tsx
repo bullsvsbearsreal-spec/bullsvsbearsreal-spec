@@ -9,6 +9,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { Calendar, Filter, ExternalLink, Lock, Rocket, Vote, Sparkles, RefreshCw } from 'lucide-react';
 
 interface EarningsEvent {
@@ -137,24 +138,23 @@ export default function EarningsCalendarPage() {
     <>
       <Header />
       <main className="max-w-[1200px] mx-auto px-4 py-6">
-        <div className="mb-4 flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2">
-              <Calendar className="w-5 h-5 text-hub-yellow" />
-              <h1 className="text-2xl font-bold text-white">Crypto Earnings Calendar</h1>
-            </div>
-            <p className="text-sm text-neutral-500 mt-1">
-              Every protocol event that moves price — token unlocks, TGEs, BTC halving, active governance votes — in one timeline.
-            </p>
-          </div>
-          <button
-            onClick={load}
-            disabled={loading}
-            className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
-          >
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> refresh
-          </button>
-        </div>
+        <PageHero
+          icon={Calendar}
+          eyebrow="Event timeline"
+          title="Crypto"
+          accentNoun="earnings"
+          accent="violet"
+          description="Every protocol event that moves price — token unlocks, TGEs, BTC halving, active governance votes — in one timeline."
+          actions={
+            <button
+              onClick={load}
+              disabled={loading}
+              className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> refresh
+            </button>
+          }
+        />
 
         {/* Summary */}
         {data && (

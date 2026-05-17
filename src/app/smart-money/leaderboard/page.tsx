@@ -11,6 +11,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { Trophy, RefreshCw, ExternalLink, AlertCircle, ArrowLeft } from 'lucide-react';
 
 interface SmartMoneyEntry {
@@ -94,29 +95,23 @@ export default function SmartMoneyLeaderboardPage() {
         <Link href="/smart-money" className="text-[11px] text-neutral-500 hover:text-hub-yellow inline-flex items-center gap-1 mb-2">
           <ArrowLeft className="w-3 h-3" /> back to smart-money overview
         </Link>
-        <div className="mb-4 flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-amber-400" />
-              <h1 className="text-2xl font-bold text-white">Top Traders Leaderboard</h1>
-              <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-400/15 text-amber-400 font-bold">
-                live
-              </span>
-            </div>
-            <p className="text-sm text-neutral-500 mt-1 max-w-3xl">
-              Top Hyperliquid wallets ranked by REALIZED PnL — closing trades only, last {lookback} days.
-              Hyperliquid is the rare venue where every fill is publicly indexable, so we get Nansen-tier
-              data on every wallet for free. Click any row for full position + trade history.
-            </p>
-          </div>
-          <button
-            onClick={load}
-            disabled={loading}
-            className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
-          >
-            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> refresh
-          </button>
-        </div>
+        <PageHero
+          icon={Trophy}
+          eyebrow="Live · HL realized PnL"
+          title="Top trader"
+          accentNoun="leaderboard"
+          accent="orange"
+          description={<>Top Hyperliquid wallets ranked by REALIZED PnL — closing trades only, last {lookback} days. Hyperliquid is the rare venue where every fill is publicly indexable, so we get Nansen-tier data for free. Click any row for full position + trade history.</>}
+          actions={
+            <button
+              onClick={load}
+              disabled={loading}
+              className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
+            >
+              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> refresh
+            </button>
+          }
+        />
 
         <div className="flex items-center gap-3 mb-4 flex-wrap">
           <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium">Top:</span>

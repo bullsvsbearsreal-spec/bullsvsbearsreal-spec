@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { ArrowLeft, BookOpen, TrendingUp, TrendingDown, RefreshCw, Filter, ExternalLink } from 'lucide-react';
 
 interface TradeRow {
@@ -169,25 +170,17 @@ export default function JournalPage() {
     <>
       <Header />
       <main className="max-w-[1400px] mx-auto px-4 py-6">
-        <div className="mb-6">
-          <Link href="/positions" className="text-[11px] text-neutral-500 hover:text-hub-yellow inline-flex items-center gap-1 mb-2">
-            <ArrowLeft className="w-3 h-3" /> back to positions
-          </Link>
-          <div className="flex items-start justify-between gap-3 flex-wrap">
-            <div>
-              <div className="flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-hub-yellow" />
-                <h1 className="text-2xl font-bold text-white">Trade Journal</h1>
-                <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-hub-yellow/15 text-hub-yellow font-bold">
-                  beta
-                </span>
-              </div>
-              <p className="text-sm text-neutral-500 mt-1">
-                Every closed trade across your connected wallets and keys, with realised PnL,
-                win rate, and a 90-day cumulative chart. Live for Hyperliquid, Binance, Bybit,
-                and OKX. More venues coming as their clients gain trade-history support.
-              </p>
-            </div>
+        <Link href="/positions" className="text-[11px] text-neutral-500 hover:text-hub-yellow inline-flex items-center gap-1 mb-2">
+          <ArrowLeft className="w-3 h-3" /> back to positions
+        </Link>
+        <PageHero
+          icon={BookOpen}
+          eyebrow="Beta"
+          title="Trade"
+          accentNoun="journal"
+          accent="hub-yellow"
+          description="Every closed trade across your connected wallets and keys, with realised PnL, win rate, and a 90-day cumulative chart. Live for Hyperliquid, Binance, Bybit, and OKX."
+          actions={
             <button
               onClick={load}
               disabled={loading}
@@ -195,8 +188,9 @@ export default function JournalPage() {
             >
               <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> refresh
             </button>
-          </div>
-        </div>
+          }
+          className="mb-6"
+        />
 
         {error && (
           <div className="card-premium p-4 border border-red-400/30 bg-red-500/5 text-sm text-red-300 mb-4">

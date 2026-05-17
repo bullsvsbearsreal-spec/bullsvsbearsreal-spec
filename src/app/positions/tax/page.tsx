@@ -18,6 +18,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import { ArrowLeft, Calculator, RefreshCw, Download, Info } from 'lucide-react';
 
 interface OpenPosition {
@@ -146,39 +147,33 @@ export default function TaxPage() {
         <Link href="/positions" className="text-[11px] text-neutral-500 hover:text-hub-yellow inline-flex items-center gap-1 mb-2">
           <ArrowLeft className="w-3 h-3" /> back to positions
         </Link>
-        <div className="mb-4 flex items-start justify-between gap-3 flex-wrap">
-          <div>
-            <div className="flex items-center gap-2">
-              <Calculator className="w-5 h-5 text-hub-yellow" />
-              <h1 className="text-2xl font-bold text-white">Tax / Cost-Basis</h1>
-              <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-hub-yellow/15 text-hub-yellow font-bold">
-                FIFO · beta
-              </span>
-            </div>
-            <p className="text-sm text-neutral-500 mt-1 max-w-3xl">
-              Aggregate cost-basis + realised PnL across every connected wallet & key. FIFO accounting
-              over your entire trade history. Live for Hyperliquid, Binance, Bybit, and OKX.
-              Numbers are estimates — confirm with your accountant before filing.
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            {summary && (
+        <PageHero
+          icon={Calculator}
+          eyebrow="FIFO · beta"
+          title="Tax /"
+          accentNoun="cost-basis"
+          accent="hub-yellow"
+          description="Aggregate cost-basis + realised PnL across every connected wallet & key. FIFO accounting over your entire trade history. Live for Hyperliquid, Binance, Bybit, and OKX. Numbers are estimates — confirm with your accountant before filing."
+          actions={
+            <>
+              {summary && (
+                <button
+                  onClick={downloadCsv}
+                  className="inline-flex items-center gap-1 text-xs text-hub-yellow hover:text-hub-yellow/80 px-2 py-1 rounded border border-hub-yellow/30 bg-hub-yellow/5"
+                >
+                  <Download className="w-3 h-3" /> Export CSV
+                </button>
+              )}
               <button
-                onClick={downloadCsv}
-                className="inline-flex items-center gap-1 text-xs text-hub-yellow hover:text-hub-yellow/80 px-2 py-1 rounded border border-hub-yellow/30 bg-hub-yellow/5"
+                onClick={load}
+                disabled={loading}
+                className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
               >
-                <Download className="w-3 h-3" /> Export CSV
+                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> refresh
               </button>
-            )}
-            <button
-              onClick={load}
-              disabled={loading}
-              className="inline-flex items-center gap-1 text-xs text-neutral-500 hover:text-hub-yellow disabled:opacity-40"
-            >
-              <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} /> refresh
-            </button>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         {data?.note && (
           <div className="card-premium p-3 mb-4 border border-amber-400/30 bg-amber-500/5 text-[11px] text-amber-300 inline-flex items-start gap-2">

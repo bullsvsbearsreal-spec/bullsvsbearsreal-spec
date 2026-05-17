@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import PageHero from '@/components/PageHero';
 import {
   ArrowLeft, Calculator, TrendingUp, TrendingDown, ChevronDown,
   AlertTriangle, AlertOctagon, AlertCircle, Activity, ShieldCheck,
@@ -159,23 +160,17 @@ export default function SimulatePage() {
     <>
       <Header />
       <main className="max-w-[1400px] mx-auto px-4 py-6">
-        {/* Header */}
-        <div className="mb-6">
-          <Link href="/positions" className="text-[11px] text-neutral-500 hover:text-hub-yellow inline-flex items-center gap-1 mb-2">
-            <ArrowLeft className="w-3 h-3" /> back to positions
-          </Link>
-          <div className="flex items-center gap-2">
-            <Calculator className="w-5 h-5 text-hub-yellow" />
-            <h1 className="text-2xl font-bold text-white">Pre-Trade Decision Engine</h1>
-            <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-hub-yellow/15 text-hub-yellow font-bold">
-              what-if
-            </span>
-          </div>
-          <p className="text-sm text-neutral-500 mt-1">
-            Plug in a hypothetical trade and see its impact on your book BEFORE you execute.
-            No state mutation — your real positions are not touched.
-          </p>
-        </div>
+        <Link href="/positions" className="text-[11px] text-neutral-500 hover:text-hub-yellow inline-flex items-center gap-1 mb-2">
+          <ArrowLeft className="w-3 h-3" /> back to positions
+        </Link>
+        <PageHero
+          icon={Calculator}
+          eyebrow="What-if engine"
+          title="Pre-trade"
+          accentNoun="simulator"
+          accent="hub-yellow"
+          description="Plug in a hypothetical trade and see its impact on your book BEFORE you execute. No state mutation — your real positions are not touched."
+        />
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {/* ─── Form (left, 1 col) ───────────────────────────────── */}
