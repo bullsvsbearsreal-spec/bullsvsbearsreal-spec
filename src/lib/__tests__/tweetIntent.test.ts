@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { tweetIntent } from '../tweetIntent';
+import { tweetIntent, telegramShareIntent } from '../tweetIntent';
 
 describe('tweetIntent', () => {
   it('encodes plain text', () => {
@@ -53,5 +53,43 @@ describe('tweetIntent', () => {
     const url = tweetIntent({ text: '🔥 hot take' });
     const parsed = new URL(url);
     expect(parsed.searchParams.get('text')).toBe('🔥 hot take');
+  });
+});
+
+describe('telegramShareIntent', () => {
+  it('builds the canonical share URL with url= param', () => {
+    const url = telegramShareIntent({ url: 'https://info-hub.io/invite' });
+    const parsed = new URL(url);
+    expect(parsed.host).toBe('t.me');
+    expect(parsed.pathname).toBe('/share/url');
+    expect(parsed.searchParams.get('url')).toBe('https://info-hub.io/invite');
+  });
+
+  it('includes text when provided', () => {
+    const url = telegramShareIntent({
+      url: 'https://info-hub.io/invite',
+      text: 'derivatives terminal · free tier',
+    });
+    expect(url).toContain('text=derivatives+terminal');
+  });
+
+  it('omits text= when not provided', () => {
+    const url = telegramShareIntent({ url: 'https://info-hub.io' });
+    expect(url).not.toContain('text=');
+  });
+
+  it('url-encodes the URL itself (e.g. query string params)', () => {
+    const url = telegramShareIntent({
+      url: 'https://info-hub.io/signup?ref=ABCD123456',
+    });
+    expect(url).toContain('signup%3Fref%3DABCD123456');
+  });
+
+  it('returns a valid URL parseable by URL constructor', () => {
+    const url = telegramShareIntent({
+      url: 'https://info-hub.io/signup?ref=XYZ',
+      text: 'check this out',
+    });
+    expect(() => new URL(url)).not.toThrow();
   });
 });

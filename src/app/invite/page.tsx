@@ -19,7 +19,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PageHero from '@/components/PageHero';
-import { tweetIntent } from '@/lib/tweetIntent';
+import { tweetIntent, telegramShareIntent } from '@/lib/tweetIntent';
 import {
   Send, Copy, Check, ExternalLink, Twitter, MessageCircle,
   TrendingUp, Users, Gift, Lock, MessageSquare,
@@ -165,7 +165,7 @@ export default function InvitePage() {
   // chat context. ?url and ?text are concatenated by Telegram into one
   // message preview.
   const telegramShareText = `Been using InfoHub — derivatives terminal with funding rates, OI, and liq data across every venue. Free tier covers basically everything.`;
-  const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=${encodeURIComponent(telegramShareText)}`;
+  const telegramUrl = telegramShareIntent({ url: shareUrl, text: telegramShareText });
 
   return (
     <div className="min-h-screen bg-hub-black">

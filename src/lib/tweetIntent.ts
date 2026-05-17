@@ -35,3 +35,25 @@ export function tweetIntent(opts: TweetIntentOpts): string {
   }
   return `https://twitter.com/intent/tweet?${params.toString()}`;
 }
+
+/**
+ * Build a Telegram share-intent URL. Telegram concatenates `url`
+ * and `text` into a single message in the chosen chat. Most crypto-
+ * native share channel, so worth a dedicated helper alongside
+ * tweetIntent.
+ *
+ * spec: https://core.telegram.org/widgets/share
+ */
+export interface TelegramShareOpts {
+  /** The URL being shared. */
+  url: string;
+  /** Optional caption / message body. */
+  text?: string;
+}
+
+export function telegramShareIntent(opts: TelegramShareOpts): string {
+  const params = new URLSearchParams();
+  params.set('url', opts.url);
+  if (opts.text) params.set('text', opts.text);
+  return `https://t.me/share/url?${params.toString()}`;
+}
