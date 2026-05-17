@@ -4,7 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Shield } from 'lucide-react';
+import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Shield, Gift } from 'lucide-react';
 
 export default function UserMenu() {
   const { data: session, status } = useSession();
@@ -136,6 +136,16 @@ export default function UserMenu() {
           >
             <Settings className="w-3.5 h-3.5" />
             Settings
+          </Link>
+
+          {/* Invite friends */}
+          <Link
+            href="/invite"
+            onClick={() => setOpen(false)}
+            className="w-full flex items-center gap-2.5 px-4 py-2.5 text-[13px] text-neutral-400 hover:text-emerald-300 hover:bg-emerald-500/[0.06] transition-colors"
+          >
+            <Gift className="w-3.5 h-3.5" />
+            Invite friends
           </Link>
 
           {/* Admin Panel — for admins and advisors */}

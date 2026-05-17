@@ -28,7 +28,7 @@ import { useAggregatorHealth } from '@/hooks/useAggregatorHealth';
 import {
   Activity, BarChart3, Zap, Percent, Grid3X3, ArrowLeftRight, Crosshair,
   Rocket, Crown, GitCompareArrows, Newspaper, Unlock, LineChart, Bitcoin,
-  Thermometer, Star, Wallet, Bell, Eye, ChevronRight, Flame, TrendingUp, TrendingDown,
+  Thermometer, Star, Wallet, Bell, Eye, ChevronRight, Flame, Gift, TrendingUp, TrendingDown,
 } from 'lucide-react';
 
 /* ─── Sidebar nav (terminal-style category tree) ─── */
@@ -74,6 +74,7 @@ const NAV_GROUPS = [
       { name: 'Watchlist',     href: '/watchlist',     icon: Star },
       { name: 'Trader Watch',  href: '/trader-watch',  icon: Eye },
       { name: 'Alerts',        href: '/alerts',        icon: Bell },
+      { name: 'Invite',        href: '/invite',        icon: Gift },
     ],
   },
 ];
