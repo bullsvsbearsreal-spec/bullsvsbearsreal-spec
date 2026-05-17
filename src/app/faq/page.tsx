@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PageHero from '@/components/PageHero';
 import { ALL_EXCHANGES } from '@/lib/constants';
+import { slugify } from '@/lib/slugify';
 import { HelpCircle, ChevronDown, Search, X, Link as LinkIcon } from 'lucide-react';
 
 /* -- Types --------------------------------------------------------------- */
@@ -152,21 +153,6 @@ const categoryDescriptions: Record<FAQCategory, string> = {
 
 /* -- FAQ Item Component --------------------------------------------------- */
 
-/**
- * Slugify a question into a stable URL fragment so users can deep-
- * link to a specific Q from blog posts / Discord. e.g. "What is
- * InfoHub?" → "what-is-infohub". Stable across renders because it
- * runs on the question string, not an index.
- */
-function slugify(s: string): string {
-  return s
-    .toLowerCase()
-    .replace(/['"`]/g, '')                    // strip apostrophes / quotes
-    .replace(/[^a-z0-9]+/g, '-')              // non-alphanumerics → -
-    .replace(/^-+|-+$/g, '')                  // trim leading/trailing -
-    .slice(0, 60);                            // keep URLs reasonable
-}
-
 function FAQItem({
   question,
   answer,
@@ -295,14 +281,7 @@ export default function FAQPage() {
   useEffect(() => {
     const hash = window.location.hash.replace(/^#/, '');
     if (!hash) return;
-    const match = faqs.find(
-      (f) => f.q
-        .toLowerCase()
-        .replace(/['"`]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-+|-+$/g, '')
-        .slice(0, 60) === hash,
-    );
+    const match = faqs.find((f) => slugify(f.q) === hash);
     if (match) {
       setOpenItems((prev) => new Set(prev).add(match.q));
       // Re-trigger scroll after the open animation expands the panel
