@@ -39,7 +39,7 @@ ssh root@46.101.247.54
 systemctl status infohub-aggregator
 journalctl -u infohub-aggregator -n 200 -f
 
-# Crons (12 timers, all hit info-hub.io/api/cron/*).
+# Crons (13 timers, all hit info-hub.io/api/cron/*).
 # Note: /api/cron/watch-hl-wallets does NOT have its own timer —
 # it piggybacks on the snapshot cron's tail-call (see "Wallet
 # Watch" section below). One cron handles both jobs every 60s.
