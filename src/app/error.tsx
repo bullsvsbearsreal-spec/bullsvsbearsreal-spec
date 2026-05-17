@@ -36,7 +36,7 @@ export default function Error({
           href="/home"
           className="px-4 py-2 bg-white/5 border border-white/10 text-white rounded-lg font-medium text-sm hover:bg-white/10 transition-colors"
         >
-          Back to dashboard
+          Back home
         </a>
       </div>
     </main>
