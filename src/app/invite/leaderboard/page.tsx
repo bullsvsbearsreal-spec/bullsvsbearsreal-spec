@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -63,7 +64,9 @@ function MedalIcon({ rank }: { rank: number }) {
 }
 
 export default function InviteLeaderboardPage() {
+  const { status } = useSession();
   const [data, setData] = useState<LeaderboardResp | null>(null);
+  const [myCodePrefix, setMyCodePrefix] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -73,13 +76,27 @@ export default function InviteLeaderboardPage() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch('/api/invite/leaderboard');
-        const json = await res.json();
+        // Pull leaderboard always; pull my-stats only if signed in
+        // (so logged-out visitors don't burn an auth round-trip).
+        const isAuthed = status === 'authenticated';
+        const promises: Promise<Response>[] = [fetch('/api/invite/leaderboard')];
+        if (isAuthed) promises.push(fetch('/api/invite/stats'));
+        const [lbRes, myRes] = await Promise.all(promises);
+
         if (cancelled) return;
-        if (!res.ok) {
+        const lbJson = await lbRes.json();
+        if (!lbRes.ok) {
           setError('Could not load the leaderboard. Try refreshing.');
         } else {
-          setData(json);
+          setData(lbJson);
+        }
+        if (myRes && myRes.ok) {
+          const myJson = await myRes.json();
+          // First 4 chars of MY code — same prefix the leaderboard
+          // entries use. If MY entry is in the top 20 we'll highlight it.
+          if (typeof myJson?.code === 'string') {
+            setMyCodePrefix(myJson.code.slice(0, 4));
+          }
         }
       } catch {
         if (!cancelled) setError('Network error — could not reach the server.');
@@ -88,9 +105,12 @@ export default function InviteLeaderboardPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [status]);
 
   const entries = data?.entries ?? [];
+  const myEntry = myCodePrefix
+    ? entries.find((e) => e.codePrefix === myCodePrefix) ?? null
+    : null;
 
   return (
     <div className="min-h-screen bg-hub-black">
@@ -147,6 +167,29 @@ export default function InviteLeaderboardPage() {
           </div>
         )}
 
+        {/* 'You are here' callout when signed-in user appears on the
+            board — gives them an at-a-glance confirmation + a path to
+            share their rank. */}
+        {myEntry && (
+          <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/[0.05] px-4 py-3 mb-3 flex items-center gap-3 flex-wrap">
+            <Trophy className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-emerald-300">
+                You&apos;re ranked #{myEntry.rank} on the leaderboard
+              </div>
+              <div className="text-xs text-neutral-400">
+                {myEntry.verified} verified · {myEntry.signups} signups via your link
+              </div>
+            </div>
+            <Link
+              href="/invite"
+              className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-300 hover:text-emerald-200 px-3 py-1.5 rounded-lg border border-emerald-400/40 hover:bg-emerald-500/10"
+            >
+              Share your link <ArrowRight className="w-3 h-3" />
+            </Link>
+          </div>
+        )}
+
         {entries.length > 0 && (
           <>
             <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden mb-3">
@@ -156,24 +199,36 @@ export default function InviteLeaderboardPage() {
                 <div className="text-right">Sign-ups</div>
                 <div className="text-right">Verified</div>
               </div>
-              {entries.map((e) => (
-                <div
-                  key={e.codePrefix}
-                  className="grid grid-cols-[40px_1fr_80px_80px] gap-2 items-center px-4 py-3 border-b border-white/[0.04] hover:bg-white/[0.02] transition-colors"
-                >
-                  <MedalIcon rank={e.rank} />
-                  <div className="font-mono text-[13px] text-neutral-300 tracking-wider">
-                    {e.codePrefix}<span className="text-neutral-600">******</span>
+              {entries.map((e) => {
+                const isMe = myEntry?.codePrefix === e.codePrefix;
+                return (
+                  <div
+                    key={e.codePrefix}
+                    className={`grid grid-cols-[40px_1fr_80px_80px] gap-2 items-center px-4 py-3 border-b border-white/[0.04] transition-colors ${
+                      isMe
+                        ? 'bg-emerald-500/[0.06] hover:bg-emerald-500/[0.08]'
+                        : 'hover:bg-white/[0.02]'
+                    }`}
+                  >
+                    <MedalIcon rank={e.rank} />
+                    <div className="font-mono text-[13px] text-neutral-300 tracking-wider inline-flex items-center gap-2">
+                      {e.codePrefix}<span className="text-neutral-600">******</span>
+                      {isMe && (
+                        <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 border border-emerald-400/30 text-emerald-300">
+                          you
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-right font-mono tabular-nums text-[13px] text-white">
+                      {e.signups.toLocaleString()}
+                    </div>
+                    <div className="text-right font-mono tabular-nums text-[13px] text-emerald-300 inline-flex items-center justify-end gap-1">
+                      <TrendingUp className="w-3 h-3 opacity-50" />
+                      {e.verified.toLocaleString()}
+                    </div>
                   </div>
-                  <div className="text-right font-mono tabular-nums text-[13px] text-white">
-                    {e.signups.toLocaleString()}
-                  </div>
-                  <div className="text-right font-mono tabular-nums text-[13px] text-emerald-300 inline-flex items-center justify-end gap-1">
-                    <TrendingUp className="w-3 h-3 opacity-50" />
-                    {e.verified.toLocaleString()}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             {data?.generatedAt && (
               <p className="text-[10px] text-neutral-600 font-mono text-right mb-6">
