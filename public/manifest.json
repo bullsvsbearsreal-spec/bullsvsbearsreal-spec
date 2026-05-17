@@ -1,10 +1,10 @@
 {
-  "name": "InfoHub — Crypto Derivatives Intelligence",
+  "name": "InfoHub — Real-Time Derivatives Data",
   "short_name": "InfoHub",
-  "description": "Real-time crypto derivatives dashboard aggregating 30+ exchanges",
+  "description": "Real-time funding rates, open interest, liquidations, and arbitrage tools across 32 crypto derivatives exchanges.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#000000",
+  "background_color": "#0a0a0a",
   "theme_color": "#0f1117",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
