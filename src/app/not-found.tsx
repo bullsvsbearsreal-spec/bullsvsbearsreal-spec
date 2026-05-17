@@ -22,7 +22,7 @@ export default function NotFound() {
             href="/home"
             className="px-4 py-2 bg-hub-yellow text-black rounded-lg font-medium text-sm hover:bg-hub-yellow/90 transition-colors"
           >
-            Dashboard
+            Home
           </Link>
           <Link
             href="/funding"
