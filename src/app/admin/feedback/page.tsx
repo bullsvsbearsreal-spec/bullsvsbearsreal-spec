@@ -250,6 +250,7 @@ export default function AdminFeedbackPage() {
                       <Link
                         href={r.pageUrl}
                         target="_blank"
+                        rel="noopener noreferrer"
                         className="text-xs font-mono text-hub-yellow hover:underline inline-flex items-center gap-1"
                       >
                         {r.pageUrl}
