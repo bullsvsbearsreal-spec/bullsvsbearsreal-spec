@@ -69,9 +69,10 @@ const NAV_GROUPS = [
   {
     label: 'My Tools',
     items: [
-      { name: 'Dashboard', href: '/dashboard', icon: BarChart3 },
-      { name: 'Watchlist', href: '/watchlist', icon: Star },
-      { name: 'Alerts',    href: '/alerts',    icon: Bell },
+      { name: 'Dashboard',     href: '/dashboard',     icon: BarChart3 },
+      { name: 'Watchlist',     href: '/watchlist',     icon: Star },
+      { name: 'Trader Watch',  href: '/trader-watch',  icon: Eye },
+      { name: 'Alerts',        href: '/alerts',        icon: Bell },
     ],
   },
 ];
