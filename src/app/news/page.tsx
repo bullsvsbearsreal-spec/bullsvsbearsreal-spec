@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
+import PageHero from '@/components/PageHero';
 import { Newspaper, ExternalLink, Clock, Search, RefreshCw, X, ChevronLeft, ChevronRight, TrendingUp, ThumbsUp, ThumbsDown, ArrowUp, LayoutGrid, List, Calendar, AlertTriangle, Bookmark, BookmarkCheck, Eye, EyeOff } from 'lucide-react';
 import DataFreshness from '@/components/DataFreshness';
 import SoundToggle from '@/components/SoundToggle';
@@ -355,59 +356,70 @@ export default function NewsPage() {
       <Header />
 
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
-        {/* Page Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="heading-page">Market News</h1>
-            <p className="text-neutral-500 text-xs mt-0.5">
-              {sources.length > 0 ? `${sources.length} sources` : 'Loading sources...'}
-              {hasCryptoPanic && <span className="text-emerald-400 ml-2">+ sentiment</span>}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <DataFreshness exchangeCount={sources.length} lastUpdated={lastFetched} />
-            <SoundToggle />
-            {/* View toggle */}
-            <div className="flex items-center bg-white/[0.04] rounded-md overflow-hidden border border-white/[0.06]">
-              <button
-                onClick={() => setViewMode('cards')}
-                className={`p-1.5 transition-colors ${viewMode === 'cards' ? 'bg-white/[0.08] text-white' : 'text-neutral-500 hover:text-neutral-300'}`}
-                title="Card view"
-              >
-                <LayoutGrid className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => setViewMode('feed')}
-                className={`p-1.5 transition-colors ${viewMode === 'feed' ? 'bg-white/[0.08] text-white' : 'text-neutral-500 hover:text-neutral-300'}`}
-                title="Feed view"
-              >
-                <List className="w-3.5 h-3.5" />
-              </button>
-            </div>
+        <PageHero
+          icon={Newspaper}
+          eyebrow={
+            sources.length > 0
+              ? hasCryptoPanic ? `Feed · ${sources.length} sources + sentiment` : `Feed · ${sources.length} sources`
+              : 'Feed · loading…'
+          }
+          title="Market"
+          accentNoun="news"
+          accent="hub-yellow"
+          description={
+            <>Aggregated crypto news from {sources.length || '20+'} curated sources.
+              Bookmark anything you want to revisit, switch to feed view for the
+              denser scan layout, mute &ldquo;already read&rdquo; with the eye toggle.</>
+          }
+          className="mb-6"
+          actions={
+            <>
+              <DataFreshness exchangeCount={sources.length} lastUpdated={lastFetched} />
+              <SoundToggle />
+              {/* View toggle */}
+              <div className="inline-flex items-center bg-white/[0.04] rounded-lg overflow-hidden border border-white/[0.06]">
+                <button
+                  onClick={() => setViewMode('cards')}
+                  className={`p-1.5 transition-colors ${viewMode === 'cards' ? 'bg-white/[0.08] text-white' : 'text-neutral-500 hover:text-neutral-300'}`}
+                  title="Card view"
+                  aria-label="Card view"
+                >
+                  <LayoutGrid className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={() => setViewMode('feed')}
+                  className={`p-1.5 transition-colors ${viewMode === 'feed' ? 'bg-white/[0.08] text-white' : 'text-neutral-500 hover:text-neutral-300'}`}
+                  title="Feed view"
+                  aria-label="Feed view"
+                >
+                  <List className="w-3.5 h-3.5" />
+                </button>
+              </div>
 
-            <button
-              onClick={() => setShowBookmarks(!showBookmarks)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs transition-colors ${
-                showBookmarks
-                  ? 'bg-hub-yellow/20 text-hub-yellow'
-                  : 'bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400'
-              }`}
-              title={showBookmarks ? 'Show all' : 'Show bookmarks'}
-            >
-              {showBookmarks ? <BookmarkCheck className="w-3 h-3" /> : <Bookmark className="w-3 h-3" />}
-              {bookmarks.length > 0 && <span>{bookmarks.length}</span>}
-            </button>
+              <button
+                onClick={() => setShowBookmarks(!showBookmarks)}
+                className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-colors border ${
+                  showBookmarks
+                    ? 'bg-hub-yellow/15 text-hub-yellow border-hub-yellow/30'
+                    : 'bg-white/[0.04] hover:bg-white/[0.08] text-neutral-300 hover:text-white border-white/[0.06]'
+                }`}
+                title={showBookmarks ? 'Show all' : 'Show bookmarks'}
+              >
+                {showBookmarks ? <BookmarkCheck className="w-3 h-3" /> : <Bookmark className="w-3 h-3" />}
+                {bookmarks.length > 0 && <span className="font-mono">{bookmarks.length}</span>}
+              </button>
 
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-white/[0.04] hover:bg-white/[0.08] rounded-md text-neutral-400 text-xs transition-colors disabled:opacity-50"
-            >
-              <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-        </div>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="inline-flex items-center gap-1.5 px-3 py-2 bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] rounded-xl text-neutral-300 hover:text-white text-xs font-semibold transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </>
+          }
+        />
 
         {/* New articles banner */}
         {newCount > 0 && (

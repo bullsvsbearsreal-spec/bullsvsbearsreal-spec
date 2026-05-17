@@ -6,6 +6,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import DataFreshness from '@/components/DataFreshness';
+import PageHero from '@/components/PageHero';
 import { useApi } from '@/hooks/useSWRApi';
 import { useFlash } from '@/hooks/useFlash';
 import { formatUSD, formatCompact } from '@/lib/utils/format';
@@ -228,26 +229,32 @@ export default function OnChainPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
-        {/* Page Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="heading-page">On-Chain Metrics</h1>
-            <p className="text-neutral-600 text-xs mt-0.5">
-              Bitcoin network health, miner economics, and valuation metrics
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Blockchain']} />
-            <button
-              onClick={refresh}
-              disabled={isRefreshing}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-500 hover:text-white transition-colors text-xs"
-            >
-              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={Cpu}
+          eyebrow="On-chain · BTC network"
+          title="On-chain"
+          accentNoun="metrics"
+          accent="orange"
+          description={
+            <>Bitcoin network health, miner economics, and valuation metrics.
+              Hash rate, difficulty, fees, MVRV, NUPL — the standard toolkit for
+              reading cycle position from network state rather than price.</>
+          }
+          className="mb-8"
+          actions={
+            <>
+              <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Blockchain']} />
+              <button
+                onClick={refresh}
+                disabled={isRefreshing}
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] transition-colors text-xs font-semibold disabled:opacity-40"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+            </>
+          }
+        />
 
         {/* Error banner */}
         {error && (

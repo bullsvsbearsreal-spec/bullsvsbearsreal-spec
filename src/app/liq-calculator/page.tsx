@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UsdDisplay from '@/components/UsdDisplay';
+import PageHero from '@/components/PageHero';
 import { Calculator, Info, AlertTriangle, CheckCircle2 } from 'lucide-react';
 
 type Side = 'long' | 'short';
@@ -93,17 +94,19 @@ export default function LiqCalculatorPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <div className="w-7 h-7 rounded-md bg-cyan-500/10 flex items-center justify-center">
-              <Calculator className="w-4 h-4 text-cyan-400" />
-            </div>
-            <h1 className="text-xl font-bold text-white">Liquidation Calculator</h1>
-          </div>
-          <p className="text-sm text-neutral-500">
-            Linear perp liquidation price, breakeven, and PnL scenarios. Sized on your initial margin + leverage. Works for USDT/USDC-margined BTC, ETH, alts.
-          </p>
-        </div>
+        <PageHero
+          icon={Calculator}
+          eyebrow="Tools · pre-trade risk"
+          title="Liquidation"
+          accentNoun="calculator"
+          accent="cyan"
+          description={
+            <>Linear perp liquidation price, breakeven, and PnL scenarios. Sized
+              on your initial margin + leverage. Works for USDT/USDC-margined
+              BTC, ETH, alts.</>
+          }
+          className="mb-4"
+        />
 
         <div className="grid md:grid-cols-2 gap-4">
           {/* Inputs */}

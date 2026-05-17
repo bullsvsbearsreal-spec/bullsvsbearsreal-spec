@@ -28,6 +28,8 @@ import { useFlash } from '@/hooks/useFlash';
 import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import WatchlistStar from '@/components/WatchlistStar';
 import { useApi } from '@/hooks/useSWRApi';
+import PageHero from '@/components/PageHero';
+import { Eye } from 'lucide-react';
 import { formatUSD } from '@/lib/utils/format';
 
 
@@ -497,37 +499,45 @@ export default function HLWhalesPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-5">
-        {/* Page header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <div>
-            <h1 className="heading-page flex items-center gap-2">
-              <img src="/exchanges/hyperliquid.png" alt="Hyperliquid" className="w-6 h-6 rounded" />
-              Hyperliquid Whale Tracker
-            </h1>
-            <p className="text-neutral-600 text-xs mt-0.5">
-              Live positions of top traders ($5M+) from the Hyperliquid leaderboard
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {(() => {
-              const ref = getExchangeReferralUrl('Hyperliquid');
-              return ref ? (
-                <a href={ref} target="_blank" rel="noopener noreferrer" className="text-xs text-hub-yellow hover:underline">
-                  Trade on Hyperliquid
-                </a>
-              ) : null;
-            })()}
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Hyperliquid']} />
-            <button
-              onClick={refresh}
-              disabled={isLoading || isRefreshing}
-              className="p-1.5 text-neutral-500 hover:text-white transition-colors disabled:opacity-50"
-              aria-label="Refresh"
-            >
-              <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={Eye}
+          eyebrow="Hyperliquid · $5M+ whales"
+          title="HL whale"
+          accentNoun="tracker"
+          accent="purple"
+          description={
+            <>Live positions of top traders (<span className="text-white">$5M+</span>)
+              from the Hyperliquid leaderboard. Use to spot crowded longs/shorts
+              before the squeeze + see which alts the big books are sitting in.</>
+          }
+          className="mb-4"
+          actions={
+            <>
+              {(() => {
+                const ref = getExchangeReferralUrl('Hyperliquid');
+                return ref ? (
+                  <a
+                    href={ref}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-hub-yellow hover:text-black hover:bg-hub-yellow px-3 py-2 rounded-xl border border-hub-yellow/30 bg-hub-yellow/[0.06] transition-colors"
+                  >
+                    Trade on Hyperliquid →
+                  </a>
+                ) : null;
+              })()}
+              <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Hyperliquid']} />
+              <button
+                onClick={refresh}
+                disabled={isLoading || isRefreshing}
+                className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-50"
+                aria-label="Refresh"
+              >
+                <RefreshCw className={`w-4 h-4 ${isLoading || isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </>
+          }
+        />
 
         {/* Error banner */}
         {error && (

@@ -6,6 +6,7 @@ import DataFreshness from '@/components/DataFreshness';
 import { useApi } from '@/hooks/useSWRApi';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
+import PageHero from '@/components/PageHero';
 import { formatUSD, formatPrice } from '@/lib/utils/format';
 import {
   RefreshCw,
@@ -402,26 +403,32 @@ export default function LiquidationMapPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 py-6">
-        {/* Page header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
-          <div>
-            <h1 className="heading-page">Liquidation Map</h1>
-            <p className="text-neutral-600 text-xs mt-0.5">
-              Estimated liquidation clusters based on common leverage tiers and open interest
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <DataFreshness exchangeCount={data?.exchangeCount || 1} lastUpdated={lastUpdate} />
-            <button
-              onClick={refresh}
-              disabled={loading}
-              className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-white/[0.04] text-neutral-500 hover:text-white transition-colors disabled:opacity-50"
-              aria-label="Refresh data"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={Crosshair}
+          eyebrow="Risk · liq density"
+          title="Liquidation"
+          accentNoun="map"
+          accent="red"
+          description={
+            <>Estimated liquidation clusters based on common leverage tiers (5x,
+              10x, 25x, 50x, 100x) and live open interest. Bigger clusters =
+              magnets that price tends to revisit before reversing.</>
+          }
+          className="mb-8"
+          actions={
+            <>
+              <DataFreshness exchangeCount={data?.exchangeCount || 1} lastUpdated={lastUpdate} />
+              <button
+                onClick={refresh}
+                disabled={loading}
+                className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] transition-colors disabled:opacity-50"
+                aria-label="Refresh data"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </>
+          }
+        />
 
         {/* Symbol tabs */}
         <div className="flex items-center gap-2 mb-6">

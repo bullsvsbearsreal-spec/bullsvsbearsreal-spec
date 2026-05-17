@@ -7,8 +7,9 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
-import { RefreshCw, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import { RefreshCw, AlertTriangle, TrendingUp, TrendingDown, Scale } from 'lucide-react';
 import DataFreshness from '@/components/DataFreshness';
+import PageHero from '@/components/PageHero';
 
 const LSChart = dynamic(() => import('./components/LSChart'), { ssr: false });
 const OIHistoryChart = dynamic(() => import('./components/OIHistoryChart'), { ssr: false });
@@ -187,35 +188,43 @@ function LongShortPageInner() {
     <div className="min-h-screen bg-hub-black text-white">
       <Header />
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-4">
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
-          <div>
-            <h1 className="heading-page">Derivatives Stats</h1>
-            <p className="text-xs text-neutral-500 mt-0.5">
-              Open Interest · Long/Short Ratio · Taker Volume (Binance + OKX)
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Binance']} />
-            <button
-              onClick={() => setAutoRefresh(!autoRefresh)}
-              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-colors ${
-                autoRefresh
-                  ? 'bg-green-500/20 text-green-400 border border-green-500/30'
-                  : 'bg-white/[0.04] text-neutral-500 border border-white/[0.06]'
-              }`}
-            >
-              {autoRefresh ? 'Live' : 'Paused'}
-            </button>
-            <button
-              onClick={refresh}
-              disabled={isRefreshing}
-              className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={Scale}
+          eyebrow="Derivatives · Binance + OKX"
+          title="Long / Short"
+          accentNoun="ratio"
+          accent="hub-yellow"
+          description={
+            <>Open interest, long/short ratio, and taker buy-vs-sell volume —
+              the three signals that show whether the crowd is leaning long or
+              short before price confirms.</>
+          }
+          className="mb-4"
+          actions={
+            <>
+              <DataFreshness exchangeCount={1} lastUpdated={lastUpdate} sources={['Binance']} />
+              <button
+                onClick={() => setAutoRefresh(!autoRefresh)}
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider transition-colors border ${
+                  autoRefresh
+                    ? 'bg-green-500/15 text-green-400 border-green-500/30'
+                    : 'bg-white/[0.04] text-neutral-500 border-white/[0.06]'
+                }`}
+              >
+                {autoRefresh && <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />}
+                {autoRefresh ? 'Live' : 'Paused'}
+              </button>
+              <button
+                onClick={refresh}
+                disabled={isRefreshing}
+                aria-label="Refresh"
+                className="p-2 rounded-xl bg-white/[0.04] border border-white/[0.06] text-neutral-300 hover:text-white hover:bg-white/[0.08] transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+            </>
+          }
+        />
 
         {/* Controls */}
         <div className="flex flex-wrap items-center gap-3 mb-4">
