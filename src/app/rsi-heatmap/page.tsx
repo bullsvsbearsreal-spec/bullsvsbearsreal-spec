@@ -197,6 +197,7 @@ export default function RSIHeatmapPage() {
               <button
                 onClick={fetchData}
                 disabled={loading}
+                aria-label="Refresh RSI data"
                 className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />

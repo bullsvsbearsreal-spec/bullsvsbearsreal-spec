@@ -541,6 +541,7 @@ export default function BasisPage() {
               <button
                 onClick={fetchData}
                 disabled={loading}
+                aria-label="Refresh basis data"
                 className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] text-neutral-400 hover:text-white transition-colors disabled:opacity-50"
               >
                 <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />

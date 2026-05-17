@@ -510,6 +510,7 @@ export default function PortfolioPage() {
               </h2>
               <button
                 onClick={() => setShowModal(false)}
+                aria-label="Close position dialog"
                 className="p-1 rounded-md text-neutral-500 hover:text-white hover:bg-white/[0.06] transition-colors"
               >
                 <X className="w-4 h-4" />
