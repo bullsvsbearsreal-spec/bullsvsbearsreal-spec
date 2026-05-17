@@ -7,6 +7,7 @@ import Link from 'next/link';
 import Logo from '@/components/Logo';
 import SuspendedNotice from '@/components/SuspendedNotice';
 import { Mail, Lock, User, Eye, EyeOff, AlertCircle, ArrowRight, CheckCircle } from 'lucide-react';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 // ── Suspension flag ──────────────────────────────────────────────────
 // Flip to false to re-enable signups. The original signup form below
@@ -243,7 +244,7 @@ function SignupContent() {
           <div className="mt-4 flex items-center gap-2 text-[10px] text-neutral-600 font-mono">
             <span className="inline-flex items-center gap-1.5">
               <span className="w-1 h-1 rounded-full bg-emerald-400 animate-pulse" />
-              32 venues
+              {ALL_EXCHANGES.length} venues
             </span>
             <span className="text-neutral-700">·</span>
             <span>live data</span>
