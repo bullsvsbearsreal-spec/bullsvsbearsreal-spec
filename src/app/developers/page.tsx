@@ -652,7 +652,7 @@ export default function DevelopersPage() {
                 title: 'Aggregate + per-venue modes',
                 accent: 'border-l-blue-500',
                 icon: Layers,
-                desc: 'Pass ?aggregate=1 on /funding, /openinterest, /tickers to collapse to one row per symbol with avg/min/max + venue breakdown. One fetch instead of paging through 30 venues client-side.',
+                desc: `Pass ?aggregate=1 on /funding, /openinterest, /tickers to collapse to one row per symbol with avg/min/max + venue breakdown. One fetch instead of paging through ${ALL_EXCHANGES.length} venues client-side.`,
               },
               {
                 title: 'Real, source-attributed data',

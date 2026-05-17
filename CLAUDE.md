@@ -11,7 +11,7 @@ making infra-shaped changes.
 | --- | --- | --- |
 | Web (Next.js 14, App Router) | DigitalOcean App Platform · FRA1 · 2 GB | Auto-deploys on push to `main` |
 | Price aggregator (WS) | DigitalOcean droplet `infohub-aggregator` (FRA1, `46.101.247.54`) | systemd unit `infohub-aggregator.service` running `/opt/infohub-aggregator/index.mjs` |
-| Crons (9 jobs) | Same droplet, systemd timers | All hit `https://info-hub.io/api/cron/<name>` with `Authorization: Bearer $CRON_SECRET` |
+| Crons (13 jobs) | Same droplet, systemd timers | All hit `https://info-hub.io/api/cron/<name>` with `Authorization: Bearer $CRON_SECRET` |
 | DNS | Cloudflare (gray cloud / DNS-only) → CNAME flatten → `infohub-web-hg4id.ondigitalocean.app` | Cloudflare proxy is gray for now — DO's CDN already fronts the app via `*.ondigitalocean.app` |
 | SSL | Let's Encrypt via DO App Platform | Auto-renewed |
 | Domain registrar | Njalla | DNS delegated to Cloudflare |
