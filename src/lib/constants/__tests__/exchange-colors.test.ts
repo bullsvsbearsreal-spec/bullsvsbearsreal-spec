@@ -40,8 +40,9 @@ describe('EXCHANGE_HEX_COLORS', () => {
   it('has a color for every exchange in ALL_EXCHANGES (no orphan exchanges)', () => {
     const missing: string[] = [];
     for (const ex of ALL_EXCHANGES) {
-      if (!EXCHANGE_HEX_COLORS[ex.name]) {
-        missing.push(ex.name);
+      // ALL_EXCHANGES is a tuple of string literals, not objects
+      if (!EXCHANGE_HEX_COLORS[ex]) {
+        missing.push(ex);
       }
     }
     // Some venues might intentionally lack colors (fallback handles those).

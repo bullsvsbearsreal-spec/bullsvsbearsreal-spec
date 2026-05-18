@@ -52,13 +52,17 @@ describe('chartOptions (lightweight-charts ChartOptions)', () => {
   });
 
   it('handleScale enables mouse wheel + pinch zoom', () => {
-    expect(chartOptions.handleScale?.mouseWheel).toBe(true);
-    expect(chartOptions.handleScale?.pinch).toBe(true);
+    // handleScale can be DeepPartial<boolean | HandleScaleOptions> — the type system
+    // doesn't narrow until we destructure. Cast for test ergonomics.
+    const scale = chartOptions.handleScale as { mouseWheel?: boolean; pinch?: boolean };
+    expect(scale.mouseWheel).toBe(true);
+    expect(scale.pinch).toBe(true);
   });
 
   it('horizontal touch drag is enabled, vertical is disabled (mobile UX)', () => {
-    expect(chartOptions.handleScroll?.horzTouchDrag).toBe(true);
-    expect(chartOptions.handleScroll?.vertTouchDrag).toBe(false);
+    const scroll = chartOptions.handleScroll as { horzTouchDrag?: boolean; vertTouchDrag?: boolean };
+    expect(scroll.horzTouchDrag).toBe(true);
+    expect(scroll.vertTouchDrag).toBe(false);
   });
 
   it('time scale shows time but not seconds', () => {
