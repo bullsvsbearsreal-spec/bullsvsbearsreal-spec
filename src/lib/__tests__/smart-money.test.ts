@@ -6,18 +6,18 @@ const NOW = new Date('2026-05-17T12:00:00Z').getTime();
 const DAY = 24 * 60 * 60 * 1000;
 const LOOKBACK = 90 * DAY;
 
+let _tradeIdCounter = 0;
 function fill(o: Partial<NormalizedTrade>): NormalizedTrade {
   return {
-    venue: 'hyperliquid',
-    address: '0xabc',
     symbol: 'BTC',
     side: 'buy',
-    sizeBase: 1,
+    size: 1,
+    price: 50_000,
     valueUsd: 50_000,
     feeUsd: 0,
     realizedPnlUsd: null, // opens default to null
+    venueTradeId: `test-${++_tradeIdCounter}`,
     ts: new Date(NOW - DAY),
-    txHash: null,
     ...o,
   };
 }
