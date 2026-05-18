@@ -17,6 +17,7 @@ import PipelineTab from './components/PipelineTab';
 import AlertsTab from './components/AlertsTab';
 import DatabaseTab from './components/DatabaseTab';
 import UsersTab from './components/UsersTab';
+import InvitesTab from './components/InvitesTab';
 import ActionsTab from './components/ActionsTab';
 
 interface SiteStats {
@@ -55,6 +56,7 @@ const BASE_TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
   { id: 'alerts', label: 'Alerts', icon: <Bell className="w-3.5 h-3.5" /> },
   { id: 'database', label: 'Database', icon: <Database className="w-3.5 h-3.5" /> },
   { id: 'users', label: 'Users', icon: <Users className="w-3.5 h-3.5" /> },
+  { id: 'invites', label: 'Invites', icon: <Send className="w-3.5 h-3.5" /> },
   { id: 'actions', label: 'Actions', icon: <Settings className="w-3.5 h-3.5" /> },
 ];
 
@@ -283,6 +285,7 @@ export default function AdminPanelPage() {
               {activeTab === 'alerts' && <AlertsTab />}
               {activeTab === 'database' && <DatabaseTab />}
               {activeTab === 'users' && <UsersTab userRole={userRole} currentUserId={session.user.id} />}
+              {activeTab === 'invites' && <InvitesTab />}
               {activeTab === 'actions' && <ActionsTab userRole={userRole} />}
             </div>
           </div>
