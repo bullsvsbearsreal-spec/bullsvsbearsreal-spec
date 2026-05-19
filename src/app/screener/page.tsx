@@ -22,7 +22,7 @@ import {
   DEFAULT_PRESETS,
 } from '@/lib/storage/screenerPresets';
 import { addToWatchlist, removeFromWatchlist, isInWatchlist } from '@/lib/storage/watchlist';
-import { ALL_EXCHANGES } from '@/lib/constants/exchanges';
+import { ALL_EXCHANGES, DEX_EXCHANGES } from '@/lib/constants/exchanges';
 import { useAggregatorHealth } from '@/hooks/useAggregatorHealth';
 
 /* ─── Types ──────────────────────────────────────────────────────── */
@@ -930,7 +930,7 @@ export default function ScreenerPage() {
         {/* Info Footer */}
         <div className="mt-6 bg-hub-yellow/5 border border-hub-yellow/10 rounded-xl px-4 py-3 space-y-2.5">
           <p className="text-xs text-neutral-400">
-            <span className="text-hub-yellow font-medium">Screener</span> aggregates real-time derivatives data from 32 exchanges (18 CEX + 14 DEX). Use filters and presets to find trading opportunities. Star symbols to add to your Watchlist.
+            <span className="text-hub-yellow font-medium">Screener</span> aggregates real-time derivatives data from {ALL_EXCHANGES.length} exchanges ({ALL_EXCHANGES.length - DEX_EXCHANGES.size} CEX + {DEX_EXCHANGES.size} DEX). Use filters and presets to find trading opportunities. Star symbols to add to your Watchlist.
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-[10px] text-neutral-500 leading-relaxed">
             <div><span className="text-neutral-400 font-medium">Price</span> — averaged across all reporting exchanges</div>

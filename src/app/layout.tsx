@@ -6,7 +6,7 @@ import Providers from '@/components/Providers'
 // const ChatWidget = dynamic(() => import('@/components/chat/ChatWidget'), { ssr: false })
 import AlertEngine from '@/components/AlertEngine'
 import ReportBugButton from '@/components/ReportBugButton'
-import { ALL_EXCHANGES } from '@/lib/constants'
+import { ALL_EXCHANGES, DEX_EXCHANGES } from '@/lib/constants'
 import { ConditionalTerminalShell } from '@/components/design-system'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' })
@@ -115,6 +115,13 @@ export const metadata: Metadata = {
 //
 // Linking via @id lets Google merge the entities into one Knowledge
 // Panel result; helps with the brand-mindshare gap vs Coinglass.
+// Derive CEX/DEX breakdown from constants so the WebApplication
+// description stays correct when a new venue is wired in. Hardcoded
+// literals like "18 CEX + 14 DEX" go stale silently — the search
+// result keeps showing the old number until someone notices.
+const DEX_COUNT = DEX_EXCHANGES.size;
+const CEX_COUNT = ALL_EXCHANGES.length - DEX_COUNT;
+
 const jsonLd = {
   '@context': 'https://schema.org',
   '@graph': [
@@ -123,7 +130,7 @@ const jsonLd = {
       '@id': 'https://info-hub.io/#app',
       name: 'InfoHub',
       url: 'https://info-hub.io',
-      description: `Real-time crypto derivatives dashboard: funding rates, open interest, liquidations, on-chain whales, and fee-aware arbitrage tools across ${ALL_EXCHANGES.length} exchanges (18 CEX + 14 DEX).`,
+      description: `Real-time crypto derivatives dashboard: funding rates, open interest, liquidations, on-chain whales, and fee-aware arbitrage tools across ${ALL_EXCHANGES.length} exchanges (${CEX_COUNT} CEX + ${DEX_COUNT} DEX).`,
       applicationCategory: 'FinanceApplication',
       operatingSystem: 'Any',
       browserRequirements: 'Requires a modern web browser with JavaScript enabled',
