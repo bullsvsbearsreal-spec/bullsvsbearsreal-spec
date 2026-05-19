@@ -52,6 +52,11 @@ const faqs: FAQEntry[] = [
     q: 'Can I refer friends to InfoHub?',
     a: 'Yes \u2014 every signed-in user has a personal invite link at /invite. Friends who sign up through your link are counted on your dashboard, and you both get early access to upcoming Pro tier features. The link is the same forever, so bookmark /invite and re-use it. (Separate from /referrals, which is exchange affiliate links \u2014 those are for getting fee discounts when signing up to Bybit, MEXC, Hyperliquid, etc.)',
   },
+  {
+    category: 'General',
+    q: 'Is there a leaderboard for referrals?',
+    a: 'Yes \u2014 the public top-20 referrer ranking is at /invite/leaderboard. Entries are anonymized: only the first 4 chars of each invite code are shown, so nobody can guess your full link from the rankings. Sorted by verified referrals first, then sign-ups as a tiebreaker. Pages cache for 5 minutes \u2014 your rank updates on the next refresh after a friend verifies.',
+  },
 
   /* ── Data & Features ── */
   {
@@ -88,6 +93,16 @@ const faqs: FAQEntry[] = [
     category: 'Data & Features',
     q: 'Can I set price alerts?',
     a: 'Yes. The Alerts page supports conditions for price, funding rate, open interest, and 24h change. You define the threshold and direction, and you get notified when the condition is met.',
+  },
+  {
+    category: 'Data & Features',
+    q: 'Can I track other traders’ wallets?',
+    a: 'Yes — /watch lets you paste any Hyperliquid or gTrade address and get Telegram pings the moment they open, close, resize, get close to liq, take realized PnL, or pay funding. Six trigger types per wallet, each individually toggleable. Up to 25 watched wallets per account, polled every 60 seconds via our snapshot cron. The "Test ping" button verifies your Telegram link before any real event fires.',
+  },
+  {
+    category: 'Data & Features',
+    q: 'Is there a public API?',
+    a: 'Yes — /developers/docs has the full reference. Free tier covers basically everything: tickers, funding, OI, liquidations, arbitrage, spreads, klines, options. Every fee-aware endpoint returns the canonical fee schedule with a versioned identifier so partners can verify the assumption baked into net-PnL calculations. Rate limits are 100 req/min (free) and 500 req/min (Pro). OpenAPI 3.1 spec at /api/v1/openapi.',
   },
   {
     category: 'Data & Features',
