@@ -88,7 +88,7 @@ npm run dev
 ## Tests
 
 ```bash
-npm run test:unit          # vitest (2137 tests across 124 files, ~10s)
+npm run test:unit          # vitest (~2200 tests across ~130 files, ~10s)
 npm run test:e2e           # playwright (browser flows)
 npm run test:api           # playwright (API contract tests)
 ```

@@ -297,8 +297,8 @@ broken once already, don't reintroduce it.
 
 ### Test suite (May 2026)
 
-`npm run test` runs vitest in node environment (no jsdom) — **2137 tests
-across 124 files** as of 2026-05-18. Coverage is heaviest in `lib/`,
+`npm run test` runs vitest in node environment (no jsdom) — **~2200 tests
+across ~130 files** as of 2026-05-18. Coverage is heaviest in `lib/`,
 `api/_shared/`, and the chart / spreads / funding feature areas. Adding
 new pure functions to `lib/` should come with a `__tests__/*.test.ts`
 sibling. Some patterns worth knowing:
