@@ -20,6 +20,23 @@ describe('buildSystemPrompt', () => {
     expect(prompt).toMatch(/\d+ exchanges/);
   });
 
+  it('CEX + DEX counts in the prompt sum to the total exchange count', async () => {
+    // Regression guard against the bug we just fixed (was 18+15 hardcoded
+    // when actual is 14 DEX — total of 32 with 18 CEX). Parse the literal
+    // numbers from the prompt and verify the math.
+    const prompt = buildSystemPrompt({});
+    const match = prompt.match(/(\d+) exchanges \((\d+) CEX \+ (\d+) DEX\)/);
+    expect(match).not.toBeNull();
+    if (match) {
+      const [, total, cex, dex] = match.map(Number);
+      expect(cex + dex).toBe(total);
+      // ALL_EXCHANGES.length should match what the prompt reports
+      const { ALL_EXCHANGES, DEX_EXCHANGES } = await import('@/lib/constants');
+      expect(total).toBe(ALL_EXCHANGES.length);
+      expect(dex).toBe(DEX_EXCHANGES.size);
+    }
+  });
+
   it('lists the banned filler phrases (preamble suppression)', () => {
     const prompt = buildSystemPrompt({});
     expect(prompt).toContain('BANNED');
