@@ -820,7 +820,10 @@ export default function DevelopersPage() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h2 className="text-2xl font-bold">API Endpoints</h2>
-              <p className="text-gray-500 text-sm mt-1">26 endpoints across 6 categories</p>
+              <p className="text-gray-500 text-sm mt-1">
+                {ENDPOINT_GROUPS.reduce((sum, g) => sum + g.endpoints.length, 0)} endpoints
+                {' '}across {ENDPOINT_GROUPS.length} categories
+              </p>
             </div>
             <Link href="/developers/docs" className="text-amber-400 hover:text-amber-300 text-sm flex items-center gap-1 transition-colors font-medium">
               Full docs <ArrowRight className="w-3.5 h-3.5" />
