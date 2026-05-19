@@ -5,6 +5,11 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { Copy, Check, ArrowLeft, ChevronRight, ExternalLink, Link as LinkIcon } from 'lucide-react';
+import {
+  FREE_TIER_PER_MINUTE,
+  PRO_TIER_PER_MINUTE,
+  FREE_TIER_PER_DAY,
+} from '@/lib/api/rate-limit';
 import { ALL_EXCHANGES } from '@/lib/constants';
 import { copyToClipboard } from '@/lib/copyToClipboard';
 
@@ -393,15 +398,15 @@ export default function DocsPage() {
             {/* Rate Limits */}
             <Section id="rate-limits" title="Rate Limits">
               <p className="text-gray-400 mb-4">Every response includes rate limit headers:</p>
-              <CodeBlock>{`X-RateLimit-Limit: 100
+              <CodeBlock>{`X-RateLimit-Limit: ${FREE_TIER_PER_MINUTE}
 X-RateLimit-Remaining: 97
 X-RateLimit-Reset: 1709248060`}</CodeBlock>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
                 <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4">
                   <div className="text-white font-semibold text-sm mb-2">Free Tier</div>
                   <div className="text-gray-400 text-[13px] space-y-1">
-                    <div className="flex justify-between"><span>Per minute</span><span className="text-white font-mono">100</span></div>
-                    <div className="flex justify-between"><span>Per day</span><span className="text-white font-mono">5,000</span></div>
+                    <div className="flex justify-between"><span>Per minute</span><span className="text-white font-mono">{FREE_TIER_PER_MINUTE}</span></div>
+                    <div className="flex justify-between"><span>Per day</span><span className="text-white font-mono">{FREE_TIER_PER_DAY.toLocaleString()}</span></div>
                   </div>
                 </div>
                 <div className="bg-white/[0.02] border border-amber-500/10 rounded-xl p-4">
@@ -410,7 +415,7 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
                     <span className="text-[9px] text-amber-400/70 border border-amber-500/20 rounded-full px-1.5 py-0.5 uppercase font-bold tracking-wider">Soon</span>
                   </div>
                   <div className="text-gray-400 text-[13px] space-y-1">
-                    <div className="flex justify-between"><span>Per minute</span><span className="text-white font-mono">500</span></div>
+                    <div className="flex justify-between"><span>Per minute</span><span className="text-white font-mono">{PRO_TIER_PER_MINUTE}</span></div>
                     <div className="flex justify-between"><span>Per day</span><span className="text-amber-300">Unlimited</span></div>
                   </div>
                 </div>
@@ -1117,8 +1122,8 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
     { "path": "/api/v1/funding", "method": "GET", "description": "Real-time funding rates across ${ALL_EXCHANGES.length} exchanges" }
   ],
   "tiers": {
-    "free": { "rateLimit": "100 req/min", "dailyLimit": "5,000 req/day" },
-    "pro": { "rateLimit": "500 req/min", "dailyLimit": "unlimited" }
+    "free": { "rateLimit": "${FREE_TIER_PER_MINUTE} req/min", "dailyLimit": "${FREE_TIER_PER_DAY.toLocaleString()} req/day" },
+    "pro": { "rateLimit": "${PRO_TIER_PER_MINUTE} req/min", "dailyLimit": "unlimited" }
   },
   "documentation": "https://info-hub.io/developers/docs",
   "timestamp": 1713181800000
