@@ -13,6 +13,7 @@ import {
   ChevronRight, Database, Wifi, ChevronDown, Hash, Scale,
 } from 'lucide-react';
 import { ALL_EXCHANGES } from '@/lib/constants';
+import { PRO_TIER_PER_MINUTE } from '@/lib/api/rate-limit';
 import { copyToClipboard } from '@/lib/copyToClipboard';
 
 interface ApiKeyInfo {
@@ -1030,7 +1031,7 @@ console.log(data);`,
             />
             <FaqItem
               q="What happens if I hit the rate limit?"
-              a="You'll get a 429 response with a Retry-After header. The limit resets every minute. Every successful 200 response includes X-RateLimit-Limit / X-RateLimit-Remaining / X-RateLimit-Reset headers so you can throttle pre-emptively. Pro tier (coming soon) bumps this to 500/min with no daily cap."
+              a={`You'll get a 429 response with a Retry-After header. The limit resets every minute. Every successful 200 response includes X-RateLimit-Limit / X-RateLimit-Remaining / X-RateLimit-Reset headers so you can throttle pre-emptively. Pro tier (coming soon) bumps this to ${PRO_TIER_PER_MINUTE}/min with no daily cap.`}
             />
             <FaqItem
               q="Are exchange fees baked into the /arbitrage net spread?"
