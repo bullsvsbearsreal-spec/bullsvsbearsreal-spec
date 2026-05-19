@@ -574,11 +574,15 @@ function RealDashboardPage() {
               On the {planName} plan ·{' '}
               <Link href="/profile?tab=billing" className="text-hub-yellow hover:underline">
                 see billing
-              </Link>{' '}
-              ·{' '}
-              <Link href="/changelog" className="text-hub-yellow hover:underline">
-                what&apos;s new
               </Link>
+              {isAdmin && (
+                <>
+                  {' '}·{' '}
+                  <Link href="/changelog" className="text-hub-yellow hover:underline">
+                    what&apos;s new
+                  </Link>
+                </>
+              )}
             </p>
           </div>
         </div>

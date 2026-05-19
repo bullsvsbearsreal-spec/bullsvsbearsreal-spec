@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import StreamBars from './StreamBars';
 import SatPing from './SatPing';
 import LatencyGauge from './LatencyGauge';
@@ -45,6 +46,16 @@ function StreamStatusBadge() {
 }
 
 export default function StatusBar({ version = 'v2.0', className }: StatusBarProps) {
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as { role?: string } | undefined)?.role === 'admin';
+  // The version badge links to /changelog, but the changelog is admin-gated
+  // at runtime (5daf10c6). For non-admins, fall back to /faq (which the FAQ
+  // entries reference "What's new" / "Recently shipped" via the changelog
+  // mention) so the badge isn't a dead-end UX click.
+  const versionHref = isAdmin ? '/changelog' : '/faq';
+  const versionTitle = isAdmin
+    ? `InfoHub ${version} — view changelog`
+    : `InfoHub ${version}`;
   return (
     <footer
       className={className}
@@ -104,10 +115,10 @@ export default function StatusBar({ version = 'v2.0', className }: StatusBarProp
         </span>
       </span>
 
-      {/* Version badge — clickable link to /changelog */}
+      {/* Version badge — links to /changelog for admins, /faq otherwise */}
       <Link
-        href="/changelog"
-        title={`InfoHub ${version} — view changelog`}
+        href={versionHref}
+        title={versionTitle}
         className="status-bar-version"
         style={{
           display: 'inline-flex', alignItems: 'center', gap: 6,
