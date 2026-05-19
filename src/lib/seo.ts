@@ -317,10 +317,12 @@ export const PAGE_META: Record<string, PageMeta> = {
   '/health': {
     title: 'Endpoint Health',
     description: 'Live status of every InfoHub data endpoint, measured from your browser. Green = healthy, amber = degraded, red = error or timeout. Re-checks every 60s.',
+    noIndex: true, // admin-gated at runtime (5daf10c6) — keep out of search
   },
   '/changelog': {
     title: 'Changelog',
     description: 'What we have shipped recently. New features, fixes, and improvements to the InfoHub data terminal — admin-only release notes.',
+    noIndex: true, // admin-gated at runtime (5daf10c6) — keep out of search
   },
   '/positions': {
     title: 'Positions · Cross-Venue',

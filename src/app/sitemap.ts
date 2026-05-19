@@ -121,7 +121,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/rsi-heatmap',        priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/stock-heatmap',      priority: 0.6, changeFrequency: 'hourly' as const },
     // /rv-iv, /options-iv, /max-pain → /options (consolidated May 2026).
-    { path: '/health',             priority: 0.4, changeFrequency: 'daily' as const },
+    // /health and /changelog removed — both are admin-gated at runtime
+    // (5daf10c6), so leaving them in the sitemap meant Google indexed
+    // them and users from search landed on "Admin access required" pages.
+    // Add back here ONLY if the runtime gate is removed.
 
     // ─── API + developer ──────────────────────────────────────────────
     { path: '/developers',         priority: 0.8, changeFrequency: 'weekly' as const },
@@ -133,7 +136,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/guides/funding-rate-arbitrage',         priority: 0.6, changeFrequency: 'monthly' as const },
     { path: '/guides/reading-open-interest',          priority: 0.6, changeFrequency: 'monthly' as const },
     { path: '/guides/surviving-liquidation-cascades', priority: 0.6, changeFrequency: 'monthly' as const },
-    { path: '/changelog',          priority: 0.5, changeFrequency: 'weekly' as const },
+    // /changelog dropped — admin-gated (see comment at /health above).
     { path: '/faq',                priority: 0.5, changeFrequency: 'monthly' as const },
 
     // ─── Account + auth ───────────────────────────────────────────────

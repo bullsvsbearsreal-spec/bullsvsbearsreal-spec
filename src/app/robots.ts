@@ -56,6 +56,11 @@ export default function robots(): MetadataRoute.Robots {
           '/forgot-password',
           // Legacy / deprecated
           '/trailer',
+          // Admin-gated pages — runtime check shows "Admin access required"
+          // to anyone without the role. Keep these out of search so users
+          // don't land here from Google with a dead-end.
+          '/changelog',
+          '/health',
         ],
       },
     ],
