@@ -24,7 +24,7 @@ App Platform. The site has two faces:
 | --- | --- |
 | Web (Next.js 14, App Router) | DigitalOcean App Platform · FRA1 · 2 GB |
 | Price aggregator (WS) | DigitalOcean droplet `infohub-aggregator` (FRA1) |
-| Crons (12 jobs) | Same droplet, systemd timers |
+| Crons (13 jobs) | Same droplet, systemd timers |
 | DB | Postgres (DigitalOcean managed) |
 | Cache / queues | Upstash Redis |
 | Auth | NextAuth v5 + Postgres adapter |
@@ -88,19 +88,30 @@ npm run dev
 ## Tests
 
 ```bash
-npm run test:unit          # vitest (1142 tests across 63 files)
+npm run test:unit          # vitest (2137 tests across 124 files, ~10s)
 npm run test:e2e           # playwright (browser flows)
 npm run test:api           # playwright (API contract tests)
 ```
 
 The vitest suite covers:
 
-- Pure math: RSI(14) / ATR(14) indicators, fee snapshot, format helpers,
-  countdown math, AI insight heuristic ranking
-- API: OpenAPI 3.1 spec self-consistency (`$ref` resolution),
-  exchange-fetcher retry path, funding normalisation
-- Unit: `formatPrice`, `normalizeSymbol`, `validateBugReport`,
-  position-health scoring, fee scheduling
+- **Pure math**: RSI(14) / ATR(14) indicators, fee snapshot, format
+  helpers, countdown math, AI insight heuristic ranking, DCA backtest
+  + funding-carry, leaderboard ranking (1224-style ties), position
+  health scoring, spread + arbitrage grading
+- **API surface**: OpenAPI 3.1 spec self-consistency (`$ref`
+  resolution), exchange-fetcher retry path + circuit breaker,
+  funding normalisation across 5 precision modes, in-flight request
+  dedup, proxy URL routing, cron auth gate
+- **Constants integrity**: every exchange has a hex color, every
+  famous wallet has a valid address (eth/btc/sol), all 8 FOMC 2026
+  dates present, fee schedule version contract
+- **Browser-only helpers** (with stubbed globals): `copyToClipboard`,
+  `fundingHistory` localStorage, nitter RSS entity decoding
+- **Chat AI**: tool registry (snake_case + unique names + required
+  fields), system prompt builder, rate-limit (100/IP/day)
+- **SEO**: sitemap canonical URLs + valid changeFrequency, robots
+  allow/disallow rules, PWA manifest spec compliance
 
 ## Project structure
 

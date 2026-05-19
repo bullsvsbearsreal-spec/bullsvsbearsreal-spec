@@ -163,17 +163,11 @@ function FaqItem({ q, a }: { q: string; a: string }) {
   );
 }
 
-// All 32 exchanges we track. Mirror ALL_EXCHANGES from
-// src/lib/constants/exchanges.ts — same order, so partners scanning
-// the trust ticker see exactly the same venues the API hits.
-const EXCHANGE_NAMES = [
-  'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC',
-  'Kraken', 'BingX', 'Phemex', 'Bitunix', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter',
-  'Aevo', 'GMX', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
-  'Coinbase', 'CoinEx', 'gTrade', 'Extended', 'Variational',
-  'BitMEX', 'Gate.io', 'edgeX', 'Nado',
-  'Backpack', 'Orderly', 'Paradex',
-];
+// Reuse ALL_EXCHANGES directly instead of duplicating the list. The
+// previous hand-maintained mirror would silently drift if a venue
+// was added to constants but forgotten here — the trust ticker would
+// then show a different set than the API actually hits.
+const EXCHANGE_NAMES: readonly string[] = ALL_EXCHANGES;
 
 function HeroTerminal() {
   const [visibleLines, setVisibleLines] = useState(0);
