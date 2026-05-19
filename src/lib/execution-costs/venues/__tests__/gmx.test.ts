@@ -3,6 +3,7 @@ import { computeGMXCost, type GMXMarketInfo } from '../gmx';
 
 function makeMarket(overrides: Partial<GMXMarketInfo> = {}): GMXMarketInfo {
   return {
+    marketToken: '0x0000000000000000000000000000000000000000',
     midPrice: 50000,
     longOiUsd: 10_000_000,
     shortOiUsd: 10_000_000,

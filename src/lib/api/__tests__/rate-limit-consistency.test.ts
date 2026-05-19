@@ -32,12 +32,16 @@ describe('rate-limit constants — cross-surface consistency', () => {
     expect(FREE_TIER_PER_DAY).toBeGreaterThan(FREE_TIER_PER_MINUTE);
   });
 
-  it('developers/page.tsx FAQ mentions the same free-tier numbers', () => {
+  it('developers/page.tsx FAQ references the same free-tier numbers (literal or var)', () => {
     const devs = readFile('src/app/developers/page.tsx');
-    // The FAQ entry should mention "100 requests per minute and 5,000 per day"
-    // — both values should match the constants.
-    expect(devs).toContain(`${FREE_TIER_PER_MINUTE} requests per minute`);
-    expect(devs).toContain(`${FREE_TIER_PER_DAY.toLocaleString()} per day`);
+    // Accept either the literal numbers OR the imported constants
+    const hasMinuteLit = devs.includes(`${FREE_TIER_PER_MINUTE} requests per minute`);
+    const hasMinuteVar = devs.includes('FREE_TIER_PER_MINUTE');
+    expect(hasMinuteLit || hasMinuteVar).toBe(true);
+
+    const hasDailyLit = devs.includes(`${FREE_TIER_PER_DAY.toLocaleString()} per day`);
+    const hasDailyVar = devs.includes('FREE_TIER_PER_DAY');
+    expect(hasDailyLit || hasDailyVar).toBe(true);
   });
 
   it('README.md mentions the same free-tier numbers', () => {

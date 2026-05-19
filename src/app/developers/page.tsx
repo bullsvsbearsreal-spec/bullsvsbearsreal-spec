@@ -13,7 +13,7 @@ import {
   ChevronRight, Database, Wifi, ChevronDown, Hash, Scale,
 } from 'lucide-react';
 import { ALL_EXCHANGES } from '@/lib/constants';
-import { PRO_TIER_PER_MINUTE } from '@/lib/api/rate-limit';
+import { PRO_TIER_PER_MINUTE, FREE_TIER_PER_MINUTE, FREE_TIER_PER_DAY } from '@/lib/api/rate-limit';
 import { copyToClipboard } from '@/lib/copyToClipboard';
 
 interface ApiKeyInfo {
@@ -1011,7 +1011,7 @@ console.log(data);`,
           <div className="space-y-2">
             <FaqItem
               q="Is the API free?"
-              a={`Yes. The free tier gives you 100 requests per minute and 5,000 per day with access to all ${TOTAL_ENDPOINTS} endpoints. No credit card required.`}
+              a={`Yes. The free tier gives you ${FREE_TIER_PER_MINUTE} requests per minute and ${FREE_TIER_PER_DAY.toLocaleString()} per day with access to all ${TOTAL_ENDPOINTS} endpoints. No credit card required.`}
             />
             <FaqItem
               q="What format does the API return?"
