@@ -352,3 +352,15 @@ curl -s 'https://prices.info-hub.io/health' | jq
   bucket — see "Middleware rate limits" above.
 - Don't fetch `info-hub.io/api/<own-route>` from another route handler if
   you can `import` the underlying logic from `lib/`.
+- Don't hardcode `ALL_EXCHANGES.length` / `DEX_EXCHANGES.size` / rate-limit
+  numbers / endpoint counts in user-facing copy — derive from the canonical
+  constants (`lib/constants/exchanges.ts`, `lib/api/rate-limit.ts`). The
+  cross-surface consistency tests in `src/lib/api/__tests__/` and
+  `src/app/__tests__/endpoint-count-consistency.test.ts` will break if
+  marketing copy drifts from the actual values.
+- Don't add `/changelog` or `/health` to the sitemap or remove their
+  `noIndex: true` flag — both are admin-gated at runtime (5daf10c6).
+  Indexing them dumps users on "Admin access required" from search.
+- Don't cache empty arrays in aggregator fetchers — locked in by the
+  fetchAll* tests (`src/lib/api/__tests__/fetchAll*.test.ts`). Empty cache
+  pinning froze every dependent page for the cache duration last time.
