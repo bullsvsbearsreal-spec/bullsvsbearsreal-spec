@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { ALL_EXCHANGES } from '@/lib/constants';
+import { FREE_TIER_PER_MINUTE } from '@/lib/api/rate-limit';
 
 type OGVariant =
   | 'default'
@@ -286,7 +287,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/developers': {
     title: 'Crypto Derivatives API · InfoHub',
-    description: `26 endpoints, ${ALL_EXCHANGES.length} exchanges, free 100 req/min tier. Real-time funding rates, OI, liquidations, fee-aware arbitrage grading, multi-venue klines fallback, on-chain whale data. OpenAPI 3.1 spec, X-RateLimit headers, no credit card required.`,
+    description: `26 endpoints, ${ALL_EXCHANGES.length} exchanges, free ${FREE_TIER_PER_MINUTE} req/min tier. Real-time funding rates, OI, liquidations, fee-aware arbitrage grading, multi-venue klines fallback, on-chain whale data. OpenAPI 3.1 spec, X-RateLimit headers, no credit card required.`,
   },
   '/home': {
     title: 'Live Crypto Derivatives Dashboard',
