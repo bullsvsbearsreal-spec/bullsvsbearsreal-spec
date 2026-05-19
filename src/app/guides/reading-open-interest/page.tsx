@@ -4,6 +4,7 @@ import ReferralBanner from '@/components/ReferralBanner';
 import Link from 'next/link';
 import { ArrowLeft, BarChart3, Clock, BookOpen, AlertTriangle, CheckCircle2, ExternalLink, TrendingUp, TrendingDown, Zap, Activity, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import type { Metadata } from 'next';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 export const metadata: Metadata = {
   title: 'Reading Open Interest Like a Pro | InfoHub',
@@ -344,7 +345,7 @@ export default function ReadingOpenInterestPage() {
 
           <Section id="using-infohub" title="6. Using InfoHub to read OI">
             <p className="text-neutral-300 text-sm leading-relaxed mb-4">
-              InfoHub tracks open interest across <strong className="text-white">26+ exchanges</strong> and
+              InfoHub tracks open interest across <strong className="text-white">{ALL_EXCHANGES.length} exchanges</strong> and
               thousands of trading pairs. Here&apos;s how to use the tools:
             </p>
 
@@ -498,7 +499,7 @@ export default function ReadingOpenInterestPage() {
               <BarChart3 className="w-6 h-6 text-hub-yellow mx-auto mb-3" />
               <h3 className="text-white font-bold text-base mb-2">Start reading OI now</h3>
               <p className="text-neutral-500 text-sm mb-5 max-w-md mx-auto">
-                InfoHub tracks open interest across 26+ exchanges in real-time.
+                InfoHub tracks open interest across {ALL_EXCHANGES.length} exchanges in real-time.
                 See exactly where the leverage is building.
               </p>
               <div className="flex items-center justify-center gap-3 flex-wrap">

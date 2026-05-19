@@ -17,7 +17,7 @@ export const CHAT_TOOLS: Tool[] = [
   },
   {
     name: 'get_open_interest',
-    description: 'Aggregate open interest in USD across 26+ exchanges, broken down by exchange. Use for: positioning size, conviction level, whether new money is entering a trade.',
+    description: `Aggregate open interest in USD across ${ALL_EXCHANGES.length} exchanges, broken down by exchange. Use for: positioning size, conviction level, whether new money is entering a trade.`,
     input_schema: {
       type: 'object' as const,
       properties: {
@@ -63,7 +63,7 @@ export const CHAT_TOOLS: Tool[] = [
   },
   {
     name: 'get_tickers',
-    description: 'Real-time perp prices, 24h change %, and 24h volume across 29+ exchanges. Use for: current price, price comparison across venues, volume ranking. This is the primary price tool.',
+    description: `Real-time perp prices, 24h change %, and 24h volume across ${ALL_EXCHANGES.length} exchanges. Use for: current price, price comparison across venues, volume ranking. This is the primary price tool.`,
     input_schema: {
       type: 'object' as const,
       properties: {
