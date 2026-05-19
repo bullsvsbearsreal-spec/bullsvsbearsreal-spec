@@ -69,14 +69,26 @@ const AUTH_PATHS = new Set([
   '/api/auth/2fa/challenge',
 ]);
 
-// Routes to skip entirely (have own limiters or are auth-protected)
-function shouldSkip(path: string): boolean {
+/**
+ * Routes to skip entirely. Each has its own limiter or is auth-protected
+ * upstream, so applying the middleware bucket here would either double-
+ * count (chat) or block legitimate access (admin / cron).
+ *
+ * Exported so unit tests can lock in the skip-list without needing a
+ * real NextRequest. Keep this small + explicit — any new addition is a
+ * security decision (we're disabling DDoS protection for that path).
+ */
+export function shouldSkip(path: string): boolean {
   if (path === '/api/chat') return true;             // has own rate limiter
   if (path.startsWith('/api/admin/')) return true;   // auth-protected
   if (path.startsWith('/api/cron/')) return true;    // internal cron
   if (path === '/api/telegram/webhook') return true; // telegram bot webhook
   return false;
 }
+
+// Exported for testing — the bare AUTH_PATHS set is the contract that
+// shouldStrictBucket reads against the moderate bucket fall-through.
+export { AUTH_PATHS };
 
 // Max query string length — reject absurdly long params to prevent abuse
 const MAX_QUERY_LENGTH = 512;
