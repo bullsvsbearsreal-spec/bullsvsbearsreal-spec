@@ -7,6 +7,7 @@ import Providers from '@/components/Providers'
 import AlertEngine from '@/components/AlertEngine'
 import ReportBugButton from '@/components/ReportBugButton'
 import { ALL_EXCHANGES, DEX_EXCHANGES } from '@/lib/constants'
+import { FREE_TIER_PER_MINUTE, FREE_TIER_PER_DAY } from '@/lib/api/rate-limit'
 import { ConditionalTerminalShell } from '@/components/design-system'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans', display: 'swap' })
@@ -170,7 +171,7 @@ const jsonLd = {
       '@id': 'https://info-hub.io/#api',
       name: 'InfoHub Public API',
       url: 'https://info-hub.io/developers',
-      description: `REST API for crypto derivatives data: 26 endpoints across ${ALL_EXCHANGES.length} exchanges with fee transparency, aggregate modes, and OpenAPI 3.1 spec. Free tier 100 req/min, 5,000 req/day.`,
+      description: `REST API for crypto derivatives data: 26 endpoints across ${ALL_EXCHANGES.length} exchanges with fee transparency, aggregate modes, and OpenAPI 3.1 spec. Free tier ${FREE_TIER_PER_MINUTE} req/min, ${FREE_TIER_PER_DAY.toLocaleString()} req/day.`,
       documentation: 'https://info-hub.io/developers/docs',
       provider: { '@id': 'https://info-hub.io/#org' },
       offers: {
@@ -178,7 +179,7 @@ const jsonLd = {
         price: '0',
         priceCurrency: 'USD',
         availability: 'https://schema.org/InStock',
-        description: 'Free tier — 100 req/min, 5,000 req/day, no credit card required',
+        description: `Free tier — ${FREE_TIER_PER_MINUTE} req/min, ${FREE_TIER_PER_DAY.toLocaleString()} req/day, no credit card required`,
       },
     },
     {

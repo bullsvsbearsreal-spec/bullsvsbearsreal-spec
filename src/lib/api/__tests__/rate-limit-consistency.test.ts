@@ -56,11 +56,17 @@ describe('rate-limit constants — cross-surface consistency', () => {
     }
   });
 
-  it('layout.tsx JSON-LD description mentions both free-tier numbers', () => {
+  it('layout.tsx JSON-LD references the rate-limit constants (literal or var)', () => {
     const layout = readFile('src/app/layout.tsx');
-    if (layout.includes('Free tier')) {
-      expect(layout).toMatch(new RegExp(`${FREE_TIER_PER_MINUTE} req/min`));
-      expect(layout).toContain(`${FREE_TIER_PER_DAY.toLocaleString()}`);
-    }
+    if (!layout.includes('Free tier')) return;
+    // Accept either the hardcoded literal OR the imported constant —
+    // derivation is preferred but a stable literal would also be valid.
+    const hasMinuteLiteral = layout.includes(`${FREE_TIER_PER_MINUTE} req/min`);
+    const hasMinuteVar = layout.includes('FREE_TIER_PER_MINUTE');
+    expect(hasMinuteLiteral || hasMinuteVar).toBe(true);
+
+    const hasDailyLiteral = layout.includes(FREE_TIER_PER_DAY.toLocaleString());
+    const hasDailyVar = layout.includes('FREE_TIER_PER_DAY');
+    expect(hasDailyLiteral || hasDailyVar).toBe(true);
   });
 });
