@@ -28,15 +28,16 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-05-18',
-    title: 'Test coverage push · 400+ new unit tests',
-    summary: 'Major hardening pass across the codebase. Test suite grew from 1576 → 1994 passing tests across 113 files, with new coverage on funding normalizer math, referral leaderboard ranking, invite codes, exchange-client routing, Twitter dry-run gate, chat tool registry + system prompt, SEO config (sitemap + robots + manifest), and 50+ smaller modules. Caught and fixed a real production crash bug in restaking (non-string project field). No user-facing changes — these are foundation-level guarantees.',
+    title: 'Test coverage push · 560+ new unit tests',
+    summary: 'Major hardening pass across the codebase. Test suite grew from 1576 → 2137 passing tests across 124 files, with new coverage on funding normalizer math, referral leaderboard ranking, invite codes, exchange-client routing, Twitter dry-run gate, chat tool registry + system prompt + rate-limit, SEO config (sitemap + robots + manifest), cron auth gate, proxy URL routing, localStorage funding history, clipboard fallback path, and 50+ smaller modules. Caught and fixed a real production crash bug in restaking (non-string project field). No user-facing changes — these are foundation-level guarantees.',
     tags: ['improved'],
     bullets: [
       'Funding rate normalizer: 18 tests lock in the conversion math across all 5 precision modes (fraction, percentage, bigint-1e30, bigint-1e18, annualized) + interval scaling (1h↔4h↔8h) + cap enforcement (±500%/8h)',
       'Referral system: 24 tests cover invite-code HMAC stability + leaderboard ranking (verified DESC, signups DESC tiebreaker, 1224-style ties) + CTA threshold pivots',
       'Constants: every exchange color is a valid hex, no duplicate exchange entries, every famous wallet has a valid eth/btc/sol address, all 8 FOMC 2026 dates present at 14:00 ET',
-      'Chat AI surface: 30 tests on the Anthropic SDK tool registry (snake_case names, unique, all required fields declared) + system prompt builder (banned phrases, trade-setup contract, context block formatting)',
-      'SEO: sitemap entries all canonical, priorities in [0,1], every changeFrequency valid, robots disallows admin + auth surfaces while explicitly allowing /api/v1/status + /api/v1/openapi',
+      'Chat AI surface: 40 tests on the Anthropic SDK tool registry (snake_case names, unique, all required fields declared) + system prompt builder (banned phrases, trade-setup contract, context block formatting) + rate-limit (100/IP/day, 1000-char input cap)',
+      'SEO: sitemap entries all canonical, priorities in [0,1], every changeFrequency valid, robots disallows admin + auth surfaces while explicitly allowing /api/v1/status + /api/v1/openapi, manifest is valid PWA spec',
+      'Infrastructure: cron auth gate uses timingSafeEqual + env-trim defenses (8 tests), proxy URL routing for CF-blocked datacenter domains (10 tests), in-flight request dedup (9 tests)',
       'Real production fix: restaking filter crashed on non-string project field — caught by adding tests, fixed with defensive typeof check',
     ],
     links: [
