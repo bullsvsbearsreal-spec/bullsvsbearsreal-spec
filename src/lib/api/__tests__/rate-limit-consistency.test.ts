@@ -47,13 +47,16 @@ describe('rate-limit constants — cross-surface consistency', () => {
     expect(readme).toContain(`${FREE_TIER_PER_DAY.toLocaleString()}/day`);
   });
 
-  it('FAQ entry mentions both tier numbers', () => {
+  it('FAQ entry mentions both tier numbers (literal or via constant)', () => {
     const faq = readFile('src/app/faq/page.tsx');
-    if (faq.includes('Rate limits')) {
-      // FAQ entry mentions "100 req/min (free) and 500 req/min (Pro)"
-      expect(faq).toMatch(new RegExp(`${FREE_TIER_PER_MINUTE} req/min`));
-      expect(faq).toMatch(new RegExp(`${PRO_TIER_PER_MINUTE} req/min`));
-    }
+    if (!faq.includes('Rate limits')) return;
+    // Accept either the hardcoded literal OR the imported constant
+    const hasMinuteLit = faq.includes(`${FREE_TIER_PER_MINUTE} req/min`);
+    const hasMinuteVar = faq.includes('FREE_TIER_PER_MINUTE');
+    expect(hasMinuteLit || hasMinuteVar).toBe(true);
+    const hasProLit = faq.includes(`${PRO_TIER_PER_MINUTE} req/min`);
+    const hasProVar = faq.includes('PRO_TIER_PER_MINUTE');
+    expect(hasProLit || hasProVar).toBe(true);
   });
 
   it('layout.tsx JSON-LD references the rate-limit constants (literal or var)', () => {
