@@ -295,6 +295,30 @@ fall through to the moderate bucket — NextAuth's `useSession()` fires
 15 min would otherwise trip the strict limit and see auth errors. This was
 broken once already, don't reintroduce it.
 
+### Test suite (May 2026)
+
+`npm run test` runs vitest in node environment (no jsdom) — **2137 tests
+across 124 files** as of 2026-05-18. Coverage is heaviest in `lib/`,
+`api/_shared/`, and the chart / spreads / funding feature areas. Adding
+new pure functions to `lib/` should come with a `__tests__/*.test.ts`
+sibling. Some patterns worth knowing:
+
+- **Browser-only code** (clipboard, localStorage) tests by stubbing
+  `globalThis.window` / `document` / `localStorage`. See
+  `lib/__tests__/copyToClipboard.test.ts` and
+  `lib/storage/__tests__/fundingHistory.test.ts` for templates.
+- **Module-level singletons** (the funding-history accumulator cache,
+  rate-limit counters, `CRON_SECRET`) need `vi.resetModules()` in
+  `beforeEach` so each test gets a fresh import.
+- **Top-level env-var reads** (PROXY_URL, EXCHANGE_KEY_ENCRYPTION_KEY,
+  CRON_SECRET) are tested by setting `process.env.X` *before* the
+  `await import(...)` inside the test.
+- **fetch mocks** use `vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(...))`
+  rather than installing `msw` — see `lib/auto-tweet/__tests__/twitter.test.ts`.
+
+The full suite runs in ~10s. Pre-deploy verification:
+`npx vitest run` and `npx tsc --noEmit`.
+
 ---
 
 ## Useful Bash one-liners
