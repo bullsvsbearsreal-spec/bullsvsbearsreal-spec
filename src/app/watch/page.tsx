@@ -20,6 +20,7 @@ import {
   Settings, X, Save, Send, CheckCircle2, Sparkles,
 } from 'lucide-react';
 import type { Venue, WatchEventKind, WatchEventPayload } from '@/lib/hl-watch';
+import { MAX_WATCHED_WALLETS } from '@/lib/hl-watch';
 
 interface Wallet {
   id: number;
@@ -474,7 +475,7 @@ function WatchPageInner() {
             the /funding-arb visual language. */}
         {wallets.length > 0 && (
           <div className="grid grid-cols-3 gap-2 mb-5">
-            <StatCell label="Watching" value={`${wallets.length}/25`} sub="wallets · max 25" tone="neutral" />
+            <StatCell label="Watching" value={`${wallets.length}/${MAX_WATCHED_WALLETS}`} sub={`wallets · max ${MAX_WATCHED_WALLETS}`} tone="neutral" />
             <StatCell
               label="Events · 24h"
               value={String(events24h)}
@@ -622,7 +623,7 @@ function WatchPageInner() {
           <h2 className="text-xs font-bold uppercase tracking-[0.1em] text-white mb-3 px-1 flex items-center gap-2">
             <Eye className="w-3.5 h-3.5 text-neutral-500" />
             Your watchlist
-            <span className="text-[10px] font-mono text-neutral-600">({wallets.length}/25)</span>
+            <span className="text-[10px] font-mono text-neutral-600">({wallets.length}/{MAX_WATCHED_WALLETS})</span>
           </h2>
           {loading && wallets.length === 0 ? (
             <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] py-8 text-center text-xs text-neutral-500">

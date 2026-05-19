@@ -9,7 +9,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getSQL, isDBConfigured } from '@/lib/db';
-import { parseJsonbArray, parseJsonbObject } from '@/lib/hl-watch';
+import { parseJsonbArray, parseJsonbObject, MAX_WATCHED_WALLETS } from '@/lib/hl-watch';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -88,12 +88,14 @@ export async function POST(req: NextRequest) {
   const sql = getSQL();
   const userId = session.user.id;
 
-  // Cap per-user watchlist at 25 to keep cron load bounded
+  // Cap per-user watchlist (MAX_WATCHED_WALLETS) to keep cron load bounded
   const [{ count }] = await sql`
     SELECT COUNT(*)::int AS count FROM hl_watched_wallets WHERE user_id = ${userId}
   ` as Array<{ count: number }>;
-  if (count >= 25) {
-    return NextResponse.json({ error: 'Watchlist limit reached (25). Remove one to add another.' }, { status: 409 });
+  if (count >= MAX_WATCHED_WALLETS) {
+    return NextResponse.json({
+      error: `Watchlist limit reached (${MAX_WATCHED_WALLETS}). Remove one to add another.`,
+    }, { status: 409 });
   }
 
   try {

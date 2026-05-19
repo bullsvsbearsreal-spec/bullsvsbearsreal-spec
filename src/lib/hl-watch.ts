@@ -85,6 +85,16 @@ export interface WatchEvent {
   payload: WatchEventPayload;
 }
 
+/**
+ * Per-user cap on watched wallets. Imported by both the /watch UI
+ * (for the 'Watching N/MAX' counter and disabled state) and the
+ * /api/watch/wallets POST handler (for enforcement). Keep these in
+ * sync — if you bump this constant, the cron-load budget needs to
+ * be re-checked (25 × ~3 venues × 1s/fetch already consumes most
+ * of the 60s tick window).
+ */
+export const MAX_WATCHED_WALLETS = 25;
+
 export interface Thresholds {
   triggerOpened: boolean;
   triggerClosed: boolean;
