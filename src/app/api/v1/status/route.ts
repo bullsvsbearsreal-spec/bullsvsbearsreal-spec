@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 import { FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT, ALL_EXCHANGES } from '@/lib/constants/exchanges';
+import {
+  FREE_TIER_PER_MINUTE,
+  PRO_TIER_PER_MINUTE,
+  FREE_TIER_PER_DAY,
+} from '@/lib/api/rate-limit';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -55,8 +60,14 @@ export async function GET() {
       { path: '/api/v1/openapi', method: 'GET', description: 'OpenAPI 3.1 spec for codegen + Swagger / Postman import (no auth)' },
     ],
     tiers: {
-      free: { rateLimit: '100 req/min', dailyLimit: '5,000 req/day' },
-      pro: { rateLimit: '500 req/min', dailyLimit: 'unlimited' },
+      free: {
+        rateLimit: `${FREE_TIER_PER_MINUTE} req/min`,
+        dailyLimit: `${FREE_TIER_PER_DAY.toLocaleString()} req/day`,
+      },
+      pro: {
+        rateLimit: `${PRO_TIER_PER_MINUTE} req/min`,
+        dailyLimit: 'unlimited',
+      },
     },
     documentation: 'https://info-hub.io/developers/docs',
     timestamp: Date.now(),
