@@ -368,13 +368,14 @@ const ENDPOINT_GROUPS = [
 // section). "30s typical" is the most common bucket — funding,
 // open-interest, tickers all sit there. Partners building latency budgets
 // off "3s" would have been misled by an order of magnitude.
-// Exchanges count derives from ALL_EXCHANGES so adding/removing a venue
-// updates this stat without anyone having to remember. Endpoints is
-// still hand-counted (26 public v1 routes as of May 2026 — the keys[/id]
-// route handlers aren't part of the public surface).
+// Both the exchange and endpoint counts now derive from their source
+// constants so they stay correct when a venue or v1 route is added /
+// removed. Previously the endpoint count was a hand-typed literal that
+// drifted from ENDPOINT_GROUPS twice during the May 2026 push.
+const TOTAL_ENDPOINTS = ENDPOINT_GROUPS.reduce((sum, g) => sum + g.endpoints.length, 0);
 const STATS = [
   { value: ALL_EXCHANGES.length, suffix: '', label: 'Exchanges', icon: Database },
-  { value: 26, suffix: '', label: 'Endpoints', icon: Wifi },
+  { value: TOTAL_ENDPOINTS, suffix: '', label: 'Endpoints', icon: Wifi },
   { value: 100, suffix: '/m', label: 'Free Requests', icon: Zap },
   { value: 30, suffix: 's', label: 'Typical Cache', icon: Clock },
 ];
@@ -612,7 +613,7 @@ export default function DevelopersPage() {
             {([
               { step: 1, title: 'Create an account', desc: 'Sign up free. No credit card, no approval process. Takes 30 seconds.', icon: Key },
               { step: 2, title: 'Generate an API key', desc: 'One click in the dashboard. Your key starts with ih_ and works instantly.', icon: Hash },
-              { step: 3, title: 'Make your first call', desc: 'Pass the key as a Bearer token. Get structured JSON back from any of 26 endpoints.', icon: Zap },
+              { step: 3, title: 'Make your first call', desc: `Pass the key as a Bearer token. Get structured JSON back from any of ${TOTAL_ENDPOINTS} endpoints.`, icon: Zap },
             ] as const).map(s => (
               <div key={s.step} className="relative text-center">
                 <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-amber-500/15 to-orange-500/10 border border-amber-500/20 mb-4 relative z-10">
@@ -1009,7 +1010,7 @@ console.log(data);`,
           <div className="space-y-2">
             <FaqItem
               q="Is the API free?"
-              a="Yes. The free tier gives you 100 requests per minute and 5,000 per day with access to all 26 endpoints. No credit card required."
+              a={`Yes. The free tier gives you 100 requests per minute and 5,000 per day with access to all ${TOTAL_ENDPOINTS} endpoints. No credit card required.`}
             />
             <FaqItem
               q="What format does the API return?"
