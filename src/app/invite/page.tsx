@@ -334,7 +334,13 @@ export default function InvitePage() {
           <ul className="text-[12px] text-neutral-400 leading-relaxed space-y-1.5 mt-2 list-disc list-inside marker:text-emerald-400/40">
             <li>Early access to upcoming tier features (Pro API, advanced alerts)</li>
             <li>Priority on the new-feature feedback loop</li>
-            <li>A spot on the InfoHub team referral leaderboard (launching soon)</li>
+            <li>
+              A spot on the{' '}
+              <Link href="/invite/leaderboard" className="text-emerald-300 hover:underline">
+                public referral leaderboard
+              </Link>{' '}
+              — top 20 are pinned by verified count
+            </li>
           </ul>
           <p className="text-[11px] text-neutral-500 mt-3">
             Welcome, <span className="text-white font-medium">{displayName}</span> — your code{' '}
