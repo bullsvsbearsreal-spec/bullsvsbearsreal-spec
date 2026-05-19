@@ -19,8 +19,8 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PageHero from '@/components/PageHero';
-import { tweetIntent } from '@/lib/tweetIntent';
-import { Trophy, Send, ArrowRight, TrendingUp, Twitter } from 'lucide-react';
+import { tweetIntent, telegramShareIntent } from '@/lib/tweetIntent';
+import { Trophy, Send, ArrowRight, TrendingUp, Twitter, MessageSquare } from 'lucide-react';
 
 interface LeaderboardEntry {
   rank: number;
@@ -172,11 +172,16 @@ export default function InviteLeaderboardPage() {
             board — gives them an at-a-glance confirmation + a path to
             share their rank. */}
         {myEntry && (() => {
-          // Pre-build the tweet template. Includes the rank as social
+          // Pre-build the share templates. Includes the rank as social
           // proof (people are more likely to retweet a "I'm #3 on X"
           // post than a generic "check out X" one).
           const tweetText = `I'm ranked #${myEntry.rank} on the InfoHub referral leaderboard with ${myEntry.verified} verified referrals. derivatives terminal across every venue, free tier covers basically everything: https://info-hub.io/invite`;
           const tweetUrl = tweetIntent({ text: tweetText });
+          // Telegram is the most-used channel in crypto — pair the
+          // tweet button with it so users can share to whichever
+          // platform their audience actually lives on.
+          const tgText = `I'm ranked #${myEntry.rank} on the InfoHub referral leaderboard with ${myEntry.verified} verified referrals. Real-time derivatives terminal — free tier covers almost everything.`;
+          const tgUrl = telegramShareIntent({ url: 'https://info-hub.io/invite', text: tgText });
           return (
             <div className="rounded-xl border border-emerald-400/30 bg-emerald-500/[0.05] px-4 py-3 mb-3 flex items-center gap-3 flex-wrap">
               <Trophy className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -193,9 +198,20 @@ export default function InviteLeaderboardPage() {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-sky-300 hover:text-sky-200 px-3 py-1.5 rounded-lg border border-sky-400/40 bg-sky-500/[0.05] hover:bg-sky-500/[0.1]"
+                aria-label="Share rank on X (Twitter)"
               >
                 <Twitter className="w-3.5 h-3.5" />
                 Tweet rank
+              </a>
+              <a
+                href={tgUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-cyan-300 hover:text-cyan-200 px-3 py-1.5 rounded-lg border border-cyan-400/40 bg-cyan-500/[0.05] hover:bg-cyan-500/[0.1]"
+                aria-label="Share rank on Telegram"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                Telegram
               </a>
               <Link
                 href="/invite"
