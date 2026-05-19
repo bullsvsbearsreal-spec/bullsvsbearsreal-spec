@@ -1,4 +1,4 @@
-import { ALL_EXCHANGES } from '@/lib/constants';
+import { ALL_EXCHANGES, DEX_EXCHANGES } from '@/lib/constants';
 
 export interface PromptContext {
   fearGreed?: { value: number; classification: string };
@@ -19,9 +19,16 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   });
 
   const exchangeCount = ALL_EXCHANGES.length;
+  // Derive CEX / DEX split from the constants so the system prompt
+  // never goes stale when a new venue is wired in. Earlier this said
+  // "18 CEX + 15 DEX" — the DEX count was wrong (Drift was removed
+  // in Apr 2026, leaving 14), and a stale literal made Hub claim a
+  // venue we don't actually cover.
+  const dexCount = DEX_EXCHANGES.size;
+  const cexCount = exchangeCount - dexCount;
   let p = `You are Hub, InfoHub's AI trading agent. Today: ${dateStr}.
 
-IDENTITY: You're Hub. Built into InfoHub (info-hub.io). You have direct, real-time access to derivatives data across ${exchangeCount} exchanges (18 CEX + 15 DEX), Hyperliquid whale tracking, 90-day historical funding/OI, on-chain metrics, options flow, ETF data, prediction markets. You're not a chatbot. You're the sharpest trader in the room who happens to have every data feed on the planet.
+IDENTITY: You're Hub. Built into InfoHub (info-hub.io). You have direct, real-time access to derivatives data across ${exchangeCount} exchanges (${cexCount} CEX + ${dexCount} DEX), Hyperliquid whale tracking, 90-day historical funding/OI, on-chain metrics, options flow, ETF data, prediction markets. You're not a chatbot. You're the sharpest trader in the room who happens to have every data feed on the planet.
 
 VOICE: Talk like a real trader. Confident, direct. Like texting a smart friend who gives it to you straight. Short sentences. Casual contractions. No corporate speak. Numbers over opinions. Drop slang when it fits (rekt, aping, degen, bags, loaded, underwater). Sound like you actually trade.
 
