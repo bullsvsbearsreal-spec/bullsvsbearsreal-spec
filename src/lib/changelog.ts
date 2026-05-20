@@ -23,9 +23,28 @@ export interface ChangelogEntry {
 }
 
 /**
- * Last reviewed: 2026-05-18
+ * Last reviewed: 2026-05-19
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    date: '2026-05-19',
+    title: 'SEO + UX cleanup · derive every magic number from constants',
+    summary: 'Admin-gated pages (/changelog, /health) removed from sitemap + flagged noIndex — users from Google search no longer land on "Admin access required" dead-ends. Eight categories of hardcoded literals (exchange count, CEX/DEX split, endpoint count, rate-limit tiers, wallet-watch cap) replaced with derived constants across 25+ surfaces, plus cross-surface consistency tests catch future drift. Sister fixes: dashboard footer "what\'s new" link and StatusBar version badge no longer dead-end for non-admins. Test suite grew from 2137 → 2347 across 153 files.',
+    tags: ['fix', 'improved'],
+    bullets: [
+      'Admin-only pages /changelog + /health: dropped from sitemap.ts, added to robots.ts disallow, gained noIndex: true in seo.ts metadata — Google will stop indexing them',
+      'StatusBar version badge: links to /changelog for admins, /faq for non-admins (which now has the "what\'s new" coverage via 3 new FAQ entries)',
+      'Dashboard footer: "what\'s new" link only shows for admins (was a click-then-block UX for everyone else)',
+      'Derived 8 categories of magic numbers from canonical constants: ALL_EXCHANGES.length / DEX_EXCHANGES.size / TOTAL_ENDPOINTS / MAX_WATCHED_WALLETS / FREE_TIER_PER_MINUTE / PRO_TIER_PER_MINUTE / FREE_TIER_PER_DAY — chat tool descriptions, JSON-LD, OG meta, FAQ, README, /developers, /developers/docs, /v1/status, /watch UI all derive at render',
+      '7 cross-surface consistency tests guard against drift — if a constant gets bumped and a marketing surface forgets, the tests break before the deploy',
+      'Aggregator fetch wrappers (fetchAllTickers, fetchAllFundingRates, fetchAllOpenInterest, fetchSpotPrices, fetchLongShortRatio, fetchTopMovers, fetchAggregatedMarketData): 40 tests lock in cache behaviour (no empty-array pinning — this was a real regression that froze pages for cache duration), error fallbacks, and dedup semantics',
+      'Chat assistant Hub: system prompt was telling users we cover "18 CEX + 15 DEX" — actual is 14 DEX (Drift removed Apr 2026). Now derived from constants',
+      'Per-symbol funding meta titles (/funding/[symbol]): "Across 33 Exchanges" was wrong by 1 since Drift removal. Now derived',
+    ],
+    links: [
+      { label: 'Test suite (vitest)', href: 'https://github.com/bullsvsbearsreal-spec/bullsvsbearsreal-spec' },
+    ],
+  },
   {
     date: '2026-05-18',
     title: 'Test coverage push · 560+ new unit tests',
