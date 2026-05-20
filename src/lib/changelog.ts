@@ -23,9 +23,28 @@ export interface ChangelogEntry {
 }
 
 /**
- * Last reviewed: 2026-05-19
+ * Last reviewed: 2026-05-20
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    date: '2026-05-20',
+    title: 'Pricing tiers · Free / Pro / Whale (free during launch)',
+    summary: 'Subscription tiers ship today behind the launch banner — Pro and Whale are unlocked free for every signed-in user while we onboard early users. Prices are visible on /pricing for transparency (Pro $12/mo, Whale $49/mo, annual = 17% off), but checkout is stubbed until NowPayments goes live. Admin role auto-resolves to Whale. /pricing has the full feature matrix, sticky comparison table, FAQ, and a monthly/annual toggle.',
+    tags: ['new'],
+    bullets: [
+      '/pricing — 3-tier card grid (Free / Pro / Whale) with "MOST POPULAR" Pro card in the middle on desktop, Pro first on mobile (conversion-focused order)',
+      'Single source of truth in lib/constants/tiers.ts: TIER_LIMITS (per-min API, daily cap, alerts, watched wallets, history days), TIER_PRICE_MONTHLY/ANNUAL, TIER_BRANDING, FEATURE_MATRIX, resolveUserTier (admin → whale)',
+      'Launch banner site-wide — "Free during launch" amber strip above the header, dismissible per session via sessionStorage, hidden for admins + on /pricing itself',
+      'UserMenu shows a tier chip next to the user name — links to /pricing with tooltip explaining the current tier',
+      'CommandPalette + TerminalHeader nav: new Pricing entry with keywords (pricing, plans, subscribe, pro, whale, upgrade, tier, cost, price, billing)',
+      'A11y polish: scope attributes on the comparison table, aria-pressed on the Monthly/Annual toggle, focus-visible rings on every interactive element, real <button disabled> instead of div+aria-disabled, modal auto-focuses Got it button + locks body scroll',
+      '28 unit tests lock in the tier contract: ordering, limit monotonicity (Pro ≥ Free, Whale ≥ Pro), $12/$49 prices, annual = 10x monthly = 17% off, admin→whale resolution, feature matrix structure',
+    ],
+    links: [
+      { label: 'See the pricing page', href: '/pricing' },
+      { label: 'Pricing FAQ', href: '/faq' },
+    ],
+  },
   {
     date: '2026-05-19',
     title: 'SEO + UX cleanup · derive every magic number from constants',
