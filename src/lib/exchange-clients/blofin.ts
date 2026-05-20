@@ -96,10 +96,14 @@ async function signedRequest<T>(
     const errBody = await res.text().catch(() => '');
     throw new Error(`Blofin ${path} HTTP ${res.status}: ${errBody.slice(0, 200)}`);
   }
-  const json = await res.json() as { code?: string; msg?: string; data?: unknown };
+  const json = await res.json() as { code?: string | number; msg?: string; data?: unknown };
   // Blofin returns 200 with code !== "0" on auth / parameter errors. The
   // body's `msg` field carries the human-readable failure reason.
-  if (json.code != null && json.code !== '0') {
+  // Coerce to String first — Blofin documents `code` as a string but some
+  // edge endpoints have returned it as a number historically; the
+  // strict-equality check would then miss the success case and throw on
+  // OK responses.
+  if (json.code != null && String(json.code) !== '0') {
     throw new Error(`Blofin ${path} code=${json.code}: ${json.msg ?? 'unknown'}`);
   }
   return json as T;
