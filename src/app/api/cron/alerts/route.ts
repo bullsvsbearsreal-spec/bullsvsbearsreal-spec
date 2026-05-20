@@ -21,6 +21,7 @@ import {
   getTelegramLinkByUser,
   upsertWorkerHeartbeat,
 } from '@/lib/db';
+import { getUserTier } from '@/lib/auth';
 import {
   fetchMarketDataServer,
   checkAlert,
@@ -121,13 +122,17 @@ export async function GET(request: NextRequest) {
         }
         // Whale-tier generic HTTPS webhook. URL + HMAC secret stored
         // under notificationPrefs.webhook (set via /api/account/webhook).
-        // The tier-gate is enforced at the alerts-CRUD endpoint, so by
-        // the time we get here the user is whale + the webhook is
-        // configured. We still defensively check both fields are
-        // present.
+        // The CRUD endpoint tier-gates the SET path, but the cron must
+        // re-check at delivery time too: a whale user who downgrades to
+        // Pro/Free still has their webhook config sitting in user_prefs.
+        // Without this gate they'd keep getting a paid-tier feature for
+        // free post-downgrade.
         if (user.notificationPrefs?.webhook?.url && user.notificationPrefs?.webhook?.secret) {
-          const { url, secret } = user.notificationPrefs.webhook;
-          channels.push({ name: 'webhook', send: (a) => sendAlertWebhook(url, secret, a) });
+          const tier = await getUserTier(user.userId);
+          if (tier === 'whale') {
+            const { url, secret } = user.notificationPrefs.webhook;
+            channels.push({ name: 'webhook', send: (a) => sendAlertWebhook(url, secret, a) });
+          }
         }
         if (user.notificationPrefs?.whatsappEnabled && user.notificationPrefs?.whatsappPhone) {
           const phone = user.notificationPrefs.whatsappPhone;
