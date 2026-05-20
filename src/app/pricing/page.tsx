@@ -570,16 +570,20 @@ function TierToolListCard({ tierList }: { tierList: TierToolList }) {
         </h3>
       </div>
       <p className="text-[11px] text-neutral-500 mb-3 leading-snug">{tierList.description}</p>
-      <ul className="space-y-1.5 flex-1">
+      <ul className="space-y-2 flex-1">
         {tierList.items.map((item, i) => {
-          // Clickable link if href present, otherwise plain feature row.
+          // Stacked layout (label above, hint below) instead of the old
+          // inline justify-between — long hints like "1 year history ·
+          // 500 API req/min" were truncating to "1 year histor..." in
+          // the 3-column grid because the row couldn't fit. Two lines
+          // costs vertical density but reads cleanly.
           const content = (
-            <span className="flex items-baseline justify-between gap-2">
-              <span className={`${branding.textColor} font-semibold text-[12px] shrink-0`}>
+            <span className="flex flex-col gap-0.5">
+              <span className={`${branding.textColor} font-semibold text-[12px] leading-tight`}>
                 {item.label}
               </span>
               {item.hint && (
-                <span className="text-[10px] text-neutral-500 text-right truncate min-w-0">
+                <span className="text-[10px] text-neutral-500 leading-snug">
                   {item.hint}
                 </span>
               )}
