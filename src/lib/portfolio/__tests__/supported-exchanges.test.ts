@@ -13,12 +13,13 @@ describe('SUPPORTED_EXCHANGES', () => {
     expect(SUPPORTED_EXCHANGES.length).toBeGreaterThan(0);
   });
 
-  it('contains the major CEXes (Binance, Bybit, OKX, Bitget, MEXC)', () => {
+  it('contains the major CEXes (Binance, Bybit, OKX, Bitget, MEXC, Blofin)', () => {
     expect(SUPPORTED_EXCHANGES).toContain('Binance');
     expect(SUPPORTED_EXCHANGES).toContain('Bybit');
     expect(SUPPORTED_EXCHANGES).toContain('OKX');
     expect(SUPPORTED_EXCHANGES).toContain('Bitget');
     expect(SUPPORTED_EXCHANGES).toContain('MEXC');
+    expect(SUPPORTED_EXCHANGES).toContain('Blofin');
   });
 
   it('has no duplicates', () => {
@@ -28,15 +29,24 @@ describe('SUPPORTED_EXCHANGES', () => {
 });
 
 describe('EXCHANGES_WITH_PASSPHRASE', () => {
-  it('contains OKX and Bitget (these need a 3rd secret)', () => {
+  it('contains OKX, Bitget, and Blofin (these need a 3rd secret)', () => {
     expect(EXCHANGES_WITH_PASSPHRASE.has('OKX')).toBe(true);
     expect(EXCHANGES_WITH_PASSPHRASE.has('Bitget')).toBe(true);
+    expect(EXCHANGES_WITH_PASSPHRASE.has('Blofin')).toBe(true);
   });
 
   it('does NOT contain Binance / Bybit / MEXC (no passphrase needed)', () => {
     expect(EXCHANGES_WITH_PASSPHRASE.has('Binance')).toBe(false);
     expect(EXCHANGES_WITH_PASSPHRASE.has('Bybit')).toBe(false);
     expect(EXCHANGES_WITH_PASSPHRASE.has('MEXC')).toBe(false);
+  });
+
+  it('every member of EXCHANGES_WITH_PASSPHRASE is also in SUPPORTED_EXCHANGES', () => {
+    // Regression: an entry can't be in the passphrase set without being
+    // supported in the first place. Catches typos like 'BlofinX'.
+    EXCHANGES_WITH_PASSPHRASE.forEach((ex) => {
+      expect(SUPPORTED_EXCHANGES).toContain(ex);
+    });
   });
 });
 
