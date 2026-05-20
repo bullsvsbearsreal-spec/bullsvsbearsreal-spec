@@ -14,6 +14,7 @@
  * Admin role implies Whale tier automatically (see resolveUserTier).
  */
 import { FREE_TIER_PER_MINUTE, PRO_TIER_PER_MINUTE, FREE_TIER_PER_DAY } from '@/lib/api/rate-limit';
+import { ALL_EXCHANGES } from './exchanges';
 
 export type Tier = 'free' | 'pro' | 'whale';
 
@@ -259,7 +260,7 @@ export const FEATURE_MATRIX: FeatureGroup[] = [
     values: { free: '90 days', pro: '1 year', whale: '5 years' },
   },
   {
-    label: 'Real-time aggregator (32 venues)',
+    label: `Real-time aggregator (${ALL_EXCHANGES.length} venues)`,
     values: { free: true, pro: true, whale: true },
   },
   {

@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Anthropic from '@anthropic-ai/sdk';
 import { sendMessage, sendMessageWithId, editMessage, answerCallbackQuery, type InlineKeyboardMarkup } from '@/lib/telegram';
+import { ALL_EXCHANGES } from '@/lib/constants/exchanges';
 import {
   initDB, isDBConfigured,
   consumeTelegramLinkCode, linkTelegramChat, unlinkTelegramChat,
@@ -158,7 +159,7 @@ export async function POST(request: NextRequest) {
     } else {
       await sendMessage(chatId,
         '👋 <b>You found the InfoHub bot.</b>\n\n' +
-        'I sit on top of 32 exchanges and answer questions like "what\'s BTC funding right now" or "biggest liquidations today" — live data, no fluff.\n\n' +
+        `I sit on top of ${ALL_EXCHANGES.length} exchanges and answer questions like "what's BTC funding right now" or "biggest liquidations today" — live data, no fluff.\n\n` +
         'To get alerts (funding extremes, whale trades, your own thresholds), link your account:\n' +
         '1. Log in at <b>info-hub.io</b>\n' +
         '2. Settings → Telegram\n' +
