@@ -116,6 +116,104 @@ export const TIER_BRANDING: Record<Tier, TierBranding> = {
   },
 };
 
+/**
+ * Curated highlight of the data terminal — what tools/pages users
+ * actually get on every tier. Used by /pricing's "What's included"
+ * section to surface the tools beyond the abstract feature matrix
+ * (which is API/limits-focused).
+ *
+ * Every tier includes every page. Pro + Whale don't unlock new pages
+ * — they raise limits and add a few power features (custom webhooks,
+ * raw WS, team seats). This list intentionally covers the most useful
+ * subset; the side nav has the full menu.
+ */
+export interface ToolHighlight {
+  /** Display label, e.g. "Chart" */
+  label: string;
+  /** Internal route, e.g. "/chart" */
+  href: string;
+  /** One-line value hint shown under the label */
+  hint?: string;
+}
+
+export interface ToolCategory {
+  /** Category label, e.g. "Scan & Trade" */
+  label: string;
+  /** Short description of what this category does */
+  description: string;
+  tools: ToolHighlight[];
+}
+
+export const TOOL_HIGHLIGHTS: ToolCategory[] = [
+  {
+    label: 'Scan & Trade',
+    description: 'Find setups and route them to the cheapest venue',
+    tools: [
+      { label: 'Chart', href: '/chart', hint: 'TradingView + 6 info bands · RSI/ATR overlays' },
+      { label: 'Screener', href: '/screener', hint: 'Filter + sort every market' },
+      { label: 'Spreads', href: '/spreads', hint: 'Cross-venue arb · net-of-fees' },
+      { label: 'Funding Arb', href: '/spread-scanner', hint: 'Long/short pair grader · A→D' },
+      { label: 'Options', href: '/options', hint: 'Chain · Greeks · IV · max pain · skew' },
+      { label: 'Trade Optimizer', href: '/trade-optimizer', hint: 'Cheapest venue per trade' },
+    ],
+  },
+  {
+    label: 'Live monitors',
+    description: 'Real-time data across every venue we cover',
+    tools: [
+      { label: 'Funding Rates', href: '/funding', hint: 'Live across all venues' },
+      { label: 'Open Interest', href: '/open-interest', hint: 'OI changes · 1h/4h/24h' },
+      { label: 'Liquidations', href: '/liquidations', hint: 'Live rekt feed · whale tags' },
+      { label: 'ETF Tracker', href: '/etf', hint: 'BTC + ETH spot ETF · flows · premiums' },
+      { label: 'Long / Short', href: '/longshort', hint: 'Crowd positioning · regime classifier' },
+      { label: 'CEX vs DEX Volume', href: '/volume-share', hint: 'On-chain share · 30d' },
+    ],
+  },
+  {
+    label: 'Risk & alerts',
+    description: 'Stay ahead of liquidation zones and surprise moves',
+    tools: [
+      { label: 'Liq Heatmap', href: '/liquidation-heatmap', hint: 'Heat tiles · whale clusters' },
+      { label: 'Liq Map', href: '/liquidation-map', hint: 'Price-level density forecast' },
+      { label: 'Liq Calculator', href: '/liq-calculator', hint: 'Price needed to liquidate' },
+      { label: 'Alerts', href: '/alerts', hint: 'Triggers + history · Telegram' },
+      { label: 'Wallet Watch', href: '/watch', hint: 'HL + gTrade position alerter' },
+      { label: 'Position Sizer', href: '/position-size', hint: 'Risk-based sizing calculator' },
+    ],
+  },
+  {
+    label: 'Research',
+    description: 'Smart money flows, on-chain signals, news + catalysts',
+    tools: [
+      { label: 'Smart Money', href: '/smart-money', hint: 'Top trader leaderboard' },
+      { label: 'HL Whales', href: '/hl-whales', hint: 'Top Hyperliquid positions' },
+      { label: 'News + Signals', href: '/news', hint: 'Curated + algorithmic ranking' },
+      { label: 'Event Calendar', href: '/economic-calendar', hint: 'Macro + token events' },
+      { label: 'Token Unlocks', href: '/token-unlocks', hint: 'Vesting schedules · cliff risk' },
+      { label: 'On-Chain', href: '/onchain', hint: 'Network metrics · MVRV · NUPL' },
+    ],
+  },
+  {
+    label: 'Markets & macro',
+    description: 'Top-down view — sectors, regimes, sentiment',
+    tools: [
+      { label: 'Sector Rotation', href: '/sectors', hint: 'Heatmap by category' },
+      { label: 'Cycle Phase', href: '/cycle-phase', hint: 'Composite of 5 cycle signals' },
+      { label: 'Market Heatmap', href: '/market-heatmap', hint: 'Treemap by mcap' },
+      { label: 'Fear & Greed', href: '/fear-greed', hint: 'Sentiment index' },
+      { label: 'RSI Heatmap', href: '/rsi-heatmap', hint: 'Overbought / oversold' },
+      { label: 'FOMC Playbook', href: '/fomc-playbook', hint: 'BTC reaction to past Fed decisions' },
+    ],
+  },
+];
+
+/** Total number of highlighted tools across all categories. Used by
+ *  marketing copy ("X+ tools included"). Derived so it can't drift. */
+export const TOOL_HIGHLIGHT_COUNT = TOOL_HIGHLIGHTS.reduce(
+  (acc, cat) => acc + cat.tools.length,
+  0,
+);
+
 /** Bullet features shown under each tier card. Keep parallel structure so
  *  the comparison table reads cleanly: same row labels across tiers. */
 export interface FeatureGroup {

@@ -27,6 +27,8 @@ import {
   TIER_PRICE_ANNUAL,
   TIER_BRANDING,
   FEATURE_MATRIX,
+  TOOL_HIGHLIGHTS,
+  TOOL_HIGHLIGHT_COUNT,
   ANNUAL_DISCOUNT_PCT,
   annualSavingsUsd,
   resolveUserTier,
@@ -148,6 +150,39 @@ export default function PricingPage() {
               />
             );
           })}
+        </section>
+
+        {/* ─── What's included — surfaces the actual data tools beyond
+            the abstract feature matrix, with the explicit message that
+            Pro/Whale don't gate pages, just lift the limits. ─── */}
+        <section className="mb-12">
+          <div className="flex items-baseline justify-between gap-3 mb-3 px-1 flex-wrap">
+            <h2 className="text-base font-bold text-white">
+              Every tier includes the full data terminal
+            </h2>
+            <p className="text-[11px] text-neutral-500">
+              {TOOL_HIGHLIGHT_COUNT}+ tools highlighted below · full menu in the side nav
+            </p>
+          </div>
+          <p className="text-[12px] text-neutral-400 mb-4 px-1 leading-relaxed">
+            Pro + Whale don&apos;t unlock new pages — they raise the limits on
+            the ones below and add a few power features (custom webhooks, raw
+            WebSocket, team seats, sub-second alert delivery).
+          </p>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {TOOL_HIGHLIGHTS.map((category) => (
+              <ToolCategoryCard key={category.label} category={category} />
+            ))}
+          </div>
+
+          <p className="text-[11px] text-neutral-500 mt-4 px-1">
+            Plus public API access on every tier ·{' '}
+            <Link href="/developers/docs" className="text-emerald-300 hover:underline">
+              see API docs
+            </Link>
+            .
+          </p>
         </section>
 
         {/* ─── Comparison table ─── */}
@@ -506,6 +541,45 @@ function Bullet({ children }: { children: React.ReactNode }) {
       <Check className="w-3.5 h-3.5 text-emerald-400 mt-0.5 shrink-0" aria-hidden />
       <span>{children}</span>
     </li>
+  );
+}
+
+/**
+ * Card for one tool category in the "What's included" grid. Lists the
+ * curated highlights as deep links so users can click straight into the
+ * tool from the pricing page.
+ */
+function ToolCategoryCard({
+  category,
+}: {
+  category: (typeof TOOL_HIGHLIGHTS)[number];
+}) {
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+      <h3 className="text-[12px] font-bold uppercase tracking-[0.1em] text-white mb-0.5">
+        {category.label}
+      </h3>
+      <p className="text-[11px] text-neutral-500 mb-3 leading-snug">{category.description}</p>
+      <ul className="space-y-1.5">
+        {category.tools.map((tool) => (
+          <li key={tool.href}>
+            <Link
+              href={tool.href}
+              className="group flex items-baseline justify-between gap-2 text-[12px] hover:bg-white/[0.03] -mx-1.5 px-1.5 py-1 rounded transition-colors"
+            >
+              <span className="text-emerald-300 group-hover:text-emerald-200 font-semibold shrink-0">
+                {tool.label}
+              </span>
+              {tool.hint && (
+                <span className="text-[10px] text-neutral-500 text-right truncate">
+                  {tool.hint}
+                </span>
+              )}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

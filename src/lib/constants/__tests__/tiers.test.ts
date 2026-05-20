@@ -6,6 +6,8 @@ import {
   TIER_PRICE_ANNUAL,
   TIER_BRANDING,
   FEATURE_MATRIX,
+  TOOL_HIGHLIGHTS,
+  TOOL_HIGHLIGHT_COUNT,
   ANNUAL_DISCOUNT_PCT,
   annualSavingsUsd,
   resolveUserTier,
@@ -195,5 +197,49 @@ describe('annualSavingsUsd', () => {
 describe('ANNUAL_DISCOUNT_PCT', () => {
   it('matches the 17% headline (2 months free out of 12)', () => {
     expect(ANNUAL_DISCOUNT_PCT).toBe(17);
+  });
+});
+
+describe('TOOL_HIGHLIGHTS', () => {
+  it('is non-empty (at least 3 categories)', () => {
+    expect(TOOL_HIGHLIGHTS.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('every category has a label, description, and at least 3 tools', () => {
+    TOOL_HIGHLIGHTS.forEach((cat) => {
+      expect(cat.label).toBeTruthy();
+      expect(cat.description).toBeTruthy();
+      expect(cat.tools.length).toBeGreaterThanOrEqual(3);
+    });
+  });
+
+  it('every tool has a label and a relative href (starts with /)', () => {
+    TOOL_HIGHLIGHTS.forEach((cat) => {
+      cat.tools.forEach((tool) => {
+        expect(tool.label).toBeTruthy();
+        expect(tool.href).toMatch(/^\//);
+      });
+    });
+  });
+
+  it('category labels are unique', () => {
+    const labels = TOOL_HIGHLIGHTS.map((c) => c.label);
+    expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  it('tool hrefs are unique across all categories (no duplicate cards)', () => {
+    const hrefs = TOOL_HIGHLIGHTS.flatMap((c) => c.tools.map((t) => t.href));
+    expect(new Set(hrefs).size).toBe(hrefs.length);
+  });
+});
+
+describe('TOOL_HIGHLIGHT_COUNT', () => {
+  it('equals the sum of tools across all categories (derived, not hardcoded)', () => {
+    const summed = TOOL_HIGHLIGHTS.reduce((acc, c) => acc + c.tools.length, 0);
+    expect(TOOL_HIGHLIGHT_COUNT).toBe(summed);
+  });
+
+  it('is greater than 10 (otherwise the marketing copy "X+ tools" is silly)', () => {
+    expect(TOOL_HIGHLIGHT_COUNT).toBeGreaterThan(10);
   });
 });
