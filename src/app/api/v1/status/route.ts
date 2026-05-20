@@ -67,6 +67,12 @@ export async function GET() {
       pro: {
         rateLimit: `${PRO_TIER_PER_MINUTE} req/min`,
         dailyLimit: 'unlimited',
+        note: 'Free during launch — see /pricing',
+      },
+      whale: {
+        rateLimit: 'unlimited',
+        dailyLimit: 'unlimited',
+        note: 'Free during launch — see /pricing. Includes custom webhooks, raw WebSocket feed, team seats.',
       },
     },
     documentation: 'https://info-hub.io/developers/docs',

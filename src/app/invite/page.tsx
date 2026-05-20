@@ -180,8 +180,8 @@ export default function InvitePage() {
           description={
             <>
               Share your personal link. Every friend who signs up through it is
-              counted below — and you both get on the early-access list for
-              upcoming team features.
+              counted below — and you both lock in the launch perks (Pro + Whale
+              tiers free, day-one supporter status when paid billing turns on).
             </>
           }
         />
@@ -332,7 +332,11 @@ export default function InvitePage() {
             What you both get
           </h2>
           <ul className="text-[12px] text-neutral-400 leading-relaxed space-y-1.5 mt-2 list-disc list-inside marker:text-emerald-400/40">
-            <li>Early access to upcoming tier features (Pro API, advanced alerts)</li>
+            <li>
+              Pro + Whale tier features <span className="text-emerald-300">free during launch</span> —{' '}
+              <Link href="/pricing" className="text-emerald-300 hover:underline">see pricing</Link>
+            </li>
+            <li>Day-one supporter recognition when paid billing turns on</li>
             <li>Priority on the new-feature feedback loop</li>
             <li>
               A spot on the{' '}

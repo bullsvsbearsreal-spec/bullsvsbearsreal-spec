@@ -409,15 +409,21 @@ X-RateLimit-Reset: 1709248060`}</CodeBlock>
                     <div className="flex justify-between"><span>Per day</span><span className="text-white font-mono">{FREE_TIER_PER_DAY.toLocaleString()}</span></div>
                   </div>
                 </div>
-                <div className="bg-white/[0.02] border border-amber-500/10 rounded-xl p-4">
+                <div className="bg-white/[0.02] border border-emerald-500/15 rounded-xl p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <span className="text-white font-semibold text-sm">Pro Tier</span>
-                    <span className="text-[9px] text-amber-400/70 border border-amber-500/20 rounded-full px-1.5 py-0.5 uppercase font-bold tracking-wider">Soon</span>
+                    <span className="text-[9px] text-emerald-300 border border-emerald-400/30 rounded-full px-1.5 py-0.5 uppercase font-bold tracking-wider">Free during launch</span>
                   </div>
                   <div className="text-gray-400 text-[13px] space-y-1">
                     <div className="flex justify-between"><span>Per minute</span><span className="text-white font-mono">{PRO_TIER_PER_MINUTE}</span></div>
-                    <div className="flex justify-between"><span>Per day</span><span className="text-amber-300">Unlimited</span></div>
+                    <div className="flex justify-between"><span>Per day</span><span className="text-emerald-300">Unlimited</span></div>
                   </div>
+                  <Link
+                    href="/pricing"
+                    className="mt-2 text-[11px] text-emerald-300 hover:text-emerald-200 font-semibold inline-flex items-center gap-1"
+                  >
+                    See pricing →
+                  </Link>
                 </div>
               </div>
               <p className="text-gray-500 text-[13px]">
@@ -1345,7 +1351,7 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
               </div>
               <CodeBlock title="Error response format">{`{
   "success": false,
-  "error": "Rate limit exceeded. Upgrade to Pro for higher limits."
+  "error": "Rate limit exceeded. Pro tier offers ${PRO_TIER_PER_MINUTE}/min with no daily cap — free during launch on /pricing."
 }`}</CodeBlock>
             </Section>
 
