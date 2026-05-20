@@ -35,6 +35,7 @@ import {
   sendAlertPush,
   sendAlertDiscord,
   sendAlertWhatsApp,
+  sendAlertWebhook,
   type TriggeredAlertInfo,
 } from '@/lib/notifications';
 
@@ -117,6 +118,16 @@ export async function GET(request: NextRequest) {
         if (user.notificationPrefs?.discordEnabled && user.notificationPrefs?.discordWebhookUrl) {
           const url = user.notificationPrefs.discordWebhookUrl;
           channels.push({ name: 'discord', send: (a) => sendAlertDiscord(url, a) });
+        }
+        // Whale-tier generic HTTPS webhook. URL + HMAC secret stored
+        // under notificationPrefs.webhook (set via /api/account/webhook).
+        // The tier-gate is enforced at the alerts-CRUD endpoint, so by
+        // the time we get here the user is whale + the webhook is
+        // configured. We still defensively check both fields are
+        // present.
+        if (user.notificationPrefs?.webhook?.url && user.notificationPrefs?.webhook?.secret) {
+          const { url, secret } = user.notificationPrefs.webhook;
+          channels.push({ name: 'webhook', send: (a) => sendAlertWebhook(url, secret, a) });
         }
         if (user.notificationPrefs?.whatsappEnabled && user.notificationPrefs?.whatsappPhone) {
           const phone = user.notificationPrefs.whatsappPhone;

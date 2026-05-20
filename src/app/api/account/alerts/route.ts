@@ -20,7 +20,12 @@ export const dynamic = 'force-dynamic';
 
 const NO_STORE = { 'Cache-Control': 'no-store' };
 const SUPPORTED_KINDS = new Set(['funding_flip']);
-const SUPPORTED_CHANNELS = new Set(['telegram', 'email', 'browser_push']);
+// 'webhook' is the generic HTTPS webhook channel (Whale-tier only). The
+// URL + HMAC secret are stored separately under
+// user_prefs.notificationPrefs.webhook via /api/account/webhook — the
+// channel selection here just opts the user into that delivery path.
+const SUPPORTED_CHANNELS = new Set(['telegram', 'email', 'browser_push', 'webhook']);
+const WHALE_ONLY_CHANNELS = new Set(['webhook']);
 
 export async function GET() {
   const session = await auth();
@@ -87,6 +92,21 @@ export async function POST(req: NextRequest) {
   ));
 
   await initDB();
+
+  // Tier-gate Whale-only channels (currently just 'webhook'). Free + Pro
+  // attempting to use 'webhook' get a 403 with the upgrade pitch.
+  if (channels.some(c => WHALE_ONLY_CHANNELS.has(c))) {
+    const tierForChannel = await getUserTier(session.user.id);
+    if (tierForChannel !== 'whale') {
+      const blocked = channels.filter(c => WHALE_ONLY_CHANNELS.has(c));
+      return NextResponse.json(
+        {
+          error: `Channels ${blocked.join(', ')} require Whale tier. Your tier is ${tierForChannel}. See /pricing — free during launch.`,
+        },
+        { status: 403, headers: NO_STORE },
+      );
+    }
+  }
 
   // Per-tier alert-rule cap (Free 5 / Pro 50 / Whale Unlimited per /pricing).
   // Only enforced on *new* rules — flipping enable/disable or changing

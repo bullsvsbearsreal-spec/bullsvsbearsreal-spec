@@ -1641,6 +1641,15 @@ export interface NotificationPrefs {
   /** Email backup if Telegram delivery is failing — sends the same
    *  alert to the user's email so a broken bot link doesn't drop pings. */
   emailAlertBackup?: boolean;
+  /** Whale-tier custom HTTPS webhook target. URL + HMAC secret are
+   *  set via PUT /api/account/webhook (tier-gated to whale). The
+   *  alerts cron POSTs signed payloads here for every fired alert
+   *  when the rule has 'webhook' in its channels list. */
+  webhook?: {
+    url: string;
+    secret: string;
+    createdAt: string;
+  };
 }
 
 export interface FundingPrefs {

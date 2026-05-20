@@ -1,8 +1,10 @@
 /**
  * Notification delivery for user alerts.
- * Supports email (Resend), Telegram, Discord Webhook, WhatsApp (Twilio), and Web Push channels.
+ * Supports email (Resend), Telegram, Discord Webhook, WhatsApp (Twilio),
+ * Web Push, and generic HMAC-signed HTTPS webhook (Whale tier) channels.
  */
 
+import { createHmac } from 'crypto';
 import { Resend } from 'resend';
 import { sendMessage } from './telegram';
 import webpush from 'web-push';
@@ -420,6 +422,121 @@ export async function sendAlertWhatsApp(
     return true;
   } catch (e) {
     console.error('[notifications] whatsapp send error:', e);
+    return false;
+  }
+}
+
+// ─── Generic HTTPS Webhook (Whale tier) ────────────────────────────────────
+
+/**
+ * SSRF defense: reject webhook URLs pointing at localhost / private
+ * network ranges / link-local. A whale user setting webhook_url to
+ * `http://169.254.169.254/latest/meta-data/` would otherwise pivot
+ * our outbound fetch into a cloud metadata service exfil.
+ *
+ * Returns null if the URL is acceptable, or an error string explaining
+ * why it's rejected. Caller can surface the message to the user.
+ */
+export function validateWebhookUrl(raw: string): string | null {
+  if (!raw || typeof raw !== 'string') return 'URL is required';
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return 'Invalid URL — could not parse';
+  }
+  if (u.protocol !== 'https:') {
+    return 'HTTPS required (no plain http or other schemes)';
+  }
+  const host = u.hostname.toLowerCase();
+  // Block exact loopback + common metadata hosts. The dotted-decimal
+  // private-range checks below cover the rest.
+  if (host === 'localhost' || host === '0.0.0.0' || host === '[::1]' ||
+      host === '[::]' || host === '169.254.169.254' /* AWS/GCP metadata */) {
+    return 'Loopback / metadata hosts are not allowed';
+  }
+  // Reject any hostname that's a bare IPv4 in a private range. We don't
+  // try to resolve DNS-to-IP here (would require an async lookup and
+  // adds TOCTOU risk); the receiving server should also enforce its
+  // own network ACLs. This catches the obvious mistakes.
+  if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(host)) {
+    const parts = host.split('.').map(Number);
+    const [a, b] = parts;
+    // 10.0.0.0/8
+    if (a === 10) return 'Private IP ranges (10.x.x.x) are not allowed';
+    // 172.16.0.0/12
+    if (a === 172 && b >= 16 && b <= 31) return 'Private IP ranges (172.16-31.x.x) are not allowed';
+    // 192.168.0.0/16
+    if (a === 192 && b === 168) return 'Private IP ranges (192.168.x.x) are not allowed';
+    // 127.0.0.0/8 loopback
+    if (a === 127) return 'Loopback range (127.x.x.x) is not allowed';
+    // 169.254.0.0/16 link-local
+    if (a === 169 && b === 254) return 'Link-local range (169.254.x.x) is not allowed';
+  }
+  return null;
+}
+
+interface WebhookPayload {
+  /** ISO timestamp the event fired. */
+  timestamp: string;
+  /** Schema version — bump on breaking payload changes. */
+  version: 'v1';
+  /** Event type — currently only 'alert.triggered' but reserved for
+   *  future event kinds without changing the receiver contract. */
+  event: 'alert.triggered' | 'alert.test';
+  /** One or more alerts fired in this batch. */
+  alerts: TriggeredAlertInfo[];
+}
+
+/**
+ * Deliver an alert batch to a user-configured HTTPS webhook with HMAC
+ * signing. Receiver verifies authenticity by recomputing
+ * `HMAC-SHA256(secret, body)` and comparing against the
+ * `X-InfoHub-Signature` header — same scheme as Stripe / GitHub
+ * webhooks, easy to wire on the receiver side.
+ *
+ * Whale tier only — caller is responsible for the tier check (see
+ * /api/account/alerts POST). This function just ships the bytes.
+ */
+export async function sendAlertWebhook(
+  webhookUrl: string,
+  secret: string,
+  alerts: TriggeredAlertInfo[],
+  eventType: 'alert.triggered' | 'alert.test' = 'alert.triggered',
+): Promise<boolean> {
+  if (alerts.length === 0 || !webhookUrl || !secret) return false;
+  const urlError = validateWebhookUrl(webhookUrl);
+  if (urlError) {
+    console.error('[notifications] webhook URL rejected:', urlError);
+    return false;
+  }
+  const payload: WebhookPayload = {
+    timestamp: new Date().toISOString(),
+    version: 'v1',
+    event: eventType,
+    alerts,
+  };
+  const body = JSON.stringify(payload);
+  const signature = createHmac('sha256', secret).update(body).digest('hex');
+  try {
+    const res = await fetch(webhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-InfoHub-Signature': signature,
+        'X-InfoHub-Event': eventType,
+        'User-Agent': 'InfoHub-Webhook/1.0 (+https://info-hub.io)',
+      },
+      body,
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok) {
+      console.error('[notifications] webhook error:', res.status, await res.text().catch(() => ''));
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('[notifications] webhook send error:', e);
     return false;
   }
 }
