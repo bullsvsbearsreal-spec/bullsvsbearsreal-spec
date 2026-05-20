@@ -264,7 +264,7 @@ export default function PricingPage() {
             />
             <FaqItem
               q="What's the difference between Pro and Whale?"
-              a="Pro covers most active traders: 500 req/min API, 50 alerts, 100 watched wallets, 1y history. Whale adds custom alert webhooks (deliver to your trading bot), sub-second priority alerts, the raw aggregator WebSocket feed, 5 team seats, and a 1:1 channel with the team for feature requests."
+              a={`Pro covers most active traders: ${TIER_LIMITS.pro.apiPerMinute} req/min API, ${TIER_LIMITS.pro.maxAlerts} alerts, ${TIER_LIMITS.pro.maxWatchedWallets} watched wallets, ${TIER_LIMITS.pro.historyDays >= 365 ? `${Math.round(TIER_LIMITS.pro.historyDays / 365)}y` : `${TIER_LIMITS.pro.historyDays}d`} history. Whale adds custom alert webhooks (deliver to your trading bot), sub-second priority alerts, the raw aggregator WebSocket feed, 5 team seats, and a 1:1 channel with the team for feature requests.`}
             />
             <FaqItem
               q="Do you charge based on usage?"
