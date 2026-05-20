@@ -203,11 +203,13 @@ export default function UserMenu() {
 
 /**
  * Plan chip — links to /pricing so users can see the tier comparison.
- * Hidden for admins (already covered by the ADMIN chip).
+ * Shown for everyone including admins (admin resolves to WHALE via
+ * resolveUserTier, so the chip correctly shows their grandfathered tier
+ * next to the ADMIN chip — the two read as complementary roles).
  */
 function TierChip({ role }: { role?: string | null }) {
-  if (role === 'admin') return null;
-  // billingTier wiring is a follow-up — non-admins resolve to 'free' today
+  // billingTier wiring is a follow-up. resolveUserTier handles admin →
+  // whale auto-grandfathering, so admins see a WHALE chip alongside ADMIN.
   const tier = resolveUserTier({ role, billingTier: null });
   const branding = TIER_BRANDING[tier];
   const Icon = branding.iconName === 'Sparkles' ? Sparkles

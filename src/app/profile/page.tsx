@@ -29,10 +29,17 @@ import {
   User, Camera, Loader2, Trash2, Shield, Star, Bell, BarChart3,
   Activity, Clock, Save, Check, ChevronDown, Wallet, KeyRound,
   Settings, Gift, CreditCard, Send, AlertTriangle, ArrowRight,
-  ExternalLink, LogOut, Sparkles, ShieldCheck, Mail,
+  ExternalLink, LogOut, Sparkles, ShieldCheck, Mail, Zap, Crown,
 } from 'lucide-react';
 import { formatTimeAgo } from '@/lib/utils/format';
 import { useAvatarUpload } from '@/hooks/useAvatarUpload';
+import {
+  resolveUserTier,
+  TIER_BRANDING,
+  TIER_LIMITS,
+  TIER_PRICE_MONTHLY,
+  type Tier,
+} from '@/lib/constants/tiers';
 
 interface AccountStats {
   memberSince: string | null;
@@ -737,19 +744,141 @@ function ReferralsTab() {
 }
 
 function BillingTab() {
+  const { data: session } = useSession();
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  // billingTier is null until NowPayments is wired — admin role still
+  // resolves to whale, everyone else to free for now.
+  const tier = resolveUserTier({ role, billingTier: null });
+  const branding = TIER_BRANDING[tier];
+  const limits = TIER_LIMITS[tier];
+  const monthlyPrice = TIER_PRICE_MONTHLY[tier];
+  const TierIcon = branding.iconName === 'Sparkles' ? Sparkles
+    : branding.iconName === 'Zap' ? Zap
+    : Crown;
+
+  // Launch state: Pro + Whale tiers are unlocked for everyone while we
+  // onboard early users. Admin is grandfathered to Whale.
+  const isAdminGrandfathered = role === 'admin';
+  const isPaidTier = tier !== 'free';
+
+  // Pick the "upgrade target" for the CTA — Free users get pointed at Pro,
+  // Pro users at Whale, Whale users get a "you're at the top" state.
+  const upgradeTarget: Tier | null = tier === 'free' ? 'pro' : tier === 'pro' ? 'whale' : null;
+  const upgradeBranding = upgradeTarget ? TIER_BRANDING[upgradeTarget] : null;
+
   return (
-    <SectionCard title="Plan + billing" icon={CreditCard} description="You're on the Free plan. All trading data is free; some advanced features (unlimited alerts, longer history, priority support) will move to a paid tier.">
-      <div className="rounded-lg border border-emerald-400/20 bg-emerald-500/5 px-4 py-3.5 mb-4">
+    <SectionCard
+      title="Plan + billing"
+      icon={CreditCard}
+      description={
+        isAdminGrandfathered
+          ? "Admin accounts are grandfathered to the Whale tier — all features unlocked, no billing."
+          : "Pro + Whale tiers are free during launch — everyone gets unlimited everything while we onboard early users. See /pricing for what each tier will cost once we exit early access."
+      }
+    >
+      {/* Current-tier card */}
+      <div
+        className={`rounded-lg border px-4 py-3.5 mb-4 ${
+          tier === 'whale' ? 'border-amber-400/30 bg-amber-500/5'
+          : tier === 'pro' ? 'border-emerald-400/30 bg-emerald-500/5'
+          : 'border-white/[0.08] bg-white/[0.02]'
+        }`}
+      >
         <div className="flex items-center justify-between gap-4">
-          <div>
-            <div className="text-sm font-bold text-emerald-400">Free plan · active</div>
-            <div className="text-[11px] text-neutral-400 mt-0.5">No card required. Upgrade when paid tier launches.</div>
+          <div className="flex items-center gap-3">
+            <TierIcon className={`w-6 h-6 ${branding.textColor}`} aria-hidden />
+            <div>
+              <div className={`text-sm font-bold ${branding.textColor}`}>
+                {branding.label} plan · active
+              </div>
+              <div className="text-[11px] text-neutral-400 mt-0.5">
+                {isAdminGrandfathered
+                  ? 'Admin grandfather — no billing applies'
+                  : isPaidTier
+                  ? `Free during launch (normally $${monthlyPrice}/mo)`
+                  : 'No card required — Free tier stays free forever'}
+              </div>
+            </div>
           </div>
-          <span className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold">Current</span>
+          <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold shrink-0">
+            Current
+          </span>
         </div>
       </div>
-      <p className="text-[11px] text-neutral-600 italic">A paid tier is in the works — drop a note via the bug-report button if there's a feature you'd pay for.</p>
+
+      {/* Tier limits summary */}
+      <div className="grid grid-cols-2 gap-2 mb-4">
+        <LimitTile
+          label="API rate"
+          value={Number.isFinite(limits.apiPerMinute) ? `${limits.apiPerMinute.toLocaleString()}/min` : 'Unlimited'}
+        />
+        <LimitTile
+          label="Daily requests"
+          value={Number.isFinite(limits.apiPerDay) ? limits.apiPerDay.toLocaleString() : 'Unlimited'}
+        />
+        <LimitTile
+          label="Custom alerts"
+          value={Number.isFinite(limits.maxAlerts) ? String(limits.maxAlerts) : 'Unlimited'}
+        />
+        <LimitTile
+          label="Watched wallets"
+          value={Number.isFinite(limits.maxWatchedWallets) ? String(limits.maxWatchedWallets) : 'Unlimited'}
+        />
+        <LimitTile
+          label="Historical window"
+          value={limits.historyDays >= 365 ? `${Math.round(limits.historyDays / 365)}y` : `${limits.historyDays}d`}
+        />
+        <LimitTile
+          label="Plan price"
+          value={monthlyPrice === 0 ? 'Free' : `$${monthlyPrice}/mo`}
+        />
+      </div>
+
+      {/* Upgrade CTA (only if there's a higher tier to upgrade to and the
+          user isn't already admin-grandfathered) */}
+      {upgradeTarget && upgradeBranding && !isAdminGrandfathered && (
+        <Link
+          href="/pricing"
+          className={`flex items-center justify-between gap-3 rounded-lg border px-4 py-3 mb-3 transition-colors ${
+            upgradeTarget === 'whale'
+              ? 'border-amber-400/30 bg-amber-500/[0.04] hover:bg-amber-500/[0.08]'
+              : 'border-emerald-400/30 bg-emerald-500/[0.04] hover:bg-emerald-500/[0.08]'
+          }`}
+        >
+          <div>
+            <div className={`text-[13px] font-bold ${upgradeBranding.textColor}`}>
+              Upgrade to {upgradeBranding.label} — free during launch
+            </div>
+            <div className="text-[11px] text-neutral-400 mt-0.5">{upgradeBranding.tagline}</div>
+          </div>
+          <ArrowRight className={`w-4 h-4 ${upgradeBranding.textColor} shrink-0`} aria-hidden />
+        </Link>
+      )}
+
+      {/* Always-visible pricing link */}
+      <Link
+        href="/pricing"
+        className="inline-flex items-center gap-1.5 text-[12px] text-emerald-300 hover:text-emerald-200 font-semibold"
+      >
+        See the full pricing comparison
+        <ArrowRight className="w-3 h-3" aria-hidden />
+      </Link>
+
+      <p className="text-[11px] text-neutral-600 italic mt-4">
+        {isAdminGrandfathered
+          ? "Admin tier is permanent — you'll never be billed regardless of how the public pricing evolves."
+          : "Crypto checkout via NowPayments goes live when we exit early access. We'll email you ahead of time with the exact date."}
+      </p>
     </SectionCard>
+  );
+}
+
+function LimitTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+      <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">{label}</div>
+      <div className="text-sm font-bold text-white mt-0.5">{value}</div>
+    </div>
   );
 }
 

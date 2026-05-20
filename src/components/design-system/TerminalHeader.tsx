@@ -403,6 +403,33 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
         <span style={{ flex: 1, textAlign: 'left' }}>Search or jump to…</span>
         <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--fg-muted)', background: 'var(--hub-secondary)', padding: '1px 5px', borderRadius: 3 }}>⌘K</span>
       </button>
+      {/* Top-level Pricing pill — Pricing was previously buried in the
+          Research dropdown (position #25). Promoting it to chrome makes
+          the launch tier system actually discoverable. */}
+      <Link
+        href="/pricing"
+        title="Free, Pro, Whale — free during launch"
+        style={{
+          background: 'linear-gradient(135deg, rgba(16,185,129,0.18) 0%, rgba(245,158,11,0.18) 100%)',
+          border: '1px solid rgba(16,185,129,0.35)',
+          borderRadius: 8,
+          padding: '6px 10px',
+          fontSize: 11,
+          fontWeight: 700,
+          color: 'rgb(110,231,183)',
+          textDecoration: 'none',
+          letterSpacing: '0.04em',
+          textTransform: 'uppercase',
+          fontFamily: 'var(--font-sans)',
+          flexShrink: 0,
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 5,
+        }}
+      >
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+        Pricing
+      </Link>
       <Link href="/donate" style={{ ...iconBtn, textDecoration: 'none' }} aria-label="Donate">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
       </Link>

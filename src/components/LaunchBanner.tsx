@@ -4,12 +4,14 @@
  * Site-wide banner announcing "Pro + Whale tiers free during launch".
  * Dismissible per session (sessionStorage) — comes back on next visit.
  *
- * Hidden once a user is on a paid tier (no reason to upsell them) and
- * for admins (they're already Whale via resolveUserTier).
+ * Shown to EVERY user including admins. Admins were previously hidden
+ * (rationale: "already Whale, no upsell") but that meant the team
+ * running the site never saw the launch announcement they shipped,
+ * which makes /pricing QA blind. The dismiss-X handles the "I don't
+ * need to see this every page" case for any user including admins.
  *
- * Renders above <Header> in app/layout.tsx so it spans the full viewport
- * width and doesn't shift content below it once mounted (we reserve the
- * space via CSS).
+ * Renders above the rest of the chrome inside TerminalShell so it
+ * spans the full viewport width.
  */
 
 import { useEffect, useState } from 'react';
@@ -21,7 +23,7 @@ import { Sparkles, X, ArrowRight } from 'lucide-react';
 const STORAGE_KEY = 'launch-banner-dismissed';
 
 export default function LaunchBanner() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const pathname = usePathname();
   const [dismissed, setDismissed] = useState(false);
 
@@ -36,12 +38,8 @@ export default function LaunchBanner() {
   // updates correctly on client-side navigation, not just initial mount.
   if (pathname === '/pricing') return null;
 
-  // Hide for admin (already Whale).
-  const role = (session?.user as { role?: string } | undefined)?.role;
-  if (role === 'admin') return null;
-
-  // Don't render while session is resolving — avoids a flash for admins
-  // who would otherwise see the banner briefly before role hydrates.
+  // Don't render while session is resolving — avoids a flash before the
+  // dismissed-state hydrates from sessionStorage.
   if (status === 'loading') return null;
 
   if (dismissed) return null;
