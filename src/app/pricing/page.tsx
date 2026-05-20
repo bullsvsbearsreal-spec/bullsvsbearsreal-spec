@@ -156,7 +156,10 @@ export default function PricingPage() {
               <table className="w-full text-[12px]">
                 <thead>
                   <tr className="border-b border-white/[0.06] bg-white/[0.02]">
-                    <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-neutral-500 font-semibold sticky left-0 bg-white/[0.02]">
+                    {/* Solid background on sticky cell — matches the row
+                        tint visually but doesn't bleed through cells
+                        scrolling underneath on mobile. */}
+                    <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-neutral-500 font-semibold sticky left-0 bg-[#13151c]">
                       Feature
                     </th>
                     {TIER_ORDER.map((t) => {
@@ -174,23 +177,34 @@ export default function PricingPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {FEATURE_MATRIX.map((row, i) => (
-                    <tr
-                      key={row.label}
-                      className={`border-b border-white/[0.04] ${
-                        i % 2 === 0 ? '' : 'bg-white/[0.01]'
-                      }`}
-                    >
-                      <td className="px-4 py-2.5 text-neutral-300 sticky left-0 bg-inherit">
-                        {row.label}
-                      </td>
-                      {TIER_ORDER.map((t) => (
-                        <td key={t} className="px-4 py-2.5 text-center">
-                          <FeatureCell value={row.values[t]} tier={t} />
+                  {FEATURE_MATRIX.map((row, i) => {
+                    const stripe = i % 2 === 0;
+                    return (
+                      <tr
+                        key={row.label}
+                        className={`border-b border-white/[0.04] ${
+                          stripe ? '' : 'bg-white/[0.01]'
+                        }`}
+                      >
+                        {/* Sticky leftmost cell — needs an explicit
+                            background that matches the row stripe so
+                            the underlying cells don't bleed through
+                            during horizontal scroll on mobile. */}
+                        <td
+                          className={`px-4 py-2.5 text-neutral-300 sticky left-0 ${
+                            stripe ? 'bg-hub-black' : 'bg-[#0d0f15]'
+                          }`}
+                        >
+                          {row.label}
                         </td>
-                      ))}
-                    </tr>
-                  ))}
+                        {TIER_ORDER.map((t) => (
+                          <td key={t} className="px-4 py-2.5 text-center">
+                            <FeatureCell value={row.values[t]} tier={t} />
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
