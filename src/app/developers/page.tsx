@@ -10,7 +10,7 @@ import AuthPromptBanner from '@/components/AuthPromptBanner';
 import {
   Key, Copy, Check, Trash2, Zap, BarChart3, TrendingUp, Shield, Clock, Globe,
   ArrowRight, Terminal, Code2, Activity, Layers, LineChart,
-  ChevronRight, Database, Wifi, ChevronDown, Hash, Scale,
+  ChevronRight, Database, Wifi, ChevronDown, Hash, Scale, Webhook,
 } from 'lucide-react';
 import { ALL_EXCHANGES } from '@/lib/constants';
 import { PRO_TIER_PER_MINUTE, FREE_TIER_PER_MINUTE, FREE_TIER_PER_DAY } from '@/lib/api/rate-limit';
@@ -550,6 +550,12 @@ export default function DevelopersPage() {
                     className="inline-flex items-center gap-2 border border-white/10 hover:border-white/20 bg-white/[0.03] hover:bg-white/[0.06] text-gray-300 hover:text-white font-medium px-6 py-3.5 rounded-xl text-sm transition-all"
                   >
                     <Code2 className="w-4 h-4" /> Documentation <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
+                  </Link>
+                  <Link
+                    href="/developers/webhooks"
+                    className="inline-flex items-center gap-2 border border-emerald-400/30 hover:border-emerald-400/50 bg-emerald-500/[0.04] hover:bg-emerald-500/[0.08] text-emerald-300 hover:text-emerald-200 font-medium px-6 py-3.5 rounded-xl text-sm transition-all"
+                  >
+                    <Webhook className="w-4 h-4" /> Webhooks <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
                   </Link>
                 </div>
 

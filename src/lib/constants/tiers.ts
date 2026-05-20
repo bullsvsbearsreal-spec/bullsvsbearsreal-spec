@@ -192,7 +192,7 @@ export const TOOLS_BY_TIER: TierToolList[] = [
     heading: 'Whale adds',
     description: 'Institutional features — webhooks, raw WS, team seats',
     items: [
-      { label: 'Custom alert webhooks', hint: 'Deliver triggers to your HTTPS endpoint / bot' },
+      { label: 'Custom alert webhooks', href: '/developers/webhooks', hint: 'HMAC-signed POSTs to your endpoint · setup guide' },
       { label: 'Sub-second priority alerts', hint: 'Race-to-fill delivery vs the standard queue' },
       { label: 'Raw WebSocket feed', hint: 'Co-located, sub-100ms aggregator stream' },
       { label: 'Team seats — up to 5 users', hint: 'Shared subscription across your desk' },
