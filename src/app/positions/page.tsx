@@ -237,6 +237,51 @@ export default function PositionsPage() {
     return (data?.positions ?? []).filter(p => p.exchange === exchangeFilter);
   }, [data?.positions, exchangeFilter]);
 
+  // Recompute the summary row from the filtered positions when an exchange
+  // filter is active. Without this, the top row stayed pinned to the global
+  // book even after the user filtered to (e.g.) MEXC — making it look like
+  // their MEXC equity was being ignored. Mirrors the server-side roll-up
+  // in /api/account/positions/route.ts so the math stays consistent.
+  const summary = useMemo<Summary>(() => {
+    if (!data) {
+      return { equity: 0, nominal: 0, totalLong: 0, totalShort: 0,
+               leverageLong: 0, leverageShort: 0, totalUnrealizedPnl: 0,
+               dailyFundingCarryUsd: null };
+    }
+    // No filter active → use the server-computed global summary verbatim.
+    if (!exchangeFilter) return data.summary;
+
+    let totalLong = 0;
+    let totalShort = 0;
+    let totalMargin = 0;
+    let totalUnrealized = 0;
+    let carry = 0;
+    let carryHasData = false;
+    for (const p of filtered) {
+      const value = p.positionValue
+        ?? (p.markPrice ? p.size * p.markPrice : p.size * p.entryPrice);
+      if (p.side === 'long') totalLong += value;
+      else totalShort += value;
+      if (p.marginUsed != null) totalMargin += p.marginUsed;
+      if (p.unrealizedPnl != null) totalUnrealized += p.unrealizedPnl;
+      if (p.dailyFundingCarryUsd != null) {
+        carry += p.dailyFundingCarryUsd;
+        carryHasData = true;
+      }
+    }
+    const equity = totalMargin + totalUnrealized;
+    return {
+      equity,
+      nominal: totalLong + totalShort,
+      totalLong,
+      totalShort,
+      leverageLong: equity > 0 ? totalLong / equity : 0,
+      leverageShort: equity > 0 ? totalShort / equity : 0,
+      totalUnrealizedPnl: totalUnrealized,
+      dailyFundingCarryUsd: carryHasData ? carry : null,
+    };
+  }, [data, exchangeFilter, filtered]);
+
   // ─── Auth wall ───────────────────────────────────────────────────
   if (authError) {
     return (
@@ -383,19 +428,31 @@ export default function PositionsPage() {
         )}
 
         {/* ─── Summary row (matches mockup top) ─── */}
+        {/* Reads from the local `summary` memo (not data.summary directly) so
+            the numbers re-roll when the user filters by exchange. The sub-
+            label on Equity flips to "<exchange> only" when filtered so the
+            scope of the figures is unambiguous. */}
         {data && data.positions.length > 0 && (
           <>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 mb-2">
-              <SummaryCell label="Equity" value={fmtUsd(data.summary.equity)} sub="margin + uPnL" />
-              <SummaryCell label="Nominal" value={fmtUsd(data.summary.nominal)} sub="total exposure" />
-              <SummaryCell label="Total long" value={fmtUsd(data.summary.totalLong)} valueColor="text-emerald-400" />
-              <SummaryCell label="Total short" value={fmtUsd(data.summary.totalShort)} valueColor="text-red-400" />
-              <SummaryCell label="Leverage long" value={fmtLeverage(data.summary.leverageLong)} valueColor="text-emerald-400" />
-              <SummaryCell label="Leverage short" value={fmtLeverage(data.summary.leverageShort)} valueColor="text-red-400" />
+              <SummaryCell
+                label="Equity"
+                value={fmtUsd(summary.equity)}
+                sub={exchangeFilter ? `${exchangeFilter} only · margin + uPnL` : 'margin + uPnL'}
+              />
+              <SummaryCell
+                label="Nominal"
+                value={fmtUsd(summary.nominal)}
+                sub={exchangeFilter ? `${exchangeFilter} exposure` : 'total exposure'}
+              />
+              <SummaryCell label="Total long" value={fmtUsd(summary.totalLong)} valueColor="text-emerald-400" />
+              <SummaryCell label="Total short" value={fmtUsd(summary.totalShort)} valueColor="text-red-400" />
+              <SummaryCell label="Leverage long" value={fmtLeverage(summary.leverageLong)} valueColor="text-emerald-400" />
+              <SummaryCell label="Leverage short" value={fmtLeverage(summary.leverageShort)} valueColor="text-red-400" />
             </div>
             {/* Funding carry projection: assumes the live rate holds. */}
-            {data.summary.dailyFundingCarryUsd != null && (
-              <FundingCarryStrip dailyCarry={data.summary.dailyFundingCarryUsd} />
+            {summary.dailyFundingCarryUsd != null && (
+              <FundingCarryStrip dailyCarry={summary.dailyFundingCarryUsd} />
             )}
           </>
         )}
