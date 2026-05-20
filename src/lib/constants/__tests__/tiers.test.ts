@@ -6,8 +6,8 @@ import {
   TIER_PRICE_ANNUAL,
   TIER_BRANDING,
   FEATURE_MATRIX,
-  TOOL_HIGHLIGHTS,
-  TOOL_HIGHLIGHT_COUNT,
+  TOOLS_BY_TIER,
+  TOOLS_BY_TIER_COUNT,
   ANNUAL_DISCOUNT_PCT,
   annualSavingsUsd,
   resolveUserTier,
@@ -200,46 +200,69 @@ describe('ANNUAL_DISCOUNT_PCT', () => {
   });
 });
 
-describe('TOOL_HIGHLIGHTS', () => {
-  it('is non-empty (at least 3 categories)', () => {
-    expect(TOOL_HIGHLIGHTS.length).toBeGreaterThanOrEqual(3);
+describe('TOOLS_BY_TIER', () => {
+  it('has exactly one entry per tier (free, pro, whale)', () => {
+    expect(TOOLS_BY_TIER).toHaveLength(3);
+    const tiers = TOOLS_BY_TIER.map((t) => t.tier);
+    expect(tiers).toEqual(['free', 'pro', 'whale']);
   });
 
-  it('every category has a label, description, and at least 3 tools', () => {
-    TOOL_HIGHLIGHTS.forEach((cat) => {
-      expect(cat.label).toBeTruthy();
-      expect(cat.description).toBeTruthy();
-      expect(cat.tools.length).toBeGreaterThanOrEqual(3);
+  it('every tier entry has heading, description, and at least 3 items', () => {
+    TOOLS_BY_TIER.forEach((entry) => {
+      expect(entry.heading).toBeTruthy();
+      expect(entry.description).toBeTruthy();
+      expect(entry.items.length).toBeGreaterThanOrEqual(3);
     });
   });
 
-  it('every tool has a label and a relative href (starts with /)', () => {
-    TOOL_HIGHLIGHTS.forEach((cat) => {
-      cat.tools.forEach((tool) => {
-        expect(tool.label).toBeTruthy();
-        expect(tool.href).toMatch(/^\//);
+  it('every item has a non-empty label', () => {
+    TOOLS_BY_TIER.forEach((entry) => {
+      entry.items.forEach((item) => {
+        expect(item.label).toBeTruthy();
       });
     });
   });
 
-  it('category labels are unique', () => {
-    const labels = TOOL_HIGHLIGHTS.map((c) => c.label);
-    expect(new Set(labels).size).toBe(labels.length);
+  it('when href is set, it must be a relative route starting with /', () => {
+    TOOLS_BY_TIER.forEach((entry) => {
+      entry.items.forEach((item) => {
+        if (item.href !== undefined) {
+          expect(item.href).toMatch(/^\//);
+        }
+      });
+    });
   });
 
-  it('tool hrefs are unique across all categories (no duplicate cards)', () => {
-    const hrefs = TOOL_HIGHLIGHTS.flatMap((c) => c.tools.map((t) => t.href));
-    expect(new Set(hrefs).size).toBe(hrefs.length);
+  it('hrefs are unique within a tier (no duplicate links in one column)', () => {
+    TOOLS_BY_TIER.forEach((entry) => {
+      const hrefs = entry.items.map((i) => i.href).filter((h): h is string => !!h);
+      expect(new Set(hrefs).size).toBe(hrefs.length);
+    });
+  });
+
+  it('hrefs are unique across tiers (no tool listed in multiple columns)', () => {
+    const allHrefs = TOOLS_BY_TIER.flatMap((t) =>
+      t.items.map((i) => i.href).filter((h): h is string => !!h),
+    );
+    expect(new Set(allHrefs).size).toBe(allHrefs.length);
+  });
+
+  it('Whale tier has at least one feature without an href (pure features like webhooks)', () => {
+    // Whale's value is mostly in non-page features (webhooks, raw WS,
+    // team seats). At least one item should be a pure feature.
+    const whale = TOOLS_BY_TIER.find((t) => t.tier === 'whale')!;
+    const hrefless = whale.items.filter((i) => !i.href);
+    expect(hrefless.length).toBeGreaterThan(0);
   });
 });
 
-describe('TOOL_HIGHLIGHT_COUNT', () => {
-  it('equals the sum of tools across all categories (derived, not hardcoded)', () => {
-    const summed = TOOL_HIGHLIGHTS.reduce((acc, c) => acc + c.tools.length, 0);
-    expect(TOOL_HIGHLIGHT_COUNT).toBe(summed);
+describe('TOOLS_BY_TIER_COUNT', () => {
+  it('equals the sum of items across all tiers (derived, not hardcoded)', () => {
+    const summed = TOOLS_BY_TIER.reduce((acc, t) => acc + t.items.length, 0);
+    expect(TOOLS_BY_TIER_COUNT).toBe(summed);
   });
 
-  it('is greater than 10 (otherwise the marketing copy "X+ tools" is silly)', () => {
-    expect(TOOL_HIGHLIGHT_COUNT).toBeGreaterThan(10);
+  it('is greater than 15 (combined across all 3 tiers)', () => {
+    expect(TOOLS_BY_TIER_COUNT).toBeGreaterThan(15);
   });
 });

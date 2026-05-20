@@ -27,12 +27,12 @@ import {
   TIER_PRICE_ANNUAL,
   TIER_BRANDING,
   FEATURE_MATRIX,
-  TOOL_HIGHLIGHTS,
-  TOOL_HIGHLIGHT_COUNT,
+  TOOLS_BY_TIER,
   ANNUAL_DISCOUNT_PCT,
   annualSavingsUsd,
   resolveUserTier,
   type Tier,
+  type TierToolList,
 } from '@/lib/constants/tiers';
 
 type Period = 'monthly' | 'annual';
@@ -152,27 +152,21 @@ export default function PricingPage() {
           })}
         </section>
 
-        {/* ─── What's included — surfaces the actual data tools beyond
-            the abstract feature matrix, with the explicit message that
-            Pro/Whale don't gate pages, just lift the limits. ─── */}
+        {/* ─── What's in each tier — three cumulative columns showing
+            what Free includes, what Pro adds on top, what Whale adds
+            on top of Pro. Surfaces the upgrade path concretely. ─── */}
         <section className="mb-12">
-          <div className="flex items-baseline justify-between gap-3 mb-3 px-1 flex-wrap">
-            <h2 className="text-base font-bold text-white">
-              Every tier includes the full data terminal
-            </h2>
-            <p className="text-[11px] text-neutral-500">
-              {TOOL_HIGHLIGHT_COUNT}+ tools highlighted below · full menu in the side nav
-            </p>
-          </div>
+          <h2 className="text-base font-bold text-white mb-1 px-1">
+            What&apos;s in each tier
+          </h2>
           <p className="text-[12px] text-neutral-400 mb-4 px-1 leading-relaxed">
-            Pro + Whale don&apos;t unlock new pages — they raise the limits on
-            the ones below and add a few power features (custom webhooks, raw
-            WebSocket, team seats, sub-second alert delivery).
+            Each tier is cumulative — Pro includes everything in Free, Whale
+            includes everything in Pro. Below is what each tier adds.
           </p>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {TOOL_HIGHLIGHTS.map((category) => (
-              <ToolCategoryCard key={category.label} category={category} />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+            {TOOLS_BY_TIER.map((tierList) => (
+              <TierToolListCard key={tierList.tier} tierList={tierList} />
             ))}
           </div>
 
@@ -181,7 +175,7 @@ export default function PricingPage() {
             <Link href="/developers/docs" className="text-emerald-300 hover:underline">
               see API docs
             </Link>
-            .
+            . Full nav menu in the side bar.
           </p>
         </section>
 
@@ -545,39 +539,67 @@ function Bullet({ children }: { children: React.ReactNode }) {
 }
 
 /**
- * Card for one tool category in the "What's included" grid. Lists the
- * curated highlights as deep links so users can click straight into the
- * tool from the pricing page.
+ * Card for one tier's tool/feature list in the "What's in each tier"
+ * grid. Renders the tier badge, heading, description, and items as
+ * either clickable links (when `href` present) or plain feature rows
+ * (when href omitted — Whale's webhooks, raw WS, etc.).
+ *
+ * Visual treatment is tier-coded: Free is neutral, Pro is emerald,
+ * Whale is amber. Matches the tier cards above so the "this is the
+ * Pro column" mapping is unambiguous.
  */
-function ToolCategoryCard({
-  category,
-}: {
-  category: (typeof TOOL_HIGHLIGHTS)[number];
-}) {
+function TierToolListCard({ tierList }: { tierList: TierToolList }) {
+  const branding = TIER_BRANDING[tierList.tier];
+  const Icon = tierIcon(branding.iconName);
+
+  const borderClass =
+    tierList.tier === 'whale' ? 'border-amber-400/30'
+    : tierList.tier === 'pro' ? 'border-emerald-400/30'
+    : 'border-white/[0.08]';
+  const bgClass =
+    tierList.tier === 'whale' ? 'bg-amber-500/[0.03]'
+    : tierList.tier === 'pro' ? 'bg-emerald-500/[0.03]'
+    : 'bg-white/[0.02]';
+
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-      <h3 className="text-[12px] font-bold uppercase tracking-[0.1em] text-white mb-0.5">
-        {category.label}
-      </h3>
-      <p className="text-[11px] text-neutral-500 mb-3 leading-snug">{category.description}</p>
-      <ul className="space-y-1.5">
-        {category.tools.map((tool) => (
-          <li key={tool.href}>
-            <Link
-              href={tool.href}
-              className="group flex items-baseline justify-between gap-2 text-[12px] hover:bg-white/[0.03] -mx-1.5 px-1.5 py-1 rounded transition-colors"
-            >
-              <span className="text-emerald-300 group-hover:text-emerald-200 font-semibold shrink-0">
-                {tool.label}
+    <div className={`rounded-xl border ${borderClass} ${bgClass} p-4 flex flex-col`}>
+      <div className="flex items-center gap-2 mb-1">
+        <Icon className={`w-4 h-4 ${branding.textColor}`} aria-hidden />
+        <h3 className="text-[12px] font-bold uppercase tracking-[0.1em] text-white">
+          {tierList.heading}
+        </h3>
+      </div>
+      <p className="text-[11px] text-neutral-500 mb-3 leading-snug">{tierList.description}</p>
+      <ul className="space-y-1.5 flex-1">
+        {tierList.items.map((item, i) => {
+          // Clickable link if href present, otherwise plain feature row.
+          const content = (
+            <span className="flex items-baseline justify-between gap-2">
+              <span className={`${branding.textColor} font-semibold text-[12px] shrink-0`}>
+                {item.label}
               </span>
-              {tool.hint && (
-                <span className="text-[10px] text-neutral-500 text-right truncate">
-                  {tool.hint}
+              {item.hint && (
+                <span className="text-[10px] text-neutral-500 text-right truncate min-w-0">
+                  {item.hint}
                 </span>
               )}
-            </Link>
-          </li>
-        ))}
+            </span>
+          );
+          return (
+            <li key={item.href ?? `${tierList.tier}-${i}`}>
+              {item.href ? (
+                <Link
+                  href={item.href}
+                  className="block hover:bg-white/[0.03] -mx-1.5 px-1.5 py-1 rounded transition-colors"
+                >
+                  {content}
+                </Link>
+              ) : (
+                <div className="-mx-1.5 px-1.5 py-1">{content}</div>
+              )}
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

@@ -117,100 +117,96 @@ export const TIER_BRANDING: Record<Tier, TierBranding> = {
 };
 
 /**
- * Curated highlight of the data terminal — what tools/pages users
- * actually get on every tier. Used by /pricing's "What's included"
- * section to surface the tools beyond the abstract feature matrix
- * (which is API/limits-focused).
+ * Tier-aware tool lists for the /pricing "What's in each tier" section.
  *
- * Every tier includes every page. Pro + Whale don't unlock new pages
- * — they raise limits and add a few power features (custom webhooks,
- * raw WS, team seats). This list intentionally covers the most useful
- * subset; the side nav has the full menu.
+ * Each tier owns a curated list of tools/features. Higher tiers
+ * implicitly include everything below them (cumulative), so Pro's list
+ * shows what Pro ADDS on top of Free, and Whale's list shows what Whale
+ * ADDS on top of Pro. This is the standard pricing-page pattern that
+ * lets users see the upgrade path clearly.
+ *
+ * Items can be either pages (with `href`) or pure features without a
+ * route (custom webhooks, sub-second alerts, etc. — the Whale tier has
+ * several of these).
  */
-export interface ToolHighlight {
-  /** Display label, e.g. "Chart" */
+export interface TierToolItem {
+  /** Display label, e.g. "Chart" or "Custom alert webhooks" */
   label: string;
-  /** Internal route, e.g. "/chart" */
-  href: string;
-  /** One-line value hint shown under the label */
+  /** Internal route — omit for pure features (no clickable page) */
+  href?: string;
+  /** One-line hint shown next to the label */
   hint?: string;
 }
 
-export interface ToolCategory {
-  /** Category label, e.g. "Scan & Trade" */
-  label: string;
-  /** Short description of what this category does */
+export interface TierToolList {
+  tier: Tier;
+  /** Section heading, e.g. "Everyone gets" or "Pro adds" */
+  heading: string;
+  /** Sub-line explaining what users get at this tier */
   description: string;
-  tools: ToolHighlight[];
+  items: TierToolItem[];
 }
 
-export const TOOL_HIGHLIGHTS: ToolCategory[] = [
+export const TOOLS_BY_TIER: TierToolList[] = [
   {
-    label: 'Scan & Trade',
-    description: 'Find setups and route them to the cheapest venue',
-    tools: [
-      { label: 'Chart', href: '/chart', hint: 'TradingView + 6 info bands · RSI/ATR overlays' },
-      { label: 'Screener', href: '/screener', hint: 'Filter + sort every market' },
-      { label: 'Spreads', href: '/spreads', hint: 'Cross-venue arb · net-of-fees' },
-      { label: 'Funding Arb', href: '/spread-scanner', hint: 'Long/short pair grader · A→D' },
-      { label: 'Options', href: '/options', hint: 'Chain · Greeks · IV · max pain · skew' },
-      { label: 'Trade Optimizer', href: '/trade-optimizer', hint: 'Cheapest venue per trade' },
-    ],
-  },
-  {
-    label: 'Live monitors',
-    description: 'Real-time data across every venue we cover',
-    tools: [
+    tier: 'free',
+    heading: 'Everyone gets',
+    description: 'Free tier — full data terminal, no card required',
+    items: [
+      { label: 'Chart', href: '/chart', hint: 'TradingView + 6 info bands' },
+      { label: 'Screener', href: '/screener', hint: 'Filter every market' },
       { label: 'Funding Rates', href: '/funding', hint: 'Live across all venues' },
-      { label: 'Open Interest', href: '/open-interest', hint: 'OI changes · 1h/4h/24h' },
-      { label: 'Liquidations', href: '/liquidations', hint: 'Live rekt feed · whale tags' },
-      { label: 'ETF Tracker', href: '/etf', hint: 'BTC + ETH spot ETF · flows · premiums' },
-      { label: 'Long / Short', href: '/longshort', hint: 'Crowd positioning · regime classifier' },
-      { label: 'CEX vs DEX Volume', href: '/volume-share', hint: 'On-chain share · 30d' },
+      { label: 'Open Interest', href: '/open-interest', hint: 'OI + 24h changes' },
+      { label: 'Liquidations', href: '/liquidations', hint: 'Live rekt feed' },
+      { label: 'ETF Tracker', href: '/etf', hint: 'Spot ETF flows + premiums' },
+      { label: 'Long / Short', href: '/longshort', hint: 'Crowd positioning' },
+      { label: 'Fear & Greed', href: '/fear-greed' },
+      { label: 'Event Calendar', href: '/economic-calendar', hint: 'Macro + token events' },
+      { label: 'Token Unlocks', href: '/token-unlocks', hint: 'Vesting + cliffs' },
+      { label: 'Liq Heatmap', href: '/liquidation-heatmap' },
+      { label: 'News + Signals', href: '/news' },
+      { label: '5 custom alerts · 10 watched wallets', hint: '90d history · 100 API req/min' },
+      { label: 'Community Telegram support' },
     ],
   },
   {
-    label: 'Risk & alerts',
-    description: 'Stay ahead of liquidation zones and surprise moves',
-    tools: [
-      { label: 'Liq Heatmap', href: '/liquidation-heatmap', hint: 'Heat tiles · whale clusters' },
-      { label: 'Liq Map', href: '/liquidation-map', hint: 'Price-level density forecast' },
-      { label: 'Liq Calculator', href: '/liq-calculator', hint: 'Price needed to liquidate' },
-      { label: 'Alerts', href: '/alerts', hint: 'Triggers + history · Telegram' },
+    tier: 'pro',
+    heading: 'Pro adds',
+    description: 'Active-trader power tools — higher limits, longer history',
+    items: [
+      { label: 'Spreads', href: '/spreads', hint: 'Cross-venue arb · net-of-fees' },
+      { label: 'Funding Arb', href: '/spread-scanner', hint: 'Long/short pair grader A→D' },
+      { label: 'Trade Optimizer', href: '/trade-optimizer', hint: 'Cheapest venue per trade' },
+      { label: 'Options', href: '/options', hint: 'Chain · Greeks · IV · max pain' },
       { label: 'Wallet Watch', href: '/watch', hint: 'HL + gTrade position alerter' },
-      { label: 'Position Sizer', href: '/position-size', hint: 'Risk-based sizing calculator' },
-    ],
-  },
-  {
-    label: 'Research',
-    description: 'Smart money flows, on-chain signals, news + catalysts',
-    tools: [
       { label: 'Smart Money', href: '/smart-money', hint: 'Top trader leaderboard' },
       { label: 'HL Whales', href: '/hl-whales', hint: 'Top Hyperliquid positions' },
-      { label: 'News + Signals', href: '/news', hint: 'Curated + algorithmic ranking' },
-      { label: 'Event Calendar', href: '/economic-calendar', hint: 'Macro + token events' },
-      { label: 'Token Unlocks', href: '/token-unlocks', hint: 'Vesting schedules · cliff risk' },
-      { label: 'On-Chain', href: '/onchain', hint: 'Network metrics · MVRV · NUPL' },
+      { label: 'On-Chain', href: '/onchain', hint: 'MVRV · NUPL · network metrics' },
+      { label: 'FOMC Playbook', href: '/fomc-playbook' },
+      { label: '50 custom alerts · 100 watched wallets', hint: '1 year history · 500 API req/min' },
+      { label: 'Priority email + DM support' },
     ],
   },
   {
-    label: 'Markets & macro',
-    description: 'Top-down view — sectors, regimes, sentiment',
-    tools: [
-      { label: 'Sector Rotation', href: '/sectors', hint: 'Heatmap by category' },
-      { label: 'Cycle Phase', href: '/cycle-phase', hint: 'Composite of 5 cycle signals' },
-      { label: 'Market Heatmap', href: '/market-heatmap', hint: 'Treemap by mcap' },
-      { label: 'Fear & Greed', href: '/fear-greed', hint: 'Sentiment index' },
-      { label: 'RSI Heatmap', href: '/rsi-heatmap', hint: 'Overbought / oversold' },
-      { label: 'FOMC Playbook', href: '/fomc-playbook', hint: 'BTC reaction to past Fed decisions' },
+    tier: 'whale',
+    heading: 'Whale adds',
+    description: 'Institutional features — webhooks, raw WS, team seats',
+    items: [
+      { label: 'Custom alert webhooks', hint: 'Deliver triggers to your HTTPS endpoint / bot' },
+      { label: 'Sub-second priority alerts', hint: 'Race-to-fill delivery vs the standard queue' },
+      { label: 'Raw WebSocket feed', hint: 'Co-located, sub-100ms aggregator stream' },
+      { label: 'Team seats — up to 5 users', hint: 'Shared subscription across your desk' },
+      { label: '1:1 channel with the team', hint: 'Feature requests + priority response' },
+      { label: 'Unlimited alerts · unlimited watched wallets' },
+      { label: '5 years of history · unlimited API requests' },
     ],
   },
 ];
 
-/** Total number of highlighted tools across all categories. Used by
- *  marketing copy ("X+ tools included"). Derived so it can't drift. */
-export const TOOL_HIGHLIGHT_COUNT = TOOL_HIGHLIGHTS.reduce(
-  (acc, cat) => acc + cat.tools.length,
+/** Total tools/features highlighted across all tiers. Derived so it
+ *  can't drift from the actual list. */
+export const TOOLS_BY_TIER_COUNT = TOOLS_BY_TIER.reduce(
+  (acc, t) => acc + t.items.length,
   0,
 );
 

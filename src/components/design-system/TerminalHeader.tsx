@@ -141,7 +141,11 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'guides',          label: 'Guides',          href: '/guides',                hint: 'Trading tutorials' },
       { id: 'api-docs',        label: 'API Docs',        href: '/api-docs',              hint: 'For developers' },
       { id: 'developers',      label: 'Developers',      href: '/developers',            hint: 'Integrations' },
-      { id: 'pricing',         label: 'Pricing',         href: '/pricing',               hint: 'Free, Pro, Whale' },
+      // /pricing moved to "My Tools" group — it's account/billing, not
+      // research. Leaving it here made the Research dropdown show as
+      // "active" when on /pricing (visually wrong since pricing isn't a
+      // research surface). Top-level Pricing pill in chrome is the
+      // primary entry point regardless.
       { id: 'faq',             label: 'FAQ',             href: '/faq',                   hint: 'Common questions' },
     ]},
   { key: 'tools', label: 'My Tools',
@@ -155,6 +159,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'portfolio',  label: 'Portfolio (manual)', href: '/portfolio',     hint: 'Manual holdings + P&L' },
       { id: 'compare',    label: 'Compare',       href: '/compare',            hint: 'Side-by-side coins' },
       { id: 'profile',    label: 'Profile',       href: '/profile',            hint: 'Your trader profile' },
+      { id: 'pricing',    label: 'Pricing',       href: '/pricing',            hint: 'Free / Pro / Whale · free during launch' },
       { id: 'referrals',  label: 'Referrals',     href: '/referrals',          hint: 'Invite friends' },
       { id: 'donate',     label: 'Donate',        href: '/donate',             hint: 'Support InfoHub' },
       { id: 'points',     label: 'Points',        href: '/points',             hint: 'Loyalty rewards' },
