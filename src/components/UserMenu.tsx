@@ -4,7 +4,8 @@ import { useState, useRef, useEffect } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Shield, Gift } from 'lucide-react';
+import { User, LogOut, Settings, ChevronDown, LayoutDashboard, Shield, Gift, Sparkles, Zap, Crown } from 'lucide-react';
+import { resolveUserTier, TIER_BRANDING } from '@/lib/constants/tiers';
 
 export default function UserMenu() {
   const { data: session, status } = useSession();
@@ -102,6 +103,7 @@ export default function UserMenu() {
                   ADVISOR
                 </span>
               )}
+              <TierChip role={session.user?.role} />
             </div>
             <p className="text-xs text-neutral-500 truncate">
               {session.user?.email}
@@ -196,5 +198,33 @@ export default function UserMenu() {
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Plan chip — links to /pricing so users can see the tier comparison.
+ * Hidden for admins (already covered by the ADMIN chip).
+ */
+function TierChip({ role }: { role?: string | null }) {
+  if (role === 'admin') return null;
+  // billingTier wiring is a follow-up — non-admins resolve to 'free' today
+  const tier = resolveUserTier({ role, billingTier: null });
+  const branding = TIER_BRANDING[tier];
+  const Icon = branding.iconName === 'Sparkles' ? Sparkles
+    : branding.iconName === 'Zap' ? Zap
+    : Crown;
+  return (
+    <Link
+      href="/pricing"
+      title={`You're on the ${branding.label} tier · See pricing`}
+      className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
+        tier === 'pro' ? 'bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25'
+        : tier === 'whale' ? 'bg-amber-500/15 text-amber-300 hover:bg-amber-500/25'
+        : 'bg-white/[0.06] text-neutral-400 hover:bg-white/[0.1] hover:text-neutral-200'
+      } transition-colors`}
+    >
+      <Icon className="w-2.5 h-2.5" aria-hidden />
+      {branding.label.toUpperCase()}
+    </Link>
   );
 }

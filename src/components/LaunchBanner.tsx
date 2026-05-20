@@ -14,6 +14,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
+import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Sparkles, X, ArrowRight } from 'lucide-react';
 
@@ -21,32 +22,33 @@ const STORAGE_KEY = 'launch-banner-dismissed';
 
 export default function LaunchBanner() {
   const { data: session, status } = useSession();
-  const [visible, setVisible] = useState(false);
+  const pathname = usePathname();
+  const [dismissed, setDismissed] = useState(false);
 
+  // Restore dismissed state from session storage on mount.
   useEffect(() => {
-    // Don't show on the pricing page itself (redundant).
-    if (typeof window !== 'undefined' && window.location.pathname === '/pricing') {
-      return;
-    }
-    // Dismissed this session — stay hidden.
     try {
-      if (sessionStorage.getItem(STORAGE_KEY) === '1') return;
+      if (sessionStorage.getItem(STORAGE_KEY) === '1') setDismissed(true);
     } catch { /* sessionStorage unavailable — show anyway */ }
-    setVisible(true);
   }, []);
 
-  // Hide for admin (already Whale) and once we know the role.
+  // Don't show on /pricing itself (redundant). Uses usePathname so it
+  // updates correctly on client-side navigation, not just initial mount.
+  if (pathname === '/pricing') return null;
+
+  // Hide for admin (already Whale).
   const role = (session?.user as { role?: string } | undefined)?.role;
   if (role === 'admin') return null;
 
-  // Don't show while session is resolving — avoids flash for admins.
+  // Don't render while session is resolving — avoids a flash for admins
+  // who would otherwise see the banner briefly before role hydrates.
   if (status === 'loading') return null;
 
-  if (!visible) return null;
+  if (dismissed) return null;
 
   const dismiss = () => {
     try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch { /* noop */ }
-    setVisible(false);
+    setDismissed(true);
   };
 
   return (
