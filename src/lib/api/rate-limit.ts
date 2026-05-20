@@ -57,6 +57,20 @@ export async function checkRateLimit(keyId: string, tier: string): Promise<{
   reset: number;
   limit: number;
 }> {
+  // Whale tier: unlimited per /pricing. Bypass the limiter entirely so
+  // institutional customers aren't artificially throttled. Sentinel
+  // limit value of Number.MAX_SAFE_INTEGER signals "unlimited" to the
+  // header writer in v1-auth.ts (it'll render as a giant number — the
+  // client should look at X-RateLimit-Remaining instead).
+  if (tier === 'whale') {
+    return {
+      allowed: true,
+      remaining: Number.MAX_SAFE_INTEGER,
+      reset: Date.now() + 60_000,
+      limit: Number.MAX_SAFE_INTEGER,
+    };
+  }
+
   const limiter = tier === 'pro' ? proTierLimiter : freeTierLimiter;
   const { success, remaining, reset, limit } = await limiter.limit(keyId);
 
@@ -64,7 +78,9 @@ export async function checkRateLimit(keyId: string, tier: string): Promise<{
     return { allowed: false, remaining, reset, limit };
   }
 
-  // Free tier also has a daily cap
+  // Free tier has a daily cap on top of the per-minute window. Pro +
+  // Whale are explicitly "unlimited daily" per /pricing — no daily
+  // limiter applied.
   if (tier === 'free') {
     const daily = await dailyLimiter.limit(keyId);
     if (!daily.success) {

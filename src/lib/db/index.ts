@@ -316,6 +316,15 @@ async function _doInitDB(): Promise<void> {
   // Seed admin accounts
   const adminEmail = process.env.ADMIN_EMAIL || 'ocelotcex1638a@gmail.com';
   await sql`UPDATE users SET role = 'admin' WHERE email = ${adminEmail} AND role != 'admin'`;
+  // Backfill: every existing API key owned by an admin gets bumped to
+  // 'whale' tier (resolveUserTier's admin→whale rule applies to keys
+  // too — admins should never be artificially throttled). Without this,
+  // pre-existing admin keys stay on 'free' until they regenerate.
+  await sql`
+    UPDATE api_keys SET tier = 'whale'
+    WHERE user_id IN (SELECT id FROM users WHERE role = 'admin')
+      AND tier != 'whale'
+  `;
 
   // Admin monitoring metrics (DB size history, coverage snapshots)
   await sql`
@@ -2751,9 +2760,24 @@ export async function createApiKey(userId: string, name: string = 'Default'): Pr
   const prefix = raw.slice(0, 10); // "ih_a1b2c3d" for display
   const keyHash = hashApiKey(raw);
 
+  // Inherit the user's billing tier on key creation. Admins → 'whale'
+  // (their role grandfathers them); everyone else gets the tier
+  // currently stored on users.billing_tier (default 'free'). Without
+  // this, every key was 'free' regardless of who owned it — which
+  // meant /pricing's "Pro 500/min" promise wasn't actually granted to
+  // Pro users.
+  const tierRows = await db`SELECT role, billing_tier FROM users WHERE id = ${userId}` as Array<{ role: string | null; billing_tier: string | null }>;
+  const userRole = tierRows[0]?.role ?? null;
+  const userBillingTier = tierRows[0]?.billing_tier ?? null;
+  const tier = userRole === 'admin'
+    ? 'whale'
+    : (userBillingTier === 'pro' || userBillingTier === 'whale')
+      ? userBillingTier
+      : 'free';
+
   const rows = await db`
-    INSERT INTO api_keys (user_id, key_hash, key_prefix, name)
-    VALUES (${userId}, ${keyHash}, ${prefix}, ${name})
+    INSERT INTO api_keys (user_id, key_hash, key_prefix, name, tier)
+    VALUES (${userId}, ${keyHash}, ${prefix}, ${name}, ${tier})
     RETURNING id
   `;
   return { id: rows[0].id, key: raw, prefix };

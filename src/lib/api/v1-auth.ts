@@ -141,10 +141,16 @@ export async function authenticateV1Request(request: NextRequest): Promise<
     rateLimitHeaders['X-RateLimit-Reset'] = String(Math.ceil(reset / 1000));
 
     if (!allowed) {
+      // Tier-aware error so the user knows whether an upgrade would help
+      // (Free hit the cap) vs whether they've genuinely overshot a
+      // higher tier (Pro/Whale hit aren't normal — likely runaway client).
+      const upsell = keyData.tier === 'free'
+        ? 'Pro tier offers 500/min with no daily cap (free during launch — see /pricing).'
+        : 'Slow down or contact support if this is unexpected.';
       return {
         ok: false,
         response: NextResponse.json(
-          { success: false, error: 'Rate limit exceeded. Upgrade to Pro for higher limits.' },
+          { success: false, error: `Rate limit exceeded. ${upsell}` },
           {
             status: 429,
             headers: {
