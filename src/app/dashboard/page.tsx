@@ -38,6 +38,7 @@ import {
   CheckCircle2, AlertCircle, ExternalLink, Clock,
 } from 'lucide-react';
 import { getInviteCta } from '@/lib/inviteCta';
+import { resolveUserTier, TIER_BRANDING, TIER_LIMITS } from '@/lib/constants/tiers';
 
 // ── Suspension flag ──────────────────────────────────────────────────
 // Flip to false to re-enable the real command center. The original
@@ -317,7 +318,13 @@ function RealDashboardPage() {
   const userImage = session?.user?.image ?? null;
   const userRole = (session?.user as { role?: string } | undefined)?.role;
   const isAdmin = userRole === 'admin';
-  const planName = isAdmin ? 'Admin' : 'Free';
+  // Resolve the user's tier via the same helper /pricing + UserMenu use,
+  // so the dashboard plan label can't drift from the rest of the site.
+  // Admins auto-resolve to whale; non-admins to free until billing wiring.
+  const userTier = resolveUserTier({ role: userRole, billingTier: null });
+  // Admin gets the explicit "Admin" badge (covers the staff case); other
+  // users get the tier label they'd see anywhere else (Free / Pro / Whale).
+  const planName = isAdmin ? 'Admin' : TIER_BRANDING[userTier].label;
   const planTone = isAdmin ? 'rose' : 'emerald';
 
   // Streak proxy: count consecutive days going back from today where we
@@ -551,6 +558,8 @@ function RealDashboardPage() {
             />
             <PlanUsagePanel
               planName={planName}
+              userTier={userTier}
+              isAdmin={isAdmin}
               watchlistCount={stats?.watchlistCount ?? 0}
               alertCount={stats?.alertCount ?? 0}
               watchedWalletsCount={watchedCount}
@@ -906,27 +915,34 @@ function Sparkline({ data, positive }: { data: number[]; positive: boolean }) {
 
 function PlanUsagePanel({
   planName,
+  userTier,
+  isAdmin,
   watchlistCount,
   alertCount,
   watchedWalletsCount,
   exchangesConnected,
 }: {
   planName: string;
+  userTier: 'free' | 'pro' | 'whale';
+  isAdmin: boolean;
   watchlistCount: number;
   alertCount: number;
   watchedWalletsCount: number;
   exchangesConnected: number;
 }) {
-  // Quotas. Only `watchedWallets` is HARD-enforced server-side
-  // (/api/watch/wallets POST returns 409 at 25). The others are
-  // display-only "soft caps" — backend doesn't reject inserts past
-  // them. We mark them as such in the panel sub-label so users
-  // aren't surprised.
-  const quotas: Record<string, { watchlist: number; alerts: number; watchedWallets: number; exchanges: number }> = {
-    Free: { watchlist: 50, alerts: 10, watchedWallets: 25, exchanges: 4 },
-    Admin: { watchlist: 500, alerts: 100, watchedWallets: 100, exchanges: 10 },
+  // Tier-driven caps. `alerts` and `watchedWallets` come from TIER_LIMITS
+  // so this panel can't drift from /pricing. `watchlist` and `exchanges`
+  // are dashboard-specific soft caps (not in the tier system today).
+  const tierLimits = TIER_LIMITS[userTier];
+  const q = {
+    watchlist: isAdmin ? 500 : 50,
+    alerts: Number.isFinite(tierLimits.maxAlerts) ? tierLimits.maxAlerts : 999,
+    watchedWallets: Number.isFinite(tierLimits.maxWatchedWallets) ? tierLimits.maxWatchedWallets : 999,
+    exchanges: isAdmin ? 10 : 4,
   };
-  const q = quotas[planName] ?? quotas.Free;
+
+  // Show the "Upgrade to Pro" CTA only for non-admin, non-paid users.
+  const showUpgradeCta = !isAdmin && userTier === 'free';
 
   return (
     <section className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
@@ -937,7 +953,12 @@ function PlanUsagePanel({
             Plan & usage
           </h2>
           <p className="text-[11px] text-neutral-500 mt-0.5">
-            {planName} · {planName === 'Admin' ? 'staff · no billing' : planName === 'Free' ? 'no card needed' : 'billed monthly'}
+            {planName} ·{' '}
+            {isAdmin
+              ? 'staff · grandfathered to Whale'
+              : userTier === 'free'
+              ? 'no card needed · Pro free during launch'
+              : 'free during launch'}
           </p>
         </div>
         <Link
@@ -955,19 +976,19 @@ function PlanUsagePanel({
         <UsageBar label="Connected exchanges" used={exchangesConnected} cap={q.exchanges} />
       </div>
 
-      {planName === 'Free' && (
+      {showUpgradeCta && (
         <div className="mt-4 pt-3 border-t border-white/[0.04] space-y-2">
           <Link
-            href="/profile?tab=billing"
-            className="block text-center text-xs font-semibold py-2 rounded-lg bg-hub-yellow/10 text-hub-yellow hover:bg-hub-yellow/20 transition-all border border-hub-yellow/20"
+            href="/pricing"
+            className="block text-center text-xs font-semibold py-2 rounded-lg bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition-all border border-emerald-400/30"
           >
-            Upgrade to Pro →
+            Try Pro — free during launch →
           </Link>
           <Link
             href="/invite"
             className="block text-center text-[11px] text-neutral-500 hover:text-emerald-300 transition-colors"
           >
-            Or invite friends for early access →
+            Or invite friends to share the upgrade →
           </Link>
         </div>
       )}
