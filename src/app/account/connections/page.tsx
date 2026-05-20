@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PageHero from '@/components/PageHero';
@@ -56,6 +56,21 @@ interface PositionRowSummary {
 const NEEDS_PASSPHRASE: ReadonlySet<string> = new Set<string>(EXCHANGES_WITH_PASSPHRASE);
 // Silence unused-import lint when only the value above is referenced.
 void SUPPORTED_EXCHANGES;
+
+/**
+ * Deep-link to each exchange's API-key creation page so users don't have
+ * to dig through settings menus. Drops them at the right modal, then
+ * they paste the result back in our form. Update when an exchange
+ * changes their dashboard URL.
+ */
+const API_KEY_DOCS_URL: Record<string, string> = {
+  Binance: 'https://www.binance.com/en/my/settings/api-management',
+  Bybit:   'https://www.bybit.com/app/user/api-management',
+  OKX:     'https://www.okx.com/account/my-api',
+  Bitget:  'https://www.bitget.com/account/newapi',
+  MEXC:    'https://www.mexc.com/user/openapi',
+  Blofin:  'https://blofin.com/account/apis',
+};
 
 function timeAgo(iso: string | null): string {
   if (!iso) return 'never';
@@ -651,7 +666,14 @@ function FundingFlipAlert() {
 // ─── Add-key form ──────────────────────────────────────────────────────────
 
 function AddKeyForm({ exchanges, onSaved }: { exchanges: string[]; onSaved: () => void }) {
-  const [exchange, setExchange] = useState(exchanges[0] || '');
+  // Sort alphabetically so the dropdown is scannable instead of
+  // registration-order (which dumped 'Blofin' at the bottom because
+  // it was added later). Memoised so we don't re-sort on every render.
+  const sortedExchanges = useMemo(
+    () => [...exchanges].sort((a, b) => a.localeCompare(b)),
+    [exchanges],
+  );
+  const [exchange, setExchange] = useState(sortedExchanges[0] || '');
   const [apiKey, setApiKey] = useState('');
   const [apiSecret, setApiSecret] = useState('');
   const [passphrase, setPassphrase] = useState('');
@@ -660,6 +682,7 @@ function AddKeyForm({ exchanges, onSaved }: { exchanges: string[]; onSaved: () =
   const [error, setError] = useState<string | null>(null);
 
   const showPassphrase = NEEDS_PASSPHRASE.has(exchange);
+  const apiKeyDocsUrl = API_KEY_DOCS_URL[exchange];
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -699,8 +722,27 @@ function AddKeyForm({ exchanges, onSaved }: { exchanges: string[]; onSaved: () =
             onChange={e => setExchange(e.target.value)}
             className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-sky-500 outline-none"
           >
-            {exchanges.map(ex => <option key={ex} value={ex}>{ex}</option>)}
+            {sortedExchanges.map(ex => (
+              // Inline "(passphrase)" suffix sets expectations before the
+              // user picks — they know upfront the form will ask for a
+              // 3rd secret. Without this, the passphrase field appears
+              // suddenly after selection and feels like a hidden step.
+              <option key={ex} value={ex}>
+                {ex}{NEEDS_PASSPHRASE.has(ex) ? ' · passphrase' : ''}
+              </option>
+            ))}
           </select>
+          {apiKeyDocsUrl && (
+            <a
+              href={apiKeyDocsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 mt-1.5 text-[11px] text-sky-300 hover:text-sky-200 hover:underline"
+            >
+              Where to find {exchange}&apos;s API key
+              <ExternalLink className="w-3 h-3" aria-hidden />
+            </a>
+          )}
         </label>
         <label className="block">
           <span className="block text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Label (optional)</span>
