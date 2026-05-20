@@ -24,6 +24,7 @@ import {
   saveUserTrades,
   getLastTradeTsBySource,
   upsertWorkerHeartbeat,
+  upsertUserAccountBalance,
 } from '@/lib/db';
 import { decryptSecret, isEncryptionConfigured } from '@/lib/crypto/exchange-keys';
 import { getExchangeClient } from '@/lib/exchange-clients';
@@ -177,6 +178,34 @@ export async function GET(req: NextRequest) {
           })),
         );
         ks.positions = positions.length;
+
+        // True account equity (cash + uPnL + margin). Best-effort: a
+        // null return (auth fail / network blip) deletes the stale row
+        // rather than keeping it around. Required for the /positions
+        // summary equity to actually equal the user's real account
+        // value on cross-margin venues — christian's MEXC feedback.
+        if (client.fetchAccountBalance) {
+          try {
+            const balance = await client.fetchAccountBalance(creds);
+            if (balance) {
+              await upsertUserAccountBalance({
+                userId: target.userId,
+                sourceType: 'cex',
+                sourceId: k.id,
+                exchange: k.exchange,
+                equityUsd: balance.equityUsd,
+                availableUsd: balance.availableUsd,
+                marginUsedUsd: balance.marginUsedUsd,
+              });
+            } else {
+              await upsertUserAccountBalance(null, {
+                userId: target.userId, sourceType: 'cex', sourceId: k.id,
+              });
+            }
+          } catch (e) {
+            console.warn(`[sync-positions] account balance failed for ${k.exchange} key ${k.id}:`, e instanceof Error ? e.message : e);
+          }
+        }
         await setExchangeKeyLastSync(k.id, null, null);
         totalPositions += positions.length;
 
@@ -276,6 +305,52 @@ export async function GET(req: NextRequest) {
         );
         ws.positions = positions.length;
         totalPositions += positions.length;
+
+        // ─── Per-wallet account balance (best-effort) ───
+        // For HL/GMX/etc cross-margin wallets, fetchAccountBalance
+        // returns the TRUE account equity (cash + uPnL + margin), not
+        // just the per-position margin we'd otherwise sum. Each chain
+        // can have multiple clients (e.g. hyperliquid spot + perp);
+        // we sum across them for a single per-wallet balance row.
+        const balanceRows: { equityUsd: number; availableUsd: number; marginUsedUsd: number; exchange: string }[] = [];
+        for (const client of clients) {
+          if (!client.fetchAccountBalance) continue;
+          try {
+            const b = await client.fetchAccountBalance(w.address);
+            if (b) balanceRows.push({ ...b, exchange: client.displayName });
+          } catch (e) {
+            console.warn(`[sync-positions] wallet balance failed for ${w.chain} ${w.address}:`, e instanceof Error ? e.message : e);
+          }
+        }
+        if (balanceRows.length > 0) {
+          const sum = balanceRows.reduce(
+            (acc, b) => ({
+              equityUsd: acc.equityUsd + b.equityUsd,
+              availableUsd: acc.availableUsd + b.availableUsd,
+              marginUsedUsd: acc.marginUsedUsd + b.marginUsedUsd,
+            }),
+            { equityUsd: 0, availableUsd: 0, marginUsedUsd: 0 },
+          );
+          // Use the FIRST client's displayName as the exchange label —
+          // matches how positions are labeled when a single wallet has
+          // both clients reporting (we'd see both labels in positions,
+          // but the summary balance picks one consistently).
+          await upsertUserAccountBalance({
+            userId: target.userId,
+            sourceType: 'dex',
+            sourceId: w.id,
+            exchange: balanceRows[0].exchange,
+            equityUsd: sum.equityUsd,
+            availableUsd: sum.availableUsd,
+            marginUsedUsd: sum.marginUsedUsd,
+          });
+        } else {
+          // No client implemented fetchAccountBalance — clear any
+          // stale row so the summary doesn't show old data.
+          await upsertUserAccountBalance(null, {
+            userId: target.userId, sourceType: 'dex', sourceId: w.id,
+          });
+        }
 
         // ─── Trade history (best-effort; isolated from position sync) ───
         // Each client implements fetchTradeHistory? optionally. We call

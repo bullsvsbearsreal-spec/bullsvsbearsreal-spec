@@ -12,7 +12,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { auth, isAdmin } from '@/lib/auth';
-import { isDBConfigured, listUserPositions, getSQL } from '@/lib/db';
+import { isDBConfigured, listUserPositions, listUserAccountBalances, getSQL } from '@/lib/db';
 import { scorePositionHealth } from '@/lib/position-health';
 import { dailyFundingCarryUsd } from '@/lib/funding-intervals';
 
@@ -168,7 +168,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-  const positions = await listUserPositions(session.user.id);
+  const [positions, accountBalances] = await Promise.all([
+    listUserPositions(session.user.id),
+    // TRUE per-exchange equity (cash + uPnL + margin), populated by the
+    // sync-positions cron via the optional fetchAccountBalance() helper
+    // on each client. Missing rows fall back to margin-sum equity below
+    // (preserves behaviour for venues without a balance impl).
+    listUserAccountBalances(session.user.id),
+  ]);
 
   // Pull funding context only when we have positions to look up.
   const fundingMap = await loadFundingContext(
@@ -199,9 +206,17 @@ export async function GET(request: NextRequest) {
     if (p.unrealizedPnl != null) totalUnrealized += p.unrealizedPnl;
   }
   const nominal = totalLong + totalShort;
-  // Equity = sum of margin + open PnL. With CEX you'd also add free balance,
-  // but we don't fetch wallet balance yet — Phase B+ will add it.
-  const equity = totalMargin + totalUnrealized;
+
+  // TRUE equity = sum of per-source account balances (cash + uPnL +
+  // margin). Falls back to margin-sum equity when no balance rows exist
+  // (preserves old behaviour for sources whose client doesn't implement
+  // fetchAccountBalance). This is what christian's MEXC/HL feedback
+  // pointed at: previously we summed per-position margin which
+  // understated cross-margin accounts by the value of free wallet cash.
+  const trueEquityFromBalances = accountBalances.reduce((acc, b) => acc + b.equityUsd, 0);
+  const equity = trueEquityFromBalances > 0
+    ? trueEquityFromBalances
+    : (totalMargin + totalUnrealized);
   const leverageLong = equity > 0 ? totalLong / equity : 0;
   const leverageShort = equity > 0 ? totalShort / equity : 0;
 
@@ -340,7 +355,24 @@ export async function GET(request: NextRequest) {
         // null if NO position had a known current rate (rare — would
         // mean every venue's funding column is dark right now).
         dailyFundingCarryUsd: dailyCarryHasData ? aggregateDailyCarry : null,
+        // True/computed flag: lets the UI hint whether the equity figure
+        // came from real account-balance fetches (true) or from the
+        // margin-sum fallback (computed). Useful for the per-exchange
+        // tooltip in /positions.
+        equitySource: trueEquityFromBalances > 0 ? 'true' : 'computed',
       },
+      // Per-source account balances (cash + uPnL + margin). Empty array
+      // when no client has implemented fetchAccountBalance yet. The UI
+      // uses this for the per-exchange equity breakdown row.
+      accountBalances: accountBalances.map(b => ({
+        sourceType: b.sourceType,
+        sourceId: b.sourceId,
+        exchange: b.exchange,
+        equityUsd: b.equityUsd,
+        availableUsd: b.availableUsd,
+        marginUsedUsd: b.marginUsedUsd,
+        updatedAt: b.updatedAt,
+      })),
       positions: decorated,
       ts: Date.now(),
       ...(debugPayload ? { debug: debugPayload } : {}),

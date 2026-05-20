@@ -11,7 +11,7 @@
  * Docs: https://binance-docs.github.io/apidocs/futures/en/#account-information-v2-user_data
  */
 import { createHmac } from 'crypto';
-import type { ExchangeClient, ExchangeCredentials, KeyValidation, NormalizedPosition, NormalizedExchangeTrade } from './types';
+import type { ExchangeClient, ExchangeCredentials, KeyValidation, NormalizedPosition, NormalizedExchangeTrade, NormalizedAccountBalance } from './types';
 
 const BASE = 'https://fapi.binance.com';
 const TIMEOUT_MS = 12_000;
@@ -54,6 +54,8 @@ interface BinanceAccountResponse {
   totalWalletBalance: string;
   totalUnrealizedProfit: string;
   totalMarginBalance: string;
+  totalInitialMargin?: string;
+  availableBalance?: string;
   positions: Array<{
     symbol: string;
     initialMargin: string;
@@ -343,5 +345,36 @@ export const binanceClient: ExchangeClient = {
       });
     }
     return out;
+  },
+
+  async fetchAccountBalance(creds): Promise<NormalizedAccountBalance | null> {
+    // /fapi/v2/account is the single source of truth for the USDT-M
+    // futures wallet: totalMarginBalance = wallet + uPnL = equity.
+    try {
+      const acct = await signedGet<BinanceAccountResponse>('/fapi/v2/account', {}, creds);
+      const equity = Number(acct.totalMarginBalance);
+      const wallet = Number(acct.totalWalletBalance);
+      const uPnl = Number(acct.totalUnrealizedProfit);
+      // availableBalance is what the user could open a new position with;
+      // totalInitialMargin is what's already tied up in existing positions.
+      // Both are optional on older API revisions — fall back to derivation.
+      const available = acct.availableBalance != null
+        ? Number(acct.availableBalance)
+        : Number.isFinite(wallet) && Number.isFinite(uPnl)
+          ? Math.max(0, wallet + uPnl) // best-effort fallback
+          : 0;
+      const margin = acct.totalInitialMargin != null
+        ? Number(acct.totalInitialMargin)
+        : Number.isFinite(equity) && Number.isFinite(available)
+          ? Math.max(0, equity - available)
+          : 0;
+      return {
+        equityUsd: Number.isFinite(equity) ? equity : 0,
+        availableUsd: Number.isFinite(available) ? available : 0,
+        marginUsedUsd: Number.isFinite(margin) ? margin : 0,
+      };
+    } catch {
+      return null;
+    }
   },
 };

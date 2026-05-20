@@ -648,6 +648,28 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_user_positions_user ON user_positions(user_id, updated_at DESC)`;
 
+  // user_account_balances: per-source equity snapshot (cash + uPnL +
+  //   margin). Refreshed by sync-positions cron via the optional
+  //   fetchAccountBalance() method on each exchange/wallet client.
+  //   /api/account/positions reads this to compute TRUE equity (not just
+  //   per-position margin sum, which understates cross-margin accounts
+  //   by the value of their free wallet balance — christian's MEXC
+  //   feedback May 2026).
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_account_balances (
+      user_id         TEXT NOT NULL,
+      source_type     TEXT NOT NULL,           -- 'cex' | 'dex'
+      source_id       INT NOT NULL,            -- FK to user_exchange_keys.id or user_wallets.id
+      exchange        TEXT NOT NULL,           -- display label, matches user_positions.exchange
+      equity_usd      DOUBLE PRECISION NOT NULL,
+      available_usd   DOUBLE PRECISION NOT NULL,
+      margin_used_usd DOUBLE PRECISION NOT NULL,
+      updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, source_type, source_id)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_user_account_balances_user ON user_account_balances(user_id)`;
+
   // User trade history (Sprint 3 — May 2026).
   // Append-only fill log per connected wallet/key. Powers the Trade Journal,
   // Tax aggregator, and Strategy Backtest tools. Dedup by venue_trade_id —
@@ -3710,6 +3732,82 @@ export async function replaceUserPositionsForSource(
     `;
     return { deleted: del.length, inserted: positions.length };
   });
+}
+
+/**
+ * Persist a single per-source account balance row (cash + uPnL + margin
+ * for that one exchange-key or wallet). UPSERT keyed by (user, source,
+ * sourceId) so the cron can call this every minute without dupes.
+ *
+ * Passing `null` deletes the row — useful when fetchAccountBalance
+ * returns null on auth/permission failure so we don't keep stale data.
+ */
+export async function upsertUserAccountBalance(params: {
+  userId: string;
+  sourceType: 'cex' | 'dex';
+  sourceId: number;
+  exchange: string;
+  equityUsd: number;
+  availableUsd: number;
+  marginUsedUsd: number;
+} | null, deleteKey?: { userId: string; sourceType: 'cex' | 'dex'; sourceId: number }): Promise<void> {
+  const sqlx = getSQL();
+  if (params === null && deleteKey) {
+    await sqlx`
+      DELETE FROM user_account_balances
+      WHERE user_id = ${deleteKey.userId}
+        AND source_type = ${deleteKey.sourceType}
+        AND source_id = ${deleteKey.sourceId}
+    `;
+    return;
+  }
+  if (!params) return;
+  await sqlx`
+    INSERT INTO user_account_balances
+      (user_id, source_type, source_id, exchange, equity_usd, available_usd, margin_used_usd, updated_at)
+    VALUES
+      (${params.userId}, ${params.sourceType}, ${params.sourceId}, ${params.exchange},
+       ${params.equityUsd}, ${params.availableUsd}, ${params.marginUsedUsd}, NOW())
+    ON CONFLICT (user_id, source_type, source_id) DO UPDATE SET
+      exchange        = EXCLUDED.exchange,
+      equity_usd      = EXCLUDED.equity_usd,
+      available_usd   = EXCLUDED.available_usd,
+      margin_used_usd = EXCLUDED.margin_used_usd,
+      updated_at      = NOW()
+  `;
+}
+
+export interface UserAccountBalanceRow {
+  sourceType: 'cex' | 'dex';
+  sourceId: number;
+  exchange: string;
+  equityUsd: number;
+  availableUsd: number;
+  marginUsedUsd: number;
+  updatedAt: Date;
+}
+
+/** All per-source balances for a user. /api/account/positions sums these
+ *  to get the TRUE summary equity (vs the margin-sum that understates
+ *  cross-margin accounts). */
+export async function listUserAccountBalances(userId: string): Promise<UserAccountBalanceRow[]> {
+  if (!DATABASE_URL) return [];
+  const sql = getSQL();
+  const rows = await sql`
+    SELECT source_type, source_id, exchange, equity_usd, available_usd, margin_used_usd, updated_at
+    FROM user_account_balances
+    WHERE user_id = ${userId}
+    ORDER BY exchange
+  `;
+  return rows.map((r: any) => ({
+    sourceType: r.source_type,
+    sourceId: r.source_id,
+    exchange: r.exchange,
+    equityUsd: Number(r.equity_usd),
+    availableUsd: Number(r.available_usd),
+    marginUsedUsd: Number(r.margin_used_usd),
+    updatedAt: r.updated_at,
+  }));
 }
 
 /** Mark a key's last sync result. NULL `error` clears the previous error. */

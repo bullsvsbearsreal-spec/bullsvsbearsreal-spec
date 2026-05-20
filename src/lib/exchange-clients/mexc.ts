@@ -37,7 +37,7 @@
 import { createHmac } from 'crypto';
 import type {
   ExchangeClient, ExchangeCredentials, KeyValidation,
-  NormalizedPosition, NormalizedExchangeTrade,
+  NormalizedPosition, NormalizedExchangeTrade, NormalizedAccountBalance,
 } from './types';
 
 const BASE = 'https://contract.mexc.com';
@@ -350,6 +350,29 @@ export const mexcClient: ExchangeClient = {
   // exchanges where fetchTradeHistory isn't wired up either. The sync
   // cron treats a missing fetchTradeHistory as "no trade history
   // contribution" and proceeds normally.
+
+  async fetchAccountBalance(creds): Promise<NormalizedAccountBalance | null> {
+    // /assets returns one row per currency held. For USDT-M perps we use
+    // the USDT row's equity (cash + uPnL across all positions) +
+    // positionMargin (margin tied up) + availableBalance (free).
+    try {
+      const json = await signedGet<MexcAssetsResponse>('/api/v1/private/account/assets', '', creds);
+      const usdt = json.data.find(a => a.currency === 'USDT');
+      if (!usdt) return { equityUsd: 0, availableUsd: 0, marginUsedUsd: 0 };
+      const equity = Number(usdt.equity);
+      const available = Number(usdt.availableBalance);
+      const margin = Number(usdt.positionMargin);
+      return {
+        equityUsd: Number.isFinite(equity) ? equity : 0,
+        availableUsd: Number.isFinite(available) ? available : 0,
+        marginUsedUsd: Number.isFinite(margin) ? margin : 0,
+      };
+    } catch {
+      // Auth failure / network blip — null tells /positions to fall back
+      // to the margin-sum equity rather than break the whole render.
+      return null;
+    }
+  },
 };
 
 /** Test-only export of the canonical signing function so unit tests can

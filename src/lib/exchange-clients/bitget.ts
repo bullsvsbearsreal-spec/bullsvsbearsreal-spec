@@ -16,7 +16,7 @@
  * Docs: https://www.bitget.com/api-doc/contract/intro
  */
 import { createHmac } from 'crypto';
-import type { ExchangeClient, ExchangeCredentials, KeyValidation, NormalizedPosition } from './types';
+import type { ExchangeClient, ExchangeCredentials, KeyValidation, NormalizedPosition, NormalizedAccountBalance } from './types';
 
 const BASE = 'https://api.bitget.com';
 const TIMEOUT_MS = 12_000;
@@ -262,5 +262,48 @@ export const bitgetClient: ExchangeClient = {
       if (!idLessThan || rows.length < 100) break;
     }
     return map;
+  },
+
+  async fetchAccountBalance(creds): Promise<NormalizedAccountBalance | null> {
+    // /api/v2/mix/account/accounts?productType=USDT-FUTURES returns one
+    // row per coin holding for the USDT-margined futures wallet.
+    // For a USDT-only account this is a single row: USDT. accountEquity
+    // is the headline (USDT cash + uPnL across cross-margin positions).
+    try {
+      const json = await signedGet<{
+        data: Array<{
+          marginCoin: string;
+          accountEquity?: string;
+          usdtEquity?: string;
+          available?: string;
+          locked?: string;
+          crossedMaxAvailable?: string;
+        }>;
+      }>('/api/v2/mix/account/accounts', 'productType=USDT-FUTURES', creds);
+      const rows = json.data ?? [];
+      if (rows.length === 0) return { equityUsd: 0, availableUsd: 0, marginUsedUsd: 0 };
+      // Sum USDT-equivalent equity across all margin coins (Bitget can
+      // have BTC + ETH + USDT all credited to the same futures account).
+      let equity = 0;
+      let available = 0;
+      let locked = 0;
+      for (const r of rows) {
+        // Prefer usdtEquity when present (already USD-normalised);
+        // accountEquity may be in the coin's native units for non-USDT coins.
+        const eq = Number(r.usdtEquity ?? r.accountEquity ?? '0');
+        if (Number.isFinite(eq)) equity += eq;
+        const av = Number(r.crossedMaxAvailable ?? r.available ?? '0');
+        if (Number.isFinite(av)) available += av;
+        const lk = Number(r.locked ?? '0');
+        if (Number.isFinite(lk)) locked += lk;
+      }
+      return {
+        equityUsd: equity,
+        availableUsd: available,
+        marginUsedUsd: locked,
+      };
+    } catch {
+      return null;
+    }
   },
 };

@@ -6,7 +6,7 @@
  * file (hyperliquid.ts, ethereum.ts, …) and the router in
  * src/lib/wallet-clients/index.ts dispatches by chain name.
  */
-import type { NormalizedPosition } from '@/lib/exchange-clients/types';
+import type { NormalizedPosition, NormalizedAccountBalance } from '@/lib/exchange-clients/types';
 import type { SupportedChain } from '@/lib/portfolio/supported-exchanges';
 
 /**
@@ -53,7 +53,19 @@ export interface WalletClient {
    * the boundary fills is safe.
    */
   fetchTradeHistory?(address: string, sinceMs?: number): Promise<NormalizedTrade[]>;
+  /**
+   * Optional: account-level wallet/equity snapshot. Mirrors the same
+   * helper on ExchangeClient — for DEX accounts this is "the equity my
+   * positions are margined against", which for cross-margin venues
+   * (Hyperliquid, GMX) is the WHOLE account value, not just the per-
+   * position margin we'd otherwise sum from fetchPositions().
+   *
+   * Returns null on transient failure so callers can fall back to the
+   * margin-sum equity. /api/account/positions uses this to compute
+   * "true equity per venue" for the summary row.
+   */
+  fetchAccountBalance?(address: string): Promise<NormalizedAccountBalance | null>;
 }
 
 // Re-export for callers
-export type { NormalizedPosition } from '@/lib/exchange-clients/types';
+export type { NormalizedPosition, NormalizedAccountBalance } from '@/lib/exchange-clients/types';

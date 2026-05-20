@@ -56,6 +56,28 @@ export interface KeyValidation {
 }
 
 /**
+ * Account-level wallet/equity snapshot. Returned by `fetchAccountBalance()`.
+ *
+ * This is the TRUE equity: free cash + margin tied up + unrealized PnL.
+ * Without this, the /positions page's equity row only counted per-position
+ * margin + uPnL — which understates equity for cross-margin users (most
+ * MEXC/Binance traders) by the value of their free wallet balance.
+ *
+ * All fields in USD (quoted in the exchange's USDT/USDC unified balance).
+ * If the exchange has multiple wallets (Funding, Spot, Futures, Earn),
+ * only the FUTURES/CONTRACT wallet is included — that's what trades
+ * margin against.
+ */
+export interface NormalizedAccountBalance {
+  /** Total equity: free cash + margin + uPnL. The headline figure. */
+  equityUsd: number;
+  /** Free cash not tied up in margin — withdrawable / sizeable into new positions. */
+  availableUsd: number;
+  /** Margin currently allocated to open positions across all symbols. */
+  marginUsedUsd: number;
+}
+
+/**
  * One filled trade as returned by an exchange's userTrades / fills /
  * execution-list endpoint. Mirrors NormalizedTrade in wallet-clients
  * so the sync cron can persist DEX + CEX trades through the same path.
@@ -119,4 +141,21 @@ export interface ExchangeClient {
    * Trade Journal / Tax aggregator. Failure is non-fatal in the cron.
    */
   fetchTradeHistory?(creds: ExchangeCredentials, sinceMs?: number): Promise<NormalizedExchangeTrade[]>;
+
+  /**
+   * Fetch the account-level wallet/equity totals for the FUTURES account.
+   * Returns true equity (free balance + margin + uPnL), not just per-
+   * position margin. Critical for cross-margin accounts where /positions
+   * only shows allocated margin and the bulk of equity sits as free cash.
+   *
+   * Returns null when the call fails (network/auth/permission) — caller
+   * falls back to the margin-sum equity in that case. Failure is non-
+   * fatal in the /positions render path.
+   *
+   * Optional — implementations that haven't wired this yet can omit. The
+   * /api/account/positions route degrades gracefully (per-exchange equity
+   * stays at the margin-sum figure, with a UI hint that it's
+   * "margin only" rather than "true equity").
+   */
+  fetchAccountBalance?(creds: ExchangeCredentials): Promise<NormalizedAccountBalance | null>;
 }

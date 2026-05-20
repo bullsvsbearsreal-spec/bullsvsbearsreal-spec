@@ -16,7 +16,7 @@
  * Docs: https://www.okx.com/docs-v5/en/
  */
 import { createHmac } from 'crypto';
-import type { ExchangeClient, ExchangeCredentials, KeyValidation, NormalizedPosition, NormalizedExchangeTrade } from './types';
+import type { ExchangeClient, ExchangeCredentials, KeyValidation, NormalizedPosition, NormalizedExchangeTrade, NormalizedAccountBalance } from './types';
 
 const BASE = 'https://www.okx.com';
 const TIMEOUT_MS = 12_000;
@@ -266,5 +266,46 @@ export const okxClient: ExchangeClient = {
       if (rows.length < 100) break;
     }
     return out;
+  },
+
+  async fetchAccountBalance(creds): Promise<NormalizedAccountBalance | null> {
+    // /api/v5/account/balance returns a unified account snapshot:
+    //   totalEq:      total account equity in USD (cash + uPnL + margin)
+    //   adjEq:        equity adjusted for currency haircuts (also USD)
+    //   imr:          initial margin requirement (margin currently in use)
+    //   availEq:      equity available to open new positions
+    // We use totalEq as the equity headline. If totalEq is missing
+    // (older sub-account types), fall back to summing per-currency eq.
+    try {
+      const json = await signedGet<{
+        data: Array<{
+          totalEq?: string;
+          adjEq?: string;
+          imr?: string;
+          availEq?: string;
+          details?: Array<{ eqUsd?: string; eq?: string; ccy?: string }>;
+        }>;
+      }>('/api/v5/account/balance', '', creds);
+      const acct = json.data?.[0];
+      if (!acct) return { equityUsd: 0, availableUsd: 0, marginUsedUsd: 0 };
+      let equity = Number(acct.totalEq);
+      if (!Number.isFinite(equity) || equity <= 0) {
+        // Fallback: sum per-currency eqUsd. Older account types may not
+        // populate totalEq but always have the details breakdown.
+        equity = (acct.details ?? []).reduce((acc, d) => {
+          const v = Number(d.eqUsd);
+          return acc + (Number.isFinite(v) ? v : 0);
+        }, 0);
+      }
+      const available = Number(acct.availEq);
+      const margin = Number(acct.imr);
+      return {
+        equityUsd: Number.isFinite(equity) ? equity : 0,
+        availableUsd: Number.isFinite(available) ? available : 0,
+        marginUsedUsd: Number.isFinite(margin) ? margin : 0,
+      };
+    } catch {
+      return null;
+    }
   },
 };

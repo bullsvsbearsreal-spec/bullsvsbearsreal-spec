@@ -82,10 +82,32 @@ interface Summary {
   totalUnrealizedPnl: number;
   /** Aggregate net daily funding carry across the whole book in USD. null = no live rates. */
   dailyFundingCarryUsd: number | null;
+  /** 'true' when equity came from real per-source account-balance
+   *  fetches (cash + uPnL + margin); 'computed' when it fell back to
+   *  the margin-sum approximation (older clients without
+   *  fetchAccountBalance support). UI uses this to label the figure. */
+  equitySource?: 'true' | 'computed';
+}
+
+/** Per-source account-equity row returned by /api/account/positions.
+ *  Drives the per-exchange equity breakdown row in the UI so users see
+ *  "MEXC: $X, HL: $Y" instead of one opaque aggregate. */
+interface AccountBalance {
+  sourceType: 'cex' | 'dex';
+  sourceId: number;
+  exchange: string;
+  equityUsd: number;
+  availableUsd: number;
+  marginUsedUsd: number;
+  updatedAt: string;
 }
 
 interface ApiResponse {
   summary: Summary;
+  /** Optional — empty until at least one connected source has a client
+   *  that implements fetchAccountBalance. Always returned (possibly
+   *  empty) so the UI doesn't have to handle undefined. */
+  accountBalances?: AccountBalance[];
   positions: Position[];
   ts: number;
 }
@@ -238,15 +260,16 @@ export default function PositionsPage() {
   }, [data?.positions, exchangeFilter]);
 
   // Recompute the summary row from the filtered positions when an exchange
-  // filter is active. Without this, the top row stayed pinned to the global
-  // book even after the user filtered to (e.g.) MEXC — making it look like
-  // their MEXC equity was being ignored. Mirrors the server-side roll-up
-  // in /api/account/positions/route.ts so the math stays consistent.
+  // filter is active. Equity prefers the per-source account balance
+  // (cash + uPnL + margin from the exchange API) over the margin-sum
+  // approximation — christian's MEXC/HL feedback: cross-margin accounts
+  // were under-reporting equity by the value of free wallet balance.
+  // Mirrors the server-side roll-up in /api/account/positions/route.ts.
   const summary = useMemo<Summary>(() => {
     if (!data) {
       return { equity: 0, nominal: 0, totalLong: 0, totalShort: 0,
                leverageLong: 0, leverageShort: 0, totalUnrealizedPnl: 0,
-               dailyFundingCarryUsd: null };
+               dailyFundingCarryUsd: null, equitySource: 'computed' };
     }
     // No filter active → use the server-computed global summary verbatim.
     if (!exchangeFilter) return data.summary;
@@ -269,7 +292,15 @@ export default function PositionsPage() {
         carryHasData = true;
       }
     }
-    const equity = totalMargin + totalUnrealized;
+    // Prefer the per-source balance for the filtered exchange — gives
+    // true account equity (cash + uPnL + margin) instead of just the
+    // sum of per-position margins. Falls back to margin-sum when the
+    // exchange's client doesn't implement fetchAccountBalance.
+    const balanceForFilter = (data.accountBalances ?? [])
+      .filter(b => b.exchange === exchangeFilter)
+      .reduce((acc, b) => acc + b.equityUsd, 0);
+    const equity = balanceForFilter > 0 ? balanceForFilter : (totalMargin + totalUnrealized);
+    const equitySource: 'true' | 'computed' = balanceForFilter > 0 ? 'true' : 'computed';
     return {
       equity,
       nominal: totalLong + totalShort,
@@ -279,6 +310,7 @@ export default function PositionsPage() {
       leverageShort: equity > 0 ? totalShort / equity : 0,
       totalUnrealizedPnl: totalUnrealized,
       dailyFundingCarryUsd: carryHasData ? carry : null,
+      equitySource,
     };
   }, [data, exchangeFilter, filtered]);
 
@@ -438,7 +470,16 @@ export default function PositionsPage() {
               <SummaryCell
                 label="Equity"
                 value={fmtUsd(summary.equity)}
-                sub={exchangeFilter ? `${exchangeFilter} only · margin + uPnL` : 'margin + uPnL'}
+                sub={
+                  // Sub-label flips based on data source:
+                  //   'true'     → cash + uPnL + margin from real account-balance fetch
+                  //   'computed' → fallback: per-position margin + uPnL only
+                  // The 'computed' branch under-reports for cross-margin accounts
+                  // (christian's MEXC feedback). UI now flags it explicitly.
+                  exchangeFilter
+                    ? `${exchangeFilter} only · ${summary.equitySource === 'true' ? 'true account equity' : 'margin + uPnL'}`
+                    : (summary.equitySource === 'true' ? 'true account equity' : 'margin + uPnL')
+                }
               />
               <SummaryCell
                 label="Nominal"

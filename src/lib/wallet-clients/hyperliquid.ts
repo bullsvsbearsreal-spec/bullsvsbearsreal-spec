@@ -24,7 +24,7 @@
  *   marginUsed      USD margin allocated
  *   cumFunding.allTime / sinceOpen / sinceChange — funding paid/received in USD
  */
-import type { NormalizedPosition, NormalizedTrade, WalletClient } from './types';
+import type { NormalizedPosition, NormalizedTrade, NormalizedAccountBalance, WalletClient } from './types';
 
 const HL_INFO_URL = 'https://api.hyperliquid.xyz/info';
 const TIMEOUT_MS = 10_000;
@@ -289,5 +289,39 @@ export const hyperliquidWalletClient: WalletClient = {
       });
     }
     return out;
+  },
+
+  async fetchAccountBalance(address: string): Promise<NormalizedAccountBalance | null> {
+    // Use the same clearinghouseState endpoint as fetchPositions but
+    // pull the marginSummary block instead of the per-position list.
+    //   marginSummary.accountValue   — TRUE equity (cash + uPnL + margin)
+    //   marginSummary.totalMarginUsed — margin currently allocated
+    //   withdrawable                 — free cash available right now
+    //
+    // This is exactly what christian asked for: the "account total"
+    // field, not the per-position margin we were summing before.
+    if (!/^0x[a-fA-F0-9]{40}$/.test(address)) return null;
+    try {
+      const res = await fetch(HL_INFO_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ type: 'clearinghouseState', user: address }),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      if (!res.ok) return null;
+      const json = (await res.json()) as HLClearingHouseState;
+      const summary = json.marginSummary;
+      if (!summary) return { equityUsd: 0, availableUsd: 0, marginUsedUsd: 0 };
+      const equity = parseFloat(summary.accountValue);
+      const margin = parseFloat(summary.totalMarginUsed);
+      const available = json.withdrawable != null ? parseFloat(json.withdrawable) : NaN;
+      return {
+        equityUsd: Number.isFinite(equity) ? equity : 0,
+        availableUsd: Number.isFinite(available) ? available : 0,
+        marginUsedUsd: Number.isFinite(margin) ? margin : 0,
+      };
+    } catch {
+      return null;
+    }
   },
 };

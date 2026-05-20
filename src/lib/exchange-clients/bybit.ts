@@ -13,7 +13,7 @@
  * Docs: https://bybit-exchange.github.io/docs/v5/intro
  */
 import { createHmac } from 'crypto';
-import type { ExchangeClient, ExchangeCredentials, KeyValidation, NormalizedPosition, NormalizedExchangeTrade } from './types';
+import type { ExchangeClient, ExchangeCredentials, KeyValidation, NormalizedPosition, NormalizedExchangeTrade, NormalizedAccountBalance } from './types';
 
 /**
  * Strip USDT/USDC quote + 1000/1M multipliers + SHIB1000 suffix to get the
@@ -297,5 +297,37 @@ export const bybitClient: ExchangeClient = {
       if (!cursor) break;
     }
     return out;
+  },
+
+  async fetchAccountBalance(creds): Promise<NormalizedAccountBalance | null> {
+    // Bybit V5 unified account: /v5/account/wallet-balance with
+    // accountType=UNIFIED returns one row whose totalEquity is the
+    // headline figure (cash + uPnL + cross-margin allocated). The
+    // per-coin breakdown sits under list[0].coin[]; for USDT-margined
+    // perps we use totalEquity directly since Bybit converts cross-
+    // collateral to USD automatically.
+    try {
+      const json = await signedGet<{
+        result: {
+          list: Array<{
+            totalEquity: string;
+            totalAvailableBalance?: string;
+            totalInitialMargin?: string;
+          }>;
+        };
+      }>('/v5/account/wallet-balance', { accountType: 'UNIFIED' }, creds);
+      const acct = json.result?.list?.[0];
+      if (!acct) return { equityUsd: 0, availableUsd: 0, marginUsedUsd: 0 };
+      const equity = Number(acct.totalEquity);
+      const available = Number(acct.totalAvailableBalance ?? '0');
+      const margin = Number(acct.totalInitialMargin ?? '0');
+      return {
+        equityUsd: Number.isFinite(equity) ? equity : 0,
+        availableUsd: Number.isFinite(available) ? available : 0,
+        marginUsedUsd: Number.isFinite(margin) ? margin : 0,
+      };
+    } catch {
+      return null;
+    }
   },
 };
