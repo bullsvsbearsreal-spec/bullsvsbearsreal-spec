@@ -10,7 +10,7 @@ import {
   PRO_TIER_PER_MINUTE,
   FREE_TIER_PER_DAY,
 } from '@/lib/api/rate-limit';
-import { ALL_EXCHANGES } from '@/lib/constants';
+import { ALL_EXCHANGES, DEX_EXCHANGES, FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT } from '@/lib/constants';
 import { copyToClipboard } from '@/lib/copyToClipboard';
 
 /* Copy button for code blocks */
@@ -1075,7 +1075,7 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
 
             <Section id="exchanges" title="Exchanges" method="GET" path="/api/v1/exchanges">
               <p className="text-gray-400 mb-4">
-                Metadata for all 32 supported exchanges including fees, funding intervals, trade URL patterns,
+                Metadata for all {ALL_EXCHANGES.length} supported exchanges including fees, funding intervals, trade URL patterns,
                 and a top-level <code className="text-amber-400">feeModel</code> with the schedule version + last-updated timestamp.
               </p>
               <CodeBlock title="Response">{`{
@@ -1090,11 +1090,11 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
     }
   ],
   "meta": {
-    "total": 32, "cex": 18, "dex": 14,
+    "total": ${ALL_EXCHANGES.length}, "cex": ${ALL_EXCHANGES.length - DEX_EXCHANGES.size}, "dex": ${DEX_EXCHANGES.size},
     "timestamp": 1713181800000,
     "feeModel": {
-      "version": "v1.0-2026-02-01",
-      "updatedAt": "2026-02-01T00:00:00Z",
+      "version": "${FEE_MODEL_VERSION}",
+      "updatedAt": "${FEE_MODEL_UPDATED_AT}",
       "unit": "percent"
     }
   }

@@ -4,6 +4,7 @@ import {
   FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT,
 } from '@/lib/constants/exchanges';
 import { authenticateV1Request } from '@/lib/api/v1-auth';
+import { intervalHoursFor } from '@/lib/funding-intervals';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -19,15 +20,18 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
 
   try {
-  const FUNDING_INTERVALS: Record<string, string> = {
-    'Binance': '8h', 'Bybit': '8h', 'OKX': '8h', 'Bitget': '8h',
-    'MEXC': '8h', 'BingX': '8h', 'Phemex': '8h', 'KuCoin': '8h',
-    'Deribit': '8h', 'HTX': '8h', 'Bitfinex': '8h', 'WhiteBIT': '8h',
-    'CoinEx': '8h', 'Aster': '8h', 'gTrade': '8h', 'Bitunix': '8h',
-    'Kraken': '4h',
-    'Hyperliquid': '1h', 'dYdX': '1h', 'Aevo': '1h', 'Coinbase': '1h',
-    'GMX': '1h', 'Extended': '1h', 'Lighter': '1h',
-    'Variational': '1h',
+  // Derive from the canonical map in lib/funding-intervals.ts so adding
+  // a new exchange (Blofin = 8h in May 2026) automatically surfaces here
+  // without a separate update. Previously hardcoded and drifted: Blofin /
+  // BitMEX / Backpack / Orderly / Paradex / edgeX / Nado were all missing
+  // and showed "unknown" to partners hitting /api/v1/exchanges.
+  const intervalHToBucket = (h: number): string => {
+    if (h === 1) return '1h';
+    if (h === 2) return '2h';
+    if (h === 4) return '4h';
+    if (h === 8) return '8h';
+    if (h === 24) return '24h';
+    return `${h}h`;
   };
 
   // Whether /api/v1/funding emits a populated `predictedRate` field for
@@ -90,7 +94,7 @@ export async function GET(request: NextRequest) {
         // a maker-on-both-sides round trip is a rebate, not a cost —
         // `roundTripMakerPct` will be negative there.
       } : null,
-      fundingInterval: FUNDING_INTERVALS[name] || 'unknown',
+      fundingInterval: intervalHToBucket(intervalHoursFor(name)),
       // Partner discoverability for the predictedRate coverage matrix.
       // `true` means /api/v1/funding rows for this venue will have a
       // non-null `predictedRate` field. `false` means it's intentionally

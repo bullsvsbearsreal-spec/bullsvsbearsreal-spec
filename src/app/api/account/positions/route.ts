@@ -219,14 +219,34 @@ export async function GET(request: NextRequest) {
   const nominal = totalLong + totalShort;
 
   // TRUE equity = sum of per-source account balances (cash + uPnL +
-  // margin). Falls back to margin-sum equity when no balance rows exist
-  // (preserves old behaviour for sources whose client doesn't implement
-  // fetchAccountBalance). This is what christian's MEXC/HL feedback
-  // pointed at: previously we summed per-position margin which
-  // understated cross-margin accounts by the value of free wallet cash.
+  // margin). For sources WITHOUT a balance row (clients that don't
+  // implement fetchAccountBalance yet — e.g. GMX/Lighter/gTrade on the
+  // wallet side), fall back to the per-position margin+uPnL contribution
+  // for THAT specific source. Hybrid sum avoids two failure modes:
+  //   1. Old bug: summing only balance rows would understate the user's
+  //      total by every position from an untracked source.
+  //   2. Old fallback `> 0` would mask negative equity (margin call) by
+  //      flipping back to margin-sum, hiding the user's actual loss.
+  // christian's MEXC/HL feedback: previously summed per-position margin
+  // which understated cross-margin accounts by their free wallet balance.
+  const balanceSourceKeys = new Set(
+    accountBalances.map(b => `${b.sourceType}|${b.sourceId}`),
+  );
+  let untrackedMargin = 0;
+  let untrackedUnrealized = 0;
+  for (const p of positions) {
+    const key = `${p.sourceType}|${p.sourceId}`;
+    if (balanceSourceKeys.has(key)) continue; // covered by balance row
+    if (p.marginUsed != null) untrackedMargin += p.marginUsed;
+    if (p.unrealizedPnl != null) untrackedUnrealized += p.unrealizedPnl;
+  }
   const trueEquityFromBalances = accountBalances.reduce((acc, b) => acc + b.equityUsd, 0);
-  const equity = trueEquityFromBalances > 0
-    ? trueEquityFromBalances
+  // Use balance data whenever we have at least one row (even if sum is
+  // negative — a margin call is real signal we shouldn't hide). Falls
+  // back to the legacy margin-sum equity only when NO source reported
+  // any balance.
+  const equity = accountBalances.length > 0
+    ? trueEquityFromBalances + untrackedMargin + untrackedUnrealized
     : (totalMargin + totalUnrealized);
   const leverageLong = equity > 0 ? totalLong / equity : 0;
   const leverageShort = equity > 0 ? totalShort / equity : 0;
@@ -379,9 +399,10 @@ export async function GET(request: NextRequest) {
         dailyFundingCarryUsd: dailyCarryHasData ? aggregateDailyCarry : null,
         // True/computed flag: lets the UI hint whether the equity figure
         // came from real account-balance fetches (true) or from the
-        // margin-sum fallback (computed). Useful for the per-exchange
-        // tooltip in /positions.
-        equitySource: trueEquityFromBalances > 0 ? 'true' : 'computed',
+        // margin-sum fallback (computed). Flips to 'true' as soon as ANY
+        // source reported real balance data, since the hybrid math then
+        // dominates (untracked sources just contribute their margin+uPnL).
+        equitySource: accountBalances.length > 0 ? 'true' : 'computed',
       },
       // Per-source account balances (cash + uPnL + margin). Empty array
       // when no client has implemented fetchAccountBalance yet. The UI

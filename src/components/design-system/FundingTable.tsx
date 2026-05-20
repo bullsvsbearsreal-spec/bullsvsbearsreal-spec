@@ -1,5 +1,6 @@
 'use client';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
+import { ALL_EXCHANGES } from '@/lib/constants';
 
 export interface FundingTableRow {
   symbol: string;
@@ -31,7 +32,9 @@ interface FundingTableProps {
 
 const COLS = '32px 1.4fr 1fr 1fr 1fr 0.8fr 1fr';
 
-export default function FundingTable({ rows, title = 'Top Funding', period = '8h', updatedAgo, venueCount = 32, selectedSymbol, loading = false, onRowClick, onPeriodChange, className }: FundingTableProps) {
+// Default venueCount derives from ALL_EXCHANGES — was hardcoded 32 and
+// went stale every time a new exchange was added (Blofin = 33 in May 2026).
+export default function FundingTable({ rows, title = 'Top Funding', period = '8h', updatedAgo, venueCount = ALL_EXCHANGES.length, selectedSymbol, loading = false, onRowClick, onPeriodChange, className }: FundingTableProps) {
   return (
     <div className={className} style={{ background: 'var(--hub-darker)', border: '1px solid var(--hub-border)', borderRadius: 12, overflow: 'hidden' }}>
       <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', borderBottom: '1px solid var(--hub-border-subtle)', gap: 10 }}>
