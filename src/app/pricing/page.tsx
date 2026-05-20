@@ -60,7 +60,7 @@ export default function PricingPage() {
   const isSignedIn = !!session;
   const userTier = resolveUserTier({
     role: (session?.user as { role?: string } | undefined)?.role,
-    billingTier: null, // billing tier wiring is a follow-up — admins resolve to whale
+    billingTier: (session?.user as { billingTier?: string } | undefined)?.billingTier ?? null,
   });
   // Only mark a card "current" if the user is actually signed in. Logged-out
   // users see signup CTAs on every card (including Free).

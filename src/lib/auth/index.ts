@@ -106,6 +106,33 @@ export async function isAdmin(userId: string): Promise<boolean> {
 }
 
 /**
+ * Resolve a user's billing tier from the database. Used by tier-aware
+ * enforcement (wallet watch cap, alert count cap, rate limits, history
+ * window) so the rules in lib/constants/tiers.ts actually bite.
+ *
+ * Reads `role` + `billing_tier` from `users` in one query, then delegates
+ * to `resolveUserTier` so the admin→whale grandfathering stays in a
+ * single place. Defaults to 'free' on any DB error so a transient
+ * outage doesn't accidentally lock a paying user out of features.
+ */
+export async function getUserTier(userId: string): Promise<'free' | 'pro' | 'whale'> {
+  try {
+    const db = getSQL();
+    const rows = await db`SELECT role, billing_tier FROM users WHERE id = ${userId}`;
+    if (rows.length === 0) return 'free';
+    // Lazy import to avoid pulling tier constants into the auth module's
+    // server-bundle when they're only needed for this one helper.
+    const { resolveUserTier } = await import('@/lib/constants/tiers');
+    return resolveUserTier({
+      role: rows[0].role as string | null,
+      billingTier: rows[0].billing_tier as 'free' | 'pro' | 'whale' | null,
+    });
+  } catch {
+    return 'free';
+  }
+}
+
+/**
  * CSRF defense via Origin header check. Reject mutation requests whose
  * Origin doesn't match our own. Browsers ALWAYS attach Origin to
  * cross-origin POST/DELETE/PUT, so this catches forged form-submits
@@ -209,17 +236,22 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const img = user.image as string | null;
         token.image = img && !img.startsWith('data:') ? img : null;
       }
-      // Fetch role + refresh image from DB on login or session update
+      // Fetch role + billing_tier + refresh image from DB on login or
+      // session update. billing_tier is added to the JWT so client-side
+      // tier resolution (UserMenu chip, dashboard caps, /pricing current
+      // tier badge) doesn't need an extra round-trip per page load.
       if ((user || trigger === 'update') && token.id) {
         try {
           const db = getSQL();
-          const rows = await db`SELECT image, role FROM users WHERE id = ${token.id as string}`;
+          const rows = await db`SELECT image, role, billing_tier FROM users WHERE id = ${token.id as string}`;
           if (rows.length > 0) {
             // Only store image in JWT if it's a short URL (not a base64 data URI)
             // Data URIs can be 100KB+ and blow common 32KB header limits
             const img = rows[0].image as string | null;
             token.image = img && !img.startsWith('data:') ? img : null;
             token.role = rows[0].role || 'user';
+            const tier = rows[0].billing_tier;
+            token.billingTier = (tier === 'pro' || tier === 'whale') ? tier : 'free';
           }
         } catch { /* keep existing */ }
       }
@@ -234,6 +266,9 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       }
       if (token?.role) {
         session.user.role = token.role as 'admin' | 'advisor' | 'user';
+      }
+      if (token?.billingTier) {
+        session.user.billingTier = token.billingTier as 'free' | 'pro' | 'whale';
       }
       return session;
     },

@@ -302,6 +302,11 @@ async function _doInitDB(): Promise<void> {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified TIMESTAMPTZ DEFAULT NULL`;
   // User roles (admin, user)
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`;
+  // Billing tier — 'free' | 'pro' | 'whale'. Drives the per-tier limits in
+  // lib/constants/tiers.ts (rate limit, alert count, watched wallet cap,
+  // history window). NULL or unknown = 'free'. Admin role auto-resolves to
+  // 'whale' via resolveUserTier regardless of this column.
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_tier TEXT NOT NULL DEFAULT 'free'`;
   // User-to-user referrals: stores the inviter's invite code (the HMAC
   // string from lib/invite.ts), not a user ID — keeps the link opaque
   // and avoids a self-FK that PostgreSQL would have to validate on

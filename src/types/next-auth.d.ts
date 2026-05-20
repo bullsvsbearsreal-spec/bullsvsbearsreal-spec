@@ -5,6 +5,9 @@ declare module 'next-auth' {
     user: {
       id: string;
       role?: 'admin' | 'advisor' | 'user';
+      /** Billing tier from users.billing_tier — admin role auto-resolves
+       *  to 'whale' via resolveUserTier regardless of this value. */
+      billingTier?: 'free' | 'pro' | 'whale';
     } & DefaultSession['user'];
   }
 }
@@ -13,5 +16,6 @@ declare module 'next-auth/jwt' {
   interface JWT {
     id?: string;
     role?: string;
+    billingTier?: 'free' | 'pro' | 'whale';
   }
 }

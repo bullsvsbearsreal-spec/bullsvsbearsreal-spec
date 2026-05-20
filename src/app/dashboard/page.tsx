@@ -321,7 +321,10 @@ function RealDashboardPage() {
   // Resolve the user's tier via the same helper /pricing + UserMenu use,
   // so the dashboard plan label can't drift from the rest of the site.
   // Admins auto-resolve to whale; non-admins to free until billing wiring.
-  const userTier = resolveUserTier({ role: userRole, billingTier: null });
+  const userTier = resolveUserTier({
+    role: userRole,
+    billingTier: (session?.user as { billingTier?: string } | undefined)?.billingTier ?? null,
+  });
   // Admin gets the explicit "Admin" badge (covers the staff case); other
   // users get the tier label they'd see anywhere else (Free / Pro / Whale).
   const planName = isAdmin ? 'Admin' : TIER_BRANDING[userTier].label;

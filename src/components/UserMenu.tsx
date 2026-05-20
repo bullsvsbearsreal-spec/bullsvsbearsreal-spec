@@ -103,7 +103,7 @@ export default function UserMenu() {
                   ADVISOR
                 </span>
               )}
-              <TierChip role={session.user?.role} />
+              <TierChip role={session.user?.role} billingTier={session.user?.billingTier ?? null} />
             </div>
             <p className="text-xs text-neutral-500 truncate">
               {session.user?.email}
@@ -207,10 +207,10 @@ export default function UserMenu() {
  * resolveUserTier, so the chip correctly shows their grandfathered tier
  * next to the ADMIN chip — the two read as complementary roles).
  */
-function TierChip({ role }: { role?: string | null }) {
-  // billingTier wiring is a follow-up. resolveUserTier handles admin →
-  // whale auto-grandfathering, so admins see a WHALE chip alongside ADMIN.
-  const tier = resolveUserTier({ role, billingTier: null });
+function TierChip({ role, billingTier }: { role?: string | null; billingTier?: 'free' | 'pro' | 'whale' | null }) {
+  // resolveUserTier handles admin → whale auto-grandfathering;
+  // non-admins now read users.billing_tier (wired via the JWT).
+  const tier = resolveUserTier({ role, billingTier: billingTier ?? null });
   const branding = TIER_BRANDING[tier];
   const Icon = branding.iconName === 'Sparkles' ? Sparkles
     : branding.iconName === 'Zap' ? Zap

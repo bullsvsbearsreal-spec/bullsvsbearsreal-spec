@@ -746,9 +746,11 @@ function ReferralsTab() {
 function BillingTab() {
   const { data: session } = useSession();
   const role = (session?.user as { role?: string } | undefined)?.role;
-  // billingTier is null until NowPayments is wired — admin role still
-  // resolves to whale, everyone else to free for now.
-  const tier = resolveUserTier({ role, billingTier: null });
+  const billingTier = (session?.user as { billingTier?: string } | undefined)?.billingTier ?? null;
+  // Admin role auto-resolves to whale regardless of billing_tier.
+  // Non-admins read users.billing_tier (now in the JWT). Default 'free'
+  // until NowPayments wires up paid signups.
+  const tier = resolveUserTier({ role, billingTier });
   const branding = TIER_BRANDING[tier];
   const limits = TIER_LIMITS[tier];
   const monthlyPrice = TIER_PRICE_MONTHLY[tier];
