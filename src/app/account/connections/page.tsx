@@ -19,6 +19,7 @@ import {
   Plug,
 } from 'lucide-react';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
+import { EXCHANGES_WITH_PASSPHRASE, SUPPORTED_EXCHANGES } from '@/lib/portfolio/supported-exchanges';
 
 interface ExchangeKey {
   id: number;
@@ -45,7 +46,16 @@ interface PositionRowSummary {
   updatedAt: string | null;
 }
 
-const NEEDS_PASSPHRASE = new Set(['OKX', 'Bitget']);
+// Drive passphrase visibility from the canonical SET so adding a new
+// passphrase-needing exchange (Blofin in May 2026) automatically surfaces
+// the field in the connect form without a separate UI patch. Without
+// this, the previously-hardcoded Set silently dropped passphrases on
+// the wire for newly added exchanges and `validateKey` failed.
+// Widened to `Set<string>` so the form's free-form exchange state can
+// be looked up without a casting dance.
+const NEEDS_PASSPHRASE: ReadonlySet<string> = new Set<string>(EXCHANGES_WITH_PASSPHRASE);
+// Silence unused-import lint when only the value above is referenced.
+void SUPPORTED_EXCHANGES;
 
 function timeAgo(iso: string | null): string {
   if (!iso) return 'never';

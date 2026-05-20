@@ -8,13 +8,14 @@
  *      validateKey() + fetchPositions() (Phase B)
  *   4. Wire into src/lib/exchange-clients/index.ts router
  */
-export const SUPPORTED_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC'] as const;
+export const SUPPORTED_EXCHANGES = ['Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC', 'Blofin'] as const;
 export type SupportedExchange = typeof SUPPORTED_EXCHANGES[number];
 
-/** OKX + Bitget API keys also need a user-supplied passphrase as a third secret. */
+/** OKX + Bitget + Blofin API keys also need a user-supplied passphrase as a third secret. */
 export const EXCHANGES_WITH_PASSPHRASE: ReadonlySet<SupportedExchange> = new Set<SupportedExchange>([
   'OKX',
   'Bitget',
+  'Blofin',
 ]);
 
 export function isSupportedExchange(s: unknown): s is SupportedExchange {

@@ -1,7 +1,7 @@
 // Canonical list of active exchanges. Drift removed — indexer frozen since
 // Apr 2026 (data API serves stale snapshots indefinitely with no path back).
 export const ALL_EXCHANGES = [
-  'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC',
+  'Binance', 'Bybit', 'OKX', 'Bitget', 'MEXC', 'Blofin',
   'Kraken', 'BingX', 'Phemex', 'Bitunix', 'Hyperliquid', 'dYdX', 'Aster', 'Lighter',
   'Aevo', 'GMX', 'KuCoin', 'Deribit', 'HTX', 'Bitfinex', 'WhiteBIT',
   'Coinbase', 'CoinEx', 'gTrade', 'Extended', 'Variational',
@@ -18,6 +18,7 @@ export const EXCHANGE_COLORS: Record<string, string> = {
   'OKX': 'bg-white',
   'Bitget': 'bg-cyan-400',
   'MEXC': 'bg-teal-500',
+  'Blofin': 'bg-blue-300',
   'Kraken': 'bg-violet-500',
   'BingX': 'bg-blue-600',
   'Phemex': 'bg-lime-400',
@@ -54,6 +55,7 @@ export const EXCHANGE_BADGE_COLORS: Record<string, string> = {
   'OKX': 'bg-blue-500/20 text-blue-400',
   'Bitget': 'bg-cyan-500/20 text-cyan-400',
   'MEXC': 'bg-teal-500/20 text-teal-400',
+  'Blofin': 'bg-blue-300/20 text-blue-300',
   'Kraken': 'bg-violet-500/20 text-violet-400',
   'BingX': 'bg-blue-600/20 text-blue-300',
   'Phemex': 'bg-lime-500/20 text-lime-400',
@@ -124,7 +126,7 @@ export interface ExchangeFees {
  * When you edit fees: bump M, update the date, mention what changed
  * in the commit body.
  */
-export const FEE_MODEL_VERSION = 'v1.0-2026-02-01';
+export const FEE_MODEL_VERSION = 'v1.1-2026-05-20';
 
 /**
  * Wall-clock timestamp of the last fee schedule revision, ISO-8601.
@@ -132,7 +134,7 @@ export const FEE_MODEL_VERSION = 'v1.0-2026-02-01';
  * Surfaced verbatim on /api/v1/arbitrage so callers can decide whether
  * to refresh their downstream model.
  */
-export const FEE_MODEL_UPDATED_AT = '2026-02-01T00:00:00Z';
+export const FEE_MODEL_UPDATED_AT = '2026-05-20T00:00:00Z';
 
 /**
  * Return a flat snapshot of the fee schedule suitable for embedding
@@ -161,6 +163,7 @@ export const EXCHANGE_FEES: Record<string, ExchangeFees> = {
   'Bybit':        { taker: 0.0550, maker: 0.0200 },
   'OKX':          { taker: 0.0500, maker: 0.0200 },
   'Bitget':       { taker: 0.0600, maker: 0.0200 },
+  'Blofin':       { taker: 0.0600, maker: 0.0200 }, // standard tier as of May 2026
   'Hyperliquid':  { taker: 0.0450, maker: 0.0150 },
   'dYdX':         { taker: 0.0300, maker: 0.0000 }, // maker rebate ignored for simplicity
   'Aster':        { taker: 0.0350, maker: 0.0100 },
@@ -210,6 +213,7 @@ export function getExchangeTradeUrl(exchange: string, symbol: string): string | 
     case 'Bybit':      return `https://www.bybit.com/trade/usdt/${s}USDT?affiliate_id=VL792O`;
     case 'OKX':        return `https://www.okx.com/trade-swap/${s.toLowerCase()}-usdt-swap`;
     case 'Bitget':     return `https://www.bitget.com/futures/usdt/${s}USDT?shareChannel=SSFL1S2B`;
+    case 'Blofin':     return `https://blofin.com/futures/${s}-USDT`;
     case 'MEXC':       return `https://futures.mexc.com/exchange/${s}_USDT?inviteCode=${Math.random() < 0.5 ? '7zeuU9AdFM' : 'i98MMJzX'}`;
     case 'Kraken':     return `https://futures.kraken.com/trade/futures/${s.toLowerCase()}-perpetual`;
     case 'BingX':      return `https://bingx.com/en/perpetual/${s}-USDT/`;
