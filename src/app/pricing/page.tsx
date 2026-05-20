@@ -13,7 +13,7 @@
  * CTAs stub out to a "coming soon" modal until NowPayments is wired.
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Header from '@/components/Header';
@@ -156,17 +156,17 @@ export default function PricingPage() {
               <table className="w-full text-[12px]">
                 <thead>
                   <tr className="border-b border-white/[0.06] bg-white/[0.02]">
-                    {/* Solid background on sticky cell — matches the row
-                        tint visually but doesn't bleed through cells
-                        scrolling underneath on mobile. */}
-                    <th className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-neutral-500 font-semibold sticky left-0 bg-[#13151c]">
+                    {/* Sticky cell — uses theme-aware `bg-hub-darker` so the
+                        column reads correctly in both dark + light mode and
+                        body cells stay hidden during horizontal scroll. */}
+                    <th scope="col" className="text-left px-4 py-3 text-[10px] uppercase tracking-wider text-neutral-500 font-semibold sticky left-0 bg-hub-darker">
                       Feature
                     </th>
                     {TIER_ORDER.map((t) => {
                       const b = TIER_BRANDING[t];
                       const Icon = tierIcon(b.iconName);
                       return (
-                        <th key={t} className="px-4 py-3 text-center">
+                        <th scope="col" key={t} className="px-4 py-3 text-center">
                           <div className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-bold">
                             <Icon className={`w-3 h-3 ${b.textColor}`} aria-hidden />
                             <span className={b.textColor}>{b.label}</span>
@@ -186,17 +186,21 @@ export default function PricingPage() {
                           stripe ? '' : 'bg-white/[0.01]'
                         }`}
                       >
-                        {/* Sticky leftmost cell — needs an explicit
-                            background that matches the row stripe so
-                            the underlying cells don't bleed through
-                            during horizontal scroll on mobile. */}
-                        <td
-                          className={`px-4 py-2.5 text-neutral-300 sticky left-0 ${
-                            stripe ? 'bg-hub-black' : 'bg-[#0d0f15]'
+                        {/* Sticky leftmost cell — theme-aware solid bg
+                            (hub-black / hub-dark) so light + dark mode
+                            both work and the cells underneath stay
+                            hidden during horizontal scroll. `scope="row"`
+                            gives screen readers a row-header anchor so
+                            each cell announcement starts with the feature
+                            label rather than "blank cell". */}
+                        <th
+                          scope="row"
+                          className={`px-4 py-2.5 text-neutral-300 font-normal text-left sticky left-0 ${
+                            stripe ? 'bg-hub-black' : 'bg-hub-dark'
                           }`}
                         >
                           {row.label}
-                        </td>
+                        </th>
                         {TIER_ORDER.map((t) => (
                           <td key={t} className="px-4 py-2.5 text-center">
                             <FeatureCell value={row.values[t]} tier={t} />
@@ -299,7 +303,13 @@ function TierCard({
   const Icon = tierIcon(b.iconName);
   const monthly = TIER_PRICE_MONTHLY[tier];
   const annual = TIER_PRICE_ANNUAL[tier];
-  const displayMonthly = period === 'monthly' ? monthly : annual / 12;
+  // Annual / 12 produces $40.8333… for Whale; show two decimals so the
+  // strikethrough price reads cleanly ($40.83, $10.00) instead of a
+  // 14-digit float. Use toFixed only when the value isn't an integer.
+  const displayMonthlyRaw = period === 'monthly' ? monthly : annual / 12;
+  const displayMonthly = Number.isInteger(displayMonthlyRaw)
+    ? displayMonthlyRaw.toString()
+    : displayMonthlyRaw.toFixed(2);
   const isPaid = monthly > 0;
 
   return (
@@ -525,14 +535,25 @@ function CheckoutComingSoonModal({
 }) {
   const b = TIER_BRANDING[tier];
   const Icon = tierIcon(b.iconName);
+  const dismissRef = useRef<HTMLButtonElement>(null);
 
-  // Esc closes the modal (accessibility + matches user expectation)
+  // Esc closes the modal (accessibility + matches user expectation).
+  // Also lock body scroll while open so the background doesn't drift
+  // when the user scrolls the modal on mobile.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    // Auto-focus the dismiss button so keyboard users land somewhere
+    // sensible inside the dialog rather than back at the page.
+    dismissRef.current?.focus();
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+    };
   }, [onClose]);
 
   return (
@@ -558,15 +579,16 @@ function CheckoutComingSoonModal({
         </p>
         <div className="flex gap-2 justify-center">
           <button
+            ref={dismissRef}
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-[12px] font-semibold rounded-lg bg-white/[0.06] border border-white/[0.1] text-neutral-300 hover:bg-white/[0.1] transition-colors"
+            className="px-4 py-2 text-[12px] font-semibold rounded-lg bg-white/[0.06] border border-white/[0.1] text-neutral-300 hover:bg-white/[0.1] transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
           >
             Got it
           </button>
           <Link
             href="/faq"
-            className="px-4 py-2 text-[12px] font-semibold rounded-lg bg-emerald-500 text-black hover:bg-emerald-400 transition-colors"
+            className="px-4 py-2 text-[12px] font-semibold rounded-lg bg-emerald-500 text-black hover:bg-emerald-400 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-400/50"
           >
             FAQ
           </Link>
