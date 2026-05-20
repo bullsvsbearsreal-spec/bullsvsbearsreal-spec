@@ -301,11 +301,14 @@ export default function PositionsPage() {
     // true account equity (cash + uPnL + margin) instead of just the
     // sum of per-position margins. Falls back to margin-sum when the
     // exchange's client doesn't implement fetchAccountBalance.
-    const balanceForFilter = (data.accountBalances ?? [])
-      .filter(b => b.exchange === exchangeFilter)
-      .reduce((acc, b) => acc + b.equityUsd, 0);
-    const equity = balanceForFilter > 0 ? balanceForFilter : (totalMargin + totalUnrealized);
-    const equitySource: 'true' | 'computed' = balanceForFilter > 0 ? 'true' : 'computed';
+    // Match the server-side check (length > 0, not sum > 0) so a
+    // legitimately-negative equity (margin call mid-liquidation) isn't
+    // masked by the margin-sum fallback. Same bug as fixed in bce8697d
+    // on the server side — keep client + server symmetric.
+    const balanceRowsForFilter = (data.accountBalances ?? []).filter(b => b.exchange === exchangeFilter);
+    const balanceForFilter = balanceRowsForFilter.reduce((acc, b) => acc + b.equityUsd, 0);
+    const equity = balanceRowsForFilter.length > 0 ? balanceForFilter : (totalMargin + totalUnrealized);
+    const equitySource: 'true' | 'computed' = balanceRowsForFilter.length > 0 ? 'true' : 'computed';
     return {
       equity,
       nominal: totalLong + totalShort,
