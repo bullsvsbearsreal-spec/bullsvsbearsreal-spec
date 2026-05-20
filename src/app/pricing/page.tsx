@@ -93,11 +93,12 @@ export default function PricingPage() {
         </section>
 
         <div className="flex items-center justify-center mb-6">
-          <div className="inline-flex rounded-full border border-white/[0.08] bg-white/[0.02] p-1">
+          <div role="group" aria-label="Billing period" className="inline-flex rounded-full border border-white/[0.08] bg-white/[0.02] p-1">
             <button
               type="button"
+              aria-pressed={period === 'monthly'}
               onClick={() => setPeriod('monthly')}
-              className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors ${
+              className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 ${
                 period === 'monthly'
                   ? 'bg-white/[0.08] text-white'
                   : 'text-neutral-400 hover:text-white'
@@ -107,8 +108,9 @@ export default function PricingPage() {
             </button>
             <button
               type="button"
+              aria-pressed={period === 'annual'}
               onClick={() => setPeriod('annual')}
-              className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors inline-flex items-center gap-1.5 ${
+              className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors inline-flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 ${
                 period === 'annual'
                   ? 'bg-white/[0.08] text-white'
                   : 'text-neutral-400 hover:text-white'
@@ -426,15 +428,19 @@ function TierCta({
   const isSignedIn = !!session;
   const b = TIER_BRANDING[tier];
 
-  // Current-tier disabled state (works for all 3 tiers)
+  // Current-tier "disabled" state (works for all 3 tiers).
+  // We render a real <button disabled> so keyboard/screen-reader users
+  // get the correct semantic ("button, dimmed, your current tier")
+  // rather than a generic div with aria-disabled, which AT often skips.
   if (isCurrentTier) {
     return (
-      <div
-        aria-disabled="true"
-        className="w-full py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider text-center bg-white/[0.04] border border-white/[0.06] text-neutral-500"
+      <button
+        type="button"
+        disabled
+        className="w-full py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider text-center bg-white/[0.04] border border-white/[0.06] text-neutral-500 cursor-default"
       >
-        ✓ Your current tier
-      </div>
+        <span aria-hidden="true">✓ </span>Your current tier
+      </button>
     );
   }
 
@@ -442,18 +448,19 @@ function TierCta({
   if (!isPaid) {
     if (isSignedIn) {
       return (
-        <div
-          aria-disabled="true"
-          className="w-full py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider text-center bg-white/[0.04] border border-white/[0.06] text-neutral-500"
+        <button
+          type="button"
+          disabled
+          className="w-full py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider text-center bg-white/[0.04] border border-white/[0.06] text-neutral-500 cursor-default"
         >
           Always available
-        </div>
+        </button>
       );
     }
     return (
       <Link
         href="/signup"
-        className="w-full py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider text-center bg-white/[0.06] border border-white/[0.1] text-white hover:bg-white/[0.1] transition-colors inline-flex items-center justify-center gap-1.5"
+        className="w-full py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider text-center bg-white/[0.06] border border-white/[0.1] text-white hover:bg-white/[0.1] transition-colors inline-flex items-center justify-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50"
       >
         Sign up free <ArrowRight className="w-3 h-3" aria-hidden />
       </Link>
@@ -466,10 +473,10 @@ function TierCta({
     return (
       <Link
         href={`/signup?callbackUrl=${encodeURIComponent('/pricing')}`}
-        className={`w-full py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider text-center inline-flex items-center justify-center gap-1.5 transition-colors ${
+        className={`w-full py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider text-center inline-flex items-center justify-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-hub-black ${
           tier === 'whale'
-            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400'
-            : 'bg-emerald-500 text-black hover:bg-emerald-400'
+            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 focus-visible:ring-amber-400/60'
+            : 'bg-emerald-500 text-black hover:bg-emerald-400 focus-visible:ring-emerald-400/60'
         }`}
       >
         Sign up to get {b.label} <ArrowRight className="w-3 h-3" aria-hidden />
@@ -482,10 +489,10 @@ function TierCta({
     <button
       type="button"
       onClick={onSubscribe}
-      className={`w-full py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider transition-colors ${
+      className={`w-full py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-hub-black ${
         tier === 'whale'
-          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400'
-          : 'bg-emerald-500 text-black hover:bg-emerald-400'
+          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 focus-visible:ring-amber-400/60'
+          : 'bg-emerald-500 text-black hover:bg-emerald-400 focus-visible:ring-emerald-400/60'
       }`}
     >
       Get {b.label}
