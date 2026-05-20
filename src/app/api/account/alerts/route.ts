@@ -6,13 +6,14 @@
  *   { kind: 'funding_flip', enabled: boolean, channels?: ['telegram'|'email'], cooldownMin?: number }
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth, getUserTier } from '@/lib/auth';
 import {
   isDBConfigured,
   initDB,
   listUserAlertRules,
   upsertUserAlertRule,
 } from '@/lib/db';
+import { TIER_LIMITS } from '@/lib/constants/tiers';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -86,6 +87,28 @@ export async function POST(req: NextRequest) {
   ));
 
   await initDB();
+
+  // Per-tier alert-rule cap (Free 5 / Pro 50 / Whale Unlimited per /pricing).
+  // Only enforced on *new* rules — flipping enable/disable or changing
+  // channels on an existing rule should always work (otherwise a Free
+  // user who hit the cap then upgraded then downgraded couldn't manage
+  // their existing rules). The cap counts rules irrespective of enabled
+  // state since disabled-but-existing rows still occupy a slot.
+  const tier = await getUserTier(session.user.id);
+  const tierCap = TIER_LIMITS[tier].maxAlerts;
+  if (Number.isFinite(tierCap)) {
+    const existing = await listUserAlertRules(session.user.id);
+    const isNewRule = !existing.some(r => r.kind === kind);
+    if (isNewRule && existing.length >= tierCap) {
+      const upsell = tier === 'free'
+        ? ' Upgrade to Pro on /pricing for 50 alerts, or Whale for unlimited.'
+        : ' Upgrade to Whale on /pricing for unlimited alerts.';
+      return NextResponse.json(
+        { error: `Your ${tier} tier allows ${tierCap} alert rules.${upsell}` },
+        { status: 409, headers: NO_STORE },
+      );
+    }
+  }
 
   const { id } = await upsertUserAlertRule({
     userId: session.user.id,

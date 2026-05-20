@@ -25,12 +25,13 @@ describe('MAX_WATCHED_WALLETS — shared cap constant', () => {
     expect(MAX_WATCHED_WALLETS).toBeLessThan(1000);
   });
 
-  it('API route enforces using MAX_WATCHED_WALLETS, not a literal', () => {
+  it('API route enforces using MAX_WATCHED_WALLETS as the cron-safety ceiling', () => {
     const src = readFileSync(join(root, 'src/app/api/watch/wallets/route.ts'), 'utf8');
-    // The constant should be imported
+    // MAX_WATCHED_WALLETS is the cron-load safety cap; still imported.
     expect(src).toContain('MAX_WATCHED_WALLETS');
-    // The error message should use the constant via template literal
-    expect(src).toMatch(/\$\{MAX_WATCHED_WALLETS\}/);
+    // Per-tier enforcement layered on top — the route should derive its
+    // effective cap from TIER_LIMITS, not the safety constant alone.
+    expect(src).toContain('TIER_LIMITS');
     // No remaining literal '>= 25' or '25)' (counted-pair) in the source
     expect(src).not.toMatch(/>=\s*25\b/);
   });

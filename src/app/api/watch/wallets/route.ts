@@ -7,9 +7,10 @@
  * Auth: required (NextAuth session).
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { auth, getUserTier } from '@/lib/auth';
 import { getSQL, isDBConfigured } from '@/lib/db';
 import { parseJsonbArray, parseJsonbObject, MAX_WATCHED_WALLETS } from '@/lib/hl-watch';
+import { TIER_LIMITS } from '@/lib/constants/tiers';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -88,14 +89,32 @@ export async function POST(req: NextRequest) {
   const sql = getSQL();
   const userId = session.user.id;
 
-  // Cap per-user watchlist (MAX_WATCHED_WALLETS) to keep cron load bounded
+  // Per-tier watchlist cap. TIER_LIMITS gives the user-facing promise
+  // (Free 10 / Pro 100 / Whale Unlimited per /pricing). MAX_WATCHED_WALLETS
+  // is the absolute cron-safety ceiling (so we don't melt the snapshot
+  // cron with 1000-wallet Whale accounts). Effective cap is the smaller
+  // of the two: Free→10 (under safety), Pro/Whale→clamped at safety.
+  const tier = await getUserTier(userId);
+  const tierCap = TIER_LIMITS[tier].maxWatchedWallets;
+  const effectiveCap = Math.min(
+    Number.isFinite(tierCap) ? tierCap : MAX_WATCHED_WALLETS,
+    MAX_WATCHED_WALLETS,
+  );
   const [{ count }] = await sql`
     SELECT COUNT(*)::int AS count FROM hl_watched_wallets WHERE user_id = ${userId}
   ` as Array<{ count: number }>;
-  if (count >= MAX_WATCHED_WALLETS) {
-    return NextResponse.json({
-      error: `Watchlist limit reached (${MAX_WATCHED_WALLETS}). Remove one to add another.`,
-    }, { status: 409 });
+  if (count >= effectiveCap) {
+    // Tier-aware error message so Free users see the upgrade path and
+    // Pro/Whale users understand the cap is the cron-safety ceiling
+    // (a temporary limit while we expand snapshot capacity).
+    const isTierLimited = Number.isFinite(tierCap) && tierCap <= MAX_WATCHED_WALLETS;
+    const upsell = tier === 'free'
+      ? ' Upgrade to Pro on /pricing for a higher cap.'
+      : '';
+    const reason = isTierLimited
+      ? `Your ${tier} tier allows ${effectiveCap} watched wallets.${upsell}`
+      : `Watchlist limit reached (${effectiveCap}). Remove one to add another.`;
+    return NextResponse.json({ error: reason }, { status: 409 });
   }
 
   try {
