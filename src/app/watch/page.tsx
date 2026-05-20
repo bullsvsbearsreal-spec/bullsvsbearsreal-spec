@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { Venue, WatchEventKind, WatchEventPayload } from '@/lib/hl-watch';
 import { MAX_WATCHED_WALLETS } from '@/lib/hl-watch';
+import { resolveUserTier, TIER_LIMITS } from '@/lib/constants/tiers';
 
 interface Wallet {
   id: number;
@@ -139,9 +140,23 @@ function formatEvent(e: EventRow): string {
 }
 
 function WatchPageInner() {
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const searchParams = useSearchParams();
   const prefillAddr = searchParams.get('add') ?? '';
+  // Effective watchlist cap = min(tier limit, cron-safety ceiling). The
+  // server enforces this same min in /api/watch/wallets POST. Showing
+  // the larger of the two would lie to Free users about their actual
+  // cap. Falls back to the safety ceiling if billingTier isn't on the
+  // session yet (initial hydration).
+  const userTier = resolveUserTier({
+    role: (session?.user as { role?: string } | undefined)?.role,
+    billingTier: (session?.user as { billingTier?: string } | undefined)?.billingTier ?? null,
+  });
+  const tierCap = TIER_LIMITS[userTier].maxWatchedWallets;
+  const effectiveCap = Math.min(
+    Number.isFinite(tierCap) ? tierCap : MAX_WATCHED_WALLETS,
+    MAX_WATCHED_WALLETS,
+  );
   const [data, setData] = useState<ApiResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [addrInput, setAddrInput] = useState(prefillAddr);
@@ -475,7 +490,7 @@ function WatchPageInner() {
             the /funding-arb visual language. */}
         {wallets.length > 0 && (
           <div className="grid grid-cols-3 gap-2 mb-5">
-            <StatCell label="Watching" value={`${wallets.length}/${MAX_WATCHED_WALLETS}`} sub={`wallets · max ${MAX_WATCHED_WALLETS}`} tone="neutral" />
+            <StatCell label="Watching" value={`${wallets.length}/${effectiveCap}`} sub={`wallets · ${userTier} tier cap`} tone="neutral" />
             <StatCell
               label="Events · 24h"
               value={String(events24h)}
@@ -623,7 +638,7 @@ function WatchPageInner() {
           <h2 className="text-xs font-bold uppercase tracking-[0.1em] text-white mb-3 px-1 flex items-center gap-2">
             <Eye className="w-3.5 h-3.5 text-neutral-500" />
             Your watchlist
-            <span className="text-[10px] font-mono text-neutral-600">({wallets.length}/{MAX_WATCHED_WALLETS})</span>
+            <span className="text-[10px] font-mono text-neutral-600">({wallets.length}/{effectiveCap})</span>
           </h2>
           {loading && wallets.length === 0 ? (
             <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] py-8 text-center text-xs text-neutral-500">
