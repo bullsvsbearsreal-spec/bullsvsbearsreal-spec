@@ -9,6 +9,7 @@ import MarketTape from './MarketTape';
 import RecentChips from './RecentChips';
 import Sidebar from './Sidebar';
 import StatusBar from './StatusBar';
+import LaunchBanner from '@/components/LaunchBanner';
 
 interface TickerLite { sym: string; price: number; chg: number; }
 
@@ -76,6 +77,7 @@ export default function TerminalShell({ children, className }: TerminalShellProp
 
   return (
     <div className={className} style={{ display: 'flex', flexDirection: 'column', height: '100vh', minWidth: 0, background: 'var(--hub-black)' }}>
+      <LaunchBanner />
       <TerminalHeader />
       {tape.length > 0 && <MarketTape items={tape} />}
       <RecentChips

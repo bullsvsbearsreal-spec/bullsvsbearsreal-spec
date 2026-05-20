@@ -129,6 +129,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // ─── API + developer ──────────────────────────────────────────────
     { path: '/developers',         priority: 0.8, changeFrequency: 'weekly' as const },
     { path: '/developers/docs',    priority: 0.8, changeFrequency: 'weekly' as const },
+    { path: '/pricing',            priority: 0.9, changeFrequency: 'weekly' as const },
     { path: '/api-docs',           priority: 0.5, changeFrequency: 'weekly' as const },
 
     // ─── Guides + content ─────────────────────────────────────────────

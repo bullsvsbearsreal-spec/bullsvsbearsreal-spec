@@ -189,6 +189,10 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'FAQ',
     description: 'Frequently asked questions about InfoHub, crypto funding rates, open interest, and derivatives data.',
   },
+  '/pricing': {
+    title: 'Pricing · Free, Pro, Whale',
+    description: 'Pricing for InfoHub — Free forever with the full data terminal, Pro ($12/mo) for active traders, Whale ($49/mo) for funds + power users with custom webhooks and unlimited everything. Free during launch.',
+  },
   '/brand': {
     title: 'Brand Assets',
     description: 'InfoHub brand guidelines, logos, and assets for media and partners.',

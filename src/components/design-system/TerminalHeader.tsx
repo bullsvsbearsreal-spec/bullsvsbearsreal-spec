@@ -141,6 +141,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'guides',          label: 'Guides',          href: '/guides',                hint: 'Trading tutorials' },
       { id: 'api-docs',        label: 'API Docs',        href: '/api-docs',              hint: 'For developers' },
       { id: 'developers',      label: 'Developers',      href: '/developers',            hint: 'Integrations' },
+      { id: 'pricing',         label: 'Pricing',         href: '/pricing',               hint: 'Free, Pro, Whale' },
       { id: 'faq',             label: 'FAQ',             href: '/faq',                   hint: 'Common questions' },
     ]},
   { key: 'tools', label: 'My Tools',
