@@ -142,3 +142,95 @@ describe('dailyFundingCarryUsd', () => {
     expect(carry).toBeCloseTo(-24, 1);
   });
 });
+
+// ─── Per-symbol interval override (christian's MEXC 4h feedback) ────────
+describe('intervalHoursFor with perSymbolOverride', () => {
+  it('uses the override when valid (Binance 8h default but symbol is 4h)', () => {
+    expect(intervalHoursFor('Binance', 4)).toBe(4);
+  });
+
+  it('uses the override even when smaller than default (1h)', () => {
+    expect(intervalHoursFor('Binance', 1)).toBe(1);
+  });
+
+  it('uses the override even when larger than default', () => {
+    expect(intervalHoursFor('Binance', 24)).toBe(24);
+  });
+
+  it('ignores null override and falls back to per-exchange default', () => {
+    expect(intervalHoursFor('Binance', null)).toBe(8);
+  });
+
+  it('ignores undefined override (default)', () => {
+    expect(intervalHoursFor('Binance', undefined)).toBe(8);
+  });
+
+  it('ignores zero override', () => {
+    expect(intervalHoursFor('Binance', 0)).toBe(8);
+  });
+
+  it('ignores negative override', () => {
+    expect(intervalHoursFor('Binance', -4)).toBe(8);
+  });
+
+  it('ignores NaN / Infinity override', () => {
+    expect(intervalHoursFor('Binance', NaN)).toBe(8);
+    expect(intervalHoursFor('Binance', Infinity)).toBe(8);
+  });
+
+  it('override works for disambiguated exchange labels too', () => {
+    expect(intervalHoursFor('Binance (sub)', 4)).toBe(4);
+  });
+});
+
+describe('dailyFundingCarryUsd with intervalHoursOverride', () => {
+  it('compounds 6x per day for a 4h symbol on Binance (vs 3x for 8h default)', () => {
+    // 100k position, 0.01% per 4h, long → -100k * 0.0001 * (24/4) = -$60/day
+    const carry = dailyFundingCarryUsd({
+      side: 'long',
+      positionValue: 100_000,
+      currentFundingPct: 0.01,
+      exchange: 'Binance',
+      intervalHoursOverride: 4,
+    });
+    expect(carry).toBeCloseTo(-60, 1);
+  });
+
+  it('a 4h symbol carries exactly 2x the 8h-default magnitude', () => {
+    const carry4h = dailyFundingCarryUsd({
+      side: 'long',
+      positionValue: 100_000,
+      currentFundingPct: 0.01,
+      exchange: 'Binance',
+      intervalHoursOverride: 4,
+    });
+    const carry8h = dailyFundingCarryUsd({
+      side: 'long',
+      positionValue: 100_000,
+      currentFundingPct: 0.01,
+      exchange: 'Binance', // no override = 8h default
+    });
+    expect(Math.abs(carry4h!) / Math.abs(carry8h!)).toBeCloseTo(2, 2);
+  });
+
+  it('null override falls back to per-exchange default (christian regression test)', () => {
+    // The case where the snapshot cron hasn't populated interval_h yet
+    // (older row, or fetcher didn't report it). Behaviour must match the
+    // legacy code path so we don't suddenly under-report for already-
+    // working venues.
+    const withNullOverride = dailyFundingCarryUsd({
+      side: 'long',
+      positionValue: 100_000,
+      currentFundingPct: 0.01,
+      exchange: 'Binance',
+      intervalHoursOverride: null,
+    });
+    const legacy = dailyFundingCarryUsd({
+      side: 'long',
+      positionValue: 100_000,
+      currentFundingPct: 0.01,
+      exchange: 'Binance',
+    });
+    expect(withNullOverride).toBe(legacy);
+  });
+});

@@ -55,6 +55,11 @@ interface Position {
   currentFunding: number | null;
   avg24hFunding: number | null;
   avg48hFunding: number | null;
+  /** Per-symbol settlement interval (hours) from funding_snapshots.
+   *  Set by the server when known — Binance/MEXC variable-cycle perps.
+   *  Null = unknown, UI falls back to intervalHoursFor on the exchange
+   *  label. Drives the displayed APR's 24/intervalH compounding. */
+  fundingIntervalHours?: number | null;
   /** 0-100 position health score (computed server-side; 0 = critical, 100 = healthy). */
   healthScore: number;
   healthLabel: 'critical' | 'risky' | 'caution' | 'ok' | 'healthy';
@@ -629,7 +634,12 @@ function PositionRow({ p }: { p: Position }) {
   // Annualised projections — give users a 1h-vs-8h-comparable apples view.
   // Direction-aware so a long paying +0.001%/1h shows as a NEGATIVE APR
   // (cost), not the raw exchange rate.
-  const intervalH = intervalHoursFor(p.exchange);
+  // Prefer the per-symbol fundingIntervalHours from the server (set when
+  // funding_snapshots.interval_h is populated — Binance/MEXC variable
+  // cycles); fall back to the per-exchange default in intervalHoursFor.
+  // Without this, Binance perps that moved 8h → 4h displayed half the
+  // actual APR because we always compounded 3× per day.
+  const intervalH = intervalHoursFor(p.exchange, p.fundingIntervalHours);
   const sideMul = p.side === 'long' ? -1 : 1;
   const aprNow = p.currentFunding != null
     ? annualizeRate(p.currentFunding, intervalH) * sideMul

@@ -109,6 +109,19 @@ export async function GET(request: NextRequest) {
               rateShort = shortPay;
             }
           }
+          // Per-symbol funding interval. Fetchers return `fundingInterval`
+          // as '1h' | '4h' | '8h' enum (the bucket the /funding page uses)
+          // OR a numeric `fundingIntervalHours` (newer per-symbol path —
+          // Aster, and any fetcher that calls fundingInfo). Coerce to a
+          // small int so the snapshot row can be queried by intervalHoursFor
+          // without re-parsing the enum.
+          let intervalH: number | undefined;
+          if (typeof r.fundingIntervalHours === 'number' && r.fundingIntervalHours > 0) {
+            intervalH = r.fundingIntervalHours;
+          } else if (typeof r.fundingInterval === 'string') {
+            const m = /^(\d+)h$/.exec(r.fundingInterval);
+            if (m) intervalH = Number(m[1]);
+          }
           return {
             symbol: r.symbol,
             exchange: r.exchange,
@@ -116,6 +129,7 @@ export async function GET(request: NextRequest) {
             rateShort,
             predicted: r.predictedRate != null ? Number(r.predictedRate) : undefined,
             markPrice: r.markPrice != null && r.markPrice > 0 ? Number(r.markPrice) : undefined,
+            intervalH,
           };
         });
 

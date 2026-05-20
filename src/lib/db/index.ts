@@ -90,6 +90,15 @@ async function _doInitDB(): Promise<void> {
   // pay" rate when the venue exposes it. Position-API picks the right one
   // based on side. Null on CEX / venues without per-side data.
   await sql`ALTER TABLE funding_snapshots ADD COLUMN IF NOT EXISTS rate_short REAL`;
+  // Per-symbol funding settlement interval in hours. Most CEX perps are
+  // 8h but Binance/MEXC/Bybit have moved high-volume symbols to 4h, and
+  // certain alts go to 2h or 1h. Without this column we forced every
+  // position into the per-exchange default in lib/funding-intervals.ts,
+  // producing wrong APR projections for any non-default symbol —
+  // christian's MEXC feedback May 2026 ("you default to 8hrs but some
+  // tokens are 4hrs"). NULL = unknown, caller falls back to the
+  // per-exchange default in intervalHoursFor.
+  await sql`ALTER TABLE funding_snapshots ADD COLUMN IF NOT EXISTS interval_h SMALLINT`;
   // Partial index for price-multi queries (only rows with mark_price)
   await sql`CREATE INDEX IF NOT EXISTS idx_funding_mark_price ON funding_snapshots(symbol, exchange, ts DESC) WHERE mark_price IS NOT NULL AND mark_price > 0`;
 
@@ -811,6 +820,12 @@ interface FundingSnapshotEntry {
    *  and shorts can have different magnitudes due to OI weighting. Null
    *  on symmetric venues (every CEX) — caller should fall back to `rate`. */
   rateShort?: number;
+  /** Settlement interval in hours (e.g. 1, 4, 8). When set, /api/account/
+   *  positions uses this for the per-position APR projection instead of
+   *  falling back to the per-exchange default. Critical for venues that
+   *  use different intervals for different symbols (Binance/MEXC have
+   *  moved some high-volume perps to 4h while keeping 8h for others). */
+  intervalH?: number;
 }
 
 export async function saveFundingSnapshot(entries: FundingSnapshotEntry[]): Promise<number> {
@@ -828,15 +843,21 @@ export async function saveFundingSnapshot(entries: FundingSnapshotEntry[]): Prom
     const predicteds = chunk.map(e => e.predicted ?? null);
     const markPrices = chunk.map(e => e.markPrice ?? null);
     const rateShorts = chunk.map(e => e.rateShort ?? null);
+    const intervalHs = chunk.map(e =>
+      e.intervalH != null && Number.isFinite(e.intervalH) && e.intervalH > 0
+        ? Math.round(e.intervalH)
+        : null,
+    );
     await sql`
-      INSERT INTO funding_snapshots (symbol, exchange, rate, predicted, mark_price, rate_short)
+      INSERT INTO funding_snapshots (symbol, exchange, rate, predicted, mark_price, rate_short, interval_h)
       SELECT * FROM UNNEST(
         ${sql.array(symbols)}::text[],
         ${sql.array(exchanges)}::text[],
         ${sql.array(rates)}::real[],
         ${sql.array(predicteds)}::real[],
         ${sql.array(markPrices)}::real[],
-        ${sql.array(rateShorts)}::real[]
+        ${sql.array(rateShorts)}::real[],
+        ${sql.array(intervalHs)}::smallint[]
       )`;
     inserted += chunk.length;
   }

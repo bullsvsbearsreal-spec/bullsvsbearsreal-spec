@@ -32,6 +32,12 @@ interface FundingContext {
   currentShort: number | null;
   avg24hShort: number | null;
   avg48hShort: number | null;
+  /** Per-symbol settlement interval in hours from funding_snapshots.
+   *  Populated by the snapshot cron when the fetcher reports it (Binance
+   *  fundingInfo, MEXC collectCycle, Aster fundingInfo). Null when the
+   *  venue is uniform across symbols — caller falls back to the per-
+   *  exchange default in intervalHoursFor. */
+  intervalH: number | null;
 }
 
 /**
@@ -92,8 +98,11 @@ async function loadFundingContext(
       -- rate=0 historically). Without this filter the once-per-minute
       -- placeholder rows out-vote the once-per-10-min real funding ticks
       -- and the displayed rate is always 0.
+      -- interval_h is the per-symbol settlement interval (Binance/MEXC
+      -- have moved some perps from 8h → 4h; without joining this column
+      -- the /positions APR would assume 8h for every symbol).
       SELECT DISTINCT ON (f.exchange, f.symbol)
-        f.exchange, f.symbol, f.rate, f.rate_short
+        f.exchange, f.symbol, f.rate, f.rate_short, f.interval_h
       FROM funding_snapshots f
       JOIN wanted w ON w.exchange = f.exchange AND w.symbol = f.symbol
       WHERE f.ts > NOW() - INTERVAL '6 hours'
@@ -126,6 +135,7 @@ async function loadFundingContext(
     SELECT w.exchange, w.symbol,
            latest.rate         AS current,
            latest.rate_short   AS current_short,
+           latest.interval_h   AS interval_h,
            avg24.rate          AS avg24h,
            avg24.rate_short    AS avg24h_short,
            avg48.rate          AS avg48h,
@@ -146,6 +156,7 @@ async function loadFundingContext(
       currentShort: r.current_short == null ? null : Number(r.current_short),
       avg24hShort: r.avg24h_short == null ? null : Number(r.avg24h_short),
       avg48hShort: r.avg48h_short == null ? null : Number(r.avg48h_short),
+      intervalH: r.interval_h == null ? null : Number(r.interval_h),
     });
   }
   // …then re-index back to the ORIGINAL display symbol so callers that look
@@ -227,6 +238,7 @@ export async function GET(request: NextRequest) {
     const fRaw = fundingMap.get(`${p.exchange}|${p.symbol}`) ?? {
       current: null, avg24h: null, avg48h: null,
       currentShort: null, avg24hShort: null, avg48hShort: null,
+      intervalH: null,
     };
     // Pick the side-specific rate when the venue stored one. We keep the
     // unified "longs pay" sign convention everywhere (rate > 0 = longs pay,
@@ -267,11 +279,15 @@ export async function GET(request: NextRequest) {
     // Daily funding cost-of-carry in USD using the live rate. The 30d
     // projection just multiplies by 30 — assumes funding stays flat,
     // which it never does, but it's the rate-card the user wants.
+    // Pass intervalH from funding_snapshots so per-symbol 4h venues
+    // (Binance high-volume perps, MEXC variable-cycle pairs) compound
+    // 24/4h = 6× per day instead of the per-exchange 8h default's 3×.
     const dailyCarry = dailyFundingCarryUsd({
       side: p.side,
       positionValue: p.positionValue,
       currentFundingPct: f.current,
       exchange: p.exchange,
+      intervalHoursOverride: fRaw.intervalH,
     });
     if (dailyCarry != null && Number.isFinite(dailyCarry)) {
       aggregateDailyCarry += dailyCarry;
@@ -300,6 +316,12 @@ export async function GET(request: NextRequest) {
       currentFunding: f.current,
       avg24hFunding: f.avg24h,
       avg48hFunding: f.avg48h,
+      // Per-symbol funding interval in hours from funding_snapshots
+      // (null when the venue is uniform across symbols; UI falls back
+      // to intervalHoursFor on the exchange label). Sent to /positions
+      // so the displayed APR uses the right 24/intervalH compounding
+      // per row instead of assuming the per-exchange default.
+      fundingIntervalHours: fRaw.intervalH,
       // Position health score (0-100) + label + factor breakdown for tooltip
       healthScore: health.score,
       healthLabel: health.label,

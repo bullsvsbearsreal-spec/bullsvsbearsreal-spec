@@ -35,7 +35,15 @@ type FundingData = {
   markPrice: number;
   indexPrice: number;
   nextFundingTime: number;
-  fundingInterval?: '1h' | '4h' | '8h'; // Settlement interval (default: 8h)
+  fundingInterval?: '1h' | '4h' | '8h'; // Settlement interval bucket (default: 8h)
+  /** Precise per-symbol interval in hours when the venue reports it
+   *  (e.g. 1, 2, 4, 8, 24). The snapshot cron prefers this over the
+   *  bucket enum when persisting interval_h on funding_snapshots, so
+   *  /positions can apply the right 24/intervalH compounding for APR
+   *  display. Fetchers that don't expose per-symbol intervals (most
+   *  CEX uniform-8h venues) omit this — caller falls back to the
+   *  enum or per-exchange default. */
+  fundingIntervalHours?: number;
   type?: 'cex' | 'dex'; // CEX vs DEX classification
   assetClass?: 'crypto' | 'stocks' | 'forex' | 'commodities';
   marginType?: 'linear' | 'inverse'; // USDT-margined vs coin-margined
@@ -43,31 +51,75 @@ type FundingData = {
 
 export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   // Binance — geo-blocked from some Vercel regions. Try direct → fallback domain → proxy.
+  // Binance has migrated many high-volume perps from 8h → 4h funding
+  // settlement (some altcoins even on 2h). We MUST fetch /fapi/v1/fundingInfo
+  // to get the per-pair interval; without it /positions APR projections
+  // were computing 24/8h compounding for symbols actually on 4h, halving
+  // the displayed APR. christian's MEXC/Binance feedback May 2026.
   {
     name: 'Binance',
     fetcher: async (fetchFn) => {
       const proxyUrl = process.env.PROXY_URL;
-      const urls = [
+      const premUrls = [
         'https://fapi.binance.com/fapi/v1/premiumIndex',
         'https://fapi.binance.me/fapi/v1/premiumIndex',
         ...(proxyUrl ? [`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent('https://fapi.binance.com/fapi/v1/premiumIndex')}`] : []),
       ];
-      let res: Response | null = null;
-      for (const url of urls) {
-        try {
-          res = await fetchFn(url, {}, 8000);
-          if (res.ok) break;
-          res = null;
-        } catch { res = null; }
-      }
-      if (!res || !res.ok) return [];
-      const data = await res.json();
+      const infoUrls = [
+        'https://fapi.binance.com/fapi/v1/fundingInfo',
+        'https://fapi.binance.me/fapi/v1/fundingInfo',
+        ...(proxyUrl ? [`${proxyUrl.replace(/\/$/, '')}/?url=${encodeURIComponent('https://fapi.binance.com/fapi/v1/fundingInfo')}`] : []),
+      ];
+      const tryUrls = async (urls: string[]): Promise<Response | null> => {
+        for (const url of urls) {
+          try {
+            const r = await fetchFn(url, {}, 8000);
+            if (r.ok) return r;
+          } catch { /* try next */ }
+        }
+        return null;
+      };
+      const [premRes, infoRes] = await Promise.all([
+        tryUrls(premUrls),
+        tryUrls(infoUrls).catch(() => null),
+      ]);
+      if (!premRes || !premRes.ok) return [];
+      const data = await premRes.json();
       if (!Array.isArray(data)) return [];
+
+      // Build symbol → intervalHours map from fundingInfo. Default 8h
+      // when the endpoint is unreachable or a symbol isn't listed.
+      const intervalMap = new Map<string, number>();
+      if (infoRes?.ok) {
+        try {
+          const infoJson = await infoRes.json();
+          if (Array.isArray(infoJson)) {
+            for (const row of infoJson) {
+              if (row?.symbol && row?.fundingIntervalHours != null) {
+                intervalMap.set(row.symbol, Number(row.fundingIntervalHours));
+              }
+            }
+          }
+        } catch (e) { console.warn('[funding][Binance] interval parse:', e instanceof Error ? e.message : e); }
+      }
+
+      const VALID_INTERVALS = new Set([1, 2, 4, 8]);
       return data
         .filter((item: any) => item.symbol?.endsWith('USDT') && item.lastFundingRate != null)
         .map((item: any) => {
           const markPrice = parseFloat(item.markPrice) || 0;
           const indexPrice = parseFloat(item.indexPrice) || 0;
+          const rawIntervalH = intervalMap.get(item.symbol) ?? 8;
+          const intervalH = VALID_INTERVALS.has(rawIntervalH) ? rawIntervalH : 8;
+          // Map numeric interval to the FundingInterval enum bucket
+          // ('1h' | '4h' | '8h'). 2h pairs are bucketed as '1h' to fit
+          // the existing /funding-page contract; the snapshot cron
+          // persists the precise numeric intervalHours separately for
+          // accurate APR projections on /positions.
+          let interval: '1h' | '4h' | '8h';
+          if (intervalH === 1 || intervalH === 2) interval = '1h';
+          else if (intervalH === 4) interval = '4h';
+          else interval = '8h';
           return {
             symbol: item.symbol.replace('USDT', ''),
             exchange: 'Binance',
@@ -75,7 +127,8 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             // Next-window prediction from the standard Binance formula
             // — premiumIndex already returns the inputs we need.
             predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
-            fundingInterval: '8h' as const,
+            fundingInterval: interval,
+            fundingIntervalHours: intervalH,
             markPrice,
             indexPrice,
             // Binance returns nextFundingTime as a number today, but every
@@ -83,7 +136,7 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             // a string-coerce drift on Binance would otherwise propagate
             // straight through to /api/v1/funding as a string, breaking
             // partner countdown clocks. Match the sibling pattern.
-            nextFundingTime: Number(item.nextFundingTime) || Date.now() + 8 * 3600_000,
+            nextFundingTime: Number(item.nextFundingTime) || Date.now() + intervalH * 3600_000,
             type: 'cex' as const,
           };
         })

@@ -44,8 +44,21 @@ export const FUNDING_INTERVAL_HOURS: Record<string, number> = {
  * Resolve the funding interval for an exchange label, tolerating any
  * disambiguator suffix the wallet client may have appended like
  * "GMX (Avax)" or "Lighter (acct 2)".
+ *
+ * `perSymbolOverride` is the precise interval persisted on
+ * funding_snapshots.interval_h for THIS (exchange, symbol) — populated
+ * by the snapshot cron when the venue's API reports per-symbol
+ * intervals (Binance fundingInfo, MEXC collectCycle, Aster
+ * fundingInfo). When present it wins over the per-exchange default,
+ * fixing the case where venues use different intervals for different
+ * symbols (most Binance perps are 8h but many high-volume ones moved
+ * to 4h; christian's MEXC feedback May 2026). Pass null/undefined and
+ * the function falls back to the per-exchange default.
  */
-export function intervalHoursFor(exchange: string): number {
+export function intervalHoursFor(exchange: string, perSymbolOverride?: number | null): number {
+  if (perSymbolOverride != null && Number.isFinite(perSymbolOverride) && perSymbolOverride > 0) {
+    return perSymbolOverride;
+  }
   const canon = exchange.replace(/\s*\([^()]*\)\s*$/, '').trim();
   return FUNDING_INTERVAL_HOURS[canon] ?? 8;
 }
@@ -73,11 +86,16 @@ export function dailyFundingCarryUsd(args: {
   positionValue: number | null;
   currentFundingPct: number | null;
   exchange: string;
+  /** Per-symbol interval override from funding_snapshots.interval_h.
+   *  Pass when known so the daily-carry math uses the real interval
+   *  (e.g. 4h instead of the 8h per-exchange default) and the projected
+   *  APR doesn't drift. */
+  intervalHoursOverride?: number | null;
 }): number | null {
-  const { side, positionValue, currentFundingPct, exchange } = args;
+  const { side, positionValue, currentFundingPct, exchange, intervalHoursOverride } = args;
   if (positionValue == null || !Number.isFinite(positionValue) || positionValue <= 0) return null;
   if (currentFundingPct == null || !Number.isFinite(currentFundingPct)) return null;
-  const intervalH = intervalHoursFor(exchange);
+  const intervalH = intervalHoursFor(exchange, intervalHoursOverride);
   if (intervalH <= 0) return null;
 
   // Compounding 24/intervalH times per day, but funding doesn't actually
