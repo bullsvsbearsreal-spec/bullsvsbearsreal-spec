@@ -13,7 +13,7 @@
  * CTAs stub out to a "coming soon" modal until NowPayments is wired.
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Header from '@/components/Header';
@@ -55,10 +55,14 @@ export default function PricingPage() {
   const [period, setPeriod] = useState<Period>('monthly');
   const [showCheckoutModal, setShowCheckoutModal] = useState<Tier | null>(null);
 
+  const isSignedIn = !!session;
   const userTier = resolveUserTier({
     role: (session?.user as { role?: string } | undefined)?.role,
     billingTier: null, // billing tier wiring is a follow-up — admins resolve to whale
   });
+  // Only mark a card "current" if the user is actually signed in. Logged-out
+  // users see signup CTAs on every card (including Free).
+  const currentTier: Tier | null = isSignedIn ? userTier : null;
 
   return (
     <div className="min-h-screen bg-hub-black">
@@ -135,7 +139,7 @@ export default function PricingPage() {
                 key={t}
                 tier={t}
                 period={period}
-                isCurrentTier={userTier === t}
+                isCurrentTier={currentTier === t}
                 isMostPopular={t === 'pro'}
                 onSubscribe={() => setShowCheckoutModal(t)}
                 desktopOrderClass={desktopOrderClass}
@@ -219,7 +223,7 @@ export default function PricingPage() {
             />
             <FaqItem
               q="Is there a free trial?"
-              a="Right now everyone gets Pro features free during launch, which is effectively a trial for everyone. Once paid tiers go live, we'll offer a 7-day Pro trial on signup so you can try it before committing."
+              a="No traditional trial — but right now everyone gets full Pro features free during launch, which is effectively a long open trial. The Free tier itself stays free forever (no card required, no time limit), so you can always test the data terminal without committing to anything."
             />
           </div>
         </section>
@@ -507,10 +511,21 @@ function CheckoutComingSoonModal({
 }) {
   const b = TIER_BRANDING[tier];
   const Icon = tierIcon(b.iconName);
+
+  // Esc closes the modal (accessibility + matches user expectation)
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
   return (
     <div
       role="dialog"
       aria-modal="true"
+      aria-labelledby="checkout-modal-title"
       className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={onClose}
     >
@@ -519,7 +534,7 @@ function CheckoutComingSoonModal({
         onClick={(e) => e.stopPropagation()}
       >
         <Icon className={`w-10 h-10 mx-auto mb-3 ${b.textColor}`} aria-hidden />
-        <h3 className="text-base font-bold text-white mb-2">
+        <h3 id="checkout-modal-title" className="text-base font-bold text-white mb-2">
           {b.label} ({period}) — free during launch
         </h3>
         <p className="text-[12px] text-neutral-400 mb-4 leading-relaxed">
@@ -536,7 +551,7 @@ function CheckoutComingSoonModal({
             Got it
           </button>
           <Link
-            href="/faq#pricing"
+            href="/faq"
             className="px-4 py-2 text-[12px] font-semibold rounded-lg bg-emerald-500 text-black hover:bg-emerald-400 transition-colors"
           >
             FAQ
