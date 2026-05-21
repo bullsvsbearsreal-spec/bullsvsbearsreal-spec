@@ -318,6 +318,14 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Account · Command Center',
     description: 'Your InfoHub account at a glance — connected venues, open positions, watched wallets, alerts, recent notifications, and quick actions for everything you trade.',
   },
+  '/account/connections': {
+    title: 'Exchange + Wallet Connections',
+    description: 'Connect read-only CEX API keys and DEX wallet addresses so InfoHub can show your unified portfolio at /positions. AES-256-GCM encrypted at rest. Supports Binance, Bybit, OKX, Bitget, MEXC, Blofin, Hyperliquid, GMX, gTrade, Lighter.',
+  },
+  '/account/api-keys': {
+    title: 'API Keys',
+    description: 'Manage your InfoHub Public API keys — create, revoke, and check usage. Free tier 100 req/min, Pro 500 req/min (free during launch).',
+  },
   '/watch': {
     title: 'Wallet Watch · Hyperliquid + gTrade Position Alerts',
     description: 'Watch any Hyperliquid or gTrade wallet in real time. Get Telegram pings when they open or close positions, change size, near liq, take realized PnL, or pay funding. Free.',
