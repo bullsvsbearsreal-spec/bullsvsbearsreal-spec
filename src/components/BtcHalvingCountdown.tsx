@@ -43,9 +43,20 @@ export function cycleProgress(now: number): number {
 }
 
 export function BtcHalvingCountdown({ compact = false }: { compact?: boolean }) {
-  const [now, setNow] = useState(() => Date.now());
+  // SSR-safe initial state: render the cycle as if `now` were exactly
+  // LAST_HALVING_TS so the seconds digit (which would otherwise drift
+  // between server render and client hydration) doesn't trigger React
+  // hydration error #425. After mount we swap to the real Date.now()
+  // tick and the digits update every second as before.
+  //
+  // Without this, the home page fired #425 + #422 every page load in
+  // production (verified live May 2026) — the countdown's `s` digit
+  // is guaranteed to differ between SSR time and client init time
+  // because of the network + JS-eval delay.
+  const [now, setNow] = useState(LAST_HALVING_TS);
 
   useEffect(() => {
+    setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
