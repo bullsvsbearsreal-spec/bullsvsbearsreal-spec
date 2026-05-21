@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { shouldSkip, AUTH_PATHS } from '../middleware';
+import { NextRequest } from 'next/server';
+import { shouldSkip, AUTH_PATHS, handleV1Route } from '../middleware';
+import { FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT } from '@/lib/constants/exchanges';
 
 describe('shouldSkip — middleware bucket bypass list', () => {
   it('returns true for /api/chat (has its own limiter)', () => {
@@ -77,5 +79,52 @@ describe('AUTH_PATHS — strict-bucket auth routes', () => {
     AUTH_PATHS.forEach((p) => {
       expect(p.startsWith('/api/auth/')).toBe(true);
     });
+  });
+});
+
+describe('handleV1Route — middleware short-circuit for /api/v1/*', () => {
+  function mockReq(path: string, init?: { authorization?: string }) {
+    const headers = new Headers();
+    if (init?.authorization) headers.set('authorization', init.authorization);
+    // NextRequest accepts a string URL + RequestInit-like object
+    return new NextRequest(new URL(`https://info-hub.io${path}`), { headers });
+  }
+
+  it('returns 401 with fee-model headers on no-key request to a protected v1 endpoint', () => {
+    // Regression guard: previously the middleware short-circuit 401 only set
+    // WWW-Authenticate, dropping X-Fee-Model-Version. Partners doing cheap
+    // HEAD-based version polling against an unauthed endpoint then missed
+    // schedule bumps until they renewed (verified live May 2026).
+    const res = handleV1Route(mockReq('/api/v1/exchanges'));
+    expect(res.status).toBe(401);
+    expect(res.headers.get('WWW-Authenticate')).toBe('Bearer realm="InfoHub API"');
+    expect(res.headers.get('X-Fee-Model-Version')).toBe(FEE_MODEL_VERSION);
+    expect(res.headers.get('X-Fee-Model-Updated-At')).toBe(FEE_MODEL_UPDATED_AT);
+  });
+
+  it('returns 401 with fee-model headers when bearer prefix is wrong', () => {
+    const res = handleV1Route(mockReq('/api/v1/funding', { authorization: 'Bearer wrong_prefix' }));
+    expect(res.status).toBe(401);
+    expect(res.headers.get('X-Fee-Model-Version')).toBe(FEE_MODEL_VERSION);
+  });
+
+  it('falls through to NextResponse.next() for /api/v1/status (free, no auth)', () => {
+    const res = handleV1Route(mockReq('/api/v1/status'));
+    expect(res.status).toBe(200);
+  });
+
+  it('falls through to NextResponse.next() for /api/v1/openapi (public)', () => {
+    const res = handleV1Route(mockReq('/api/v1/openapi'));
+    expect(res.status).toBe(200);
+  });
+
+  it('falls through for /api/v1/keys (session-auth, not bearer)', () => {
+    const res = handleV1Route(mockReq('/api/v1/keys'));
+    expect(res.status).toBe(200);
+  });
+
+  it('falls through with valid bearer token format (handler validates further)', () => {
+    const res = handleV1Route(mockReq('/api/v1/exchanges', { authorization: 'Bearer ih_anything' }));
+    expect(res.status).toBe(200);
   });
 });

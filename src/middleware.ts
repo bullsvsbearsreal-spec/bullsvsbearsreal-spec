@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT } from '@/lib/constants/exchanges';
 
 // ---------------------------------------------------------------------------
 // In-memory sliding-window rate limiter — no external deps needed at this scale
@@ -104,7 +105,9 @@ const MAX_QUERY_LENGTH = 512;
 // Auth + rate limiting happens in route handlers via v1-auth.ts (Node.js)
 // ---------------------------------------------------------------------------
 
-function handleV1Route(request: NextRequest): NextResponse {
+// Exported for unit tests — locks in the no-key 401 contract
+// (status + X-Fee-Model-Version + X-Fee-Model-Updated-At headers).
+export function handleV1Route(request: NextRequest): NextResponse {
   const path = request.nextUrl.pathname;
 
   // /api/v1/status is free — no auth required
@@ -121,10 +124,20 @@ function handleV1Route(request: NextRequest): NextResponse {
   // Full validation + rate limiting happens in route handlers
   const authHeader = request.headers.get('authorization') || '';
   if (!authHeader.match(/^Bearer\s+ih_.+$/i)) {
-    return NextResponse.json(
+    // Emit X-Fee-Model-* on this short-circuit 401 too — without these,
+    // partners doing cheap HEAD-based version polling against an
+    // unauthenticated endpoint miss schedule bumps until they renew
+    // their key. The route-handler 401 path (v1-auth.ts) sets these
+    // explicitly via .set() for the same reason; the middleware short-
+    // circuit was the missing surface (verified live May 2026).
+    const noKeyRes = NextResponse.json(
       { success: false, error: 'API key required. Pass Authorization: Bearer ih_xxx' },
-      { status: 401, headers: { 'WWW-Authenticate': 'Bearer realm="InfoHub API"' } },
+      { status: 401 },
     );
+    noKeyRes.headers.set('WWW-Authenticate', 'Bearer realm="InfoHub API"');
+    noKeyRes.headers.set('X-Fee-Model-Version', FEE_MODEL_VERSION);
+    noKeyRes.headers.set('X-Fee-Model-Updated-At', FEE_MODEL_UPDATED_AT);
+    return noKeyRes;
   }
 
   return NextResponse.next();
