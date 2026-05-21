@@ -968,9 +968,30 @@ function ExchangeEquityStrip({
   balances: AccountBalance[];
   onFilterClick: (exchange: string) => void;
 }) {
-  // Sort largest-equity first so the most material venues lead.
-  const sorted = [...balances].sort((a, b) => b.equityUsd - a.equityUsd);
-  const total = sorted.reduce((acc, b) => acc + b.equityUsd, 0);
+  // Aggregate by EXCHANGE label, not by source row. A user can have
+  // multiple HL wallets (or two MEXC keys) — without this they'd see
+  // "HYPERLIQUID $6M, HYPERLIQUID $0" as separate tiles, confusing
+  // and noisy. Summing per-exchange + dropping empties gives one tile
+  // per venue ranked by total equity.
+  const byExchange = new Map<string, { equityUsd: number; availableUsd: number; marginUsedUsd: number }>();
+  for (const b of balances) {
+    const prev = byExchange.get(b.exchange) ?? { equityUsd: 0, availableUsd: 0, marginUsedUsd: 0 };
+    byExchange.set(b.exchange, {
+      equityUsd: prev.equityUsd + b.equityUsd,
+      availableUsd: prev.availableUsd + b.availableUsd,
+      marginUsedUsd: prev.marginUsedUsd + b.marginUsedUsd,
+    });
+  }
+  // Drop tiles with negligible equity (< $1) — clutter without signal.
+  // Negative-equity tiles still show (margin call signal worth surfacing).
+  const aggregated = Array.from(byExchange.entries())
+    .filter(([, v]) => Math.abs(v.equityUsd) >= 1)
+    .map(([exchange, v]) => ({ exchange, ...v }))
+    .sort((a, b) => b.equityUsd - a.equityUsd);
+
+  if (aggregated.length === 0) return null;
+  const total = aggregated.reduce((acc, b) => acc + b.equityUsd, 0);
+
   return (
     <div className="mb-4">
       <div className="flex items-baseline justify-between mb-1.5">
@@ -982,13 +1003,13 @@ function ExchangeEquityStrip({
         </div>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-        {sorted.map((b) => {
+        {aggregated.map((b) => {
           // Percentage of total equity this venue holds — gives a quick
           // sense of concentration risk (one venue ≫ 50% = concentrated).
           const sharePct = total > 0 ? (b.equityUsd / total) * 100 : 0;
           return (
             <button
-              key={`${b.sourceType}-${b.sourceId}`}
+              key={b.exchange}
               type="button"
               onClick={() => onFilterClick(b.exchange)}
               className="text-left rounded-lg border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.12] px-3 py-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40"
