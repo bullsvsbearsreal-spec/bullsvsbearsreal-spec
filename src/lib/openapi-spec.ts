@@ -76,7 +76,7 @@ export const openApiSpec = {
           predictedRate: {
             type: 'number',
             nullable: true,
-            description: 'Predicted next-window rate as percent. Binance USDT-M / COIN-M / Bybit / Bitget derive via clamp((mark-index)/index, ±0.05%) + 0.01%. OKX uses its native nextFundingRate. Other venues null.',
+            description: 'Predicted next-window rate as percent. Source varies by venue: Binance / Bybit / Bitget / BingX / Aster / Aevo / Coinbase / Phemex / MEXC / Deribit / Extended / WhiteBIT / Backpack / Paradex / edgeX / KuCoin / Bitfinex / Gate.io / Bitunix use the Binance-style clamp((mark-index)/index, ±0.05%) + 0.01% formula. OKX / CoinEx / Hyperliquid / Orderly / Kraken / dYdX / BitMEX expose a native next-window field. gTrade / GMX / Lighter / Nado / Variational use continuous per-second accrual (the current rate IS the next-window expectation). HTX / Blofin / Aster / Variational left null where source data is unavailable. Check /api/v1/exchanges supportsPredictedRate + predictedRateSource for the per-venue matrix.',
           },
           markPrice: { type: 'number', nullable: true },
           indexPrice: { type: 'number', nullable: true },
