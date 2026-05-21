@@ -231,6 +231,25 @@ function ProfilePageInner() {
   const userEmail = session?.user?.email ?? '';
   const userRole = (session?.user as { role?: string } | undefined)?.role;
   const isAdmin = userRole === 'admin';
+  // Resolve the user's actual tier for the hero chip — was previously
+  // hardcoded "Free plan" emerald chip regardless of tier, which was
+  // wrong for admins (auto-whale via grandfather rule) and would be
+  // wrong for any future paid Pro/Whale subscribers too.
+  const heroTier = resolveUserTier({
+    role: userRole,
+    billingTier: (session?.user as { billingTier?: string } | undefined)?.billingTier ?? null,
+  });
+  const heroBranding = TIER_BRANDING[heroTier];
+  const HeroTierIcon = heroBranding.iconName === 'Sparkles' ? Sparkles
+    : heroBranding.iconName === 'Zap' ? Zap
+    : Crown;
+  // Tier-coded chip color matching /pricing + UserMenu so the whole
+  // surface reads consistently. Tints derived from /pricing's branding.
+  const heroTierChipCls = heroTier === 'whale'
+    ? 'bg-amber-500/15 text-amber-300 border-amber-400/30'
+    : heroTier === 'pro'
+      ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30'
+      : 'bg-white/[0.06] text-neutral-400 border-white/[0.1]';
 
   return (
     <div className="min-h-screen bg-hub-black">
@@ -257,9 +276,9 @@ function ProfilePageInner() {
                       Admin
                     </span>
                   )}
-                  <span className="inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-400/30">
-                    <Sparkles className="w-3 h-3" />
-                    Free plan
+                  <span className={`inline-flex items-center gap-1 text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border ${heroTierChipCls}`}>
+                    <HeroTierIcon className="w-3 h-3" />
+                    {heroBranding.label} plan
                   </span>
                 </div>
                 <p className="text-sm text-neutral-500 mt-1">{userEmail}</p>
