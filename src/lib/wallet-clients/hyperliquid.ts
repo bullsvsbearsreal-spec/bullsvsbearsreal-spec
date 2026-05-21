@@ -292,31 +292,94 @@ export const hyperliquidWalletClient: WalletClient = {
   },
 
   async fetchAccountBalance(address: string): Promise<NormalizedAccountBalance | null> {
-    // Use the same clearinghouseState endpoint as fetchPositions but
-    // pull the marginSummary block instead of the per-position list.
-    //   marginSummary.accountValue   — TRUE equity (cash + uPnL + margin)
-    //   marginSummary.totalMarginUsed — margin currently allocated
-    //   withdrawable                 — free cash available right now
+    // Pull both the perp clearinghouseState (USDC-margined positions)
+    // AND the spotClearinghouseState (token balances) so the equity
+    // total reflects the user's WHOLE HL account — not just the perp
+    // sleeve. Christian flagged that /positions equity was showing
+    // ~zero for accounts that had moved most of their value into
+    // HYPE / PURR / native tokens on spot (May 2026); previously the
+    // fetcher only read marginSummary.accountValue which is the perp
+    // sub-account, ignoring spot holdings entirely.
     //
-    // This is exactly what christian asked for: the "account total"
-    // field, not the per-position margin we were summing before.
+    // Spot pricing: spotMetaAndAssetCtxs returns [meta, ctxs] where
+    // universe[i].tokens=[base, quote] (quote=0 means USDC) and the
+    // parallel ctxs[i].markPx gives the spot mid in quote terms.
+    // We build a tokenId → markPx-in-USD map by walking pairs with
+    // a USDC quote, then sum each user balance.total × markPx.
     if (!/^0x[a-fA-F0-9]{40}$/.test(address)) return null;
     try {
-      const res = await fetch(HL_INFO_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ type: 'clearinghouseState', user: address }),
-        signal: AbortSignal.timeout(TIMEOUT_MS),
-      });
-      if (!res.ok) return null;
-      const json = (await res.json()) as HLClearingHouseState;
-      const summary = json.marginSummary;
-      if (!summary) return { equityUsd: 0, availableUsd: 0, marginUsedUsd: 0 };
-      const equity = parseFloat(summary.accountValue);
-      const margin = parseFloat(summary.totalMarginUsed);
-      const available = json.withdrawable != null ? parseFloat(json.withdrawable) : NaN;
+      const [perpRes, spotRes, spotMetaRes] = await Promise.all([
+        fetch(HL_INFO_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ type: 'clearinghouseState', user: address }),
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+        }),
+        fetch(HL_INFO_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ type: 'spotClearinghouseState', user: address }),
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+        }).catch(() => null),
+        fetch(HL_INFO_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+          body: JSON.stringify({ type: 'spotMetaAndAssetCtxs' }),
+          signal: AbortSignal.timeout(TIMEOUT_MS),
+        }).catch(() => null),
+      ]);
+
+      if (!perpRes.ok) return null;
+      const perpJson = (await perpRes.json()) as HLClearingHouseState;
+      const summary = perpJson.marginSummary;
+      const perpEquity = summary ? parseFloat(summary.accountValue) : 0;
+      const margin = summary ? parseFloat(summary.totalMarginUsed) : 0;
+      const available = perpJson.withdrawable != null ? parseFloat(perpJson.withdrawable) : NaN;
+
+      // Compute spot USD value (best-effort — failures degrade silently
+      // to perp-only equity, matching the pre-fix behaviour).
+      let spotUsd = 0;
+      if (spotRes && spotRes.ok && spotMetaRes && spotMetaRes.ok) {
+        try {
+          const spotJson = await spotRes.json();
+          const metaJson = await spotMetaRes.json();
+          // Build tokenId → USD markPx map from USDC-quoted pairs.
+          // USDC itself (token 0) is anchored at 1.0 USD.
+          const tokenPriceMap = new Map<number, number>();
+          tokenPriceMap.set(0, 1);
+          if (Array.isArray(metaJson) && metaJson.length >= 2) {
+            const universe = metaJson[0]?.universe ?? [];
+            const ctxs = metaJson[1] ?? [];
+            for (let i = 0; i < universe.length; i++) {
+              const pair = universe[i];
+              const ctx = ctxs[i];
+              if (!pair || !ctx) continue;
+              const tokens = pair.tokens;
+              if (!Array.isArray(tokens) || tokens.length !== 2) continue;
+              // Only consume pairs quoted in USDC (token 0).
+              if (tokens[1] !== 0) continue;
+              const baseToken = tokens[0];
+              const px = parseFloat(ctx.markPx);
+              if (Number.isFinite(px) && px > 0) {
+                tokenPriceMap.set(baseToken, px);
+              }
+            }
+          }
+          const balances = Array.isArray(spotJson?.balances) ? spotJson.balances : [];
+          for (const b of balances) {
+            const tokenId = typeof b.token === 'number' ? b.token : -1;
+            const total = parseFloat(b.total);
+            if (!Number.isFinite(total) || total <= 0) continue;
+            const px = tokenPriceMap.get(tokenId);
+            if (px == null) continue;
+            spotUsd += total * px;
+          }
+        } catch { /* degrade silently */ }
+      }
+
+      const totalEquity = (Number.isFinite(perpEquity) ? perpEquity : 0) + spotUsd;
       return {
-        equityUsd: Number.isFinite(equity) ? equity : 0,
+        equityUsd: totalEquity,
         availableUsd: Number.isFinite(available) ? available : 0,
         marginUsedUsd: Number.isFinite(margin) ? margin : 0,
       };
