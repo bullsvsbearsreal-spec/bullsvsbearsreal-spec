@@ -208,9 +208,18 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
       return oiJson.data
         .filter((r: any) => typeof r.instId === 'string' && r.instId.endsWith('-USDT'))
         .map((r: any) => {
-          // Blofin OI field — try common shapes (OKX uses `oiCcy` for
-          // base-currency OI; some derivatives use `openInterest`).
-          const oiBase = parseFloat(r.openInterest ?? r.oiCcy ?? r.oi) || 0;
+          // Live-verified May 2026: Blofin's OI endpoint returns BOTH
+          //   openInterest = contracts (with per-symbol contract size)
+          //   openInterestCurrency = base-currency OI (BTC / ETH / etc.)
+          // The ratio varies wildly — WIF is 1:1, BAS is 100:1, XPD
+          // is 0.001:1 — because contract sizes aren't uniform. We MUST
+          // use openInterestCurrency × price for USD OI; using contracts
+          // × spot price would silently 100x BAS and 0.001x XPD on the
+          // /open-interest rankings. Fallback chain handles OKX-style
+          // siblings (oiCcy) in case Blofin renames the field.
+          const oiBase = parseFloat(
+            r.openInterestCurrency ?? r.oiCcy ?? r.openInterestCcy ?? r.oi
+          ) || 0;
           const price = priceByInst.get(r.instId) || 0;
           let baseSymbol = r.instId.replace('-USDT', '');
           if (baseSymbol.startsWith('1000')) baseSymbol = baseSymbol.slice(4);

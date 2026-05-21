@@ -270,10 +270,15 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
         .map((ticker: any) => {
           const lastPrice = parseFloat(ticker.last) || 0;
           const open24h = parseFloat(ticker.open24h) || 0;
-          const baseVol = parseFloat(ticker.vol24h) || 0;
-          // volCurrency24h is in quote currency (USDT) per Blofin docs;
-          // fall back to base * price if absent.
-          const quoteVol = parseFloat(ticker.volCurrency24h);
+          // Live-verified May 2026 against BTC-USDT response:
+          //   vol24h = 3935489.9 (contracts)
+          //   volCurrency24h = 3935.4899 (BTC)
+          //   ratio = 1000 → Blofin uses 1000x contract scaling like
+          //   OKX. volCurrency24h is BASE currency volume, NOT quote.
+          //   USD volume = volCurrency24h * lastPrice. Mirrors the OKX
+          //   adapter's pattern (line 119).
+          const contractVol = parseFloat(ticker.vol24h) || 0;
+          const baseVol = parseFloat(ticker.volCurrency24h) || 0;
           const changePct = open24h > 0 ? ((lastPrice - open24h) / open24h) * 100 : 0;
           // Strip 1000-prefix on memecoin contracts (1000PEPE-USDT) so
           // downstream joins match plain PEPE rows across venues.
@@ -289,8 +294,12 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
             changePercent24h: changePct,
             high24h: parseFloat(ticker.high24h) || 0,
             low24h: parseFloat(ticker.low24h) || 0,
-            volume24h: baseVol,
-            quoteVolume24h: Number.isFinite(quoteVol) ? quoteVol : baseVol * lastPrice,
+            // Match OKX adapter convention: volume24h holds the raw
+            // contract count; quoteVolume24h is the USDT-denominated
+            // value (base × price). Sanity-cap protection downstream
+            // (useTickers $100B cap) catches per-venue inflation.
+            volume24h: contractVol,
+            quoteVolume24h: baseVol * lastPrice,
           };
         })
         .filter((t: any) => t.lastPrice > 0);
