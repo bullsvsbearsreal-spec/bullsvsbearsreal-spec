@@ -86,14 +86,25 @@ export interface WatchEvent {
 }
 
 /**
- * Per-user cap on watched wallets. Imported by both the /watch UI
- * (for the 'Watching N/MAX' counter and disabled state) and the
- * /api/watch/wallets POST handler (for enforcement). Keep these in
- * sync — if you bump this constant, the cron-load budget needs to
- * be re-checked (25 × ~3 venues × 1s/fetch already consumes most
- * of the 60s tick window).
+ * Cron-safety ceiling on watched wallets per user. Imported by both
+ * the /watch UI ('Watching N/MAX' counter, disabled state) and the
+ * /api/watch/wallets POST handler (server enforcement). Acts as a
+ * floor on `min(tierLimit, MAX_WATCHED_WALLETS)` — the tier limit
+ * from TIER_LIMITS still applies on top of this.
+ *
+ * Sizing: VENUES.length === 3 (hyperliquid + gtrade + gmx) and the
+ * runner's CONCURRENCY === 8 (see hl-watch-runner.ts). So a full
+ * tick with N wallets does ~(N × 3 / 8) seconds of work in the
+ * worst case where every fetch takes ~1s. The 60s tick window
+ * comfortably supports N = 100 (≈ 37s) which matches the Pro tier's
+ * advertised "100 watched wallets" cap. Bump only after re-running
+ * the math; raising past ~150 risks runs overlapping ticks.
+ *
+ * Previously 25 — that ceiling silently capped Pro users (paying
+ * for 100) at 25 and Whale users (paying for unlimited) at 25,
+ * making the pricing copy a lie. Fixed May 2026.
  */
-export const MAX_WATCHED_WALLETS = 25;
+export const MAX_WATCHED_WALLETS = 100;
 
 export interface Thresholds {
   triggerOpened: boolean;

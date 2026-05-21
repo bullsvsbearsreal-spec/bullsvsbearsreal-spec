@@ -98,7 +98,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Data & Features',
     q: 'Can I track other traders’ wallets?',
-    a: 'Yes — /watch lets you paste any Hyperliquid or gTrade address and get Telegram pings the moment they open, close, resize, get close to liq, take realized PnL, or pay funding. Six trigger types per wallet, each individually toggleable. Up to 25 watched wallets per account, polled every 60 seconds via our snapshot cron. The "Test ping" button verifies your Telegram link before any real event fires.',
+    a: 'Yes — /watch lets you paste any Hyperliquid or gTrade address and get Telegram pings the moment they open, close, resize, get close to liq, take realized PnL, or pay funding. Six trigger types per wallet, each individually toggleable. Up to 100 watched wallets per account, polled every 60 seconds via our snapshot cron. The "Test ping" button verifies your Telegram link before any real event fires.',
   },
   {
     category: 'Data & Features',
