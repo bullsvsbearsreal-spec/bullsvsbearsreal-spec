@@ -276,43 +276,16 @@ function RealDashboardPage() {
     };
   }, [status, load]);
 
-  /* ── Auth gates ─────────────────────────────────────────────── */
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen bg-hub-black">
-        <Header />
-        <div className="flex items-center justify-center py-24">
-          <Loader2 className="w-6 h-6 text-neutral-500 animate-spin" />
-        </div>
-        <Footer />
-      </div>
-    );
-  }
-  if (status === 'unauthenticated') {
-    return (
-      <div className="min-h-screen bg-hub-black">
-        <Header />
-        <main className="max-w-[640px] mx-auto px-4 py-12">
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 text-center">
-            <Shield className="w-10 h-10 text-hub-yellow mx-auto mb-4" />
-            <h1 className="text-xl font-bold text-white mb-2">Sign in to your account</h1>
-            <p className="text-sm text-neutral-400 mb-5">
-              Watchlist, alerts, connected wallets, and Telegram pings live behind login.
-            </p>
-            <Link
-              href="/login?callbackUrl=/dashboard"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-hub-yellow text-black font-semibold text-sm hover:bg-hub-yellow/90"
-            >
-              Sign in <ArrowRight className="w-4 h-4" />
-            </Link>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
   /* ── Derived values ─────────────────────────────────────────── */
+  // Note: auth-state gates (loading / unauthenticated) used to live HERE
+  // (before any useMemo). That broke React's hooks-must-render-in-same-order
+  // rule on the loading → authenticated transition: render 1 had N hooks,
+  // render 2 jumped past the early returns and called extra useMemos →
+  // React error #310 ("Rendered more hooks than during the previous
+  // render"). The auth gates were moved BELOW all hooks (just before the
+  // main return) so the hook count is identical every render. Caught
+  // during Chrome QA — dashboard was crashing into the error boundary
+  // for the first second of every authenticated load.
   const userName = session?.user?.name || session?.user?.email?.split('@')[0] || 'Trader';
   const userEmail = session?.user?.email ?? null;
   const userImage = session?.user?.image ?? null;
@@ -367,6 +340,42 @@ function RealDashboardPage() {
     watchedCount,
     positions: positions?.positions ?? [],
   }), [userName, equity, openUnrealized, stats, eventsLast24h, watchedCount, positions]);
+
+  /* ── Auth gates (AFTER all hooks — see comment above) ────────── */
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen bg-hub-black">
+        <Header />
+        <div className="flex items-center justify-center py-24">
+          <Loader2 className="w-6 h-6 text-neutral-500 animate-spin" />
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+  if (status === 'unauthenticated') {
+    return (
+      <div className="min-h-screen bg-hub-black">
+        <Header />
+        <main className="max-w-[640px] mx-auto px-4 py-12">
+          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] p-8 text-center">
+            <Shield className="w-10 h-10 text-hub-yellow mx-auto mb-4" />
+            <h1 className="text-xl font-bold text-white mb-2">Sign in to your account</h1>
+            <p className="text-sm text-neutral-400 mb-5">
+              Watchlist, alerts, connected wallets, and Telegram pings live behind login.
+            </p>
+            <Link
+              href="/login?callbackUrl=/dashboard"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg bg-hub-yellow text-black font-semibold text-sm hover:bg-hub-yellow/90"
+            >
+              Sign in <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-hub-black">
