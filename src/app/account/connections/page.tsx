@@ -8,6 +8,7 @@ import {
   Key,
   Wallet,
   Plus,
+  X as XIcon,
   Trash2,
   Lock,
   AlertTriangle,
@@ -218,7 +219,8 @@ export default function ConnectionsPage() {
               onClick={() => setShowKeyForm(v => !v)}
               className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-sky-500/10 text-sky-300 ring-1 ring-sky-500/30 hover:bg-sky-500/20"
             >
-              <Plus className="w-3 h-3" /> {showKeyForm ? 'Cancel' : 'Add key'}
+              {showKeyForm ? <XIcon className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+              {showKeyForm ? 'Cancel' : 'Add key'}
             </button>
           </div>
 
@@ -305,7 +307,8 @@ export default function ConnectionsPage() {
               onClick={() => setShowWalletForm(v => !v)}
               className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-md bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/30 hover:bg-emerald-500/20"
             >
-              <Plus className="w-3 h-3" /> {showWalletForm ? 'Cancel' : 'Add wallet'}
+              {showWalletForm ? <XIcon className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
+              {showWalletForm ? 'Cancel' : 'Add wallet'}
             </button>
           </div>
 
