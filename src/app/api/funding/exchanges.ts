@@ -672,10 +672,16 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         .map((item: any) => {
           const normalized = normalizeSymbol(item.symbol, 'lighter');
           const market = priceMap[item.symbol] || { price: 0, oi: 0 };
+          const rate = ((parseFloat(item.rate || '0') || 0) * 100) / 8; // API returns 8h-normalized; divide by 8 for native 1h rate
           return {
             symbol: normalized.symbol,
             exchange: 'Lighter',
-            fundingRate: ((parseFloat(item.rate || '0') || 0) * 100) / 8, // API returns 8h-normalized; divide by 8 for native 1h rate
+            fundingRate: rate,
+            // Lighter uses continuous per-second accrual settled hourly;
+            // the current rate IS the next-window expectation. Marked
+            // null on the coverage matrix before this fix — AB-Samurai
+            // explicitly called this out as a partner gap.
+            predictedRate: rate,
             fundingInterval: '1h' as const,
             markPrice: market.price,
             indexPrice: market.price,
@@ -1803,6 +1809,15 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             fundingRateLong: -rateLong,            // Earning convention: positive = earning for longs
             fundingRateShort: -rateShort,           // Earning convention: positive = earning for shorts
             borrowingRate: borrowL + borrowS > 0.00001 ? Math.max(borrowL, borrowS) : undefined,
+            // GMX uses a continuous per-second accrual model — the
+            // current per-hour rate IS the next-hour expectation. Same
+            // semantic as gTrade ('continuous' source on /api/v1/exchanges).
+            // Without this, AB-Samurai's coverage matrix reported 0/109
+            // for GMX which is misleading — the rate doesn't change
+            // until OI balances shift, so quoting it as the prediction
+            // is accurate. Partners filtering by predictedRate != null
+            // missed GMX entirely without this.
+            predictedRate: fundingL,
             markPrice: 0, // GMX markets/info doesn't provide mark price
             indexPrice: 0,
             nextFundingTime: Date.now() + 3600000, // continuous, next "hour"
@@ -1980,6 +1995,13 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             symbol: norm.symbol,
             exchange: 'Variational',
             fundingRate,
+            // Variational uses a protocol-set annualized funding rate
+            // that accrues continuously — the current per-interval rate
+            // IS the next-window expectation until the protocol updates
+            // the annualized base. Same semantic as gTrade ('continuous').
+            // 451 pairs previously reported 0/451 on AB-Samurai's
+            // coverage matrix — the largest single-venue gap.
+            predictedRate: fundingRate,
             fundingInterval, // Keep native interval (1h, 4h, 8h)
             markPrice: parseFloat(m.mark_price) || 0,
             indexPrice: 0, // Not provided
@@ -2157,6 +2179,10 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             symbol,
             exchange: 'Nado',
             fundingRate,
+            // Nado funding is oracle-premium based with per-second
+            // continuous accrual — the current hourly rate IS the next
+            // window's expectation. Same semantic as gTrade.
+            predictedRate: fundingRate,
             fundingInterval: '1h' as const,
             markPrice: price,
             indexPrice: price,

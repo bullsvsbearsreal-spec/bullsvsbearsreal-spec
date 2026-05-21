@@ -65,8 +65,26 @@ export async function GET(request: NextRequest) {
     // BitMEX: prefers their native indicativeFundingRate, falls back to
     // Binance formula on (markPrice, indicativeSettlePrice).
     'BitMEX': 'native',
+    // gTrade / GMX / Lighter / Nado / Variational all use continuous
+    // per-second accrual where the current per-interval rate IS the
+    // next-window expectation (no separate prediction endpoint). May
+    // 2026 partner coverage push closed 722 pairs that previously
+    // reported null on AB-Samurai's matrix (109 GMX + 126 Lighter +
+    // 36 Nado + 451 Variational).
     'gTrade': 'continuous',
-    'HTX': null, 'GMX': null, 'Variational': null, 'Nado': null, 'Lighter': null,
+    'GMX': 'continuous',
+    'Lighter': 'continuous',
+    'Nado': 'continuous',
+    'Variational': 'continuous',
+    // HTX exposes `estimated_rate` on /swap_batch_funding_rate but it's
+    // always null in production (verified May 2026). Their batch
+    // ticker endpoint also lacks an index_price field, so the Binance
+    // formula can't be computed. Left null until HTX surfaces either.
+    'HTX': null,
+    // Blofin: public funding-rate endpoint returns only rate +
+    // settlement time, no premium/index inputs. Match BingX-style
+    // null until a usable source surfaces.
+    'Blofin': null,
   };
 
   const exchanges = ALL_EXCHANGES.map(name => {
