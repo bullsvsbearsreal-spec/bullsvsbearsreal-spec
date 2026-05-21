@@ -503,6 +503,17 @@ export default function PositionsPage() {
             {summary.dailyFundingCarryUsd != null && (
               <FundingCarryStrip dailyCarry={summary.dailyFundingCarryUsd} />
             )}
+            {/* Per-exchange equity breakdown — only when we have real
+                balance data (cron-populated user_account_balances rows).
+                Lets users see which venue holds how much of the total
+                equity instead of one opaque aggregate. Filter-aware:
+                clicking a tile sets the exchange filter. */}
+            {!exchangeFilter && (data.accountBalances ?? []).length > 0 && (
+              <ExchangeEquityStrip
+                balances={data.accountBalances!}
+                onFilterClick={setExchangeFilter}
+              />
+            )}
           </>
         )}
 
@@ -932,6 +943,77 @@ function FundingCarryStrip({ dailyCarry }: { dailyCarry: number }) {
       </div>
       <div className="ml-auto text-[9px] text-neutral-600">
         Projection only — assumes the live rate holds.
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Per-exchange equity breakdown row — sits under the summary and the
+ * funding-carry strip. Shows one tile per source (cash + uPnL + margin)
+ * so users can see where their equity actually lives instead of one
+ * opaque aggregate.
+ *
+ * Each tile is clickable: click → set the exchange filter. Lets users
+ * drill into a single venue with one click instead of scrolling to the
+ * chip strip.
+ *
+ * Hidden when an exchange filter is active (the summary row already
+ * shows that exchange's equity in the Equity cell — no need to repeat).
+ */
+function ExchangeEquityStrip({
+  balances,
+  onFilterClick,
+}: {
+  balances: AccountBalance[];
+  onFilterClick: (exchange: string) => void;
+}) {
+  // Sort largest-equity first so the most material venues lead.
+  const sorted = [...balances].sort((a, b) => b.equityUsd - a.equityUsd);
+  const total = sorted.reduce((acc, b) => acc + b.equityUsd, 0);
+  return (
+    <div className="mb-4">
+      <div className="flex items-baseline justify-between mb-1.5">
+        <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-medium">
+          Per-exchange equity
+        </div>
+        <div className="text-[10px] text-neutral-600">
+          true account balance · click to filter
+        </div>
+      </div>
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+        {sorted.map((b) => {
+          // Percentage of total equity this venue holds — gives a quick
+          // sense of concentration risk (one venue ≫ 50% = concentrated).
+          const sharePct = total > 0 ? (b.equityUsd / total) * 100 : 0;
+          return (
+            <button
+              key={`${b.sourceType}-${b.sourceId}`}
+              type="button"
+              onClick={() => onFilterClick(b.exchange)}
+              className="text-left rounded-lg border border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/[0.12] px-3 py-2 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/40"
+            >
+              <div className="flex items-baseline justify-between gap-1.5">
+                <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium truncate">
+                  {b.exchange}
+                </span>
+                <span className="text-[9px] text-neutral-600 font-mono shrink-0">
+                  {sharePct >= 10 ? `${sharePct.toFixed(0)}%` : `${sharePct.toFixed(1)}%`}
+                </span>
+              </div>
+              <div className="text-sm font-bold text-white tabular-nums mt-0.5">
+                {fmtUsd(b.equityUsd)}
+              </div>
+              {/* Optional second line: free balance for context — only
+                  show when there's a meaningful number. */}
+              {b.availableUsd > 0 && (
+                <div className="text-[10px] text-neutral-500 mt-0.5">
+                  {fmtUsd(b.availableUsd)} free
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
