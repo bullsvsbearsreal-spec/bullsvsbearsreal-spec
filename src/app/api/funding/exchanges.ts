@@ -371,6 +371,68 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
+  // Blofin — OKX-derived API. Public bulk endpoint
+  // /api/v1/market/funding-rate returns all swap funding rates in one
+  // call; tickers join supplies mark price for predictedRate. Closes
+  // the gap christian (Blofin arb user) flagged: Blofin pairs were
+  // entirely absent from /funding and /spread-scanner.
+  {
+    name: 'Blofin',
+    fetcher: async (fetchFn) => {
+      // Fetch both endpoints in parallel — tickers gives us last/mark,
+      // funding-rate gives us the rate. Same defensive shape checks
+      // we use for Bitget/OKX so a wire-format drift doesn't crash.
+      const [fundRes, tickRes] = await Promise.all([
+        fetchFn('https://openapi.blofin.com/api/v1/market/funding-rate', {}, 10000),
+        fetchFn('https://openapi.blofin.com/api/v1/market/tickers', {}, 10000),
+      ]);
+      if (!fundRes.ok) return [];
+      const fundJson = await fundRes.json();
+      if (String(fundJson.code) !== '0' || !Array.isArray(fundJson.data)) return [];
+
+      // Build a lookup from instId → markPrice (last price as proxy)
+      // so predictedRate can be derived where possible. If tickers
+      // fails we still emit funding rows without predictedRate.
+      const priceByInst = new Map<string, number>();
+      if (tickRes.ok) {
+        try {
+          const tickJson = await tickRes.json();
+          if (String(tickJson.code) === '0' && Array.isArray(tickJson.data)) {
+            for (const t of tickJson.data) {
+              const px = parseFloat(t.last) || 0;
+              if (px > 0 && typeof t.instId === 'string') priceByInst.set(t.instId, px);
+            }
+          }
+        } catch { /* tickers join is best-effort */ }
+      }
+
+      return fundJson.data
+        .filter((r: any) => typeof r.instId === 'string' && r.instId.endsWith('-USDT'))
+        .map((r: any) => {
+          // Strip 1000-prefix on memecoin contracts so /funding rows join
+          // against the same `symbol` key as Binance/Bybit/OKX.
+          let baseSymbol = r.instId.replace('-USDT', '');
+          if (baseSymbol.startsWith('1000')) baseSymbol = baseSymbol.slice(4);
+          else if (baseSymbol.startsWith('1M')) baseSymbol = baseSymbol.slice(2);
+          const markPrice = priceByInst.get(r.instId) || 0;
+          return {
+            symbol: baseSymbol,
+            exchange: 'Blofin',
+            fundingRate: (parseFloat(r.fundingRate) || 0) * 100,
+            // No native predicted endpoint; use last price as mark proxy
+            // and skip the Binance-style formula (premium/interest absent).
+            predictedRate: undefined as number | undefined,
+            fundingInterval: '8h' as const,
+            markPrice,
+            indexPrice: markPrice,
+            nextFundingTime: Number(r.fundingTime) || Date.now() + 8 * 3600_000,
+            type: 'cex' as const,
+          };
+        })
+        .filter((i: any) => !isNaN(i.fundingRate));
+    },
+  },
+
   // Hyperliquid (DEX) — funding settles HOURLY; return native 1h rate
   {
     name: 'Hyperliquid',

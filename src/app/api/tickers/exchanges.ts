@@ -252,6 +252,51 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     },
   },
 
+  // Blofin — public market tickers endpoint, OKX-derived API shape.
+  // Adds Blofin pairs to /spread-scanner + cross-venue spread feeds.
+  // Christian (Blofin arb user) explicitly flagged Blofin missing from
+  // the price comparison surface — without this, his Blofin legs never
+  // showed up next to Binance/Bybit/OKX in /spread-scanner rows.
+  {
+    name: 'Blofin',
+    fetcher: async (fetchFn) => {
+      const res = await fetchFn('https://openapi.blofin.com/api/v1/market/tickers');
+      if (!res.ok) return [];
+      const json = await res.json();
+      // Blofin returns code as a string per OKX convention ('0' = success)
+      if (String(json.code) !== '0' || !Array.isArray(json.data)) return [];
+      return json.data
+        .filter((t: any) => typeof t.instId === 'string' && t.instId.endsWith('-USDT'))
+        .map((ticker: any) => {
+          const lastPrice = parseFloat(ticker.last) || 0;
+          const open24h = parseFloat(ticker.open24h) || 0;
+          const baseVol = parseFloat(ticker.vol24h) || 0;
+          // volCurrency24h is in quote currency (USDT) per Blofin docs;
+          // fall back to base * price if absent.
+          const quoteVol = parseFloat(ticker.volCurrency24h);
+          const changePct = open24h > 0 ? ((lastPrice - open24h) / open24h) * 100 : 0;
+          // Strip 1000-prefix on memecoin contracts (1000PEPE-USDT) so
+          // downstream joins match plain PEPE rows across venues.
+          let baseSymbol = ticker.instId.replace('-USDT', '');
+          if (baseSymbol.startsWith('1000')) baseSymbol = baseSymbol.slice(4);
+          else if (baseSymbol.startsWith('1M')) baseSymbol = baseSymbol.slice(2);
+          return {
+            symbol: baseSymbol,
+            exchange: 'Blofin',
+            lastPrice,
+            price: lastPrice,
+            priceChangePercent24h: changePct,
+            changePercent24h: changePct,
+            high24h: parseFloat(ticker.high24h) || 0,
+            low24h: parseFloat(ticker.low24h) || 0,
+            volume24h: baseVol,
+            quoteVolume24h: Number.isFinite(quoteVol) ? quoteVol : baseVol * lastPrice,
+          };
+        })
+        .filter((t: any) => t.lastPrice > 0);
+    },
+  },
+
   // Kraken Futures
   {
     name: 'Kraken',
