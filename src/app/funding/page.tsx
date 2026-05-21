@@ -79,7 +79,21 @@ export default function FundingPage() {
         const arr = JSON.parse(savedExchanges) as string[];
         const valid = arr.filter(e => (ALL_EXCHANGES as readonly string[]).includes(e));
         if (valid.length >= 5) {
-          setSelectedExchanges(new Set(valid));
+          // When users had a near-full selection (likely "select all"),
+          // auto-include venues added since their last visit. Otherwise
+          // a new venue like Blofin (added May 2026) is invisible on the
+          // /funding table for existing users until they manually toggle
+          // it — even though their saved intent was "show me everything".
+          // Threshold: within 5 of the current ALL_EXCHANGES count is
+          // close enough that they almost certainly meant "all venues".
+          // Users with explicit narrow selections (e.g. 8 specific CEXes)
+          // keep their selection — we don't override that.
+          const missing = ALL_EXCHANGES.filter(e => !valid.includes(e));
+          const finalSet =
+            valid.length >= ALL_EXCHANGES.length - 5
+              ? new Set([...valid, ...missing])
+              : new Set(valid);
+          setSelectedExchanges(finalSet);
         } else {
           // Stale/narrow selection — clear it and use the default (all exchanges)
           localStorage.removeItem('infohub:funding:exchanges');
