@@ -18,14 +18,20 @@ function formatAgo(ms: number): string {
 }
 
 export default function DataFreshness({ exchangeCount, lastUpdated, sources }: DataFreshnessProps) {
-  const [now, setNow] = useState(Date.now());
+  const ts = lastUpdated instanceof Date ? lastUpdated.getTime() : lastUpdated;
+  // SSR-safe: anchor `now` to `ts` so first paint computes ageMs=0
+  // (green dot, "Updated 0s ago") deterministically. Drift introduced
+  // by Date.now() differing across server-render and hydration time
+  // produced React #425 on /home and similar dashboards. useEffect
+  // syncs to real time after mount.
+  const [now, setNow] = useState<number>(ts ?? 0);
 
   useEffect(() => {
+    setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  const ts = lastUpdated instanceof Date ? lastUpdated.getTime() : lastUpdated;
   const ageMs = ts ? now - ts : Infinity;
 
   const dotColor = ageMs < 120_000 ? 'bg-green-500' : ageMs < 300_000 ? 'bg-amber-500' : 'bg-red-500';

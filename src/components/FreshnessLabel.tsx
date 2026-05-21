@@ -30,8 +30,14 @@ function fmtInterval(ms: number): string {
 }
 
 export default function FreshnessLabel({ ts, refreshIntervalMs, className }: Props) {
-  const [now, setNow] = useState(() => Date.now());
+  // SSR-safe initial state: anchor to `ts` so first-paint computes
+  // ageS=0 ("0s ago") deterministically on both server and client.
+  // Without this, useState(() => Date.now()) drifts between SSR and
+  // hydration time, producing React error #425. The first useEffect
+  // tick syncs to the real wall clock 1s after mount.
+  const [now, setNow] = useState<number>(ts ?? 0);
   useEffect(() => {
+    setNow(Date.now());
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
