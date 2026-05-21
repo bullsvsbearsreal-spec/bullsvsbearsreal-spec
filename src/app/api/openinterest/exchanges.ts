@@ -175,6 +175,57 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
     },
   },
 
+  // Blofin — public open-interest endpoint, OKX-derived. Joins with the
+  // /market/tickers endpoint for last price → USDT-denominated OI.
+  // Completes the Blofin coverage triple (tickers + funding + OI) so
+  // christian's Blofin arb legs show up in cross-venue rollups and
+  // /open-interest rankings instead of being absent.
+  {
+    name: 'Blofin',
+    fetcher: async (fetchFn) => {
+      const [oiRes, tickRes] = await Promise.all([
+        fetchFn('https://openapi.blofin.com/api/v1/market/open-interest', {}, 10000),
+        fetchFn('https://openapi.blofin.com/api/v1/market/tickers', {}, 10000),
+      ]);
+      if (!oiRes.ok) return [];
+      const oiJson = await oiRes.json();
+      if (String(oiJson.code) !== '0' || !Array.isArray(oiJson.data)) return [];
+
+      // Tickers join for last price (USDT-denominated OI conversion).
+      const priceByInst = new Map<string, number>();
+      if (tickRes.ok) {
+        try {
+          const tickJson = await tickRes.json();
+          if (String(tickJson.code) === '0' && Array.isArray(tickJson.data)) {
+            for (const t of tickJson.data) {
+              const px = parseFloat(t.last) || 0;
+              if (px > 0 && typeof t.instId === 'string') priceByInst.set(t.instId, px);
+            }
+          }
+        } catch { /* tickers join is best-effort */ }
+      }
+
+      return oiJson.data
+        .filter((r: any) => typeof r.instId === 'string' && r.instId.endsWith('-USDT'))
+        .map((r: any) => {
+          // Blofin OI field — try common shapes (OKX uses `oiCcy` for
+          // base-currency OI; some derivatives use `openInterest`).
+          const oiBase = parseFloat(r.openInterest ?? r.oiCcy ?? r.oi) || 0;
+          const price = priceByInst.get(r.instId) || 0;
+          let baseSymbol = r.instId.replace('-USDT', '');
+          if (baseSymbol.startsWith('1000')) baseSymbol = baseSymbol.slice(4);
+          else if (baseSymbol.startsWith('1M')) baseSymbol = baseSymbol.slice(2);
+          return {
+            symbol: baseSymbol,
+            exchange: 'Blofin',
+            openInterest: oiBase,
+            openInterestValue: oiBase * price,
+          };
+        })
+        .filter((item: any) => item.openInterestValue > 0);
+    },
+  },
+
   // Bitget — use tickers endpoint which has holdingAmount (base currency OI)
   {
     name: 'Bitget',
