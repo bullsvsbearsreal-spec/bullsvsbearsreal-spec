@@ -20,6 +20,16 @@ export const FUNDING_INTERVAL_HOURS: Record<string, number> = {
   Lighter: 1,
   edgeX: 1,
   Coinbase: 1,
+  // These three emit fundingInterval: '1h' from their fetchers but were
+  // missing from this canonical map (verified May 2026). intervalHoursFor()
+  // without a perSymbolOverride defaults to 8h → /api/v1/exchanges and
+  // the backtest simulator silently presented 8h to partners, and the
+  // /positions APR display 8x-understated daily-carry. Snapshot cron
+  // still persisted the right 1h via the regex-parsed enum so live
+  // funding pages were correct.
+  Backpack: 1,
+  Extended: 1,
+  Nado: 1,
   // 4-hour venues
   Kraken: 4,
   // 8-hour venues (the standard)
