@@ -177,6 +177,69 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
   const router = useRouter();
   const { data: session, status } = useSession();
   const [openKey, setOpenKey] = useState<string | null>(null);
+  // Screen-anchor position for the open dropdown's panel. We position
+  // the panel with `position: fixed` and recompute on scroll/resize so
+  // it ESCAPES the nav's overflow-x:auto clip context. Previously the
+  // nav had overflow-x:auto which (per CSS spec) forces overflow-y to
+  // 'auto' too — and that container CLIPPED every dropdown panel to
+  // the nav row's height, so the menu was technically open (aria-
+  // expanded=true) but visually invisible below the header. Christian
+  // reported "dropdowns not opening across 3 browsers" precisely this.
+  const [triggerRect, setTriggerRect] = useState<{ left: number; bottom: number } | null>(null);
+  // Refs for each trigger button so we can recompute the rect on
+  // scroll/resize without re-querying by DOM selector.
+  const triggerRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
+
+  // Recompute the anchor rect when the open menu changes or the page
+  // scrolls/resizes. Cheap — single getBoundingClientRect read per tick.
+  useEffect(() => {
+    if (!openKey) { setTriggerRect(null); return; }
+    const compute = () => {
+      const btn = triggerRefs.current.get(openKey);
+      if (!btn) return;
+      const r = btn.getBoundingClientRect();
+      setTriggerRect({ left: r.left, bottom: r.bottom });
+    };
+    compute();
+    window.addEventListener('scroll', compute, { passive: true, capture: true });
+    window.addEventListener('resize', compute);
+    return () => {
+      window.removeEventListener('scroll', compute, { capture: true } as any);
+      window.removeEventListener('resize', compute);
+    };
+  }, [openKey]);
+
+  // Close the dropdown when clicking anywhere outside it. Without this,
+  // the panel can get orphaned when the user clicks empty space — the
+  // mouseleave bridge only handles the cursor path, not stray clicks.
+  useEffect(() => {
+    if (!openKey) return;
+    const onDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      // Inside an active trigger button → let its onClick handle toggle.
+      // forEach iteration (not for-of) sidesteps the TS downlevelIteration
+      // requirement on the Map<>.values() iterator.
+      let insideTrigger = false;
+      triggerRefs.current.forEach((btn) => {
+        if (btn.contains(target)) insideTrigger = true;
+      });
+      if (insideTrigger) return;
+      // Inside the floating panel → keep open (panel has data-nav-dropdown)
+      const panel = document.querySelector('[data-nav-dropdown-panel="true"]');
+      if (panel && panel.contains(target)) return;
+      setOpenKey(null);
+    };
+    document.addEventListener('mousedown', onDown);
+    return () => document.removeEventListener('mousedown', onDown);
+  }, [openKey]);
+
+  // Close on Escape — standard menu UX.
+  useEffect(() => {
+    if (!openKey) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenKey(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [openKey]);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [avatarError, setAvatarError] = useState(false);
 
@@ -313,12 +376,16 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
           const isOpen = openKey === g.key;
           const groupActive = g.items.some(it => it.href === pathname);
           return (
-            <div key={g.key} style={{ position: 'relative', height: '100%' }} onMouseEnter={() => setOpenKey(g.key)} onMouseLeave={() => setOpenKey(null)}>
+            <div key={g.key} style={{ position: 'relative', height: '100%' }} onMouseEnter={() => setOpenKey(g.key)}>
               {/* Button needs onClick too — onMouseEnter alone doesn't
                   fire on touch devices. Mobile users couldn't open
                   any nav dropdown at all (the sidebar is now hidden
                   on mobile, so this was the only nav path). */}
               <button
+                ref={(el) => {
+                  if (el) triggerRefs.current.set(g.key, el);
+                  else triggerRefs.current.delete(g.key);
+                }}
                 type="button"
                 onClick={() => setOpenKey(isOpen ? null : g.key)}
                 aria-expanded={isOpen}
@@ -330,18 +397,25 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--fg-subtle)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}><polyline points="6 9 12 15 18 9" /></svg>
                 {groupActive && <span style={{ position: 'absolute', left: 10, right: 10, bottom: 0, height: 2, background: 'var(--hub-accent)', boxShadow: '0 0 8px rgb(255 165 0 / 0.4)' }} />}
               </button>
-              {isOpen && (
-                <>
-                  {/* Invisible bridge so the cursor can travel from the trigger to the menu without dropping hover */}
-                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, height: 8, zIndex: 49 }} />
+              {isOpen && triggerRect && (
                 <div
+                  data-nav-dropdown-panel="true"
+                  onMouseEnter={() => setOpenKey(g.key)}
+                  onMouseLeave={() => setOpenKey(null)}
                   style={{
-                    position: 'absolute', top: 'calc(100% + 6px)', left: 0,
+                    // FIXED positioning escapes the nav's overflow clip
+                    // (overflow-x:auto on the nav was making overflow-y
+                    // also auto per CSS spec, clipping the panel to the
+                    // header row height — christian's "dropdown not
+                    // opening on 3 browsers" symptom).
+                    position: 'fixed',
+                    left: triggerRect.left,
+                    top: triggerRect.bottom + 6,
                     minWidth: 320, maxHeight: 'min(75vh, 640px)', overflowY: 'auto',
                     background: 'rgba(15,18,24,0.98)', backdropFilter: 'blur(10px)',
                     border: '1px solid var(--hub-border-hover)', borderRadius: 10,
                     boxShadow: '0 24px 48px -12px rgba(0,0,0,0.8), 0 0 0 1px rgb(var(--hub-accent-rgb) / 0.04)',
-                    padding: 6, zIndex: 50,
+                    padding: 6, zIndex: 1000,
                   }}
                 >
                   <div
@@ -390,7 +464,6 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
                     );
                   })}
                 </div>
-                </>
               )}
             </div>
           );
