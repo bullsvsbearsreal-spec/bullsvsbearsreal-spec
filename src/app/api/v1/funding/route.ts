@@ -55,9 +55,18 @@ export async function GET(request: NextRequest) {
       data = data.filter((d: any) => exchangeFilter.includes(d.exchange?.toLowerCase()));
     }
 
-    // Per-entry 8h-normalised rate (rate × 8 for 1h venues, × 2 for 4h, × 1 for 8h)
-    const norm8h = (d: { fundingRate: number; fundingInterval?: string }) =>
-      d.fundingRate * (d.fundingInterval === '1h' ? 8 : d.fundingInterval === '4h' ? 2 : 1);
+    // Per-entry 8h-normalised rate. Prefer the precise per-symbol
+    // fundingIntervalHours when set (24 for Blofin daily-settle, 4 for
+    // some Binance high-volume perps that moved off the 8h default) —
+    // without it Blofin's 24h rates would be treated as 8h and the
+    // aggregate avgRate8h/minRate8h/maxRate8h cross-venue comparison
+    // would 3x-overstate Blofin's contribution.
+    const norm8h = (d: { fundingRate: number; fundingInterval?: string; fundingIntervalHours?: number | null }) => {
+      if (d.fundingIntervalHours != null && Number.isFinite(d.fundingIntervalHours) && d.fundingIntervalHours > 0) {
+        return d.fundingRate * (8 / d.fundingIntervalHours);
+      }
+      return d.fundingRate * (d.fundingInterval === '1h' ? 8 : d.fundingInterval === '4h' ? 2 : 1);
+    };
 
     if (aggregate) {
       // One row per symbol: avg / min / max 8h-normalised rate + which
