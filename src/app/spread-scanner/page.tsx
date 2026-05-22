@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -37,9 +38,14 @@ function fp(v: number) {
 }
 
 export default function SpreadScannerPage() {
+  const searchParams = useSearchParams();
+  // Read ?symbol= so the chart's Arb tool can land users on this page
+  // pre-filtered to the coin they were just looking at. Strip + cap so
+  // a maliciously-long string can't blow up the search field.
+  const prefilledSymbol = (searchParams.get('symbol') || '').toUpperCase().trim().slice(0, 16);
   const [sortKey, setSortKey] = useState<SortKey>('spreadPct');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
-  const [filter, setFilter] = useState('');
+  const [filter, setFilter] = useState(prefilledSymbol);
   const [cexOnly, setCexOnly] = useState(false);
 
   const fetcher = useCallback(async () => {
