@@ -196,8 +196,25 @@ export default function ReportBugButton() {
                     autoFocus
                     className="w-full bg-black/40 border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-amber-400/40"
                   />
-                  <div className="flex items-center justify-between text-[10px] text-neutral-600">
-                    <span>{message.length}/2000 · ⌘/Ctrl + Enter to send</span>
+                  {/* Char count + min-length hint. When the user is under
+                      the 4-char floor we make it visible (amber) so the
+                      reason "Send" is disabled isn't a mystery — that was
+                      the actual complaint that prompted this change. */}
+                  <div className="flex items-center justify-between text-[10px]">
+                    <span
+                      className={
+                        message.trim().length > 0 && message.trim().length < 4
+                          ? 'text-amber-400'
+                          : 'text-neutral-600'
+                      }
+                    >
+                      {message.trim().length < 4
+                        ? `${Math.max(0, 4 - message.trim().length)} more character${
+                            4 - message.trim().length === 1 ? '' : 's'
+                          } needed`
+                        : `${message.length}/2000`}
+                    </span>
+                    <span className="text-neutral-600">⌘/Ctrl + Enter to send</span>
                   </div>
 
                   {error && (
