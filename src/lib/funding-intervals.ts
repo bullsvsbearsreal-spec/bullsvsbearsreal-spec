@@ -48,13 +48,15 @@ export const FUNDING_INTERVAL_HOURS: Record<string, number> = {
   WhiteBIT: 8,
   CoinEx: 8,
   Deribit: 8,
-  // 24-hour venues — settle once per day at 00:00 UTC
-  // Blofin: verified live May 2026 — every USDT-margined pair on
-  // /api/v1/market/funding-rate reports the same fundingTime (next
-  // 00:00 UTC), exactly 24h apart on consecutive polls. Without this
-  // entry the default 8h bucket triples christian's daily-carry +
-  // APR projection on /positions for Blofin legs.
-  Blofin: 24,
+  // Blofin: actually 8h-funded for ~99% of USDT pairs (verified live
+  // May 22 2026 — distinct fundingTime values across the catalog show
+  // multiple 8h cycles at different anchor offsets, e.g. 00/08/16 UTC
+  // vs 04/12/20 UTC, plus a rare 4h variant for a handful of pairs).
+  // The earlier "24h" classification was wrong — came from sampling
+  // at a moment when all groups' next-settlement aligned at 00:00 UTC
+  // and looked like daily-settle. Christian's "the 24hr value is
+  // actually the 4h or 8h funding" complaint was exactly this.
+  Blofin: 8,
 };
 
 /**
