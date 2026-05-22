@@ -517,7 +517,7 @@ export default function DevelopersPage() {
                 </div>
 
                 <h1 className="text-4xl sm:text-5xl lg:text-[3.4rem] font-extrabold tracking-tight leading-[1.1] mb-5">
-                  <span className="text-white">One API for</span>
+                  <span className="text-white">One API for </span>
                   <br />
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-hub-yellow-light via-hub-yellow to-hub-orange">every crypto exchange</span>
                 </h1>

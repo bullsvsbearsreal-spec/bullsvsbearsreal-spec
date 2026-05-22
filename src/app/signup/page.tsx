@@ -290,6 +290,8 @@ function SignupContent() {
                     <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
                     <input
                       type="text"
+                      name="name"
+                      autoComplete="name"
                       placeholder="Your name"
                       value={name}
                       onChange={e => setName(e.target.value)}
@@ -304,6 +306,8 @@ function SignupContent() {
                     <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
                     <input
                       type="email"
+                      name="email"
+                      autoComplete="email"
                       placeholder="you@example.com"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
@@ -319,6 +323,8 @@ function SignupContent() {
                     <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
                     <input
                       type={showPw ? 'text' : 'password'}
+                      name="password"
+                      autoComplete="new-password"
                       placeholder="Min 8 characters"
                       value={password}
                       onChange={e => setPassword(e.target.value)}

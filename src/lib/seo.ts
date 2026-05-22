@@ -290,7 +290,7 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: 'Compare DeFi yield opportunities across protocols and chains. Track APY, TVL, and risk metrics for lending, staking, and liquidity pools.',
   },
   '/developers': {
-    title: 'Crypto Derivatives API · InfoHub',
+    title: 'Crypto Derivatives API',
     description: `26 endpoints, ${ALL_EXCHANGES.length} exchanges, free ${FREE_TIER_PER_MINUTE} req/min tier. Real-time funding rates, OI, liquidations, fee-aware arbitrage grading, multi-venue klines fallback, on-chain whale data. OpenAPI 3.1 spec, X-RateLimit headers, no credit card required.`,
   },
   '/developers/webhooks': {
@@ -365,11 +365,11 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: 'Learn how to profit from funding rate arbitrage across crypto derivatives exchanges. Step-by-step strategy guide with real examples.',
   },
   '/login': {
-    title: 'Log in — InfoHub',
+    title: 'Log in',
     description: 'Sign in to your InfoHub account to access watchlists, alerts, portfolio tracking, and personalized derivatives data across every major venue.',
   },
   '/signup': {
-    title: 'Sign up — InfoHub',
+    title: 'Sign up',
     description: 'Create your free InfoHub account in 30 seconds. Real-time funding rates, OI, liquidations, and arbitrage tools across every major venue. Personal alerts + watchlists included. No card needed.',
   },
   '/profile': {
@@ -393,7 +393,7 @@ export const PAGE_META: Record<string, PageMeta> = {
     noIndex: true,
   },
   '/developers/docs': {
-    title: 'API Reference · InfoHub v1',
+    title: 'API Reference · v1',
     description: '26 endpoints across funding, OI, tickers, klines, spreads, arbitrage, liquidations, options, on-chain whales, and more. Fee transparency with versioned schedule, aggregate=1 modes, X-RateLimit headers, OpenAPI 3.1 spec.',
   },
   '/guides/reading-open-interest': {
@@ -465,7 +465,7 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: `OI-weighted funding rates, spot-vs-perp volume ratio, and aggregate leverage pressure across ${ALL_EXCHANGES.length} venues. One lens on real positioning vs retail noise.`,
   },
   '/bounce': {
-    title: 'bounce.tech on InfoHub · Leveraged Tokens + Rekt Profiles',
+    title: 'bounce.tech · Leveraged Tokens + Rekt Profiles',
     description: 'Check any Hyperliquid wallet\'s bounce.tech rekt profile: liquidation score, per-asset breakdown, monthly history, and claim status. Plus an overview of bounce.tech\'s leveraged-tokens protocol on HyperEVM.',
   },
   '/bounce/leaderboard': {
@@ -481,7 +481,7 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: 'Step-by-step walkthrough for claiming BOUNCE tokens for your Hyperliquid liquidation history. Check score, register, claim.',
   },
   '/donate': {
-    title: 'Support InfoHub · Crypto Donations',
+    title: 'Support the project · Crypto Donations',
     description: 'Help keep InfoHub free, no-ads, no-signup. Accepting BTC, ETH (+ all L2s), SOL, HYPE, USDT-TRC20. Every tip funds hosting, APIs, and shipping velocity.',
   },
   '/outperformers': {
@@ -678,7 +678,7 @@ export const PAGE_META: Record<string, PageMeta> = {
     noIndex: true, // auth-gated page; nothing useful for search engines
   },
   '/invite/leaderboard': {
-    title: 'Referral Leaderboard — InfoHub',
+    title: 'Referral Leaderboard',
     description: 'Top 20 InfoHub users by verified referrals. Anonymized — entries show only the first 4 chars of each invite code. Want to climb? Grab your link at /invite.',
   },
 };

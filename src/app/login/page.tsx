@@ -288,6 +288,8 @@ function LoginPageInner() {
                     <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
                     <input
                       type="email"
+                      name="email"
+                      autoComplete="email"
                       placeholder="you@example.com"
                       value={email}
                       onChange={e => setEmail(e.target.value)}
@@ -309,6 +311,8 @@ function LoginPageInner() {
                     <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-500" />
                     <input
                       type={showPw ? 'text' : 'password'}
+                      name="password"
+                      autoComplete="current-password"
                       placeholder="Enter your password"
                       value={password}
                       onChange={e => setPassword(e.target.value)}

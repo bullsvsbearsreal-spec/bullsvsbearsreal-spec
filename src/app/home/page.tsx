@@ -344,6 +344,12 @@ export default function HomePage() {
 
   return (
     <div id="main-content" style={{ padding: '14px 18px 32px', width: '100%' }}>
+      {/* Visually-hidden h1 — every page needs exactly one for SEO + a11y.
+          The visible "Liquidation Heatmap" / "Market Sentiment" / "Major
+          Coins" h2s name each band, but the page itself didn't declare
+          itself. Without this, screen readers can't tell users what page
+          they're on and Lighthouse / Google flag a structural SEO miss. */}
+      <h1 className="sr-only">InfoHub · Live Crypto Derivatives Dashboard</h1>
 
       {/* Mobile quick-pill row */}
       <div className="lg:hidden" style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
