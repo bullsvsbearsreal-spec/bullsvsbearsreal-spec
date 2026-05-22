@@ -292,7 +292,32 @@ function tvSymbolFor(label: string): string {
    TradingView Widget — full-featured
    ═══════════════════════════════════════════════════════════════════════ */
 
-function TradingViewChart({ tvSymbol, interval }: { tvSymbol: string; interval: string }) {
+/**
+ * TradingView chart style codes (per their embed widget docs):
+ *   '1' candles · '8' heikin-ashi · '2' line · '3' area · '0' bars
+ * Plus we expose two indicator presets ('basic' = RSI, 'pro' = RSI + MACD
+ * + Volume MA) that pre-load on first render. The user can still add /
+ * remove studies via TradingView's own indicator menu — these presets
+ * are just a sensible starting point so the chart isn't blank.
+ */
+type ChartStyle = '1' | '8' | '2' | '3';
+type StudyPreset = 'none' | 'basic' | 'pro';
+
+const STUDY_PRESETS: Record<StudyPreset, string[]> = {
+  none: [],
+  basic: ['STD;RSI'],
+  pro: ['STD;RSI', 'STD;MACD', 'Volume@tv-basicstudies'],
+};
+
+function TradingViewChart({
+  tvSymbol, interval, chartStyle, studyPreset, compareSymbol,
+}: {
+  tvSymbol: string;
+  interval: string;
+  chartStyle: ChartStyle;
+  studyPreset: StudyPreset;
+  compareSymbol?: string | null;
+}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
 
@@ -305,13 +330,21 @@ function TradingViewChart({ tvSymbol, interval }: { tvSymbol: string; interval: 
     script.src = 'https://s3.tradingview.com/external-embedding/embed-widget-advanced-chart.js';
     script.type = 'text/javascript';
     script.async = true;
+    const studies = STUDY_PRESETS[studyPreset];
+    // Compare overlay — TradingView accepts an array of objects with
+    // symbol + position. We overlay onto the same pane so the lines
+    // share the price axis; ideal for "BTC vs ETH" relative-strength
+    // viewing without leaving the chart.
+    const compareSymbols = compareSymbol
+      ? [{ symbol: compareSymbol, position: 'SameScale' as const }]
+      : undefined;
     script.innerHTML = JSON.stringify({
       autosize: true,
       symbol: tvSymbol,
       interval: interval,
       timezone: 'Etc/UTC',
       theme: 'dark',
-      style: '1',
+      style: chartStyle,
       locale: 'en',
       backgroundColor: 'rgba(0, 0, 0, 1)',
       gridColor: 'rgba(255, 255, 255, 0.03)',
@@ -329,7 +362,8 @@ function TradingViewChart({ tvSymbol, interval }: { tvSymbol: string; interval: 
       show_popup_button: true,
       popup_width: '1000',
       popup_height: '650',
-      studies: [],
+      studies,
+      ...(compareSymbols ? { compareSymbols } : {}),
       enabled_features: [
         'study_templates',
       ],
@@ -369,7 +403,7 @@ function TradingViewChart({ tvSymbol, interval }: { tvSymbol: string; interval: 
         container.innerHTML = '';
       }
     };
-  }, [tvSymbol, interval]);
+  }, [tvSymbol, interval, chartStyle, studyPreset, compareSymbol]);
 
   return (
     <div className="w-full h-full relative">
@@ -486,6 +520,44 @@ function ChartPageInner() {
 
   // Tape sidebar (only for crypto)
   const [tapeVisible, setTapeVisible] = useState(false);
+
+  // Chart style (candles / heikin-ashi / line / area) + indicator
+  // preset + compare overlay. Persisted to localStorage so the user's
+  // preferred default sticks across reloads without us having to add
+  // a settings page. Initial-mount-from-localStorage pattern (set in
+  // useEffect, not useState initialiser) keeps the SSR render
+  // deterministic — no hydration mismatch since the initial paint
+  // shows the defaults and the localStorage values swap in after
+  // mount.
+  const [chartStyle, setChartStyle] = useState<ChartStyle>('1');
+  const [studyPreset, setStudyPreset] = useState<StudyPreset>('basic');
+  const [compareSymbol, setCompareSymbol] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const s = localStorage.getItem('ih:chart:style');
+      if (s === '1' || s === '8' || s === '2' || s === '3') setChartStyle(s);
+      const p = localStorage.getItem('ih:chart:studies');
+      if (p === 'none' || p === 'basic' || p === 'pro') setStudyPreset(p);
+      const c = localStorage.getItem('ih:chart:compare');
+      if (c) setCompareSymbol(c);
+    } catch { /* localStorage may be unavailable in private mode */ }
+  }, []);
+  const updateChartStyle = useCallback((s: ChartStyle) => {
+    setChartStyle(s);
+    try { localStorage.setItem('ih:chart:style', s); } catch { /* quota */ }
+  }, []);
+  const updateStudyPreset = useCallback((p: StudyPreset) => {
+    setStudyPreset(p);
+    try { localStorage.setItem('ih:chart:studies', p); } catch { /* quota */ }
+  }, []);
+  const updateCompareSymbol = useCallback((c: string | null) => {
+    setCompareSymbol(c);
+    try {
+      if (c) localStorage.setItem('ih:chart:compare', c);
+      else localStorage.removeItem('ih:chart:compare');
+    } catch { /* quota */ }
+  }, []);
 
   // Symbol dropdown
   const [symbolOpen, setSymbolOpen] = useState(false);
@@ -1092,6 +1164,79 @@ function ChartPageInner() {
       {assetClass === 'crypto' && (
         <div className="flex-shrink-0 border-b border-white/[0.04] bg-black/30">
           <div className="flex items-center gap-0.5 px-2 sm:px-3 py-1 overflow-x-auto scrollbar-none" role="toolbar" aria-label="Chart tools">
+            {/* Chart style — candles / heikin-ashi / line / area */}
+            <div className="flex items-center gap-0.5 mr-1 flex-shrink-0 border-r border-white/[0.06] pr-1.5">
+              {(
+                [
+                  { v: '1' as ChartStyle, label: 'Candles' },
+                  { v: '8' as ChartStyle, label: 'HA' },
+                  { v: '2' as ChartStyle, label: 'Line' },
+                  { v: '3' as ChartStyle, label: 'Area' },
+                ]
+              ).map(({ v, label }) => (
+                <button
+                  key={v}
+                  onClick={() => updateChartStyle(v)}
+                  aria-pressed={chartStyle === v}
+                  title={`Chart style: ${label}`}
+                  className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                    chartStyle === v
+                      ? 'bg-hub-yellow/15 text-hub-yellow'
+                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {/* Indicator preset — none / basic (RSI) / pro (RSI+MACD+Volume) */}
+            <div className="flex items-center gap-0.5 mr-1 flex-shrink-0 border-r border-white/[0.06] pr-1.5">
+              {(
+                [
+                  { v: 'none' as StudyPreset, label: 'Bare' },
+                  { v: 'basic' as StudyPreset, label: 'RSI' },
+                  { v: 'pro' as StudyPreset, label: 'Pro' },
+                ]
+              ).map(({ v, label }) => (
+                <button
+                  key={v}
+                  onClick={() => updateStudyPreset(v)}
+                  aria-pressed={studyPreset === v}
+                  title={v === 'none' ? 'No indicators' : v === 'basic' ? 'RSI only' : 'RSI + MACD + Volume MA'}
+                  className={`flex-shrink-0 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                    studyPreset === v
+                      ? 'bg-hub-yellow/15 text-hub-yellow'
+                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            {/* Compare overlay — quick-toggle BTC overlay so the user
+                can spot relative-strength shifts vs the macro asset.
+                For BTC itself, toggle vs ETH instead. Click again to
+                clear. */}
+            {(() => {
+              const macro = displayLabel.toUpperCase() === 'BTC' ? 'ETH' : 'BTC';
+              const macroTV = tvSymbolFor(macro);
+              const active = compareSymbol === macroTV;
+              return (
+                <button
+                  onClick={() => updateCompareSymbol(active ? null : macroTV)}
+                  aria-pressed={active}
+                  title={active ? `Stop comparing with ${macro}` : `Compare vs ${macro}`}
+                  className={`flex-shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium transition-colors mr-1.5 border-r border-white/[0.06] pr-2 ${
+                    active
+                      ? 'bg-hub-yellow/15 text-hub-yellow'
+                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  <GitCompareArrows className="w-3 h-3" />
+                  vs {macro}
+                </button>
+              );
+            })()}
             <span className="hidden sm:inline text-[9px] uppercase tracking-wider font-semibold text-neutral-600 mr-1.5 flex-shrink-0">Tools</span>
             <ToolButton
               icon={<Bell className="w-3 h-3" />}
@@ -1179,7 +1324,13 @@ function ChartPageInner() {
         <div className="flex-1 flex min-h-0 relative z-0" style={{ minHeight: '250px' }}>
           <div className="flex-1 relative overflow-hidden">
             <ChartErrorBoundary name="TradingView Chart" minHeight="250px">
-              <TradingViewChart tvSymbol={tvSymbol} interval={interval} />
+              <TradingViewChart
+                tvSymbol={tvSymbol}
+                interval={interval}
+                chartStyle={chartStyle}
+                studyPreset={studyPreset}
+                compareSymbol={compareSymbol}
+              />
             </ChartErrorBoundary>
           </div>
           {assetClass === 'crypto' && (
