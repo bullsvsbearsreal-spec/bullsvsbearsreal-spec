@@ -16,6 +16,9 @@ import {
   Crosshair,
   DollarSign,
   Info,
+  Flame,
+  Target,
+  Scale,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -42,7 +45,15 @@ interface LiquidationMapData {
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
-const SYMBOLS = ['BTC', 'ETH', 'SOL'] as const;
+// Keep this in sync with SUPPORTED_SYMBOLS in /api/liquidation-map/route.ts.
+// If a symbol is added here but missing server-side the API silently falls
+// back to BTC (validated tag), so the symbol tab "works" but shows BTC data.
+const SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'BNB', 'AVAX', 'ADA', 'LINK', 'SUI'] as const;
+
+// "Danger zone" — clusters within this % of price are cascade-risk: a single
+// move could trip the first level, which feeds the next, etc. Tuned at 3%
+// because below that you typically see the immediate post-stop-run liquidity.
+const DANGER_ZONE_PCT = 3;
 
 // ---------------------------------------------------------------------------
 // Chart component (SVG)
@@ -50,9 +61,12 @@ const SYMBOLS = ['BTC', 'ETH', 'SOL'] as const;
 function LiquidationChart({
   data,
   loading,
+  biggestVolume,
 }: {
   data: LiquidationMapData | null;
   loading: boolean;
+  /** The single biggest cluster volume in the dataset — used to highlight it. */
+  biggestVolume: number;
 }) {
   if (loading || !data || data.levels.length === 0) {
     return (
@@ -119,6 +133,10 @@ function LiquidationChart({
     gridPrices.push(minPrice + (priceRange * i) / gridCount);
   }
 
+  // Format helper for both axis + tooltip
+  const fmtPrice = (p: number) =>
+    `$${p >= 1000 ? p.toLocaleString('en-US', { maximumFractionDigits: 0 }) : p.toFixed(2)}`;
+
   return (
     <div className="bg-white/[0.03] border border-white/10 rounded-xl p-4 sm:p-6 overflow-x-auto">
       <svg
@@ -147,7 +165,7 @@ function LiquidationChart({
                 fontSize="10"
                 fontFamily="monospace"
               >
-                ${price >= 1000 ? price.toLocaleString('en-US', { maximumFractionDigits: 0 }) : price.toFixed(2)}
+                {fmtPrice(price)}
               </text>
             </g>
           );
@@ -168,14 +186,20 @@ function LiquidationChart({
           const y = priceToY(level.price);
           const barWidth = volumeToWidth(level.estimatedVolume);
           const barHeight = Math.max(plotHeight / (levels.length + 2), 8);
+          const isBiggest = level.estimatedVolume === biggestVolume;
           return (
-            <g key={`short-${level.leverage}-${level.price}`}>
+            <g key={`short-${level.leverage}-${level.price}`} className="liq-bar">
+              <title>
+                {`Short liq · ${level.leverage}x · ${fmtPrice(level.price)} (+${level.distancePercent.toFixed(2)}%)\nEst volume: ${formatUSD(level.estimatedVolume)}`}
+              </title>
               <rect
                 x={centerX - barWidth}
                 y={y - barHeight / 2}
                 width={barWidth}
                 height={barHeight}
-                fill="rgba(34,197,94,0.5)"
+                fill={isBiggest ? 'rgba(34,197,94,0.9)' : 'rgba(34,197,94,0.5)'}
+                stroke={isBiggest ? '#22c55e' : 'transparent'}
+                strokeWidth={isBiggest ? 1.5 : 0}
                 rx="3"
                 ry="3"
               />
@@ -200,7 +224,7 @@ function LiquidationChart({
                 fontSize="9"
                 fontFamily="monospace"
               >
-                ${level.price >= 1000 ? level.price.toLocaleString('en-US', { maximumFractionDigits: 0 }) : level.price.toFixed(2)}
+                {fmtPrice(level.price)}
               </text>
             </g>
           );
@@ -211,14 +235,20 @@ function LiquidationChart({
           const y = priceToY(level.price);
           const barWidth = volumeToWidth(level.estimatedVolume);
           const barHeight = Math.max(plotHeight / (levels.length + 2), 8);
+          const isBiggest = level.estimatedVolume === biggestVolume;
           return (
-            <g key={`long-${level.leverage}-${level.price}`}>
+            <g key={`long-${level.leverage}-${level.price}`} className="liq-bar">
+              <title>
+                {`Long liq · ${level.leverage}x · ${fmtPrice(level.price)} (-${level.distancePercent.toFixed(2)}%)\nEst volume: ${formatUSD(level.estimatedVolume)}`}
+              </title>
               <rect
                 x={centerX}
                 y={y - barHeight / 2}
                 width={barWidth}
                 height={barHeight}
-                fill="rgba(239,68,68,0.5)"
+                fill={isBiggest ? 'rgba(239,68,68,0.9)' : 'rgba(239,68,68,0.5)'}
+                stroke={isBiggest ? '#ef4444' : 'transparent'}
+                strokeWidth={isBiggest ? 1.5 : 0}
                 rx="3"
                 ry="3"
               />
@@ -243,7 +273,7 @@ function LiquidationChart({
                 fontSize="9"
                 fontFamily="monospace"
               >
-                ${level.price >= 1000 ? level.price.toLocaleString('en-US', { maximumFractionDigits: 0 }) : level.price.toFixed(2)}
+                {fmtPrice(level.price)}
               </text>
             </g>
           );
@@ -276,9 +306,7 @@ function LiquidationChart({
           fontWeight="700"
           fontFamily="monospace"
         >
-          ${currentPrice >= 1000
-            ? currentPrice.toLocaleString('en-US', { maximumFractionDigits: 0 })
-            : currentPrice.toFixed(2)}
+          {fmtPrice(currentPrice)}
         </text>
 
         {/* Legend */}
@@ -347,7 +375,7 @@ export default function LiquidationMapPage() {
     refreshInterval: 60000,
   });
 
-  // Derived data
+  // ── Derived data ─────────────────────────────────────────────────────
   const nearestLong = useMemo(() => {
     if (!data) return null;
     const longs = data.levels
@@ -364,7 +392,56 @@ export default function LiquidationMapPage() {
     return shorts[0] || null;
   }, [data]);
 
+  // The single biggest cluster on each side — these are the "magnets" price
+  // tends to revisit. Visually pinned in the chart with a brighter fill.
+  const biggestLong = useMemo(() => {
+    if (!data) return null;
+    return data.levels
+      .filter((l) => l.type === 'long')
+      .reduce<LiquidationLevel | null>((max, l) => (!max || l.estimatedVolume > max.estimatedVolume ? l : max), null);
+  }, [data]);
+
+  const biggestShort = useMemo(() => {
+    if (!data) return null;
+    return data.levels
+      .filter((l) => l.type === 'short')
+      .reduce<LiquidationLevel | null>((max, l) => (!max || l.estimatedVolume > max.estimatedVolume ? l : max), null);
+  }, [data]);
+
+  const biggestVolume = Math.max(biggestLong?.estimatedVolume ?? 0, biggestShort?.estimatedVolume ?? 0);
+
+  // Cascade-risk volume: liquidations within DANGER_ZONE_PCT of current price.
+  // If a wick triggers the first cluster, it can feed the next — this is the
+  // exposure that matters for short-term squeeze risk.
+  const dangerZone = useMemo(() => {
+    if (!data) return { long: 0, short: 0 };
+    const inZone = data.levels.filter((l) => l.distancePercent <= DANGER_ZONE_PCT);
+    return {
+      long: inZone.filter((l) => l.type === 'long').reduce((s, l) => s + l.estimatedVolume, 0),
+      short: inZone.filter((l) => l.type === 'short').reduce((s, l) => s + l.estimatedVolume, 0),
+    };
+  }, [data]);
+
   const totalEstVolume = data ? data.totalLongLiq + data.totalShortLiq : 0;
+
+  // Directional bias copy — translates the long/short split into plain English.
+  // The chart shows "where" — this sentence tells you "what".
+  const biasLabel = useMemo(() => {
+    if (!data || totalEstVolume === 0) return null;
+    const longPct = (data.totalLongLiq / totalEstVolume) * 100;
+    const diff = Math.abs(longPct - 50);
+    if (diff < 5) return { tone: 'neutral' as const, text: 'Liquidations are roughly balanced — no clear cascade side.' };
+    if (longPct > 50) {
+      return {
+        tone: 'bearish' as const,
+        text: `Long-side leveraged ${longPct.toFixed(0)}% — a sharp dip would feed more forced selling than an equal-size rally.`,
+      };
+    }
+    return {
+      tone: 'bullish' as const,
+      text: `Short-side leveraged ${(100 - longPct).toFixed(0)}% — a sharp rally would feed more short-covering than an equal-size dip.`,
+    };
+  }, [data, totalEstVolume]);
 
   // Table data grouped by leverage
   const tableRows = useMemo(() => {
@@ -430,14 +507,15 @@ export default function LiquidationMapPage() {
           }
         />
 
-        {/* Symbol tabs */}
-        <div className="flex items-center gap-2 mb-6">
-          <div className="btn-group">
+        {/* Symbol tabs — scrollable on mobile when the list is long. */}
+        <div className="flex items-center gap-2 mb-6 overflow-x-auto scrollbar-accent">
+          <div className="btn-group flex-shrink-0">
             {SYMBOLS.map((sym) => (
               <button
                 key={sym}
                 onClick={() => setSymbol(sym)}
                 className={`btn-group-item ${symbol === sym ? 'btn-group-item-active' : ''}`}
+                aria-pressed={symbol === sym}
               >
                 {sym}
               </button>
@@ -521,15 +599,85 @@ export default function LiquidationMapPage() {
           )}
         </div>
 
-        {/* Long/Short Ratio Bar */}
+        {/* ── Magnet zones + cascade risk (the "what to watch" strip) ───── */}
+        {data && (biggestLong || biggestShort) && (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+            {/* Biggest long-side magnet */}
+            {biggestLong && (
+              <div className="bg-gradient-to-br from-red-500/[0.08] to-transparent border border-red-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-3.5 h-3.5 text-red-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-red-400">
+                    Biggest Long Magnet
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-xl font-bold font-mono text-red-400">
+                    {formatPrice(biggestLong.price)}
+                  </span>
+                  <span className="text-xs font-mono text-red-400/60">
+                    -{biggestLong.distancePercent.toFixed(2)}%
+                  </span>
+                </div>
+                <div className="text-[11px] text-neutral-500 font-mono">
+                  {biggestLong.leverage}x · ~{formatUSD(biggestLong.estimatedVolume)} forced selling
+                </div>
+              </div>
+            )}
+
+            {/* Biggest short-side magnet */}
+            {biggestShort && (
+              <div className="bg-gradient-to-br from-green-500/[0.08] to-transparent border border-green-500/20 rounded-xl p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="w-3.5 h-3.5 text-green-400" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-green-400">
+                    Biggest Short Magnet
+                  </span>
+                </div>
+                <div className="flex items-baseline gap-2 mb-1">
+                  <span className="text-xl font-bold font-mono text-green-400">
+                    {formatPrice(biggestShort.price)}
+                  </span>
+                  <span className="text-xs font-mono text-green-400/60">
+                    +{biggestShort.distancePercent.toFixed(2)}%
+                  </span>
+                </div>
+                <div className="text-[11px] text-neutral-500 font-mono">
+                  {biggestShort.leverage}x · ~{formatUSD(biggestShort.estimatedVolume)} forced buying
+                </div>
+              </div>
+            )}
+
+            {/* Cascade risk */}
+            <div className="bg-gradient-to-br from-hub-yellow/[0.06] to-transparent border border-hub-yellow/20 rounded-xl p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Flame className="w-3.5 h-3.5 text-hub-yellow" />
+                <span className="text-[10px] font-bold uppercase tracking-wider text-hub-yellow">
+                  Cascade Risk · ±{DANGER_ZONE_PCT}%
+                </span>
+              </div>
+              <div className="flex items-baseline gap-2 mb-1">
+                <span className="text-xl font-bold font-mono text-hub-yellow">
+                  {formatUSD(dangerZone.long + dangerZone.short)}
+                </span>
+              </div>
+              <div className="text-[11px] text-neutral-500 font-mono">
+                L: {formatUSD(dangerZone.long)} · S: {formatUSD(dangerZone.short)}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Long/Short Ratio Bar + bias copy */}
         {data && data.totalLongLiq + data.totalShortLiq > 0 && (() => {
           const total = data.totalLongLiq + data.totalShortLiq;
           const longPct = (data.totalLongLiq / total) * 100;
           return (
-            <div className="mb-6 bg-white/[0.03] border border-white/10 rounded-xl p-3">
+            <div className="mb-6 bg-white/[0.03] border border-white/10 rounded-xl p-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs text-red-400 font-mono">{longPct.toFixed(1)}% Long Liq</span>
                 <span className="text-[10px] text-neutral-600 flex items-center gap-1">
+                  <Scale className="w-3 h-3" />
                   Estimated Long / Short Liq Split
                   <span className="px-1.5 py-0.5 rounded bg-hub-yellow/10 text-hub-yellow text-[9px] font-semibold uppercase tracking-wider">Estimated</span>
                 </span>
@@ -539,13 +687,26 @@ export default function LiquidationMapPage() {
                 <div className="bg-red-500 transition-all duration-500" style={{ width: `${longPct}%` }} />
                 <div className="bg-green-500 transition-all duration-500" style={{ width: `${100 - longPct}%` }} />
               </div>
+              {biasLabel && (
+                <p
+                  className={`text-xs mt-3 ${
+                    biasLabel.tone === 'bearish'
+                      ? 'text-red-400/80'
+                      : biasLabel.tone === 'bullish'
+                      ? 'text-green-400/80'
+                      : 'text-neutral-400'
+                  }`}
+                >
+                  {biasLabel.text}
+                </p>
+              )}
             </div>
           );
         })()}
 
         {/* Chart */}
         <div className="mb-6">
-          <LiquidationChart data={data} loading={loading && !data} />
+          <LiquidationChart data={data} loading={loading && !data} biggestVolume={biggestVolume} />
         </div>
 
         {/* Leverage Tiers Table */}

@@ -11,7 +11,11 @@ export const fetchCache = 'force-no-store';
 // Was a single-slot cache with 60s TTL — every BTC↔ETH↔SOL switch trashed it
 // and triggered an 8s+ rebuild (the rebuild fetches the entire 600KB OI feed
 // over HTTP just to filter to one symbol). Per-symbol storage + longer TTL
-// keeps switching between the 3 supported symbols cheap.
+// keeps switching between symbols cheap.
+//
+// Multi-symbol fetches share the same OI feed lookup so adding more symbols
+// doesn't multiply upstream load proportionally — the OI fetch is shared
+// across all calls via the openinterest route's own cache.
 // ---------------------------------------------------------------------------
 const l1Cache = new Map<string, { body: LiquidationMapResponse; timestamp: number }>();
 const L1_TTL = 5 * 60 * 1000; // 5 minutes
@@ -46,8 +50,13 @@ interface OIEntry {
 
 // ---------------------------------------------------------------------------
 // Supported symbols & leverage tiers
+//
+// Top-10 perp markets by OI — these are reliably available in our openinterest
+// feed across multiple venues, so the OI multiplier doesn't degenerate to the
+// hardcoded fallback. Adding a symbol here is cheap (per-symbol cache slot)
+// but the chart math assumes USD-quoted OI, which is what our feed returns.
 // ---------------------------------------------------------------------------
-const SUPPORTED_SYMBOLS = ['BTC', 'ETH', 'SOL'] as const;
+const SUPPORTED_SYMBOLS = ['BTC', 'ETH', 'SOL', 'XRP', 'DOGE', 'BNB', 'AVAX', 'ADA', 'LINK', 'SUI'] as const;
 type SupportedSymbol = typeof SUPPORTED_SYMBOLS[number];
 
 const LEVERAGE_TIERS = [2, 3, 5, 10, 20, 25, 50, 75, 100] as const;
