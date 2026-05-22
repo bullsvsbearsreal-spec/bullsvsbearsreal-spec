@@ -158,10 +158,17 @@ export default function SymbolFundingPage() {
     }
   }, [symbolRates]);
 
-  // Stats — normalize all rates to 8h basis for average comparison
+  // Stats — normalize all rates to 8h basis for average comparison.
+  // Prefer the precise per-symbol fundingIntervalHours (Blofin = 24)
+  // over the enum bucket so the per-symbol funding page doesn't
+  // over-count Blofin's daily-settle rate 3x in cross-venue averages.
   const stats = useMemo(() => {
     if (symbolRates.length === 0) return null;
     const normalize8h = (r: FundingRateData) => {
+      const hrs = r.fundingIntervalHours;
+      if (typeof hrs === 'number' && hrs > 0 && Number.isFinite(hrs)) {
+        return r.fundingRate * (8 / hrs);
+      }
       if (r.fundingInterval === '1h') return r.fundingRate * 8;
       if (r.fundingInterval === '4h') return r.fundingRate * 2;
       return r.fundingRate;
