@@ -115,7 +115,7 @@ interface BlofinBalanceResponse {
   code: string;
   data: Array<{
     ts: string;
-    totalEquity: string;
+    totalEquity?: string;
     isolatedEquity?: string;
     /** Total amount of USD-equivalent currently available to open new
      *  positions (free cash, post-margin). */
@@ -125,8 +125,17 @@ interface BlofinBalanceResponse {
     /** Per-currency breakdown — we only need USDT for USDT-M perps. */
     details?: Array<{
       currency: string;
-      equity: string;
-      available: string;
+      equity?: string;
+      /** Blofin's per-currency USD-equivalent equity (post fx-conversion).
+       *  Present even when the top-level `totalEquity` is missing /
+       *  zero — verified live May 2026 against christian's key where
+       *  totalEquity was 0 but details[].equityUsd was correct. */
+      equityUsd?: string;
+      available?: string;
+      isolatedEquity?: string;
+      availableEquity?: string;
+      unrealizedPnl?: string;
+      frozen?: string;
     }>;
   }>;
 }
@@ -333,21 +342,55 @@ export const blofinClient: ExchangeClient = {
     // whose free balance dwarfs allocated margin — same fix as the
     // other CEX adapters). Without this, /positions would understate
     // their account by the value of free wallet cash.
+    //
+    // Christian flagged equity showing $0 on his Blofin connection
+    // (May 2026) despite having ~270 BTC-contract worth of positions.
+    // Root cause: Blofin's /account/balance response can return an
+    // empty top-level totalEquity when the user's margin mode pushes
+    // the value down into the per-currency `details[].equityUsd`
+    // breakdown. Fall back to summing the breakdown when totalEquity
+    // is missing or zero so accounts with the new margin mode still
+    // get a non-zero figure on /positions.
     try {
       const json = await signedRequest<BlofinBalanceResponse>(
         '/api/v1/account/balance', 'GET', '', '', creds,
       );
       const acct = json.data?.[0];
       if (!acct) return { equityUsd: 0, availableUsd: 0, marginUsedUsd: 0 };
-      const equity = Number(acct.totalEquity);
-      const available = Number(acct.available ?? '0');
+      let equity = Number(acct.totalEquity);
+      // If totalEquity is missing/zero/NaN, derive from per-currency.
+      // details[].equityUsd is preferred (already FX-normalized to USD);
+      // fall back to .equity which for USDT is also ~1:1 USD.
+      if (!Number.isFinite(equity) || equity === 0) {
+        const fromDetails = (acct.details ?? []).reduce((acc, d) => {
+          const v = Number(d.equityUsd ?? d.equity ?? '0');
+          return acc + (Number.isFinite(v) ? v : 0);
+        }, 0);
+        if (fromDetails > 0) equity = fromDetails;
+      }
+      // available also has a per-currency fallback (USDT row's
+      // availableEquity / available).
+      let available = Number(acct.available);
+      if (!Number.isFinite(available) || available === 0) {
+        const fromDetails = (acct.details ?? []).reduce((acc, d) => {
+          const v = Number(d.availableEquity ?? d.available ?? '0');
+          return acc + (Number.isFinite(v) ? v : 0);
+        }, 0);
+        available = fromDetails;
+      }
       const margin = Number(acct.totalImr ?? '0');
       return {
         equityUsd: Number.isFinite(equity) ? equity : 0,
         availableUsd: Number.isFinite(available) ? available : 0,
         marginUsedUsd: Number.isFinite(margin) ? margin : 0,
       };
-    } catch {
+    } catch (e) {
+      // Surface the error in cron logs so we can debug per-user balance
+      // failures without having to ssh + grep — the cron's outer
+      // try/catch otherwise swallowed these silently.
+      if (typeof console !== 'undefined') {
+        console.warn('[blofin] fetchAccountBalance failed:', e instanceof Error ? e.message : e);
+      }
       return null;
     }
   },

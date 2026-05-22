@@ -33,6 +33,15 @@ export interface FundingRateData {
   fundingTime: number;
   nextFundingTime: number;
   fundingInterval?: '1h' | '4h' | '8h';
+  /** Precise per-symbol settlement interval in hours (e.g. 24 for
+   *  Blofin's daily-settle pairs). Set in addition to the enum bucket
+   *  when the venue's real interval doesn't fit 1h/4h/8h, so the
+   *  /funding page's periodMultiplier can scale correctly to the
+   *  user-selected display period. Without this, Blofin's per-24h
+   *  rate gets multiplied as if it were per-8h on /funding's 24h
+   *  view → 3x overstated. Christian flagged this May 22.
+   */
+  fundingIntervalHours?: number;
   predictedRate?: number;
   markPrice?: number;
   indexPrice?: number;

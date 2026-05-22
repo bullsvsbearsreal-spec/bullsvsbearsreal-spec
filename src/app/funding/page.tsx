@@ -279,7 +279,7 @@ export default function FundingPage() {
     const rateMap = new Map<string, { sum: number; count: number }>();
     for (const fr of fundingRates) {
       const entry = rateMap.get(fr.symbol);
-      const normalized = fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod);
+      const normalized = fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod, fr.fundingIntervalHours);
       if (entry) { entry.sum += normalized; entry.count++; }
       else rateMap.set(fr.symbol, { sum: normalized, count: 1 });
     }
@@ -319,7 +319,7 @@ export default function FundingPage() {
     const rateMap = new Map<string, { sum: number; count: number }>();
     for (const fr of fundingRates) {
       const entry = rateMap.get(fr.symbol);
-      const absNormalized = Math.abs(fr.fundingRate) * periodMultiplier(fr.fundingInterval, fundingPeriod);
+      const absNormalized = Math.abs(fr.fundingRate) * periodMultiplier(fr.fundingInterval, fundingPeriod, fr.fundingIntervalHours);
       if (entry) { entry.sum += absNormalized; entry.count++; }
       else rateMap.set(fr.symbol, { sum: absNormalized, count: 1 });
     }
@@ -415,7 +415,7 @@ export default function FundingPage() {
   const { avgRate, highestRate, lowestRate } = useMemo(() => {
     const valid = fundingRates.filter(fr => isValidNumber(fr.fundingRate));
     if (valid.length === 0) return { avgRate: 0, highestRate: null, lowestRate: null };
-    const norm = (fr: typeof valid[0]) => fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod);
+    const norm = (fr: typeof valid[0]) => fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod, fr.fundingIntervalHours);
     const avg = valid.reduce((sum, fr) => sum + norm(fr), 0) / valid.length;
     const highest = valid.reduce((max, fr) => norm(fr) > norm(max) ? fr : max, valid[0]);
     const lowest = valid.reduce((min, fr) => norm(fr) < norm(min) ? fr : min, valid[0]);
@@ -523,7 +523,7 @@ export default function FundingPage() {
                   fundingRates={fundingRates.map(fr => ({
                     symbol: fr.symbol,
                     exchange: fr.exchange,
-                    rate: fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod),
+                    rate: fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod, fr.fundingIntervalHours),
                     openInterest: oiMap.get(`${fr.symbol}|${fr.exchange}`),
                   }))}
                 />
@@ -533,7 +533,7 @@ export default function FundingPage() {
                   fundingRates={fundingRates.map(fr => ({
                     symbol: fr.symbol,
                     exchange: fr.exchange,
-                    rate: fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod),
+                    rate: fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod, fr.fundingIntervalHours),
                   }))}
                   dexExchanges={DEX_EXCHANGES}
                 />

@@ -31,7 +31,7 @@ function getFundingSlang(rate: number, type: 'highest' | 'lowest'): string | nul
 }
 
 export default function FundingStats({ fundingRates, avgRate, highestRate, lowestRate, fundingPeriod }: FundingStatsProps) {
-  const normDisplay = (fr: FundingRateData) => fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod);
+  const normDisplay = (fr: FundingRateData) => fr.fundingRate * periodMultiplier(fr.fundingInterval, fundingPeriod, fr.fundingIntervalHours);
   const periodLabel = PERIOD_LABELS[fundingPeriod];
 
   // Compute top 4 highest and top 5 lowest
