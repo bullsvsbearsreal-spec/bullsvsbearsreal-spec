@@ -38,6 +38,13 @@ export const FUNDING_INTERVAL_HOURS: Record<string, number> = {
   WhiteBIT: 8,
   CoinEx: 8,
   Deribit: 8,
+  // 24-hour venues — settle once per day at 00:00 UTC
+  // Blofin: verified live May 2026 — every USDT-margined pair on
+  // /api/v1/market/funding-rate reports the same fundingTime (next
+  // 00:00 UTC), exactly 24h apart on consecutive polls. Without this
+  // entry the default 8h bucket triples christian's daily-carry +
+  // APR projection on /positions for Blofin legs.
+  Blofin: 24,
 };
 
 /**

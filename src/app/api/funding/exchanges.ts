@@ -422,10 +422,20 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
             // No native predicted endpoint; use last price as mark proxy
             // and skip the Binance-style formula (premium/interest absent).
             predictedRate: undefined as number | undefined,
+            // Blofin settles ONCE per day at 00:00 UTC (verified live May
+            // 2026 — every USDT pair reports the same next fundingTime,
+            // exactly 24h apart on consecutive polls). The enum's '8h'
+            // would understate the inter-settlement gap by 3x and triple
+            // the daily-carry projection on /positions. Use the closest
+            // bucket (8h, since '24h' isn't in the enum) but pass the
+            // precise hours via fundingIntervalHours so the snapshot
+            // cron persists 24 to funding_snapshots.interval_h — that's
+            // what intervalHoursFor() actually reads for APR display.
             fundingInterval: '8h' as const,
+            fundingIntervalHours: 24,
             markPrice,
             indexPrice: markPrice,
-            nextFundingTime: Number(r.fundingTime) || Date.now() + 8 * 3600_000,
+            nextFundingTime: Number(r.fundingTime) || Date.now() + 24 * 3600_000,
             type: 'cex' as const,
           };
         })
