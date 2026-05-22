@@ -37,6 +37,11 @@ interface OIDelta {
 
 export default function OpenInterestPage() {
   const authLimit = useAuthLimit(20);
+  // Read ?symbol= from /chart's OI tool. Defer to a useEffect that
+  // runs once on mount to avoid SSR / window-mismatch; the searchTerm
+  // state starts blank and gets seeded after hydration. Using
+  // useSearchParams directly would also work but this matches the
+  // post-hydration pattern used elsewhere on this page.
   const [openInterest, setOpenInterest] = useState<OpenInterestData[]>([]);
   const [oiDeltas, setOiDeltas] = useState<Map<string, OIDelta>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -46,6 +51,12 @@ export default function OpenInterestPage() {
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [exchangeFilter, setExchangeFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const p = new URLSearchParams(window.location.search);
+    const sym = (p.get('symbol') || '').toUpperCase().trim().slice(0, 16);
+    if (sym) setSearchTerm(sym);
+  }, []);
   const [viewMode, setViewMode] = useState<'all' | 'aggregated'>('all');
   const [page, setPage] = useState(0);
   const [expanded, setExpanded] = useState(false);
