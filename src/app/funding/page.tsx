@@ -345,9 +345,10 @@ export default function FundingPage() {
 
   const displaySymbols = symbols; // Always show all symbols
 
-  const { heatmapData, intervalMap, longShortMap, predictedMap } = useMemo(() => {
+  const { heatmapData, intervalMap, intervalHoursMap, longShortMap, predictedMap } = useMemo(() => {
     const hm = new Map<string, Map<string, number>>();
     const im = new Map<string, string>();
+    const ihm = new Map<string, number>();
     const ls = new Map<string, { long: number; short: number }>();
     const pm = new Map<string, Map<string, number>>();
     for (const fr of fundingRates) {
@@ -355,6 +356,13 @@ export default function FundingPage() {
       hm.get(fr.symbol)!.set(fr.exchange, fr.fundingRate);
       if (fr.fundingInterval && fr.fundingInterval !== '8h') {
         im.set(`${fr.symbol}|${fr.exchange}`, fr.fundingInterval);
+      }
+      // Precise per-symbol interval hours when known. Required for
+      // Blofin (24h) and any other venue whose real interval doesn't
+      // fit the 1h/4h/8h enum bucket — without this, FundingHeatmapView
+      // 3x-overstates Blofin rates on the 24h period selector.
+      if (typeof fr.fundingIntervalHours === 'number' && fr.fundingIntervalHours > 0) {
+        ihm.set(`${fr.symbol}|${fr.exchange}`, fr.fundingIntervalHours);
       }
       if (fr.fundingRateLong !== undefined && fr.fundingRateShort !== undefined) {
         ls.set(`${fr.symbol}|${fr.exchange}`, { long: fr.fundingRateLong, short: fr.fundingRateShort });
@@ -366,7 +374,7 @@ export default function FundingPage() {
         pm.get(fr.symbol)!.set(fr.exchange, pred);
       }
     }
-    return { heatmapData: hm, intervalMap: im, longShortMap: ls, predictedMap: pm };
+    return { heatmapData: hm, intervalMap: im, intervalHoursMap: ihm, longShortMap: ls, predictedMap: pm };
   }, [fundingRates]);
 
   // Compute per-symbol accumulated funding (7d) from localStorage history
@@ -832,7 +840,7 @@ export default function FundingPage() {
         ) : (
           <>
             {viewMode === 'heatmap' && (
-              <FundingHeatmapView symbols={displaySymbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} oiMap={oiMap} longShortMap={longShortMap} predictedMap={predictedMap} accumulatedMap={accumulatedMap} fundingPeriod={fundingPeriod} fundingPrefs={fundingPrefs} onUpdatePrefs={updateFundingPrefs} />
+              <FundingHeatmapView symbols={displaySymbols} visibleExchanges={[...visibleExchanges]} heatmapData={heatmapData} intervalMap={intervalMap} intervalHoursMap={intervalHoursMap} oiMap={oiMap} longShortMap={longShortMap} predictedMap={predictedMap} accumulatedMap={accumulatedMap} fundingPeriod={fundingPeriod} fundingPrefs={fundingPrefs} onUpdatePrefs={updateFundingPrefs} />
             )}
             {viewMode === 'arbitrage' && (
               <FundingArbitrageView arbitrageData={arbitrageData} oiMap={oiMap} markPrices={markPricesMap} indexPrices={indexPricesMap} intervalMap={intervalMap} fundingPeriod={fundingPeriod} historicalSpreads={arbHistory} />

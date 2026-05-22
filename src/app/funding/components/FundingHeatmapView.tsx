@@ -32,6 +32,12 @@ interface FundingHeatmapViewProps {
   visibleExchanges: string[];
   heatmapData: Map<string, Map<string, number>>;
   intervalMap?: Map<string, string>;
+  /** Precise per-(symbol,exchange) settlement interval hours when known
+   *  (e.g. 24 for Blofin's daily-settle pairs). Honored over intervalMap
+   *  by periodMultiplier — without this, Blofin's per-24h rates get
+   *  3x-overstated when the user picks the 24h or 1Y display period
+   *  because intervalMap only carries the '8h' enum bucket. */
+  intervalHoursMap?: Map<string, number>;
   oiMap?: Map<string, number>;
   longShortMap?: Map<string, { long: number; short: number }>;
   // borrowingMap removed — was computed but never used
@@ -169,9 +175,13 @@ const FONT_SIZE_MAP: Record<string, { rate: string; sub: string; ls: string }> =
 };
 
 export default function FundingHeatmapView({
-  symbols, visibleExchanges, heatmapData, intervalMap, oiMap, longShortMap, predictedMap, accumulatedMap, fundingPeriod,
+  symbols, visibleExchanges, heatmapData, intervalMap, intervalHoursMap, oiMap, longShortMap, predictedMap, accumulatedMap, fundingPeriod,
   fundingPrefs, onUpdatePrefs,
 }: FundingHeatmapViewProps) {
+  // Helper: precise hours win over the enum bucket. For Blofin '8h'
+  // (closest bucket) + 24h actual, this returns 24 so periodMultiplier
+  // doesn't treat the per-24h rate as if it were per-8h.
+  const periodMult = (key: string) => periodMultiplier(intervalMap?.get(key), fundingPeriod, intervalHoursMap?.get(key));
   // Period-scaled color clamps
   const periodScale = PERIOD_HOURS[fundingPeriod] / 8;
   const gridClamp = 0.3 * periodScale;
@@ -282,8 +292,7 @@ export default function FundingHeatmapView({
       visibleExchanges.forEach(ex => {
         const r = rates.get(ex);
         if (r !== undefined) {
-          const interval = intervalMap?.get(`${sym}|${ex}`);
-          sum += r * periodMultiplier(interval, fundingPeriod);
+          sum += r * periodMult(`${sym}|${ex}`);
           count++;
         }
       });
@@ -337,13 +346,15 @@ export default function FundingHeatmapView({
     withData.sort((a, b) => {
       const rateA = heatmapData.get(a)!.get(exchange)!;
       const rateB = heatmapData.get(b)!.get(exchange)!;
-      // Apply period normalization for sorting
-      const multA = periodMultiplier(intervalMap?.get(`${a}|${exchange}`), fundingPeriod);
-      const multB = periodMultiplier(intervalMap?.get(`${b}|${exchange}`), fundingPeriod);
+      // Apply period normalization for sorting — uses precise hours
+      // (intervalHoursMap) so Blofin's 24h pairs sort against 8h
+      // venues at their true scaled value, not the enum-bucket lie.
+      const multA = periodMult(`${a}|${exchange}`);
+      const multB = periodMult(`${b}|${exchange}`);
       return direction === 'desc' ? rateB * multB - rateA * multA : rateA * multA - rateB * multB;
     });
     return [...withData, ...withoutData];
-  }, [filteredSymbols, exchangeSort, heatmapData, avgRates, intervalMap, fundingPeriod]);
+  }, [filteredSymbols, exchangeSort, heatmapData, avgRates, intervalMap, intervalHoursMap, fundingPeriod]);
 
   // Sort exchanges (columns) when a symbol row is clicked
   const sortedExchanges = useMemo(() => {
@@ -354,12 +365,12 @@ export default function FundingHeatmapView({
     const withData = visibleExchanges.filter(ex => rates.get(ex) !== undefined);
     const withoutData = visibleExchanges.filter(ex => rates.get(ex) === undefined);
     withData.sort((a, b) => {
-      const rateA = rates.get(a)! * periodMultiplier(intervalMap?.get(`${symbol}|${a}`), fundingPeriod);
-      const rateB = rates.get(b)! * periodMultiplier(intervalMap?.get(`${symbol}|${b}`), fundingPeriod);
+      const rateA = rates.get(a)! * periodMult(`${symbol}|${a}`);
+      const rateB = rates.get(b)! * periodMult(`${symbol}|${b}`);
       return direction === 'asc' ? rateA - rateB : rateB - rateA;
     });
     return [...withData, ...withoutData];
-  }, [visibleExchanges, symbolSort, heatmapData, intervalMap, fundingPeriod]);
+  }, [visibleExchanges, symbolSort, heatmapData, intervalMap, intervalHoursMap, fundingPeriod]);
 
   const totalPages = Math.max(1, Math.ceil(sortedSymbols.length / ROWS_PER_PAGE));
   const safeCurrentPage = Math.min(currentPage, totalPages);
@@ -764,8 +775,7 @@ export default function FundingHeatmapView({
                     {visibleExchanges.map(ex => {
                       const r = rates.get(ex);
                       if (r === undefined) return null;
-                      const interval = intervalMap?.get(`${sym}|${ex}`);
-                      const adjusted = r * periodMultiplier(interval, fundingPeriod);
+                      const adjusted = r * periodMult(`${sym}|${ex}`);
                       const cellColor = rateToColors(adjusted, gridClamp, true);
                       return (
                         <a
@@ -935,7 +945,7 @@ export default function FundingHeatmapView({
                       {sortedExchanges.map(ex => {
                         const rawRate = rates?.get(ex);
                         const interval = intervalMap?.get(`${symbol}|${ex}`);
-                        const pMult = periodMultiplier(interval, fundingPeriod);
+                        const pMult = periodMult(`${symbol}|${ex}`);
                         const rate = rawRate !== undefined ? rawRate * pMult : undefined;
                         const rawPredicted = predictedMap?.get(symbol)?.get(ex);
                         const predicted = rawPredicted !== undefined ? rawPredicted * pMult : undefined;
