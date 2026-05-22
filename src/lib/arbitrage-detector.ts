@@ -72,6 +72,10 @@ export interface FundingEntry {
   exchange: string;
   fundingRate: number | null;
   fundingInterval: string; // '1h' | '4h' | '8h'
+  /** Precise per-symbol interval in hours when the venue reports it
+   *  (24 for Blofin, 4 for some Binance pairs). Used by normaliseTo8h
+   *  when the bucket enum can't express the real interval. */
+  fundingIntervalHours?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -95,8 +99,16 @@ function groupBy<T>(items: T[], key: (item: T) => string): Map<string, T[]> {
 /**
  * Normalise a funding rate to an 8-hour basis.
  * 1h rates are multiplied by 8, 4h by 2, 8h (or unknown) left as-is.
+ *
+ * `precisHours` overrides the bucket enum when present — e.g. Blofin's
+ * 24h pairs come through with `interval === '8h'` (the closest bucket)
+ * + `precisHours = 24`. Without the override, Blofin's daily-settle
+ * rates would be treated as 8h and over-counted by 3x in the arb math.
  */
-function normaliseTo8h(rate: number, interval: string): number {
+function normaliseTo8h(rate: number, interval: string, precisHours?: number): number {
+  if (precisHours != null && Number.isFinite(precisHours) && precisHours > 0) {
+    return rate * (8 / precisHours);
+  }
   if (interval === '1h') return rate * 8;
   if (interval === '4h') return rate * 2;
   return rate; // '8h' or anything else
@@ -215,7 +227,7 @@ export function detectFundingArbitrage(
     let minIdx = 0;
     let maxIdx = 0;
     const normalised = entries.map((e: FundingEntry & { fundingRate: number }) =>
-      normaliseTo8h(e.fundingRate, e.fundingInterval),
+      normaliseTo8h(e.fundingRate, e.fundingInterval, e.fundingIntervalHours),
     );
 
     for (let i = 1; i < normalised.length; i++) {

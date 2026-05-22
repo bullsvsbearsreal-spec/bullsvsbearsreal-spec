@@ -44,12 +44,27 @@ export const PERIOD_LABELS: Record<FundingPeriod, string> = {
   '1h': '1H', '4h': '4H', '8h': '8H', '24h': '24H', '1Y': '1Y',
 };
 
-/** Multiplier to convert a native-interval rate to the target display period */
+/** Multiplier to convert a native-interval rate to the target display period.
+ *
+ * `nativeIntervalHours` is the precise per-symbol interval (e.g. 24 for
+ * Blofin's daily-settle pairs, or whatever Binance pairs reported via
+ * fundingInfo). When present it wins over the enum bucket — the enum
+ * is '1h'|'4h'|'8h' and doesn't natively support 24h, so Blofin emits
+ * the closest bucket ('8h') alongside fundingIntervalHours=24. Without
+ * honoring the precise value the /funding display would 3x-overstate
+ * Blofin's per-period rate vs the actual daily-settle reality.
+ */
 export function periodMultiplier(
   nativeInterval: '1h' | '4h' | '8h' | string | undefined,
-  targetPeriod: FundingPeriod
+  targetPeriod: FundingPeriod,
+  nativeIntervalHours?: number,
 ): number {
-  const nativeHours = nativeInterval === '1h' ? 1 : nativeInterval === '4h' ? 4 : 8;
+  let nativeHours: number;
+  if (nativeIntervalHours != null && Number.isFinite(nativeIntervalHours) && nativeIntervalHours > 0) {
+    nativeHours = nativeIntervalHours;
+  } else {
+    nativeHours = nativeInterval === '1h' ? 1 : nativeInterval === '4h' ? 4 : 8;
+  }
   return PERIOD_HOURS[targetPeriod] / nativeHours;
 }
 

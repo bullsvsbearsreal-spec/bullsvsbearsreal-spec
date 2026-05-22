@@ -38,6 +38,11 @@ interface RawFunding {
   // fee per se and leave this undefined.
   borrowingRate?: number;
   fundingInterval?: '1h' | '4h' | '8h';
+  /** Precise per-symbol interval in hours when the venue reports it
+   *  (e.g. 24 for Blofin's daily-settle pairs, 4 for Binance pairs
+   *  that moved off the 8h default). When present, takes precedence
+   *  over fundingInterval for the 8h-normalization math below. */
+  fundingIntervalHours?: number;
   markPrice?: number;
   type?: 'cex' | 'dex';
 }
@@ -85,7 +90,21 @@ interface ArbOpportunity {
 const cache = new Map<string, { body: any; ts: number }>();
 const CACHE_TTL = 60_000;
 
-function normalizeTo8h(rate: number, interval: '1h' | '4h' | '8h' | undefined): number {
+function normalizeTo8h(
+  rate: number,
+  interval: '1h' | '4h' | '8h' | undefined,
+  precisHours?: number,
+): number {
+  // Prefer the precise per-symbol interval (e.g. Blofin's 24h, or
+  // Binance pairs that moved to 4h) over the enum bucket. The enum
+  // is '1h'|'4h'|'8h' and doesn't support 24h, so Blofin emits the
+  // closest bucket ('8h') alongside fundingIntervalHours=24. Without
+  // honoring the precise hours, Blofin's 24h rates would be treated
+  // as 8h and the 8h-normalized comparison would 3x overstate
+  // Blofin's arb attractiveness.
+  if (precisHours != null && Number.isFinite(precisHours) && precisHours > 0) {
+    return rate * (8 / precisHours);
+  }
   // Treat missing interval as 8h — the majority of CEX perps settle on 8h
   if (!interval || interval === '8h') return rate;
   if (interval === '4h') return rate * 2;
@@ -133,6 +152,7 @@ export async function GET(request: NextRequest) {
       // Drop pure-digit symbol artifacts from parser bugs
       if (!r.symbol || /^\d+$/.test(r.symbol)) continue;
       const interval = (r.fundingInterval as '1h' | '4h' | '8h') || '8h';
+      const precisHours = r.fundingIntervalHours;
       const rate = r.fundingRate;
       // Borrow rate 8h-normalization: GMX reports a 1h rate (its continuous
       // model), gTrade reports an 8h rate. Use the venue's own funding
@@ -140,18 +160,18 @@ export async function GET(request: NextRequest) {
       // same window that funding does. CEXes leave borrowingRate
       // undefined → 0 contribution to the net.
       const borrow8h = r.borrowingRate != null && Number.isFinite(r.borrowingRate)
-        ? normalizeTo8h(Math.abs(r.borrowingRate), interval)
+        ? normalizeTo8h(Math.abs(r.borrowingRate), interval, precisHours)
         : 0;
       const quote: VenueQuote = {
         exchange: r.exchange,
         rate,
-        rate8h: normalizeTo8h(rate, interval),
+        rate8h: normalizeTo8h(rate, interval, precisHours),
         // Surface the predicted next-window rate too, 8h-normalized for
         // cross-venue comparison. Partners can compare current spread vs
         // predicted spread to decide whether to enter NOW or wait for
         // the next settlement to lock in a wider gap.
         predicted8h: r.predictedRate != null && Number.isFinite(r.predictedRate)
-          ? normalizeTo8h(r.predictedRate, interval)
+          ? normalizeTo8h(r.predictedRate, interval, precisHours)
           : null,
         borrow8h,
         interval,
