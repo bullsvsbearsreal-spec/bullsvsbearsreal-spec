@@ -117,7 +117,7 @@ export default function ScreenerPage() {
   const MAX_SANE_VOL = 10_000_000_000;
 
   interface RawTicker { symbol: string; exchange: string; lastPrice?: number; priceChangePercent24h?: number; change24h?: number; quoteVolume24h?: number }
-  interface RawFunding { symbol: string; fundingRate?: number; fundingInterval?: string }
+  interface RawFunding { symbol: string; fundingRate?: number; fundingInterval?: string; fundingIntervalHours?: number }
   interface RawOI { symbol: string; openInterestValue?: number }
   interface RawDelta { symbol: string; change24h?: number }
 
@@ -147,8 +147,18 @@ export default function ScreenerPage() {
     const fundingMap = new Map<string, { total: number; count: number }>();
     funding.forEach((f: RawFunding) => {
       const cur = fundingMap.get(f.symbol) || { total: 0, count: 0 };
-      // Normalize to 8h basis for fair averaging across exchanges
-      const mult = f.fundingInterval === '1h' ? 8 : f.fundingInterval === '4h' ? 2 : 1;
+      // Normalize to 8h basis for fair averaging across exchanges.
+      // Prefer the precise per-symbol fundingIntervalHours when set
+      // (Blofin = 24, Variational/Bitunix vary per row) so the screener
+      // doesn't 3x-overcount Blofin's contribution to a symbol's
+      // avgFunding by treating its per-24h rate as if it were per-8h.
+      let mult: number;
+      const hrs = f.fundingIntervalHours;
+      if (typeof hrs === 'number' && hrs > 0 && Number.isFinite(hrs)) {
+        mult = 8 / hrs;
+      } else {
+        mult = f.fundingInterval === '1h' ? 8 : f.fundingInterval === '4h' ? 2 : 1;
+      }
       cur.total += (f.fundingRate || 0) * mult;
       cur.count++;
       fundingMap.set(f.symbol, cur);
