@@ -81,6 +81,17 @@ interface OkxPositionsResponse {
     instId: string;
     instType: string;
     posSide: string;        // 'long' | 'short' | 'net'
+    /**
+     * Quantity of positions in CONTRACTS (NOT base-currency size). Each
+     * contract is worth `instrument.ctVal` in the base asset:
+     *   BTC-USDT-SWAP  ctVal = 0.01    (1 contract = 0.01 BTC)
+     *   ETH-USDT-SWAP  ctVal = 0.1
+     *   XRP-USDT-SWAP  ctVal = 100
+     * Multiply pos × ctVal to convert to base-currency quantity. Without
+     * this, /positions shows 100 BTC when the user holds 1 BTC (100
+     * contracts × 0.01). Same pattern as Blofin (fixed in 61d39796) and
+     * MEXC (already correctly converted via contractSize lookup).
+     */
     pos: string;
     avgPx: string;
     markPx: string;
@@ -92,6 +103,61 @@ interface OkxPositionsResponse {
     notionalUsd: string;
     closeOrderAlgo: Array<{ tpTriggerPx: string; slTriggerPx: string; algoId: string; algoOrdType: string }>;
   }>;
+}
+
+/**
+ * OKX public /api/v5/public/instruments?instType=SWAP response.
+ * Cached in-process so we don't fetch the full instrument list on
+ * every /positions request — these values change very rarely (only
+ * when a new pair is listed).
+ */
+interface OkxInstrumentsResponse {
+  code: string;
+  data: Array<{
+    instId: string;
+    instType: string;
+    ctVal: string;           // base-asset units per contract (e.g. 0.01 for BTC-USDT-SWAP)
+    ctValCcy: string;        // base currency the ctVal is denominated in
+    ctType: 'linear' | 'inverse';
+    state: string;
+  }>;
+}
+
+let okxInstrumentsCache: { map: Map<string, number>; ts: number } | null = null;
+const OKX_INSTRUMENTS_TTL_MS = 30 * 60 * 1000;
+
+/**
+ * Fetch + cache OKX's instrument metadata so we can convert raw
+ * contract counts to base-currency size. Best-effort: failures default
+ * to ctVal=1 which matches the (incorrect) pre-fix behavior — never
+ * makes the display WORSE than before, even if OKX's endpoint blips.
+ */
+async function fetchOkxInstrumentsMap(): Promise<Map<string, number>> {
+  if (okxInstrumentsCache && Date.now() - okxInstrumentsCache.ts < OKX_INSTRUMENTS_TTL_MS) {
+    return okxInstrumentsCache.map;
+  }
+  try {
+    const res = await fetch(`${BASE}/api/v5/public/instruments?instType=SWAP`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) return okxInstrumentsCache?.map ?? new Map();
+    const json = (await res.json()) as OkxInstrumentsResponse;
+    if (json.code !== '0' || !Array.isArray(json.data)) {
+      return okxInstrumentsCache?.map ?? new Map();
+    }
+    const map = new Map<string, number>();
+    for (const inst of json.data) {
+      if (!inst.instId || !inst.ctVal) continue;
+      const cv = Number(inst.ctVal);
+      if (Number.isFinite(cv) && cv > 0) map.set(inst.instId, cv);
+    }
+    okxInstrumentsCache = { map, ts: Date.now() };
+    return map;
+  } catch {
+    return okxInstrumentsCache?.map ?? new Map();
+  }
 }
 
 function instIdToSymbol(instId: string): string {
@@ -132,7 +198,12 @@ export const okxClient: ExchangeClient = {
   async fetchPositions(creds): Promise<NormalizedPosition[]> {
     const out: NormalizedPosition[] = [];
     // instType=SWAP -> perpetual contracts only (excludes spot, futures-dated, options)
-    const json = await signedGet<OkxPositionsResponse>('/api/v5/account/positions', 'instType=SWAP', creds);
+    // Fetch positions + the public ctVal map in parallel — the latter is
+    // typically a cache hit (30 min TTL) so it adds ~0ms on warm calls.
+    const [json, ctValMap] = await Promise.all([
+      signedGet<OkxPositionsResponse>('/api/v5/account/positions', 'instType=SWAP', creds),
+      fetchOkxInstrumentsMap(),
+    ]);
     for (const p of json.data ?? []) {
       const posSize = parseFloat(p.pos);
       if (!Number.isFinite(posSize) || posSize === 0) continue;
@@ -143,7 +214,15 @@ export const okxClient: ExchangeClient = {
       else if (p.posSide === 'short') side = 'short';
       else side = posSize > 0 ? 'long' : 'short';
 
-      const size = Math.abs(posSize);
+      // Per-pair contract value — OKX returns `pos` in CONTRACTS, not
+      // base currency. BTC-USDT-SWAP ctVal=0.01 (1 contract = 0.01 BTC),
+      // ETH-USDT-SWAP ctVal=0.1, XRP-USDT-SWAP ctVal=100. Default ctVal=1
+      // (no-op multiplication) is the previous-behaviour safe fallback
+      // when the public instruments fetch is unavailable. Same pattern
+      // as Blofin (61d39796) and MEXC (already correct).
+      const ctVal = ctValMap.get(p.instId) ?? 1;
+      const contractCount = Math.abs(posSize);
+      const size = contractCount * ctVal;
       const entry = parseFloat(p.avgPx) || 0;
       const mark = parseFloat(p.markPx) || parseFloat(p.last) || 0;
       const pnl = parseFloat(p.upl);
