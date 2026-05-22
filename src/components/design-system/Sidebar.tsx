@@ -252,6 +252,19 @@ export default function Sidebar({ sections = DEFAULT_SECTIONS, className }: Side
     return visibleSections.map(s => ({ ...s, items: s.items.filter(it => it.label.toLowerCase().includes(ql)) })).filter(s => s.items.length);
   }, [q, visibleSections]);
 
+  // Routes where the sidebar visually competes with the page content
+  // and the user explicitly asked for full-width. /chart is the
+  // TradingView surface — the iframe needs every pixel it can get,
+  // and the top nav dropdowns + ⌘K palette still provide complete
+  // navigation coverage without the left rail. Early return MUST be
+  // after every hook above or it triggers React error #310
+  // (different hook count between renders) when the user navigates
+  // from /chart to another page.
+  const HIDE_SIDEBAR_ROUTES = new Set<string>(['/chart']);
+  if (pathname && HIDE_SIDEBAR_ROUTES.has(pathname)) {
+    return null;
+  }
+
   return (
     // Hidden below `lg` — at 232px fixed width the sidebar took
     // ~62% of a 375px iPhone screen, squeezing main content to ~143px
