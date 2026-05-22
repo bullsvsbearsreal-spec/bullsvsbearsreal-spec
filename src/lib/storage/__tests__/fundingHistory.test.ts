@@ -168,9 +168,136 @@ describe('fundingHistory (localStorage path)', () => {
         t: ts2, r: { 'BTC|Binance': 0.04 },
       }));
       const { getAccumulatedFunding } = await import('../fundingHistory');
-      // Both in same 8h period → average = 0.03, sum across periods = 0.03
+      // Both in same 8h period → average = 0.03, multiplier (8/8) = 1, sum = 0.03
       const acc = getAccumulatedFunding('BTC', 'Binance', 7);
       expect(acc).toBeCloseTo(0.03, 4);
+    });
+
+    // ─── Interval-aware accumulation ───────────────────────────────────
+    // These tests lock in the fix for non-8h venues. Before this change,
+    // a 1h venue (HL) had its accumulator output silently 8× too low and a
+    // 4h venue (Kraken) 2× too low — same average rate per snapshot, no
+    // scaling by settlement frequency. The fix multiplies each 8h-bucket
+    // contribution by (8 / intervalHours).
+    it('scales a 1h venue (Hyperliquid) ×8 within an 8h bucket', async () => {
+      const ls = (globalThis as Record<string, unknown>).localStorage as LocalStorageMock;
+      const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
+      const periodStart = Math.floor(Date.now() / EIGHT_HOURS_MS) * EIGHT_HOURS_MS;
+      const ts = periodStart + 1000;
+      // Bare-number format (legacy) — interval comes from intervalHoursFor('Hyperliquid') = 1
+      ls.setItem(`${STORAGE_PREFIX}${ts}`, JSON.stringify({
+        t: ts, r: { 'BTC|Hyperliquid': 0.01 },
+      }));
+      const { getAccumulatedFunding } = await import('../fundingHistory');
+      const acc = getAccumulatedFunding('BTC', 'Hyperliquid', 7);
+      // 0.01 × (8/1) = 0.08 — eight 1h settlements in the bucket
+      expect(acc).toBeCloseTo(0.08, 6);
+    });
+
+    it('scales a 4h venue (Kraken) ×2 within an 8h bucket', async () => {
+      const ls = (globalThis as Record<string, unknown>).localStorage as LocalStorageMock;
+      const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
+      const periodStart = Math.floor(Date.now() / EIGHT_HOURS_MS) * EIGHT_HOURS_MS;
+      const ts = periodStart + 1000;
+      ls.setItem(`${STORAGE_PREFIX}${ts}`, JSON.stringify({
+        t: ts, r: { 'BTC|Kraken': 0.02 },
+      }));
+      const { getAccumulatedFunding } = await import('../fundingHistory');
+      const acc = getAccumulatedFunding('BTC', 'Kraken', 7);
+      // 0.02 × (8/4) = 0.04 — two 4h settlements in the bucket
+      expect(acc).toBeCloseTo(0.04, 6);
+    });
+
+    it('honors a per-snapshot interval tuple over the exchange default', async () => {
+      const ls = (globalThis as Record<string, unknown>).localStorage as LocalStorageMock;
+      const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
+      const periodStart = Math.floor(Date.now() / EIGHT_HOURS_MS) * EIGHT_HOURS_MS;
+      const ts = periodStart + 1000;
+      // Tuple form: [rate, intervalHours]. Binance defaults to 8h but we
+      // pin this point at 4h (some Binance pairs moved to 4h cycles).
+      ls.setItem(`${STORAGE_PREFIX}${ts}`, JSON.stringify({
+        t: ts, r: { 'BTC|Binance': [0.02, 4] },
+      }));
+      const { getAccumulatedFunding } = await import('../fundingHistory');
+      const acc = getAccumulatedFunding('BTC', 'Binance', 7);
+      // Should use the tuple's 4h, NOT the per-exchange 8h default:
+      // 0.02 × (8/4) = 0.04
+      expect(acc).toBeCloseTo(0.04, 6);
+    });
+
+    it('falls back to exchange default for unknown exchanges (8h)', async () => {
+      const ls = (globalThis as Record<string, unknown>).localStorage as LocalStorageMock;
+      const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
+      const periodStart = Math.floor(Date.now() / EIGHT_HOURS_MS) * EIGHT_HOURS_MS;
+      const ts = periodStart + 1000;
+      ls.setItem(`${STORAGE_PREFIX}${ts}`, JSON.stringify({
+        t: ts, r: { 'BTC|UnknownExchange': 0.05 },
+      }));
+      const { getAccumulatedFunding } = await import('../fundingHistory');
+      const acc = getAccumulatedFunding('BTC', 'UnknownExchange', 7);
+      // 0.05 × (8/8) = 0.05
+      expect(acc).toBeCloseTo(0.05, 6);
+    });
+  });
+
+  describe('saveFundingSnapshot (interval tuple persistence)', () => {
+    it('persists [rate, intervalHours] when fundingIntervalHours is provided', async () => {
+      const { saveFundingSnapshot } = await import('../fundingHistory');
+      saveFundingSnapshot([
+        { symbol: 'BTC', exchange: 'Hyperliquid', fundingRate: 0.005, fundingIntervalHours: 1 },
+      ]);
+      const ls = (globalThis as Record<string, unknown>).localStorage as LocalStorageMock;
+      // Find the only stored snapshot
+      let raw: string | null = null;
+      for (let i = 0; i < ls.length; i++) {
+        const k = ls.key(i);
+        if (k && k.startsWith(STORAGE_PREFIX)) raw = ls.getItem(k);
+      }
+      expect(raw).not.toBeNull();
+      const parsed = JSON.parse(raw!);
+      expect(parsed.r['BTC|Hyperliquid']).toEqual([0.005, 1]);
+    });
+
+    it('persists a bare number when fundingIntervalHours is missing', async () => {
+      const { saveFundingSnapshot } = await import('../fundingHistory');
+      saveFundingSnapshot([
+        { symbol: 'BTC', exchange: 'Binance', fundingRate: 0.01 },
+      ]);
+      const ls = (globalThis as Record<string, unknown>).localStorage as LocalStorageMock;
+      let raw: string | null = null;
+      for (let i = 0; i < ls.length; i++) {
+        const k = ls.key(i);
+        if (k && k.startsWith(STORAGE_PREFIX)) raw = ls.getItem(k);
+      }
+      const parsed = JSON.parse(raw!);
+      // Bare number — keeps the format compatible with older code paths
+      expect(parsed.r['BTC|Binance']).toBe(0.01);
+    });
+  });
+
+  describe('getAccumulatedFundingBatch', () => {
+    it('returns 1D/7D/30D accumulated funding per pair with interval scaling', async () => {
+      const ls = (globalThis as Record<string, unknown>).localStorage as LocalStorageMock;
+      const EIGHT_HOURS_MS = 8 * 60 * 60 * 1000;
+      const periodStart = Math.floor(Date.now() / EIGHT_HOURS_MS) * EIGHT_HOURS_MS;
+      const ts = periodStart + 1000;
+      ls.setItem(`${STORAGE_PREFIX}${ts}`, JSON.stringify({
+        t: ts,
+        r: {
+          'BTC|Binance': 0.01,        // 8h venue → ×1
+          'BTC|Hyperliquid': 0.005,   // 1h venue → ×8
+          'BTC|Kraken': 0.02,         // 4h venue → ×2
+        },
+      }));
+      const { getAccumulatedFundingBatch } = await import('../fundingHistory');
+      const result = getAccumulatedFundingBatch([
+        { symbol: 'BTC', exchange: 'Binance' },
+        { symbol: 'BTC', exchange: 'Hyperliquid' },
+        { symbol: 'BTC', exchange: 'Kraken' },
+      ]);
+      expect(result.get('BTC|Binance')?.d1).toBeCloseTo(0.01, 6);
+      expect(result.get('BTC|Hyperliquid')?.d1).toBeCloseTo(0.04, 6); // 0.005 × 8
+      expect(result.get('BTC|Kraken')?.d1).toBeCloseTo(0.04, 6);      // 0.02 × 2
     });
   });
 
