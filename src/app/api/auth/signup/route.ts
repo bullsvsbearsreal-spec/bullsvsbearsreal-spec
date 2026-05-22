@@ -9,6 +9,7 @@ import { validatePassword } from '@/lib/auth/password';
 import { isDBConfigured, getSQL, initDB } from '@/lib/db';
 import { signupLimiter, isValidEmail, getClientIP } from '@/lib/auth/rate-limit';
 import { isValidInviteCodeShape } from '@/lib/invite';
+import { verifyTurnstileToken, readClientIp } from '@/lib/auth/turnstile';
 
 // Suspension flag — must match `SUSPENDED` in /signup/page.tsx. With
 // the page hidden behind a maintenance notice, callers shouldn't be
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, email, password, referredByCode } = body;
+    const { name, email, password, referredByCode, turnstileToken } = body;
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
@@ -52,6 +53,14 @@ export async function POST(req: Request) {
 
     if (!isValidEmail(email)) {
       return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+    }
+
+    // Turnstile verification — no-op if env vars aren't configured (see
+    // lib/auth/turnstile.ts). Sits after the rate-limit + email-shape
+    // checks so we don't burn CF siteverify calls on obvious junk.
+    const tsOk = await verifyTurnstileToken(turnstileToken, readClientIp({ headers: req.headers as Headers }));
+    if (!tsOk) {
+      return NextResponse.json({ error: 'Bot challenge failed. Please reload and try again.' }, { status: 400 });
     }
 
     // Limit name length

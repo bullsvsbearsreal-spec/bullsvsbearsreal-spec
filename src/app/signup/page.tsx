@@ -8,6 +8,7 @@ import Logo from '@/components/Logo';
 import SuspendedNotice from '@/components/SuspendedNotice';
 import { Mail, Lock, User, Eye, EyeOff, AlertCircle, ArrowRight, CheckCircle } from 'lucide-react';
 import { ALL_EXCHANGES } from '@/lib/constants';
+import Turnstile from '@/components/Turnstile';
 
 // ── Suspension flag ──────────────────────────────────────────────────
 // Flip to false to re-enable signups. The original signup form below
@@ -49,6 +50,10 @@ function SignupContent() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  // Cloudflare Turnstile token. Empty until the user solves the
+  // challenge — see <Turnstile /> below. When NEXT_PUBLIC_TURNSTILE_SITE_KEY
+  // is unset the widget renders nothing and we never gate on this.
+  const [turnstileToken, setTurnstileToken] = useState('');
 
   // Verification step — jump straight to verify if ?verify= param present
   const [step, setStep] = useState<'form' | 'verify'>(verifyEmail ? 'verify' : 'form');
@@ -92,6 +97,7 @@ function SignupContent() {
           email,
           password,
           ...(referralCode ? { referredByCode: referralCode } : {}),
+          ...(turnstileToken ? { turnstileToken } : {}),
         }),
       });
 
@@ -351,9 +357,21 @@ function SignupContent() {
                   )}
                 </div>
 
+                {/* Cloudflare Turnstile — gates submit when configured.
+                    Renders nothing if NEXT_PUBLIC_TURNSTILE_SITE_KEY is
+                    unset (e.g. local dev), so the form stays usable. */}
+                <Turnstile onToken={setTurnstileToken} theme="dark" className="flex justify-center" />
+
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={
+                    loading ||
+                    // If the Turnstile env var is configured, block
+                    // submit until the user solves the challenge. When
+                    // unset, the widget doesn't render so this
+                    // condition is always false (no gating).
+                    (Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY) && !turnstileToken)
+                  }
                   className="w-full h-12 rounded-xl bg-hub-yellow hover:bg-hub-yellow-light text-black font-semibold text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 mt-1 shadow-lg shadow-hub-yellow/20"
                 >
                   {loading ? (

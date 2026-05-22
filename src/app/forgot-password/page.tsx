@@ -4,12 +4,15 @@ import { useState } from 'react';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import { Mail, AlertCircle, CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
+import Turnstile from '@/components/Turnstile';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
   const [sent, setSent] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState('');
+  const turnstileEnabled = Boolean(process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -19,7 +22,7 @@ export default function ForgotPasswordPage() {
       const res = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ email, ...(turnstileToken ? { turnstileToken } : {}) }),
       });
 
       if (!res.ok) {
@@ -120,9 +123,13 @@ export default function ForgotPasswordPage() {
                   </div>
                 </div>
 
+                {turnstileEnabled && (
+                  <Turnstile onToken={setTurnstileToken} theme="dark" className="flex justify-center" />
+                )}
+
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || (turnstileEnabled && !turnstileToken)}
                   className="w-full h-12 rounded-xl bg-hub-yellow hover:bg-hub-yellow-light text-black font-semibold text-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg shadow-hub-yellow/20"
                 >
                   {loading ? (

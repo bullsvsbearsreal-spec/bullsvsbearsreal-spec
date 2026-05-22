@@ -6,6 +6,7 @@ import { randomBytes } from 'crypto';
 import { Resend } from 'resend';
 import { getSQL } from '@/lib/db';
 import { forgotPasswordLimiter, isValidEmail, getClientIP } from '@/lib/auth/rate-limit';
+import { verifyTurnstileToken, readClientIp } from '@/lib/auth/turnstile';
 
 let _resend: Resend | null = null;
 function getResend(): Resend | null {
@@ -24,9 +25,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: 'If that email exists, we sent a reset link' });
     }
 
-    const { email } = await req.json();
+    const { email, turnstileToken } = await req.json();
 
     if (!email || !isValidEmail(email)) {
+      return NextResponse.json({ message: 'If that email exists, we sent a reset link' });
+    }
+
+    // Turnstile verification — no-op if env vars unset. Return the
+    // generic enumeration-safe message on bot-failure too so an attacker
+    // can't distinguish "challenge-blocked" from "no such user".
+    const tsOk = await verifyTurnstileToken(turnstileToken, readClientIp({ headers: req.headers as Headers }));
+    if (!tsOk) {
       return NextResponse.json({ message: 'If that email exists, we sent a reset link' });
     }
 
