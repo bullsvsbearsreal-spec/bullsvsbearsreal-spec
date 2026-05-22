@@ -2,9 +2,8 @@
 
 import { Suspense, useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { ChevronDown, Search, X, Star, TrendingUp, BarChart3, DollarSign, Wheat, Globe2, Layers, Cpu, Flame, Zap, Clock, Bell, Activity, GitCompareArrows, Crosshair, Eye, ExternalLink, Link2, Maximize2 } from 'lucide-react';
 import Link from 'next/link';
-import { ArrowLeft, ChevronDown, Search, X, Star, TrendingUp, BarChart3, DollarSign, Wheat, Globe2, Layers, Cpu, Flame, Zap } from 'lucide-react';
-import Logo from '@/components/Logo';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import CryptoMetricsPanel from './components/CryptoMetricsPanel';
 import ChartErrorBoundary from './components/ChartErrorBoundary';
@@ -195,6 +194,101 @@ const TIMEFRAMES = [
 ] as const;
 
 /* ═══════════════════════════════════════════════════════════════════════
+   Live ticker data + persistence helpers
+   ═══════════════════════════════════════════════════════════════════════ */
+
+interface TickerLite {
+  symbol: string;
+  price: number;
+  change24h: number;
+  quoteVolume24h: number;
+}
+
+/** Single-flight 30s-refresh fetcher for /api/tickers. Aggregates per
+ *  symbol across venues (median price, max quote volume) so the picker
+ *  shows ONE row per coin sorted by global 24h volume. */
+function useAllTickers(): { tickers: TickerLite[]; loading: boolean } {
+  const [tickers, setTickers] = useState<TickerLite[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let mounted = true;
+    const load = async () => {
+      try {
+        const r = await fetch('/api/tickers', { signal: AbortSignal.timeout(10_000) });
+        if (!r.ok) return;
+        const j = await r.json();
+        const raw: Array<{ symbol: string; lastPrice?: number; price?: number; priceChangePercent24h?: number; changePercent24h?: number; quoteVolume24h?: number }> =
+          Array.isArray(j) ? j : (j?.data ?? []);
+        if (!mounted) return;
+        // Bucket per symbol: collect all venue quotes
+        const bySym = new Map<string, { prices: number[]; chgs: number[]; vols: number[] }>();
+        for (const t of raw) {
+          if (!t.symbol) continue;
+          const price = t.lastPrice ?? t.price ?? 0;
+          if (price <= 0) continue;
+          const chg = t.priceChangePercent24h ?? t.changePercent24h ?? 0;
+          const vol = t.quoteVolume24h ?? 0;
+          const slot = bySym.get(t.symbol) ?? { prices: [], chgs: [], vols: [] };
+          slot.prices.push(price);
+          slot.chgs.push(chg);
+          slot.vols.push(vol);
+          bySym.set(t.symbol, slot);
+        }
+        const median = (xs: number[]) => {
+          if (xs.length === 0) return 0;
+          const s = [...xs].sort((a, b) => a - b);
+          return s[Math.floor(s.length / 2)];
+        };
+        const list: TickerLite[] = [];
+        bySym.forEach((v, k) => {
+          // Use max volume (the leading venue's volume) — sums can double-
+          // count when different venues report on the same liquidity, and
+          // medians under-state for high-cap coins like BTC.
+          const maxVol = v.vols.length > 0 ? Math.max(...v.vols) : 0;
+          list.push({ symbol: k, price: median(v.prices), change24h: median(v.chgs), quoteVolume24h: maxVol });
+        });
+        list.sort((a, b) => b.quoteVolume24h - a.quoteVolume24h);
+        setTickers(list);
+        setLoading(false);
+      } catch { /* silent — keep last good list */ }
+    };
+    load();
+    const id = setInterval(load, 30_000);
+    return () => { mounted = false; clearInterval(id); };
+  }, []);
+  return { tickers, loading };
+}
+
+/** Recent + favorite symbols persisted to localStorage. Both bounded
+ *  (recents to 12, favorites unlimited but typically <30). Survives
+ *  refresh + tab switches so the user's working set stays warm. */
+const LS_RECENTS_KEY = 'ih:chart:recents';
+const LS_FAVORITES_KEY = 'ih:chart:favorites';
+const RECENTS_MAX = 12;
+
+function loadStringList(key: string): string[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const raw = localStorage.getItem(key);
+    if (!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter(x => typeof x === 'string') : [];
+  } catch { return []; }
+}
+
+function saveStringList(key: string, list: string[]) {
+  if (typeof window === 'undefined') return;
+  try { localStorage.setItem(key, JSON.stringify(list)); } catch { /* quota */ }
+}
+
+/** Build a TradingView symbol for a given crypto label. Falls back to
+ *  Binance USDT pair (most coverage); for tokens not on Binance the
+ *  iframe's own search lets the user pick a different venue. */
+function tvSymbolFor(label: string): string {
+  return `BINANCE:${label.toUpperCase()}USDT`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
    TradingView Widget — full-featured
    ═══════════════════════════════════════════════════════════════════════ */
 
@@ -293,12 +387,80 @@ function TradingViewChart({ tvSymbol, interval }: { tvSymbol: string; interval: 
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
+   Tool button — used by the Tools strip below the symbol bar
+   ═══════════════════════════════════════════════════════════════════════ */
+
+function ToolButton({
+  icon, label, title, href, external, onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  title: string;
+  href?: string;
+  external?: boolean;
+  onClick?: () => void;
+}) {
+  const cls =
+    'flex-shrink-0 inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors';
+  if (onClick) {
+    return (
+      <button onClick={onClick} title={title} aria-label={title} className={cls}>
+        {icon}
+        <span className="hidden sm:inline">{label}</span>
+      </button>
+    );
+  }
+  if (external && href) {
+    return (
+      <a href={href} target="_blank" rel="noopener noreferrer" title={title} aria-label={title} className={cls}>
+        {icon}
+        <span className="hidden sm:inline">{label}</span>
+      </a>
+    );
+  }
+  if (href) {
+    return (
+      <Link href={href} title={title} aria-label={title} className={cls}>
+        {icon}
+        <span className="hidden sm:inline">{label}</span>
+      </Link>
+    );
+  }
+  return null;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
    Page component
    ═══════════════════════════════════════════════════════════════════════ */
 
 function ChartPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
+
+  /* ─── Live ticker data + recents/favorites ─────────────────────────── */
+  const { tickers: allTickers } = useAllTickers();
+  const [recents, setRecents] = useState<string[]>([]);
+  const [favorites, setFavorites] = useState<string[]>([]);
+  useEffect(() => {
+    setRecents(loadStringList(LS_RECENTS_KEY));
+    setFavorites(loadStringList(LS_FAVORITES_KEY));
+  }, []);
+  const pushRecent = useCallback((label: string) => {
+    setRecents(prev => {
+      const next = [label, ...prev.filter(x => x !== label)].slice(0, RECENTS_MAX);
+      saveStringList(LS_RECENTS_KEY, next);
+      return next;
+    });
+  }, []);
+  const toggleFavorite = useCallback((label: string) => {
+    setFavorites(prev => {
+      const has = prev.includes(label);
+      const next = has ? prev.filter(x => x !== label) : [label, ...prev];
+      saveStringList(LS_FAVORITES_KEY, next);
+      return next;
+    });
+  }, []);
+  const isFavorite = useCallback((label: string) => favorites.includes(label), [favorites]);
 
   /* ─── Initialize state from URL params ─────────────────────────────── */
   const initialSymbolLabel = searchParams.get('s') || 'BTC';
@@ -337,15 +499,49 @@ function ChartPageInner() {
     [assetClass],
   );
 
-  // Filter pinned symbols by search
+  // Filter symbols by search. For crypto, when the user starts typing
+  // we ALSO search the live /api/tickers universe (top ~500 coins by
+  // 24h volume) so any listed coin is reachable — not just the curated
+  // ~45 pinned ones. The curated list still wins for no-query browse
+  // since it has category groupings and hand-tuned TradingView symbols
+  // (e.g. BITSTAMP:BTCUSD for BTC vs auto-built BINANCE:BTCUSDT).
   const filteredSymbols = useMemo(() => {
     const q = symbolQuery.trim().toLowerCase();
     if (!q) return currentTab.pinned;
-    return currentTab.pinned.filter(s =>
-      s.label.toLowerCase().includes(q) ||
-      s.tvSymbol.toLowerCase().includes(q)
+    const fromPinned = currentTab.pinned.filter(s =>
+      s.label.toLowerCase().includes(q) || s.tvSymbol.toLowerCase().includes(q)
     );
-  }, [symbolQuery, currentTab]);
+    if (assetClass !== 'crypto') return fromPinned;
+    // Merge in live-ticker matches that aren't already in the pinned
+    // hits. Cap at ~80 results so the dropdown stays scrollable.
+    const seen = new Set(fromPinned.map(s => s.label.toUpperCase()));
+    const fromLive: AssetSymbol[] = [];
+    for (const t of allTickers) {
+      if (fromLive.length + fromPinned.length >= 80) break;
+      const up = t.symbol.toUpperCase();
+      if (seen.has(up)) continue;
+      if (!up.toLowerCase().includes(q)) continue;
+      seen.add(up);
+      fromLive.push({
+        label: up,
+        tvSymbol: tvSymbolFor(up),
+        displayPair: '/USDT',
+        icon: t.symbol.toLowerCase(),
+        cat: 'Live',
+      });
+    }
+    return [...fromPinned, ...fromLive];
+  }, [symbolQuery, currentTab, assetClass, allTickers]);
+
+  // Live price + 24h change for the currently-selected crypto symbol.
+  // Pulls from the same /api/tickers fetch — no extra request, just an
+  // index lookup. Non-crypto asset classes leave this null since
+  // TradingView's own header already shows price for those.
+  const livePrice = useMemo(() => {
+    if (assetClass !== 'crypto') return null;
+    const t = allTickers.find(x => x.symbol.toUpperCase() === displayLabel.toUpperCase());
+    return t ?? null;
+  }, [assetClass, allTickers, displayLabel]);
 
   /* ─── Sync state to URL params (shallow, no navigation) ────────────── */
   const updateURL = useCallback((label: string, tf: string, ac: AssetClass) => {
@@ -365,7 +561,11 @@ function ChartPageInner() {
     setSymbolQuery('');
     setFocusedIndex(-1);
     updateURL(sym.label, interval, assetClass);
-  }, [interval, assetClass, updateURL]);
+    // Track in localStorage so the recents row + jump-back UX work
+    // across reloads. Only push for crypto — non-crypto labels often
+    // contain slashes ('EUR/USD') which would collide with key encoding.
+    if (assetClass === 'crypto') pushRecent(sym.label);
+  }, [interval, assetClass, updateURL, pushRecent]);
 
   const switchAssetClass = useCallback((ac: AssetClass) => {
     setAssetClass(ac);
@@ -450,24 +650,19 @@ function ChartPageInner() {
   }, [symbolOpen]);
 
   return (
-    <div id="main-content" className="h-screen w-screen bg-black flex flex-col overflow-hidden">
+    // h-full + min-h-0 so the chart fills the main element that
+    // TerminalShell allocates without spilling. Previously was
+    // h-screen w-screen which double-counted the header height when
+    // the shell wrapper became standard for /chart — chart bottom
+    // got pushed past the viewport.
+    <div id="main-content" className="h-full w-full bg-black flex flex-col overflow-hidden min-h-0">
       <h1 className="sr-only">Chart</h1>
       {/* ─── Header ─────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 border-b border-white/[0.08] bg-[#060606] relative z-20">
         <div className="flex items-center px-2 sm:px-3 py-1.5 gap-1.5 sm:gap-2">
-          {/* Logo + back */}
-          <Link
-            href="/"
-            aria-label="Back to home"
-            className="flex items-center gap-1.5 text-neutral-400 hover:text-white transition-colors flex-shrink-0"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            <span className="hidden md:block"><Logo variant="full" size="xs" /></span>
-          </Link>
-
-          <div className="w-px h-5 bg-white/[0.06] flex-shrink-0" />
-
-          {/* Asset class tabs */}
+          {/* Asset class tabs — logo + back removed since TerminalShell's
+              TerminalHeader already provides the brand mark + home link.
+              Don't duplicate chrome on chart, just lead with content. */}
           <div className="flex items-center gap-0.5 flex-shrink-0" role="tablist" aria-label="Asset class">
             {ASSET_TABS.map(tab => (
               <button
@@ -489,8 +684,8 @@ function ChartPageInner() {
 
           <div className="w-px h-5 bg-white/[0.06] flex-shrink-0" />
 
-          {/* Symbol selector */}
-          <div ref={symbolRef} className="relative flex-shrink-0">
+          {/* Symbol selector + favorite toggle + live price strip */}
+          <div ref={symbolRef} className="relative flex-shrink-0 flex items-center gap-1.5">
             <button
               onClick={() => setSymbolOpen(!symbolOpen)}
               aria-expanded={symbolOpen}
@@ -505,6 +700,37 @@ function ChartPageInner() {
               </span>
               <ChevronDown className={`w-3 h-3 text-neutral-500 transition-transform ${symbolOpen ? 'rotate-180' : ''}`} />
             </button>
+            {/* Favorite star — toggles a localStorage flag so the user
+                can pin their working set across reloads. Crypto only;
+                the curated stocks/forex/commodities lists are already
+                pre-pinned by category. */}
+            {assetClass === 'crypto' && (
+              <button
+                onClick={() => toggleFavorite(displayLabel)}
+                aria-label={isFavorite(displayLabel) ? `Unfavorite ${displayLabel}` : `Favorite ${displayLabel}`}
+                aria-pressed={isFavorite(displayLabel)}
+                title={isFavorite(displayLabel) ? 'Remove from favorites' : 'Add to favorites'}
+                className={`p-1 rounded-md transition-colors ${isFavorite(displayLabel) ? 'text-hub-yellow hover:text-hub-yellow/80' : 'text-neutral-600 hover:text-white'}`}
+              >
+                <Star className={`w-3.5 h-3.5 ${isFavorite(displayLabel) ? 'fill-current' : ''}`} />
+              </button>
+            )}
+            {/* Live price + 24h change — sourced from /api/tickers so
+                the user sees the same aggregated median we show on
+                /home + /screener. Hidden on mobile (≤sm) to keep the
+                header from wrapping. */}
+            {livePrice && livePrice.price > 0 && (
+              <div className="hidden sm:flex items-baseline gap-1.5 px-2 py-1 rounded-md bg-black/40 border border-white/[0.04]" aria-live="polite">
+                <span className="text-[13px] font-bold text-white tabular-nums">
+                  ${livePrice.price >= 1
+                    ? livePrice.price.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                    : livePrice.price.toPrecision(4)}
+                </span>
+                <span className={`text-[11px] font-medium tabular-nums ${livePrice.change24h >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {livePrice.change24h >= 0 ? '+' : ''}{livePrice.change24h.toFixed(2)}%
+                </span>
+              </div>
+            )}
 
             {symbolOpen && (
               <div
@@ -555,6 +781,56 @@ function ChartPageInner() {
                     </button>
                   ))}
                 </div>
+
+                {/* Favorites + Recents pills — shown only on crypto when
+                    the user isn't actively searching. Lets users jump
+                    back to their working set without scrolling the
+                    full grid. Star-toggle on the header keeps the
+                    favorites list curated. */}
+                {assetClass === 'crypto' && !symbolQuery.trim() && (favorites.length > 0 || recents.length > 0) && (
+                  <div className="border-b border-white/[0.04] px-2 py-1.5 space-y-1.5">
+                    {favorites.length > 0 && (
+                      <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+                        <Star className="w-3 h-3 text-hub-yellow flex-shrink-0 fill-current" aria-hidden />
+                        <span className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold flex-shrink-0 mr-1">Pinned</span>
+                        {favorites.map(label => (
+                          <button
+                            key={`fav-${label}`}
+                            onClick={() => selectSymbol({ label, tvSymbol: tvSymbolFor(label), displayPair: '/USDT', icon: label.toLowerCase() })}
+                            className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                              label === displayLabel
+                                ? 'bg-hub-yellow/15 text-hub-yellow'
+                                : 'bg-white/[0.04] text-neutral-300 hover:bg-white/[0.08]'
+                            }`}
+                          >
+                            <TokenIconSimple symbol={label.toLowerCase()} size={11} />
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {recents.length > 0 && (
+                      <div className="flex items-center gap-1 overflow-x-auto scrollbar-none">
+                        <Clock className="w-3 h-3 text-neutral-500 flex-shrink-0" aria-hidden />
+                        <span className="text-[9px] text-neutral-600 uppercase tracking-wider font-semibold flex-shrink-0 mr-1">Recent</span>
+                        {recents.filter(r => !favorites.includes(r)).slice(0, 10).map(label => (
+                          <button
+                            key={`rec-${label}`}
+                            onClick={() => selectSymbol({ label, tvSymbol: tvSymbolFor(label), displayPair: '/USDT', icon: label.toLowerCase() })}
+                            className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                              label === displayLabel
+                                ? 'bg-hub-yellow/15 text-hub-yellow'
+                                : 'bg-white/[0.04] text-neutral-400 hover:bg-white/[0.08]'
+                            }`}
+                          >
+                            <TokenIconSimple symbol={label.toLowerCase()} size={11} />
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Symbol grid */}
                 <div className="max-h-[60vh] overflow-y-auto py-1 scrollbar-thin" role="listbox">
@@ -724,29 +1000,174 @@ function ChartPageInner() {
         </div>
       </div>
 
-      {/* ─── Quick symbol bar ───────────────────────────────────────── */}
+      {/* ─── Quick symbol bar ─────────────────────────────────────────
+          For crypto: shows favorites (★) first, then up to 12 recents,
+          then fills with top-by-24h-volume coins from /api/tickers.
+          Total surface stays one horizontal scroll-row tall so we
+          don't push the chart down.
+
+          For other asset classes: shows the curated pinned[0..14]
+          list (same behavior as before) — those rosters are small
+          enough not to need volume sorting. */}
       <div className="flex-shrink-0 border-b border-white/[0.04] bg-black/40">
         <div className="flex items-center gap-0.5 px-2 sm:px-3 py-1 overflow-x-auto scrollbar-none" role="tablist" aria-label="Quick symbols">
-          {currentTab.pinned.slice(0, 14).map(sym => (
-            <button
-              key={sym.tvSymbol}
-              role="tab"
-              aria-selected={sym.tvSymbol === tvSymbol}
-              onClick={() => selectSymbol(sym)}
-              className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-all ${
-                sym.tvSymbol === tvSymbol
-                  ? 'bg-hub-yellow/15 text-hub-yellow'
-                  : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
-              }`}
-            >
-              {assetClass === 'crypto' && sym.icon && (
-                <TokenIconSimple symbol={sym.icon} size={12} />
-              )}
-              {sym.label}
-            </button>
-          ))}
+          {assetClass === 'crypto' ? (() => {
+            // Build the working set: favorites + recents (de-duped),
+            // then top-volume tickers to fill out to ~24 items.
+            const seen = new Set<string>();
+            const items: { label: string; kind: 'fav' | 'recent' | 'top' }[] = [];
+            for (const f of favorites) {
+              if (seen.has(f)) continue;
+              seen.add(f);
+              items.push({ label: f, kind: 'fav' });
+            }
+            for (const r of recents) {
+              if (seen.has(r)) continue;
+              seen.add(r);
+              items.push({ label: r, kind: 'recent' });
+              if (items.length >= 16) break;
+            }
+            for (const t of allTickers) {
+              if (items.length >= 24) break;
+              const up = t.symbol.toUpperCase();
+              if (seen.has(up)) continue;
+              seen.add(up);
+              items.push({ label: up, kind: 'top' });
+            }
+            // Fallback to curated list if /api/tickers hasn't loaded yet
+            if (items.length === 0) {
+              for (const p of currentTab.pinned.slice(0, 14)) {
+                items.push({ label: p.label, kind: 'top' });
+              }
+            }
+            return items.map(({ label, kind }) => {
+              const sel = label === displayLabel;
+              return (
+                <button
+                  key={`${kind}-${label}`}
+                  role="tab"
+                  aria-selected={sel}
+                  onClick={() => selectSymbol({ label, tvSymbol: tvSymbolFor(label), displayPair: '/USDT', icon: label.toLowerCase() })}
+                  title={kind === 'fav' ? 'Pinned' : kind === 'recent' ? 'Recently viewed' : `Top by 24h volume`}
+                  className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-all ${
+                    sel
+                      ? 'bg-hub-yellow/15 text-hub-yellow'
+                      : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
+                  }`}
+                >
+                  {kind === 'fav' && <Star className="w-2.5 h-2.5 text-hub-yellow fill-current shrink-0" />}
+                  <TokenIconSimple symbol={label.toLowerCase()} size={12} />
+                  {label}
+                </button>
+              );
+            });
+          })() : (
+            currentTab.pinned.slice(0, 14).map(sym => (
+              <button
+                key={sym.tvSymbol}
+                role="tab"
+                aria-selected={sym.tvSymbol === tvSymbol}
+                onClick={() => selectSymbol(sym)}
+                className={`flex-shrink-0 flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-medium transition-all ${
+                  sym.tvSymbol === tvSymbol
+                    ? 'bg-hub-yellow/15 text-hub-yellow'
+                    : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
+                }`}
+              >
+                {sym.label}
+              </button>
+            ))
+          )}
         </div>
       </div>
+
+      {/* ─── Tools strip ─────────────────────────────────────────────
+          Compact one-row toolbar with InfoHub-deep-links for the
+          current symbol (crypto only — non-crypto asset classes hide
+          this row since most of these InfoHub features are perp-
+          focused). Each link prefills the destination page with the
+          active symbol via `?symbol=` so the user lands in context.
+
+          Plus chart actions: copy permalink, open in TradingView. */}
+      {assetClass === 'crypto' && (
+        <div className="flex-shrink-0 border-b border-white/[0.04] bg-black/30">
+          <div className="flex items-center gap-0.5 px-2 sm:px-3 py-1 overflow-x-auto scrollbar-none" role="toolbar" aria-label="Chart tools">
+            <span className="hidden sm:inline text-[9px] uppercase tracking-wider font-semibold text-neutral-600 mr-1.5 flex-shrink-0">Tools</span>
+            <ToolButton
+              icon={<Bell className="w-3 h-3" />}
+              label="Alert"
+              title="Set a price / funding alert for this symbol"
+              href={`/alerts?symbol=${encodeURIComponent(displayLabel)}`}
+            />
+            <ToolButton
+              icon={<Activity className="w-3 h-3" />}
+              label="Funding"
+              title="Compare funding rates across venues"
+              href={`/funding?symbol=${encodeURIComponent(displayLabel)}`}
+            />
+            <ToolButton
+              icon={<GitCompareArrows className="w-3 h-3" />}
+              label="Arb"
+              title="Funding-arb pairs involving this symbol"
+              href={`/spread-scanner?symbol=${encodeURIComponent(displayLabel)}`}
+            />
+            <ToolButton
+              icon={<Crosshair className="w-3 h-3" />}
+              label="Liq Map"
+              title="Liquidation levels heatmap"
+              href={`/liquidation-map?symbol=${encodeURIComponent(displayLabel)}`}
+            />
+            <ToolButton
+              icon={<Eye className="w-3 h-3" />}
+              label="OI"
+              title="Open interest across venues"
+              href={`/open-interest?symbol=${encodeURIComponent(displayLabel)}`}
+            />
+            <ToolButton
+              icon={<TrendingUp className="w-3 h-3" />}
+              label="Whales"
+              title="Largest holders + recent whale moves"
+              href={`/hl-whales?symbol=${encodeURIComponent(displayLabel)}`}
+            />
+            <div className="w-px h-4 bg-white/[0.06] mx-1 flex-shrink-0" />
+            <ToolButton
+              icon={<Link2 className="w-3 h-3" />}
+              label="Copy"
+              title="Copy a permalink to this exact chart (symbol + timeframe)"
+              onClick={() => {
+                if (typeof window === 'undefined') return;
+                const params = new URLSearchParams();
+                params.set('s', displayLabel);
+                params.set('tf', interval);
+                params.set('ac', assetClass);
+                const url = `${window.location.origin}/chart?${params.toString()}`;
+                navigator.clipboard?.writeText(url).catch(() => {});
+              }}
+            />
+            <ToolButton
+              icon={<Maximize2 className="w-3 h-3" />}
+              label="Fullscreen"
+              title="Fullscreen this chart"
+              onClick={() => {
+                const el = document.getElementById('main-content');
+                if (!el) return;
+                if (document.fullscreenElement) {
+                  document.exitFullscreen?.().catch(() => {});
+                } else {
+                  el.requestFullscreen?.().catch(() => {});
+                }
+              }}
+            />
+            <ToolButton
+              icon={<ExternalLink className="w-3 h-3" />}
+              label="TradingView"
+              title="Open this chart on TradingView.com"
+              href={`https://www.tradingview.com/chart/?symbol=${encodeURIComponent(tvSymbol)}`}
+              external
+            />
+          </div>
+        </div>
+      )}
 
       {/* ─── Feature hint (first visit only) ────── */}
       <div className="flex-shrink-0 px-2">
@@ -788,7 +1209,7 @@ function ChartPageInner() {
 
 export default function ChartPage() {
   return (
-    <Suspense fallback={<div className="h-screen w-screen bg-black" />}>
+    <Suspense fallback={<div className="h-full w-full bg-black" />}>
       <ChartPageInner />
     </Suspense>
   );
