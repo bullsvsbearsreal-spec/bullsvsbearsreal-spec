@@ -139,7 +139,16 @@ interface BlofinPositionsResponse {
     instType: string;          // "SWAP" for perps
     marginMode: 'cross' | 'isolated';
     positionSide: 'net' | 'long' | 'short';
-    positions: string;         // signed base-asset size (+ = long, - = short)
+    /**
+     * Signed CONTRACT COUNT (NOT base-currency size). Each contract is
+     * worth `instrument.contractValue` in the base asset, and contract
+     * values vary per pair: BTC-USDT = 0.001, ETH-USDT = 0.001,
+     * XRP-USDT = 100, DOGE-USDT = 1000, etc. Multiply by contractValue
+     * to convert to base-currency quantity for cross-exchange display.
+     * Christian reported this as "off by 10x/100x/1000x" — BTC showed
+     * 0.27 when his Blofin position was 270 contracts, etc. (May 2026).
+     */
+    positions: string;
     /** Same as `positions` when populated; included for clarity. */
     availablePositions?: string;
     averagePrice: string;      // entry
@@ -153,6 +162,64 @@ interface BlofinPositionsResponse {
     createTime?: string;
     updateTime?: string;
   }>;
+}
+
+/**
+ * Public market instruments endpoint — gives per-pair contract sizes
+ * needed to convert raw contract counts (in /positions) into base
+ * currency quantities. Cached in-process since these change very
+ * rarely (a new pair listing is the only normal mutation).
+ */
+interface BlofinInstrumentsResponse {
+  code: string;
+  data: Array<{
+    instId: string;
+    baseCurrency: string;
+    quoteCurrency: string;
+    /** Base-currency amount per contract. Multiply raw `positions` × this. */
+    contractValue: string;
+    contractType: 'linear' | 'inverse';
+    settleCurrency: string;
+    instType: string;          // 'SWAP' for perps
+    state: 'live' | string;
+  }>;
+}
+
+let instrumentsCache: { map: Map<string, number>; ts: number } | null = null;
+const INSTRUMENTS_TTL_MS = 30 * 60 * 1000; // 30 min — contract values change very rarely
+
+/**
+ * Fetch + cache the public instruments list so we can normalize raw
+ * contract counts to base-currency size. Best-effort: if the fetch
+ * fails we return an empty map and downstream defaults to contractValue=1
+ * (equivalent to the old behaviour, which is wrong but no-worse).
+ */
+async function fetchInstrumentsMap(): Promise<Map<string, number>> {
+  if (instrumentsCache && Date.now() - instrumentsCache.ts < INSTRUMENTS_TTL_MS) {
+    return instrumentsCache.map;
+  }
+  try {
+    const res = await fetch(`${BASE}/api/v1/market/instruments`, {
+      method: 'GET',
+      headers: { 'Accept': 'application/json' },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+    if (!res.ok) return instrumentsCache?.map ?? new Map();
+    const json = (await res.json()) as BlofinInstrumentsResponse;
+    if (String(json.code) !== '0' || !Array.isArray(json.data)) {
+      return instrumentsCache?.map ?? new Map();
+    }
+    const map = new Map<string, number>();
+    for (const inst of json.data) {
+      if (!inst.instId || !inst.contractValue) continue;
+      const cv = Number(inst.contractValue);
+      if (Number.isFinite(cv) && cv > 0) map.set(inst.instId, cv);
+    }
+    instrumentsCache = { map, ts: Date.now() };
+    return map;
+  } catch {
+    return instrumentsCache?.map ?? new Map();
+  }
 }
 
 /* ─── Symbol normalization ───────────────────────────────────────── */
@@ -196,9 +263,14 @@ export const blofinClient: ExchangeClient = {
   },
 
   async fetchPositions(creds): Promise<NormalizedPosition[]> {
-    const json = await signedRequest<BlofinPositionsResponse>(
-      '/api/v1/account/positions', 'GET', '', '', creds,
-    );
+    // Fire both calls in parallel — public instruments fetch caches
+    // for 30 min, so it's typically a no-op after warmup.
+    const [json, contractValueMap] = await Promise.all([
+      signedRequest<BlofinPositionsResponse>(
+        '/api/v1/account/positions', 'GET', '', '', creds,
+      ),
+      fetchInstrumentsMap(),
+    ]);
     const out: NormalizedPosition[] = [];
     for (const p of json.data ?? []) {
       const szi = Number(p.positions);
@@ -210,7 +282,18 @@ export const blofinClient: ExchangeClient = {
       if (p.positionSide === 'long') side = 'long';
       else if (p.positionSide === 'short') side = 'short';
       else side = szi > 0 ? 'long' : 'short';
-      const size = Math.abs(szi);
+      // Per-pair contract size — christian flagged BTC, BNB, TAO, ONDO,
+      // HYPE, AAVE, XRP, DOGE, BONK, XLM all displayed wrong because
+      // we were treating raw contract count as base-currency size.
+      // Verified live (May 2026): BTC-USDT contractValue=0.001 → 270
+      // contracts × 0.001 = 0.27 BTC. Without this, /positions inflated
+      // BTC quantity by 1000x and XRP/DOGE by 100-1000x in the wrong
+      // direction (contractValue > 1 for cheap tokens). Pairs with
+      // contractValue=1 (LINK / S / FARTCOIN / SUI / PENGU per
+      // christian's report) coincidentally appeared correct.
+      const contractValue = contractValueMap.get(p.instId) ?? 1;
+      const contractCount = Math.abs(szi);
+      const size = contractCount * contractValue;
       const entry = Number(p.averagePrice) || 0;
       const mark = Number(p.markPrice);
       const positionValue = Number.isFinite(mark) && mark > 0
