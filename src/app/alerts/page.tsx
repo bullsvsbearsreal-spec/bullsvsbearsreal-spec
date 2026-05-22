@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
@@ -113,9 +114,14 @@ function PushToggle() {
 
 export default function AlertsPage() {
   const { data: session, status } = useSession();
+  const searchParams = useSearchParams();
+  // /chart's Tools strip links here with ?symbol=BTC to drop the user
+  // into the new-alert flow with the symbol pre-filled. We also auto-
+  // open the form so the user doesn't have to click "Add alert" first.
+  const prefilledSymbol = (searchParams.get('symbol') || '').toUpperCase().trim().slice(0, 16);
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [triggered, setTriggered] = useState<TriggeredAlert[]>([]);
-  const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(!!prefilledSymbol);
 
   // Notification preferences
   const [emailEnabled, setEmailEnabled] = useState(true);
@@ -138,8 +144,10 @@ export default function AlertsPage() {
   const [tgCopied, setTgCopied] = useState(false);
   const [tgEditing, setTgEditing] = useState(false);
 
-  // Form state
-  const [formSymbol, setFormSymbol] = useState('BTC');
+  // Form state — `prefilledSymbol` from ?symbol= seeds the picker so a
+  // user landing here from /chart's Alert tool sees their symbol pre-
+  // populated. Fallback BTC when no param.
+  const [formSymbol, setFormSymbol] = useState(prefilledSymbol || 'BTC');
   const [formMetric, setFormMetric] = useState<AlertMetric>('price');
   const [formOperator, setFormOperator] = useState<AlertOperator>('gt');
   const [formValue, setFormValue] = useState('');

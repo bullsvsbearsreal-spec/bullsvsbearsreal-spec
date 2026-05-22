@@ -1247,8 +1247,8 @@ function ChartPageInner() {
             <ToolButton
               icon={<Activity className="w-3 h-3" />}
               label="Funding"
-              title="Compare funding rates across venues"
-              href={`/funding?symbol=${encodeURIComponent(displayLabel)}`}
+              title="Per-venue funding rates for this symbol"
+              href={`/funding/${encodeURIComponent(displayLabel)}`}
             />
             <ToolButton
               icon={<GitCompareArrows className="w-3 h-3" />}
