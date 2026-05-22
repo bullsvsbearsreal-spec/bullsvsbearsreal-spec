@@ -52,23 +52,26 @@ export interface AutoTweetTickStats {
  *  taken in the last 15 min (matches snapshot cron cadence). */
 async function loadFundingSnapshots(): Promise<FundingSnapshot[]> {
   const sql = getSQL();
+  // interval_h was added to funding_snapshots (lib/db/index.ts:101) so the
+  // detector can normalize venue-specific cadences (HL=1h, Kraken=4h,
+  // Blofin=24h) to 8h before applying THRESHOLDS.fundingExtreme. Without
+  // pulling it the detector treated everything as 8h — HL rates were
+  // 8x-overstated and Blofin rates 3x-overstated when crossing the
+  // threshold, producing noisy/false-positive tweets.
   const rows = await sql`
     SELECT DISTINCT ON (symbol, exchange)
-      symbol, exchange, rate, ts
+      symbol, exchange, rate, interval_h, ts
     FROM funding_snapshots
     WHERE ts > NOW() - INTERVAL '15 minutes'
       AND rate IS NOT NULL
     ORDER BY symbol, exchange, ts DESC
-  ` as Array<{ symbol: string; exchange: string; rate: number; ts: Date }>;
-  // Funding intervals aren't stored per-row, so we pass null and let
-  // the detector treat as 8h. For most majors this is correct (8h CEX
-  // funding); Hyperliquid (1h) over-reports magnitude but the detector
-  // still emits if 8h-normalized magnitude crosses the threshold.
+  ` as Array<{ symbol: string; exchange: string; rate: number; interval_h: number | null; ts: Date }>;
   return rows.map(r => ({
     symbol: r.symbol,
     exchange: r.exchange,
     rate: r.rate,
     fundingInterval: null,
+    intervalHours: r.interval_h,
     ts: new Date(r.ts).getTime(),
   }));
 }

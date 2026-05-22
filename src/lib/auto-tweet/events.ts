@@ -43,8 +43,17 @@ const MAJOR_FUNDING_SYMBOLS = new Set([
 ]);
 
 /** Normalise any-interval funding rate to its 8h equivalent so all
- *  detectors compare apples-to-apples. */
-function normalize8h(rate: number, interval: string | null): number {
+ *  detectors compare apples-to-apples.
+ *
+ *  `intervalH` is the precise per-symbol hours from funding_snapshots
+ *  (1, 2, 4, 8, 24). Prefer it when set — Blofin's 24h pairs need
+ *  the explicit divisor since the enum bucket maxes out at 8h. The
+ *  enum-only fallback handles older snapshot rows from before
+ *  interval_h was populated. */
+function normalize8h(rate: number, interval: string | null, intervalH?: number | null): number {
+  if (intervalH != null && Number.isFinite(intervalH) && intervalH > 0) {
+    return rate * (8 / intervalH);
+  }
   if (interval === '1h') return rate * 8;
   if (interval === '4h') return rate * 2;
   return rate; // 8h or unknown — treat as already 8h
@@ -63,7 +72,7 @@ export function detectFundingExtremes(
     if (!MAJOR_FUNDING_VENUES.has(s.exchange)) continue;
     if (!Number.isFinite(s.rate)) continue;
 
-    const rate8h = normalize8h(s.rate, s.fundingInterval);
+    const rate8h = normalize8h(s.rate, s.fundingInterval, s.intervalHours);
     if (Math.abs(rate8h) < THRESHOLDS.fundingExtreme) continue;
 
     // Bucket eventId by 8h window so we don't re-tweet the same

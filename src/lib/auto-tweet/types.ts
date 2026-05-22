@@ -41,6 +41,12 @@ export interface FundingSnapshot {
   rate: number;
   /** Funding cadence ('1h' / '4h' / '8h' / null). */
   fundingInterval: string | null;
+  /** Precise per-symbol settlement interval in hours when known
+   *  (1, 2, 4, 8, 24). Wins over fundingInterval for 8h-normalization
+   *  in events.ts — venues like Blofin (24h) outside the enum bucket
+   *  need this or the detector treats them as 8h. Persisted to
+   *  funding_snapshots.interval_h by the snapshot cron. */
+  intervalHours?: number | null;
   /** ms-epoch when the snapshot was captured upstream. */
   ts: number;
 }
