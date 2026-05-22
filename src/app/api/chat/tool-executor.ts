@@ -406,9 +406,15 @@ async function findArbitrage(input: ToolInput, ctx: ExecuteContext): Promise<str
   const rates: any[] = data.data || [];
   const minSpread = input.minSpread || 0.01;
 
-  // Normalize all rates to 8h equivalent for apples-to-apples comparison
+  // Normalize all rates to 8h equivalent for apples-to-apples comparison.
+  // Prefer precise per-symbol hours when set (e.g. 24 for Blofin's
+  // daily-settle pairs) over the enum bucket — without this the chat
+  // tool's funding-arb rankings 3x-overstate Blofin rates.
   const intervalMultiplier: Record<string, number> = { '1h': 8, '4h': 2, '8h': 1 };
-  function to8h(rate: number, interval: string): number {
+  function to8h(rate: number, interval: string, intervalH?: number | null): number {
+    if (intervalH != null && Number.isFinite(intervalH) && intervalH > 0) {
+      return rate * (8 / intervalH);
+    }
     return rate * (intervalMultiplier[interval] || 1);
   }
 
@@ -433,13 +439,14 @@ async function findArbitrage(input: ToolInput, ctx: ExecuteContext): Promise<str
     if (symbolRates.length < 2) return;
     // Sort by normalized 8h-equivalent rate
     const sorted = symbolRates.sort((a: any, b: any) =>
-      to8h(a.fundingRate, a.fundingInterval || '8h') - to8h(b.fundingRate, b.fundingInterval || '8h'),
+      to8h(a.fundingRate, a.fundingInterval || '8h', a.fundingIntervalHours) -
+      to8h(b.fundingRate, b.fundingInterval || '8h', b.fundingIntervalHours),
     );
     const lowest = sorted[0]; // Most negative = pay this side to go short (or collect to go long)
     const highest = sorted[sorted.length - 1]; // Most positive
 
-    const normLow = to8h(lowest.fundingRate, lowest.fundingInterval || '8h');
-    const normHigh = to8h(highest.fundingRate, highest.fundingInterval || '8h');
+    const normLow = to8h(lowest.fundingRate, lowest.fundingInterval || '8h', lowest.fundingIntervalHours);
+    const normHigh = to8h(highest.fundingRate, highest.fundingInterval || '8h', highest.fundingIntervalHours);
     const spread = normHigh - normLow;
     if (spread < minSpread) return;
 

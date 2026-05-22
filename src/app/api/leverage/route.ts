@@ -27,6 +27,9 @@ interface FundingRow {
   exchange: string;
   fundingRate: number;          // % per interval
   fundingInterval?: '1h' | '4h' | '8h';
+  /** Precise per-symbol interval in hours (e.g. 24 for Blofin's
+   *  daily-settle pairs). Honored over the enum bucket when set. */
+  fundingIntervalHours?: number | null;
   markPrice?: number;
 }
 interface OIRow {
@@ -71,7 +74,18 @@ interface LeverageResponse {
 const cache = new Map<string, { body: LeverageResponse; ts: number }>();
 const CACHE_TTL = 60_000;
 
-function normalizeFundingTo8h(rate: number, interval: '1h' | '4h' | '8h' | undefined): number {
+function normalizeFundingTo8h(
+  rate: number,
+  interval: '1h' | '4h' | '8h' | undefined,
+  intervalH?: number | null,
+): number {
+  // Precise per-symbol hours win when set — Blofin (24h) emits the
+  // closest enum bucket '8h' alongside fundingIntervalHours=24, and
+  // without honoring the precise value this normalizer treats it as
+  // already-8h and the rate is 3x-overstated in leverage rankings.
+  if (intervalH != null && Number.isFinite(intervalH) && intervalH > 0) {
+    return rate * (8 / intervalH);
+  }
   if (!interval || interval === '8h') return rate;
   if (interval === '4h') return rate * 2;
   if (interval === '1h') return rate * 8;
@@ -132,7 +146,7 @@ export async function GET(_request: NextRequest) {
   const fundingBySym = new Map<string, FundingBySym[]>();
   for (const r of fundingRows) {
     if (!r.symbol || !Number.isFinite(r.fundingRate)) continue;
-    const rate8h = normalizeFundingTo8h(r.fundingRate, r.fundingInterval);
+    const rate8h = normalizeFundingTo8h(r.fundingRate, r.fundingInterval, r.fundingIntervalHours);
     const list = fundingBySym.get(r.symbol) ?? [];
     list.push({ exchange: r.exchange, rate8h });
     fundingBySym.set(r.symbol, list);
