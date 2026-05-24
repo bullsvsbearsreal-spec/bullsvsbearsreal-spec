@@ -27,26 +27,40 @@ into a quant-desk co-pilot that:
 
 ## Architecture changes
 
-### Model host: Anthropic-direct → DO Serverless Inference
+### Model host: Anthropic-direct → DO Serverless Inference (GPT-5)
 
 We're swapping the Anthropic SDK for DO Serverless Inference's OpenAI-compatible
-chat-completions endpoint. Same Claude model under the hood, billed through DO
-(same infra as everything else), unified region (FRA1).
+chat-completions endpoint. Billed through DO (same infra as everything else),
+unified region (FRA1).
 
 ```
 Endpoint:  https://inference.do-ai.run/v1/chat/completions
 Auth:      Authorization: Bearer ${DO_INFERENCE_API_KEY}
-Models:    anthropic-claude-sonnet-4   (primary — what we use for everything)
-           anthropic-claude-opus-4     (reserved for trade-idea generation if we
-                                       decide Sonnet 4 isn't enough)
+Models:    openai-gpt-5             (primary — best cost/quality on DO)
+           anthropic-claude-opus-4  (reserved for trade-idea synthesis in PR2)
 ```
 
-**Known tradeoff:** DO Serverless Inference's Anthropic catalog shows Claude
-**Sonnet 4** (not 4.5 or 4.6). Anthropic-direct gives us 4.6 today. The bot
-will be 1-2 minor versions behind on intelligence in exchange for the
-unified-billing/single-vendor benefits. If quality regresses noticeably we
-switch back to Anthropic-direct via a single env-var change (the OpenAI-
-compatible shim accepts the same message format as Anthropic native).
+**Why GPT-5 over Claude Sonnet 4:** DO pricing at the time of writing:
+- `openai-gpt-5`:                    **$1.25 input / $10 output** per 1M tokens
+- `anthropic-claude-sonnet-4`:       $3.00 / $15
+- `anthropic-claude-opus-4` / `4.5`: $5.00 / $25
+
+GPT-5 is ~42% cheaper than Sonnet 4 at frontier intelligence. Tool-use is
+mature on the OpenAI side (which is the bot's primary load — every Hub
+query fans out to 1-3 of our market-data tools).
+
+**Switchable:** `BOT_LLM_MODEL` env var swaps the default without a deploy.
+If GPT-5 disappoints on a specific query class we A/B against Sonnet 4 or
+Opus 4 by changing the env var, no code change.
+
+**Cost estimate per message** (assuming ~2200 input + 800 output tokens
+with 2-3 tool calls):
+- GPT-5: ~$0.011 / msg
+- Claude Sonnet 4: ~$0.019 / msg
+- Claude Opus 4: ~$0.031 / msg
+
+At a 50-msg/day cap × 100 Pro users that's ~$55/day at GPT-5 vs ~$95/day
+at Sonnet 4.
 
 ### New: `DO_INFERENCE_API_KEY` env var
 
@@ -383,18 +397,14 @@ PR 1 lands the foundation + on-demand `/ideas`. PR 2 adds the proactive layer.
 
 ## Open questions for review
 
-1. **DO Sonnet 4 vs Anthropic-direct Sonnet 4.6** — accept the version lag, or
-   stay on Anthropic-direct? My recommendation: accept the lag for v1, evaluate
-   after a week of real usage. If quality drops noticeably, switch back via
-   env var.
+1. **Model choice** — RESOLVED: GPT-5 primary, Opus 4 reserved for trade-idea
+   synthesis in PR2. Switchable via `BOT_LLM_MODEL` env var.
 
-2. **Free tier on chat** — should Free users get casual chat at all, or
-   should it be "link your account to chat" → upgrade to Pro to actually use it?
-   Doc above assumes Free gets 50/day chat. Alternative: 10/day for Free.
+2. **Free tier on chat** — RESOLVED: 50/day soft cap across all tiers. Trade
+   ideas remain Pro+-gated.
 
-3. **/recap output format** — bullet summary, paragraph, or both? Doc above
-   doesn't lock it. I'd default to a 3-bullet "Topics you discussed: X, Y, Z.
-   Bot's latest take on each: ..." but happy to tune.
+3. **/recap output format** — RESOLVED: 3-bullet summary, one topic per bullet
+   with the bot's most recent take. Locked in PR1's recap prompt.
 
 4. **Signal scorer weights** — the 30/25/20/15/10 weights above are first-pass
    estimates. We'll tune from real outcomes once `/bot/track` has 30 days of data.
