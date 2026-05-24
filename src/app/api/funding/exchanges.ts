@@ -1075,18 +1075,25 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           const interval = intervalNum === 1 ? '1h' : intervalNum === 4 ? '4h' : '8h';
           const markPrice = parseFloat(item.markPrice) || 0;
           const indexPrice = parseFloat(item.lastPrice) || 0;
+          // Bitunix's API doesn't expose a separate index price — they
+          // serve lastPrice in that slot. For liquid pairs the result
+          // is close enough to a true mark-vs-index premium that the
+          // Binance formula gives a usable prediction; for thinly-
+          // traded pairs the lastPrice may be stale or missing.
+          //
+          // Fall back to the current rate when the premium helper
+          // returns undefined (missing/zero prices on 4 pairs in
+          // AB-Samurai's audit). Bitunix accrues continuously across
+          // its 1h/4h/8h cycles, so the current rate is the best
+          // available proxy when premium can't be computed. Closes the
+          // 617/621 gap to 621/621.
+          const premiumPredicted = binanceStylePredictedPercent(markPrice, indexPrice);
+          const predictedRate = premiumPredicted != null ? premiumPredicted : rate;
           return {
             symbol: item.symbol.replace('USDT', ''),
             exchange: 'Bitunix',
             fundingRate: rate,
-            // Bitunix's API doesn't expose a separate index price — they
-            // serve lastPrice in that slot. For liquid pairs the result
-            // is close enough to a true mark-vs-index premium that the
-            // Binance formula gives a usable prediction; for thinly-
-            // traded pairs the lastPrice may be stale-vs-mid. Partner
-            // (AB-Samurai) asked for any signal here vs null on 620
-            // pairs — better an approximation than nothing.
-            predictedRate: binanceStylePredictedPercent(markPrice, indexPrice),
+            predictedRate,
             fundingInterval: interval as '1h' | '4h' | '8h',
             markPrice,
             indexPrice,
@@ -1250,16 +1257,29 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           if (activeContracts && activeContracts.size > 0 && !activeContracts.has(code)) return false;
           return true;
         })
-        .map((item: any) => ({
-          symbol: item.contract_code.replace('-USDT', ''),
-          exchange: 'HTX',
-          fundingRate: (parseFloat(item.funding_rate) || 0) * 100,
-          fundingInterval: '8h' as const,
-          markPrice: priceMap.get(item.contract_code) || 0,
-          indexPrice: 0,
-          nextFundingTime: item.next_funding_time || Date.now() + 28800000,
-          type: 'cex' as const,
-        }))
+        .map((item: any) => {
+          // HTX's swap_batch_funding_rate exposes `estimated_rate` — the
+          // predicted next funding rate. Without this AB-Samurai's coverage
+          // matrix reported 0/192 predictedRate for HTX (5/15 audit).
+          // We don't have indexPrice from the funding endpoint and the
+          // tickers join only gives mark, so the binanceStyle premium
+          // helper isn't usable here — `estimated_rate` is the authoritative
+          // value HTX itself shows in its UI.
+          const estimatedPct = item.estimated_rate != null
+            ? (parseFloat(item.estimated_rate) || 0) * 100
+            : undefined;
+          return {
+            symbol: item.contract_code.replace('-USDT', ''),
+            exchange: 'HTX',
+            fundingRate: (parseFloat(item.funding_rate) || 0) * 100,
+            predictedRate: estimatedPct != null && Number.isFinite(estimatedPct) ? estimatedPct : undefined,
+            fundingInterval: '8h' as const,
+            markPrice: priceMap.get(item.contract_code) || 0,
+            indexPrice: 0,
+            nextFundingTime: item.next_funding_time || Date.now() + 28800000,
+            type: 'cex' as const,
+          };
+        })
         .filter((item: any) => !isNaN(item.fundingRate));
     },
   },
