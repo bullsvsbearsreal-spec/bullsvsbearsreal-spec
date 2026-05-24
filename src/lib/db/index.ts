@@ -2205,6 +2205,199 @@ export async function pruneOldTelegramConversations(days: number = 90): Promise<
   }
 }
 
+// ─── Hub Bot v2 — trade idea persistence ────────────────────────────────────
+
+export interface TradeIdeaRow {
+  id: string;
+  symbol: string;
+  side: 'long' | 'short';
+  setup_type: string;
+  score: number;
+  signal_stack: any;
+  invalidation: number | null;
+  horizon_h: number;
+  pushed_to: number[];
+  status: 'live' | 'invalidated' | 'expired';
+  closed_at: Date | null;
+  outcome_pct: number | null;
+  created_at: Date;
+}
+
+export interface TradeIdeaInsert {
+  symbol: string;
+  side: 'long' | 'short';
+  setupType: string;
+  score: number;
+  signalStack: unknown;
+  invalidation: number | null;
+  horizonH: number;
+  pushedTo: number[];
+}
+
+/** Insert a new trade idea. Returns the row id for follow-up updates. */
+export async function insertTradeIdea(idea: TradeIdeaInsert): Promise<string | null> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      INSERT INTO bot_trade_ideas
+        (symbol, side, setup_type, score, signal_stack, invalidation, horizon_h, pushed_to)
+      VALUES (
+        ${idea.symbol}, ${idea.side}, ${idea.setupType}, ${idea.score},
+        ${JSON.stringify(idea.signalStack)}::jsonb, ${idea.invalidation},
+        ${idea.horizonH}, ${idea.pushedTo}
+      )
+      RETURNING id
+    `;
+    return rows[0]?.id?.toString() ?? null;
+  } catch (e) {
+    console.error('DB insertTradeIdea error:', e);
+    return null;
+  }
+}
+
+/**
+ * Read all currently-live ideas (status='live'). Used by the watch-ideas
+ * cron to check each against current market state for invalidation/expiry.
+ */
+export async function listLiveTradeIdeas(): Promise<TradeIdeaRow[]> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT id, symbol, side, setup_type, score, signal_stack,
+             invalidation, horizon_h, pushed_to, status, closed_at,
+             outcome_pct, created_at
+      FROM bot_trade_ideas
+      WHERE status = 'live'
+      ORDER BY created_at DESC
+      LIMIT 200
+    `;
+    return rows.map(_mapTradeIdeaRow);
+  } catch (e) {
+    console.error('DB listLiveTradeIdeas error:', e);
+    return [];
+  }
+}
+
+/**
+ * Read the most recent N ideas regardless of status. Used by /bot/track
+ * for the public track-record view.
+ */
+export async function listRecentTradeIdeas(limit: number = 100): Promise<TradeIdeaRow[]> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT id, symbol, side, setup_type, score, signal_stack,
+             invalidation, horizon_h, pushed_to, status, closed_at,
+             outcome_pct, created_at
+      FROM bot_trade_ideas
+      WHERE created_at > NOW() - INTERVAL '90 days'
+      ORDER BY created_at DESC
+      LIMIT ${Math.max(1, Math.min(500, limit))}
+    `;
+    return rows.map(_mapTradeIdeaRow);
+  } catch (e) {
+    console.error('DB listRecentTradeIdeas error:', e);
+    return [];
+  }
+}
+
+/**
+ * Read the most recent idea for one symbol (any side, any status) so the
+ * scan cron can dedup back-to-back pushes for the same coin.
+ */
+export async function getLatestIdeaForSymbol(symbol: string): Promise<TradeIdeaRow | null> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT id, symbol, side, setup_type, score, signal_stack,
+             invalidation, horizon_h, pushed_to, status, closed_at,
+             outcome_pct, created_at
+      FROM bot_trade_ideas
+      WHERE symbol = ${symbol}
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    return rows.length > 0 ? _mapTradeIdeaRow(rows[0]) : null;
+  } catch (e) {
+    console.error('DB getLatestIdeaForSymbol error:', e);
+    return null;
+  }
+}
+
+/** Count ideas pushed in the last N hours. Used for the daily push cap. */
+export async function countIdeasPushedSince(hours: number): Promise<number> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT COUNT(*)::int AS n
+      FROM bot_trade_ideas
+      WHERE created_at > NOW() - (${hours} || ' hours')::INTERVAL
+        AND array_length(pushed_to, 1) > 0
+    `;
+    return Number(rows[0]?.n ?? 0);
+  } catch (e) {
+    console.error('DB countIdeasPushedSince error:', e);
+    return 0;
+  }
+}
+
+/** Update the status of a live idea to invalidated or expired. */
+export async function closeTradeIdea(
+  id: string,
+  status: 'invalidated' | 'expired',
+  outcomePct: number | null,
+): Promise<void> {
+  try {
+    const sql = getSQL();
+    await sql`
+      UPDATE bot_trade_ideas
+      SET status = ${status},
+          closed_at = NOW(),
+          outcome_pct = ${outcomePct}
+      WHERE id = ${id} AND status = 'live'
+    `;
+  } catch (e) {
+    console.error('DB closeTradeIdea error:', e);
+  }
+}
+
+/** All chat ids opted-in to proactive idea pushes (active, not muted). */
+export async function getIdeaPushSubscribers(): Promise<number[]> {
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT chat_id
+      FROM telegram_links
+      WHERE active = true
+        AND idea_notifications = true
+        AND (muted_until IS NULL OR muted_until < NOW())
+      LIMIT 10000
+    `;
+    return rows.map((r: any) => Number(r.chat_id));
+  } catch (e) {
+    console.error('DB getIdeaPushSubscribers error:', e);
+    return [];
+  }
+}
+
+function _mapTradeIdeaRow(r: any): TradeIdeaRow {
+  return {
+    id: String(r.id),
+    symbol: String(r.symbol),
+    side: r.side as 'long' | 'short',
+    setup_type: String(r.setup_type),
+    score: Number(r.score),
+    signal_stack: r.signal_stack,
+    invalidation: r.invalidation === null ? null : Number(r.invalidation),
+    horizon_h: Number(r.horizon_h),
+    pushed_to: Array.isArray(r.pushed_to) ? r.pushed_to.map((n: any) => Number(n)) : [],
+    status: r.status as 'live' | 'invalidated' | 'expired',
+    closed_at: r.closed_at ? new Date(r.closed_at) : null,
+    outcome_pct: r.outcome_pct === null ? null : Number(r.outcome_pct),
+    created_at: new Date(r.created_at),
+  };
+}
+
 // ─── Alert Notification Functions ────────────────────────────────────────────
 
 export interface AlertUserRow {
