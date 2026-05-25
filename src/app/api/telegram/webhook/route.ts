@@ -35,12 +35,41 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import {
-  sendMessage,
-  sendMessageWithId,
-  editMessage,
-  answerCallbackQuery,
+  sendMessage as _sendMessageRaw,
+  editMessage as _editMessageRaw,
+  answerCallbackQuery as _answerCallbackQueryRaw,
+  getChatBotToken,
   type InlineKeyboardMarkup,
 } from '@/lib/telegram';
+
+// Bind the chat-bot token to every helper used in THIS file so the webhook
+// route always replies as @ihhubbot (TELEGRAM_CHAT_BOT_TOKEN) — never as
+// the alert bot (TELEGRAM_BOT_TOKEN). The original helpers stay generic
+// for alert/whale-watch crons that send via the default token.
+async function sendMessage(
+  chatId: string | number,
+  text: string,
+  parseMode: 'HTML' | 'Markdown' | 'MarkdownV2' = 'HTML',
+  replyMarkup?: InlineKeyboardMarkup,
+): Promise<boolean> {
+  return _sendMessageRaw(chatId, text, parseMode, replyMarkup, getChatBotToken());
+}
+async function editMessage(
+  chatId: string | number,
+  messageId: number,
+  text: string,
+  parseMode: 'HTML' | 'Markdown' | 'MarkdownV2' = 'HTML',
+  replyMarkup?: InlineKeyboardMarkup,
+): Promise<boolean> {
+  return _editMessageRaw(chatId, messageId, text, parseMode, replyMarkup, getChatBotToken());
+}
+async function answerCallbackQuery(
+  callbackQueryId: string,
+  text?: string,
+  showAlert?: boolean,
+): Promise<boolean> {
+  return _answerCallbackQueryRaw(callbackQueryId, text, showAlert, getChatBotToken());
+}
 import { ALL_EXCHANGES } from '@/lib/constants/exchanges';
 import {
   initDB, isDBConfigured,

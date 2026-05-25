@@ -1,7 +1,29 @@
 // Telegram Bot API helper — Hub (InfoHub AI Agent)
+//
+// Two-bot architecture (May 2026):
+//   @InfoHubRadarBot — alerts, daily summary, whale-watch pings (OUTBOUND)
+//   @ihhubbot       — AI chat + trade ideas (INBOUND webhook + OUTBOUND replies)
+//
+// Env vars:
+//   TELEGRAM_BOT_TOKEN      → alert bot (default for outbound sendMessage)
+//   TELEGRAM_CHAT_BOT_TOKEN → chat bot (passed explicitly by webhook route via
+//                             getChatBotToken())
+//
+// All helpers accept an optional `botToken` arg. When omitted they fall back
+// to TELEGRAM_BOT_TOKEN, keeping the alert/cron call sites unchanged.
 
-const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
-const API_BASE = `https://api.telegram.org/bot${BOT_TOKEN}`;
+const DEFAULT_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
+
+function apiBaseFor(botToken?: string): string {
+  const token = (botToken || DEFAULT_BOT_TOKEN).trim();
+  return `https://api.telegram.org/bot${token}`;
+}
+
+/** Returns the chat bot token if configured, else falls back to the default
+ *  alert-bot token (single-bot deployments still work). */
+export function getChatBotToken(): string {
+  return (process.env.TELEGRAM_CHAT_BOT_TOKEN || DEFAULT_BOT_TOKEN || '').trim();
+}
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -31,6 +53,7 @@ export async function sendMessage(
   text: string,
   parseMode: 'HTML' | 'Markdown' | 'MarkdownV2' = 'HTML',
   replyMarkup?: InlineKeyboardMarkup,
+  botToken?: string,
 ): Promise<boolean> {
   try {
     const payload: Record<string, unknown> = {
@@ -41,7 +64,7 @@ export async function sendMessage(
     };
     if (replyMarkup) payload.reply_markup = replyMarkup;
 
-    const res = await fetch(`${API_BASE}/sendMessage`, {
+    const res = await fetch(`${apiBaseFor(botToken)}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -68,6 +91,7 @@ export async function sendMessageWithId(
   text: string,
   parseMode: 'HTML' | 'Markdown' | 'MarkdownV2' = 'HTML',
   replyMarkup?: InlineKeyboardMarkup,
+  botToken?: string,
 ): Promise<number> {
   try {
     const payload: Record<string, unknown> = {
@@ -78,7 +102,7 @@ export async function sendMessageWithId(
     };
     if (replyMarkup) payload.reply_markup = replyMarkup;
 
-    const res = await fetch(`${API_BASE}/sendMessage`, {
+    const res = await fetch(`${apiBaseFor(botToken)}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -104,6 +128,7 @@ export async function editMessage(
   text: string,
   parseMode: 'HTML' | 'Markdown' | 'MarkdownV2' = 'HTML',
   replyMarkup?: InlineKeyboardMarkup,
+  botToken?: string,
 ): Promise<boolean> {
   try {
     const payload: Record<string, unknown> = {
@@ -115,7 +140,7 @@ export async function editMessage(
     };
     if (replyMarkup) payload.reply_markup = replyMarkup;
 
-    const res = await fetch(`${API_BASE}/editMessageText`, {
+    const res = await fetch(`${apiBaseFor(botToken)}/editMessageText`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -136,9 +161,10 @@ export async function answerCallbackQuery(
   callbackQueryId: string,
   text?: string,
   showAlert?: boolean,
+  botToken?: string,
 ): Promise<boolean> {
   try {
-    const res = await fetch(`${API_BASE}/answerCallbackQuery`, {
+    const res = await fetch(`${apiBaseFor(botToken)}/answerCallbackQuery`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -160,11 +186,12 @@ export async function answerCallbackQuery(
 export async function setWebhook(
   url: string,
   secret?: string,
+  botToken?: string,
 ): Promise<Record<string, unknown>> {
   const payload: Record<string, unknown> = { url };
   if (secret) payload.secret_token = secret;
 
-  const res = await fetch(`${API_BASE}/setWebhook`, {
+  const res = await fetch(`${apiBaseFor(botToken)}/setWebhook`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
