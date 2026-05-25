@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   decideAction, computeOutcomePct,
-} from '@/app/api/cron/watch-ideas/route';
+} from '@/lib/bot/watch-ideas-logic';
 import type { TradeIdeaRow } from '@/lib/db';
 
 function row(over: Partial<TradeIdeaRow>): TradeIdeaRow {
