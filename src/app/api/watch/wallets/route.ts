@@ -108,8 +108,19 @@ export async function POST(req: NextRequest) {
     // Pro/Whale users understand the cap is the cron-safety ceiling
     // (a temporary limit while we expand snapshot capacity).
     const isTierLimited = Number.isFinite(tierCap) && tierCap <= MAX_WATCHED_WALLETS;
-    const upsell = tier === 'free'
-      ? ' Upgrade to Pro on /pricing for a higher cap.'
+    // Suggest the next tier up (Free → Trader, Trader → Pro, Pro →
+    // Whale) and derive the cap from TIER_LIMITS so a future tier
+    // restructure doesn't silently leave stale numbers in errors.
+    const nextTier =
+      tier === 'free'   ? 'trader' :
+      tier === 'trader' ? 'pro'    :
+      tier === 'pro'    ? 'whale'  : null;
+    const nextLimit = nextTier ? TIER_LIMITS[nextTier].maxWatchedWallets : null;
+    const nextLabel = nextLimit !== null
+      ? (Number.isFinite(nextLimit) ? `${nextLimit} watched wallets` : 'unlimited watched wallets')
+      : '';
+    const upsell = nextTier && nextLabel
+      ? ` Upgrade to ${nextTier[0].toUpperCase()}${nextTier.slice(1)} on /pricing for ${nextLabel}.`
       : '';
     const reason = isTierLimited
       ? `Your ${tier} tier allows ${effectiveCap} watched wallets.${upsell}`

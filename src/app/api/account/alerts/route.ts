@@ -108,7 +108,9 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  // Per-tier alert-rule cap (Free 5 / Pro 50 / Whale Unlimited per /pricing).
+  // Per-tier alert-rule cap (Free 5 / Trader 15 / Pro 75 / Whale ∞
+  // per /pricing — these numbers live in TIER_LIMITS so this comment
+  // intentionally doesn't hardcode them; just sketches the shape).
   // Only enforced on *new* rules — flipping enable/disable or changing
   // channels on an existing rule should always work (otherwise a Free
   // user who hit the cap then upgraded then downgraded couldn't manage
@@ -120,9 +122,15 @@ export async function POST(req: NextRequest) {
     const existing = await listUserAlertRules(session.user.id);
     const isNewRule = !existing.some(r => r.kind === kind);
     if (isNewRule && existing.length >= tierCap) {
-      const upsell = tier === 'free'
-        ? ' Upgrade to Pro on /pricing for 50 alerts, or Whale for unlimited.'
-        : ' Upgrade to Whale on /pricing for unlimited alerts.';
+      // Derive the upsell copy from TIER_LIMITS so the next price
+      // restructure doesn't silently leave stale numbers in error
+      // messages. Suggest the next-up tier, not always Pro/Whale.
+      const nextTier = tier === 'free' ? 'trader'
+                     : tier === 'trader' ? 'pro'
+                     : 'whale';
+      const nextLimit = TIER_LIMITS[nextTier].maxAlerts;
+      const nextLabel = Number.isFinite(nextLimit) ? `${nextLimit} alerts` : 'unlimited alerts';
+      const upsell = ` Upgrade to ${nextTier[0].toUpperCase()}${nextTier.slice(1)} on /pricing for ${nextLabel}.`;
       return NextResponse.json(
         { error: `Your ${tier} tier allows ${tierCap} alert rules.${upsell}` },
         { status: 409, headers: NO_STORE },

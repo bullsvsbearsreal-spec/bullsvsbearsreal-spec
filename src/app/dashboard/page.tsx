@@ -955,7 +955,10 @@ function PlanUsagePanel({
     exchanges: isAdmin ? 10 : 4,
   };
 
-  // Show the "Upgrade to Pro" CTA only for non-admin, non-paid users.
+  // Show the upgrade CTA only for non-admin, non-paid users. Wording
+  // is intentionally tier-agnostic ("paid features") since the
+  // pricing page now has 3 paid tiers (Trader/Pro/Whale) and we don't
+  // want to push every Free user straight to Pro.
   const showUpgradeCta = !isAdmin && userTier === 'free';
 
   return (
@@ -996,7 +999,7 @@ function PlanUsagePanel({
             href="/pricing"
             className="block text-center text-xs font-semibold py-2 rounded-lg bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 transition-all border border-emerald-400/30"
           >
-            Try Pro — free during launch →
+            Try paid features — free during launch →
           </Link>
           <Link
             href="/invite"
