@@ -164,7 +164,13 @@ async function runTickInner(): Promise<WatchTickStats> {
     });
   }
 
-  const CONCURRENCY = 8;
+  // CONCURRENCY 16 supports MAX_WATCHED_WALLETS=200 in a 60s tick:
+  // 200 wallets × 3 venues / 16 workers ≈ 37.5s worst-case at 1s
+  // per fetch. Was 8 — too low when Pro tier was bumped from 100 to
+  // 200 watched wallets in the May 2026 4-tier restructure (silently
+  // capped Pro users via MAX_WATCHED_WALLETS until both were bumped
+  // together).
+  const CONCURRENCY = 16;
   type Job = { address: string; venue: Venue };
   const queue: Job[] = [];
   for (const r of addrRows) for (const v of VENUES) queue.push({ address: r.address, venue: v });

@@ -474,7 +474,7 @@ function TierCta({
   const isSignedIn = !!session;
   const b = TIER_BRANDING[tier];
 
-  // Current-tier "disabled" state (works for all 3 tiers).
+  // Current-tier "disabled" state (works for all 4 tiers).
   // We render a real <button disabled> so keyboard/screen-reader users
   // get the correct semantic ("button, dimmed, your current tier")
   // rather than a generic div with aria-disabled, which AT often skips.

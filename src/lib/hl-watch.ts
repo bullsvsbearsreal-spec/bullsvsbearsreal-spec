@@ -93,18 +93,23 @@ export interface WatchEvent {
  * from TIER_LIMITS still applies on top of this.
  *
  * Sizing: VENUES.length === 3 (hyperliquid + gtrade + gmx) and the
- * runner's CONCURRENCY === 8 (see hl-watch-runner.ts). So a full
- * tick with N wallets does ~(N × 3 / 8) seconds of work in the
+ * runner's CONCURRENCY === 16 (see hl-watch-runner.ts). So a full
+ * tick with N wallets does ~(N × 3 / 16) seconds of work in the
  * worst case where every fetch takes ~1s. The 60s tick window
- * comfortably supports N = 100 (≈ 37s) which matches the Pro tier's
- * advertised "100 watched wallets" cap. Bump only after re-running
- * the math; raising past ~150 risks runs overlapping ticks.
+ * comfortably supports N = 200 (≈ 37.5s) which matches the Pro
+ * tier's advertised "200 watched wallets" cap. Bump only after
+ * re-running the math; raising past ~300 risks overlapping ticks.
  *
- * Previously 25 — that ceiling silently capped Pro users (paying
- * for 100) at 25 and Whale users (paying for unlimited) at 25,
- * making the pricing copy a lie. Fixed May 2026.
+ * History:
+ *   • 25 — pre-pricing era. Silently capped Pro users (paying for
+ *     100) at 25 and Whale (paying for ∞) at 25. Fixed May 2026.
+ *   • 100 — matched the original 3-tier Pro cap. Same silent-cap
+ *     bug returned when we restructured to 4 tiers (Trader 30 / Pro
+ *     200 / Whale ∞) — Pro paid for 200 but actually got 100.
+ *     Caught via FAQ-text grep audit + bumped to 200 + raised
+ *     CONCURRENCY 8 → 16 to keep the cron window safe.
  */
-export const MAX_WATCHED_WALLETS = 100;
+export const MAX_WATCHED_WALLETS = 200;
 
 export interface Thresholds {
   triggerOpened: boolean;
