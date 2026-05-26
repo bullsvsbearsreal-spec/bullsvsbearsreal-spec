@@ -321,6 +321,107 @@ The full suite runs in ~10s. Pre-deploy verification:
 
 ---
 
+## Monetization & affiliate program (May 2026)
+
+### Tier ladder
+
+Four tiers, single source of truth in `lib/constants/tiers.ts`:
+
+| Tier   | Price    | API limits          | Alerts | Wallets | History |
+|--------|----------|---------------------|--------|---------|---------|
+| Free   | $0       | 100/min · 5k/day    | 5      | 10      | 90d     |
+| Trader | $12/mo   | 200/min · 25k/day   | 15     | 30      | 180d    |
+| Pro    | $29/mo   | 600/min · ∞/day     | 75     | 200     | 1y      |
+| Whale  | $59/mo   | ∞ · ∞               | ∞      | ∞       | 5y      |
+
+Annual = 10× monthly = 17% off. Admin role auto-resolves to Whale via
+`resolveUserTier` (in `lib/constants/tiers.ts`).
+
+**Today: "free during launch"** — `LAUNCH_GATING_ENABLED = false` in
+`src/components/TierGate.tsx`. Every signed-in user gets full access;
+the gate component shows a hint chip ("Pro tier feature — free during
+launch") instead of paywalling. Flip the constant when NowPayments
+checkout goes live and all `<TierGate requires="..."/>` boundaries
+auto-engage.
+
+### Tier-gating pattern
+
+```tsx
+import TierGate from '@/components/TierGate';
+
+// Soft gate (default) — renders children + overlays paywall when gating on
+<TierGate requires="pro">
+  <YourPageContent />
+</TierGate>
+
+// Hard gate — replaces children entirely with paywall when gating on
+<TierGate requires="whale" mode="hard">
+  ...
+</TierGate>
+```
+
+Enforcement layer:
+- API rate limits + per-tier daily caps live in `lib/api/rate-limit.ts`
+- Alert / watched-wallet count caps in their POST routes via `getUserTier`
+- Whale-only channels (webhook URL config, sub-second alerts) gate at
+  the API boundary too — UI never blocks alone
+- `/api/cron/whale-alerts` runs the priority path; `/api/cron/alerts`
+  with no `?priority` flag skips Whale users (no double-fire)
+
+### Affiliate program
+
+20% recurring lifetime commission, USDT payouts on Solana/Arbitrum/Base,
+$25 minimum payout, 60-day cookie, 10% off forever for the referred user.
+
+Schema:
+- `users.referral_code` (8-char alphanum, generated on signup)
+- `users.referred_by_user_id` (set at signup attribution)
+- `users.usdt_payout_wallet` + `usdt_payout_chain`
+- `referral_events` (click / signup / conversion / payout)
+
+Cookie attribution lives in `src/middleware.ts` — any `?ref=CODE`
+landing sets the `ih_ref` cookie with 60d max-age. Signup route reads
+it (or body field) and stamps `referred_by_user_id`. Commission events
+queue up; the actual conversion → commission row is logged when
+NowPayments confirms first paid month.
+
+Surfaces:
+- `/referrals` — public landing (program terms + how-it-works + FAQ)
+- `/settings/referrals` — private dashboard (code, link, stats, USDT
+  payout config, recent activity)
+- `/admin-panel` → **Affiliates** tab — operator view (top earners,
+  pending payouts, recent activity, payout workflow)
+
+### Pro $29 power features
+
+Pages that gate to Pro+ when launch ends:
+- `/positions/tax` — FIFO cost-basis + Tax CSV export via
+  `/api/account/tax/csv` (5-section CSV)
+- `/breakouts` — setup scanner with composite quality score (0-100,
+  weighted: momentum stack + range position + ATH proximity + volume)
+- `/dashboard/widgets` — custom widget grid with HTML5 drag/drop,
+  8 widget types (6 wired, 2 stubs)
+
+Whale-only:
+- Custom alert webhooks (HTTPS endpoint per user) at `/api/account/webhook`
+- Sub-second priority alert delivery via `/api/cron/whale-alerts`
+- 1:1 Telegram channel with the team
+
+### Dynamic OG images
+
+Every shareable page has a 1200×630 OG image generated via `next/og`
+on the Edge runtime. Brand chrome in `lib/og-shared.tsx` (mesh,
+brand mark, chip, frame); per-page `opengraph-image.tsx` provides
+the headline + chips. No external assets — keeps within Twitter's
+~5s timeout.
+
+Pages with custom OG cards: `/`, `/pricing`, `/referrals`,
+`/funding-arb`, `/spread-scanner`, `/smart-money`, `/hl-whales`,
+`/spreads`. Add a new one by dropping `opengraph-image.tsx` in the
+page directory using the shared helpers.
+
+---
+
 ## Useful Bash one-liners
 
 ```bash
