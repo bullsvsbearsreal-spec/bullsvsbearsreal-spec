@@ -340,7 +340,10 @@ async function _doInitDB(): Promise<void> {
   // When a user signs up via someone else's referral code, store the
   // inviter's user_id here. Used for the 20% recurring commission
   // calculation once payments wire up. Nullable for organic signups.
-  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL`;
+  // NOTE: users.id is TEXT in this codebase (string UUIDs, not UUID
+  // native type), so the FK column must also be TEXT — Postgres rejects
+  // cross-type FKs.
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_user_id TEXT REFERENCES users(id) ON DELETE SET NULL`;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_referred_by_user_id ON users(referred_by_user_id) WHERE referred_by_user_id IS NOT NULL`;
   // Affiliate payout config. We pay 20% recurring commissions in USDT
   // on Solana / Arbitrum / Base (low gas). `usdt_payout_wallet` is the
@@ -359,8 +362,8 @@ async function _doInitDB(): Promise<void> {
   await sql`
     CREATE TABLE IF NOT EXISTS referral_events (
       id BIGSERIAL PRIMARY KEY,
-      affiliate_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      referred_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      affiliate_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      referred_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
       event_type TEXT NOT NULL,
       amount_usd NUMERIC(12,2),
       commission_usd NUMERIC(12,2),
@@ -381,7 +384,7 @@ async function _doInitDB(): Promise<void> {
   // account deletion sweeps cleanly.
   await sql`
     CREATE TABLE IF NOT EXISTS user_dashboard_layouts (
-      user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
       widgets JSONB NOT NULL DEFAULT '[]',
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )

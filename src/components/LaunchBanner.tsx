@@ -60,7 +60,7 @@ export default function LaunchBanner() {
           <p className="text-neutral-200 truncate">
             <span className="font-semibold text-amber-300">Free during launch</span>
             <span className="text-neutral-400">
-              {' · '}Pro + Whale tiers unlocked for everyone while we onboard early users.
+              {' · '}Trader, Pro + Whale tiers unlocked for everyone while we onboard early users.
             </span>
           </p>
           <Link
