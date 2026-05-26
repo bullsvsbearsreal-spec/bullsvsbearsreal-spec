@@ -211,6 +211,19 @@ function WalletRow({ w, rank }: { w: SmartWallet; rank: number }) {
         )}
       </div>
 
+      {/* Watch CTA — deeplinks to /watch with the wallet pre-filled so
+          this elite trader gets backend-delivered Telegram alerts (the
+          bookmark star is client-side only). Stops propagation so the
+          outer Link doesn't intercept the click. */}
+      <Link
+        href={`/watch?add=${w.address}${w.displayName ? `&label=${encodeURIComponent(w.displayName)}` : ''}`}
+        onClick={(e) => e.stopPropagation()}
+        title="Watch this trader on Telegram (add to /watch)"
+        className="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-hub-yellow/[0.08] text-hub-yellow hover:bg-hub-yellow/15 transition-colors shrink-0 mr-1"
+      >
+        + Watch
+      </Link>
+
       <ChevronRight className="w-3 h-3 text-neutral-600 flex-shrink-0" />
     </Link>
   );
