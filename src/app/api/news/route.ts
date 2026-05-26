@@ -93,16 +93,26 @@ const RSS_FEEDS: { url: string; name: string; type: SourceType; format?: 'atom' 
   // gap in our existing US/EU-centric mix, where things like Mt. Gox
   // distributions and exchange announcements get reported hours later
   // by the Western press)
-  { url: 'https://en.wublockchain.com/feed/', name: 'WuBlockchain', type: 'news' },
   { url: 'https://forkast.news/feed/', name: 'Forkast', type: 'news' },
-  // Macro / institutional research (snakether's news-trader bucket —
-  // these surface the macro context a derivatives trader actually needs)
-  { url: 'https://www.galaxy.com/research/feed/', name: 'Galaxy Research', type: 'blog' },
-  { url: 'https://messari.io/rss', name: 'Messari', type: 'blog' },
+  // Research / macro substacks (snakether's news-trader bucket —
+  // surfaces the institutional context a derivatives trader actually
+  // needs). 0xResearch is the Blockworks Substack, focused on DeFi /
+  // L2 / market-structure pieces — higher signal-to-noise than the
+  // wire-service press.
+  { url: 'https://0xresearch.substack.com/feed', name: '0xResearch', type: 'blog' },
   // Bitcoin-development specifically (Optech goes deep on TX-level
   // changes, dev activity, lightning network — niche but high-signal
   // for serious BTC traders)
   { url: 'https://bitcoinops.org/feed.xml', name: 'Bitcoin Optech', type: 'blog' },
+  // ── Removed 2026-05-26 as dead/broken ──
+  //   WuBlockchain (en.wublockchain.com/feed/) — CF-protected, curl returns
+  //     empty even with browser UA. Would need a proxy hop; not worth it
+  //     until/unless we have an Asia desk that demands it.
+  //   Galaxy Research — site has no `/research/feed/` slug; 301s to a
+  //     page with no RSS. Alternative subdomains (research.galaxy.com,
+  //     insights.galaxy.com) also have no feed. Galaxy doesn't ship RSS.
+  //   Messari — `messari.io/rss` 404s. `/research.rss` + `/blog/rss`
+  //     return 429 to unauthenticated UAs. Would need API key.
 ];
 
 /* ─── Cache ──────────────────────────────────────────────────── */
