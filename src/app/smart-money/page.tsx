@@ -224,6 +224,11 @@ export default function SmartMoneyPage() {
   const [minWr, setMinWr] = useState(55);
   const [include, setInclude] = useState<'gmx' | 'hl' | 'both'>('both');
   const [search, setSearch] = useState('');
+  // Consensus mode: filter the visible list to the top 10 by lifetime
+  // PnL — "what are the elite traders actually doing right now" rather
+  // than "what does the aggregate of 40 wallets look like". Loud signal
+  // beats wide signal for copy traders. Persisted to URL for shareability.
+  const [consensusMode, setConsensusMode] = useState(false);
   const [importError, setImportError] = useState<string | null>(null);
   const [editingNote, setEditingNote] = useState<string | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
@@ -308,12 +313,36 @@ export default function SmartMoneyPage() {
   const filtered = useMemo(() => {
     if (!data?.data) return [];
     const q = search.toLowerCase().trim();
-    if (!q) return data.data;
-    return data.data.filter(w =>
+    let pool = data.data;
+    // Consensus mode pre-trims to the top 10 by lifetime realised PnL
+    // BEFORE the search filter applies, so search inside consensus mode
+    // only matches the elite subset (intentional — keeps the signal pure).
+    if (consensusMode) {
+      pool = [...pool].sort((a, b) => b.realizedPnl - a.realizedPnl).slice(0, 10);
+    }
+    if (!q) return pool;
+    return pool.filter(w =>
       w.address.toLowerCase().includes(q) ||
       (w.displayName ?? '').toLowerCase().includes(q),
     );
-  }, [data, search]);
+  }, [data, search, consensusMode]);
+
+  // Consensus sentiment: aggregate directional bias of just the elite
+  // top-10. Surfaces "the people who actually print money are leaning
+  // bullish" vs the broader pool's noisy 50/50. Only computed when in
+  // consensus mode + we have data.
+  const consensusSentiment = useMemo(() => {
+    if (!consensusMode || filtered.length === 0) return null;
+    const withNotional = filtered.filter(w => w.liveNotional > 0);
+    if (withNotional.length === 0) return null;
+    // Notional-weighted average bias (-1..+1). Big wallets weigh more.
+    const totalNotional = withNotional.reduce((a, w) => a + w.liveNotional, 0);
+    const weighted = withNotional.reduce((a, w) => a + w.directionalBias * w.liveNotional, 0);
+    const weightedBias = totalNotional > 0 ? weighted / totalNotional : 0;
+    // Map -1..+1 → 0..100 (long pct). +1 = 100% long, -1 = 0% long.
+    const longPct = Math.round((weightedBias + 1) * 50);
+    return { longPct, eliteCount: withNotional.length };
+  }, [consensusMode, filtered]);
 
   return (
     <div className="min-h-screen bg-hub-black">
@@ -696,6 +725,27 @@ export default function SmartMoneyPage() {
               </button>
             ))}
           </div>
+
+          {/* Consensus toggle — trims to top 10 by realized PnL so the
+              sentiment + table show "what the elite are doing" rather
+              than the noisy aggregate of 30-40 wallets. */}
+          <button
+            onClick={() => setConsensusMode(v => !v)}
+            className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
+              consensusMode
+                ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                : 'bg-white/[0.04] text-neutral-400 border border-white/[0.08] hover:text-white'
+            }`}
+            title="Filter to the top 10 by realized PnL — see what the elite traders are doing"
+          >
+            <span className={`w-1.5 h-1.5 rounded-full ${consensusMode ? 'bg-emerald-400' : 'bg-neutral-600'}`} />
+            Consensus
+            {consensusSentiment && (
+              <span className="ml-1 text-[10px] text-emerald-200/80">
+                · {consensusSentiment.longPct}% long
+              </span>
+            )}
+          </button>
 
           <div className="flex items-center gap-2 flex-wrap">
             <label className="flex items-center gap-1.5 text-[10px] text-neutral-500">

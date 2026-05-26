@@ -670,6 +670,122 @@ export const ECONOMIC_EVENTS: EconomicEvent[] = [
     category: 'crypto',
     country: 'Global',
   },
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  Additional 2026 H2 crypto events (added 2026-05-26)
+  //  Token unlock cliffs + protocol upgrades the news-trader cares about
+  // ═══════════════════════════════════════════════════════════════════
+  {
+    id: 'crypto-arb-unlock-mar-2026',
+    name: 'ARB Token Unlock — Investors / Team',
+    description: 'Major Arbitrum token unlock for investors and team — historically pressures price for 2-3 days',
+    date: '2026-09-16',
+    impact: 'medium',
+    category: 'crypto',
+    country: 'Global',
+  },
+  {
+    id: 'crypto-eth-pectra-followup',
+    name: 'Ethereum Fusaka Upgrade (estimated)',
+    description: 'Next major Ethereum upgrade after Pectra — focus on PeerDAS data sharding for L2 throughput',
+    date: '2026-11-15',
+    impact: 'high',
+    category: 'crypto',
+    country: 'Global',
+  },
+  {
+    id: 'crypto-btc-etf-2y',
+    name: 'BTC Spot ETF 2-Year Anniversary',
+    description: '2 years since BlackRock IBIT launch (Jan 11, 2024). Watch for re-balancing flows + media cycles',
+    date: '2026-01-11',
+    impact: 'low',
+    category: 'crypto',
+    country: 'US',
+  },
+  {
+    id: 'crypto-token2049-singapore',
+    name: 'TOKEN2049 Singapore',
+    description: 'Largest Asia-Pacific crypto conference. Major project announcements and partnership reveals',
+    date: '2026-10-01',
+    impact: 'medium',
+    category: 'crypto',
+    country: 'SG',
+  },
+  {
+    id: 'crypto-devcon-2026',
+    name: 'Devcon 2026',
+    description: 'Ethereum Foundation flagship developer conference. Roadmap reveals + research presentations',
+    date: '2026-11-04',
+    impact: 'medium',
+    category: 'crypto',
+    country: 'Global',
+  },
+
+  // ═══════════════════════════════════════════════════════════════════
+  //  Q1 2027 macro anchors (added 2026-05-26)
+  //  Keep the calendar useful past year-end — FOMC + ECB schedules
+  //  are published well in advance, CPI/NFP follow BLS rotation
+  // ═══════════════════════════════════════════════════════════════════
+  {
+    id: 'fomc-2027-01',
+    name: 'FOMC Interest Rate Decision',
+    description: 'First Fed meeting of 2027 — sets the policy tone for the year',
+    date: '2027-01-27',
+    time: '14:00 ET',
+    impact: 'high',
+    category: 'monetary',
+    country: 'US',
+  },
+  {
+    id: 'fomc-2027-03',
+    name: 'FOMC Interest Rate Decision',
+    description: 'Rate decision with Summary of Economic Projections (dot plot)',
+    date: '2027-03-17',
+    time: '14:00 ET',
+    impact: 'high',
+    category: 'monetary',
+    country: 'US',
+  },
+  {
+    id: 'ecb-2027-01',
+    name: 'ECB Interest Rate Decision',
+    description: 'European Central Bank Q1 rate decision',
+    date: '2027-01-21',
+    time: '14:15 CET',
+    impact: 'high',
+    category: 'monetary',
+    country: 'EU',
+  },
+  {
+    id: 'cpi-2027-01',
+    name: 'US CPI (December 2026)',
+    description: 'Year-end inflation reading — frames the Fed\'s 2027 stance',
+    date: '2027-01-13',
+    time: '08:30 ET',
+    impact: 'high',
+    category: 'inflation',
+    country: 'US',
+  },
+  {
+    id: 'nfp-2027-01',
+    name: 'US Nonfarm Payrolls (December 2026)',
+    description: 'Year-end jobs report. First read on whether the labor market stays tight into 2027',
+    date: '2027-01-08',
+    time: '08:30 ET',
+    impact: 'high',
+    category: 'employment',
+    country: 'US',
+  },
+  {
+    id: 'nfp-2027-02',
+    name: 'US Nonfarm Payrolls (January 2027)',
+    description: 'First jobs read of the new year',
+    date: '2027-02-05',
+    time: '08:30 ET',
+    impact: 'high',
+    category: 'employment',
+    country: 'US',
+  },
 ];
 
 export const EVENT_CATEGORIES: Record<
