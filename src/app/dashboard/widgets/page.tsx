@@ -378,35 +378,39 @@ function WidgetBody({ widget }: { widget: Widget }) {
   }
 }
 
-/** Funding-rate widget — fetches latest rate for the configured symbol. */
+/** Funding-rate widget — fetches /api/funding (the live cross-venue
+ *  feed), filters to the configured symbol, and averages the funding
+ *  rate across exchanges. The endpoint name "funding-rates" was a typo
+ *  in the v1 widget — actual endpoint is /api/funding. */
 function FundingWidget({ config }: { config?: Record<string, unknown> }) {
   const symbol = (typeof config?.symbol === 'string' ? config.symbol : 'BTC').toUpperCase();
   const [rate, setRate] = useState<number | null>(null);
+  const [venueCount, setVenueCount] = useState(0);
   const [err, setErr] = useState(false);
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`/api/funding-rates?symbol=${encodeURIComponent(symbol)}`, { cache: 'no-store' });
+        const res = await fetch('/api/funding', { cache: 'no-store' });
         if (!res.ok) { setErr(true); return; }
         const j = await res.json();
         if (cancelled) return;
-        // Tolerant shape — different endpoints return slightly different
-        // payloads. Pull the first numeric `rate` field we find.
+        const rows: any[] = Array.isArray(j?.data) ? j.data : [];
+        // Match rows whose normalised symbol equals our target (covers
+        // "BTC", "BTCUSDT", "BTC-PERP", etc.). Exclude index/inverse
+        // variants by skipping symbols with extra suffixes (BTCDOM).
         const candidates: number[] = [];
-        if (Array.isArray(j?.data)) {
-          for (const row of j.data) {
-            if (typeof row?.rate === 'number') candidates.push(row.rate);
-          }
+        for (const r of rows) {
+          const rowSym = String(r?.symbol ?? '').toUpperCase();
+          if (rowSym !== symbol) continue;
+          if (r?.marginType === 'inverse') continue; // skip inverse perps
+          const v = Number(r?.fundingRate);
+          if (Number.isFinite(v)) candidates.push(v);
         }
-        if (typeof j?.rate === 'number') candidates.push(j.rate);
-        if (candidates.length > 0) {
-          // Average across venues — close enough for a glance widget.
-          const avg = candidates.reduce((a, b) => a + b, 0) / candidates.length;
-          setRate(avg);
-        } else {
-          setErr(true);
-        }
+        if (candidates.length === 0) { setErr(true); return; }
+        const avg = candidates.reduce((a, b) => a + b, 0) / candidates.length;
+        setRate(avg);
+        setVenueCount(candidates.length);
       } catch { if (!cancelled) setErr(true); }
     })();
     return () => { cancelled = true; };
@@ -417,7 +421,9 @@ function FundingWidget({ config }: { config?: Record<string, unknown> }) {
       <div className={`text-2xl font-bold ${rate != null && rate > 0 ? 'text-emerald-300' : rate != null && rate < 0 ? 'text-rose-300' : 'text-neutral-400'}`}>
         {rate != null ? `${(rate * 100).toFixed(4)}%` : err ? '—' : '…'}
       </div>
-      <div className="text-[10px] text-neutral-500 mt-1">per 8h · average across venues</div>
+      <div className="text-[10px] text-neutral-500 mt-1">
+        per 8h · avg across {venueCount > 0 ? `${venueCount} ${venueCount === 1 ? 'venue' : 'venues'}` : 'venues'}
+      </div>
     </div>
   );
 }
