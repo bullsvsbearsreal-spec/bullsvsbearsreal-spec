@@ -9,7 +9,7 @@
 import { ImageResponse } from 'next/og';
 import { TIER_PRICE_MONTHLY, TIER_BRANDING } from '@/lib/constants/tiers';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const alt = 'InfoHub pricing — Free / Trader / Pro / Whale';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';

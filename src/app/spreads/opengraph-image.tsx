@@ -2,7 +2,7 @@
 import { ImageResponse } from 'next/og';
 import { OG_SIZE, OG_CONTENT_TYPE, ogFrame, ogBrandMark, ogChip } from '@/lib/og-shared';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const alt = 'InfoHub Spreads — cross-venue arbitrage net of fees';
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;

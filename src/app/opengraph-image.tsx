@@ -13,7 +13,7 @@
 import { ImageResponse } from 'next/og';
 import { ALL_EXCHANGES } from '@/lib/constants/exchanges';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 export const alt = 'InfoHub — crypto derivatives terminal';
 export const size = { width: 1200, height: 630 };
 export const contentType = 'image/png';
