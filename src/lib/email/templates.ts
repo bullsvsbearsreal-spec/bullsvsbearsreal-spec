@@ -371,7 +371,10 @@ export function renderSubscriptionConfirmed(data: SubscriptionConfirmedData): { 
       </table>
       <p>Cancel anytime from <a href="https://info-hub.io/settings" style="color:#34d399;">Settings → Billing</a>. You keep access until the period ends.</p>
     `,
-    ctaLabel: 'Explore Pro features',
+    // CTA copy interpolates the actual tier label so a Trader user
+    // doesn't get a "Explore Pro features" button when they just paid
+    // for Trader. Was hardcoded "Pro" — mismatched for 3 of 4 tiers.
+    ctaLabel: `Explore ${data.tierLabel} features`,
     ctaHref: 'https://info-hub.io/dashboard/widgets',
   });
   return { subject, html };
