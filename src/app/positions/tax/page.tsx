@@ -115,30 +115,19 @@ export default function TaxPage() {
 
   const summary = data?.summary;
 
+  /**
+   * Trigger the server-side CSV export. Streams /api/account/tax/csv as
+   * an `<a download>` so the browser saves it directly — no
+   * client-side blob assembly, and the server's CSV is more complete
+   * (4 sections incl. summary, by-year, open positions, winners/losers).
+   */
   function downloadCsv() {
-    if (!summary) return;
-    const rows: string[] = [];
-    rows.push('Year,Trades,Realised PnL (USD),Fees (USD),Net (USD)');
-    for (const y of summary.byYear) {
-      rows.push(`${y.year},${y.trades},${y.realized.toFixed(2)},${y.fees.toFixed(2)},${(y.realized - y.fees).toFixed(2)}`);
-    }
-    rows.push('');
-    rows.push('Symbol,Exchange,Realised PnL (USD),Trade count');
-    for (const w of summary.topWinners) rows.push(`${w.symbol},${w.exchange},${w.pnl.toFixed(2)},${w.trades}`);
-    for (const l of summary.topLosers) rows.push(`${l.symbol},${l.exchange},${l.pnl.toFixed(2)},${l.trades}`);
-    rows.push('');
-    rows.push('Open positions,,,,,');
-    rows.push('Symbol,Exchange,Side,Size,Avg cost,Total cost USD,Lots');
-    for (const p of summary.openPositions) {
-      rows.push(`${p.symbol},${p.exchange},${p.side},${p.totalSize},${p.avgCostBasis.toFixed(6)},${p.totalCostUsd.toFixed(2)},${p.lotCount}`);
-    }
-    const blob = new Blob([rows.join('\n')], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
+    a.href = '/api/account/tax/csv';
     a.download = `infohub-tax-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
     a.click();
-    URL.revokeObjectURL(url);
+    document.body.removeChild(a);
   }
 
   return (

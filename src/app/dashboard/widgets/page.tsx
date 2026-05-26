@@ -368,12 +368,12 @@ function WidgetBody({ widget }: { widget: Widget }) {
   switch (widget.type) {
     case 'funding':      return <FundingWidget config={widget.config} />;
     case 'oi':           return <OpenInterestWidget config={widget.config} />;
-    case 'liquidations': return <StubWidget label="Liquidations 24h" hint="Wires up to /api/liquidations/summary" />;
-    case 'watchlist':    return <StubWidget label="Watchlist" hint="Wires up to your saved watchlist" />;
-    case 'alerts':       return <StubWidget label="Alerts" hint="Wires up to /api/account/alerts" />;
-    case 'whales':       return <StubWidget label="Whale trades" hint="Wires up to hl_position_events" />;
-    case 'news':         return <StubWidget label="News" hint="Wires up to /api/news" />;
-    case 'positions':    return <StubWidget label="Open positions" hint="Wires up to /api/account/positions" />;
+    case 'liquidations': return <LiquidationsWidget />;
+    case 'alerts':       return <AlertsWidget />;
+    case 'watchlist':    return <WatchlistWidget />;
+    case 'whales':       return <StubWidget label="Whale trades" hint="Wires up next — see /hl-whales for the full live view." />;
+    case 'news':         return <StubWidget label="News" hint="Wires up next — see /news for the full feed." />;
+    case 'positions':    return <StubWidget label="Open positions" hint="Wires up next — see /positions for full PnL." />;
     default:             return <div className="text-[11px] text-neutral-500">Unknown widget type.</div>;
   }
 }
@@ -441,6 +441,142 @@ function StubWidget({ label, hint }: { label: string; hint: string }) {
     <div>
       <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">{label}</div>
       <div className="text-[11px] text-neutral-500 italic leading-relaxed">{hint}</div>
+    </div>
+  );
+}
+
+/** Liquidations widget — recent count + biggest hit symbol. Pulls the
+ *  default OKX 7d feed from /api/liquidations (no symbol filter). */
+function LiquidationsWidget() {
+  const [data, setData] = useState<{ count: number; biggestSymbol: string | null; biggestUsd: number } | null>(null);
+  const [err, setErr] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/liquidations?limit=100', { cache: 'no-store' });
+        if (!res.ok) { setErr(true); return; }
+        const j = await res.json();
+        if (cancelled) return;
+        const rows: any[] = Array.isArray(j?.data) ? j.data : Array.isArray(j?.liquidations) ? j.liquidations : [];
+        if (rows.length === 0) { setData({ count: 0, biggestSymbol: null, biggestUsd: 0 }); return; }
+        // Find biggest by usd. Tolerant to multiple shape variants.
+        let biggestUsd = 0;
+        let biggestSymbol: string | null = null;
+        for (const r of rows) {
+          const usd = Number(r?.usd ?? r?.amountUsd ?? r?.value ?? 0);
+          if (usd > biggestUsd) { biggestUsd = usd; biggestSymbol = String(r?.symbol ?? r?.instrument ?? '').toUpperCase() || null; }
+        }
+        setData({ count: rows.length, biggestSymbol, biggestUsd });
+      } catch { if (!cancelled) setErr(true); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Liquidations · last batch</div>
+      {data ? (
+        <>
+          <div className="text-2xl font-bold text-white">{data.count.toLocaleString()}</div>
+          <div className="text-[10px] text-neutral-500 mt-1">
+            {data.biggestSymbol && data.biggestUsd > 0
+              ? <>biggest: <strong className="text-rose-300">{data.biggestSymbol}</strong> · ${data.biggestUsd.toLocaleString(undefined, { maximumFractionDigits: 0 })}</>
+              : <>no liquidations in window</>
+            }
+          </div>
+          <Link href="/liquidations" className="text-[11px] text-emerald-300 hover:underline mt-2 inline-block">Full feed →</Link>
+        </>
+      ) : err ? (
+        <div className="text-[11px] text-neutral-500">Could not load liquidations.</div>
+      ) : (
+        <div className="text-[11px] text-neutral-500">Loading…</div>
+      )}
+    </div>
+  );
+}
+
+/** Alerts widget — active rule count + recent notifications. */
+function AlertsWidget() {
+  const [data, setData] = useState<{ active: number; total: number } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/account/alerts', { cache: 'no-store' });
+        if (res.status === 401) { setErr('Sign in to see alerts.'); return; }
+        if (!res.ok) { setErr('Could not load alerts.'); return; }
+        const j = await res.json();
+        if (cancelled) return;
+        const rules = Array.isArray(j?.rules) ? j.rules : [];
+        const active = rules.filter((r: any) => r?.enabled).length;
+        setData({ active, total: rules.length });
+      } catch { if (!cancelled) setErr('Network error.'); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Alert rules</div>
+      {data ? (
+        <>
+          <div className="text-2xl font-bold text-emerald-300">{data.active}</div>
+          <div className="text-[10px] text-neutral-500 mt-1">
+            active of {data.total} total · funding/price/OI
+          </div>
+          <Link href="/alerts" className="text-[11px] text-emerald-300 hover:underline mt-2 inline-block">Manage alerts →</Link>
+        </>
+      ) : err ? (
+        <div className="text-[11px] text-neutral-500">{err}</div>
+      ) : (
+        <div className="text-[11px] text-neutral-500">Loading…</div>
+      )}
+    </div>
+  );
+}
+
+/** Watchlist widget — reads localStorage `infohub_watchlist` (the same
+ *  store the rest of the app uses). Renders up to 6 symbols with a CTA
+ *  to the full /watchlist page. Future: pull live prices once a unified
+ *  watchlist+prices endpoint lands. */
+function WatchlistWidget() {
+  const [symbols, setSymbols] = useState<string[] | null>(null);
+  useEffect(() => {
+    try {
+      const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('infohub_watchlist') : null;
+      if (!raw) { setSymbols([]); return; }
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.filter((s) => typeof s === 'string').slice(0, 6) as string[];
+        setSymbols(cleaned);
+      } else {
+        setSymbols([]);
+      }
+    } catch { setSymbols([]); }
+  }, []);
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Watchlist</div>
+      {symbols === null ? (
+        <div className="text-[11px] text-neutral-500">Loading…</div>
+      ) : symbols.length === 0 ? (
+        <div className="text-[11px] text-neutral-500 italic">No symbols yet. <Link href="/watchlist" className="text-emerald-300 hover:underline">Add one →</Link></div>
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-1 mb-2">
+            {symbols.map((s) => (
+              <Link
+                key={s}
+                href={`/chart?symbol=${encodeURIComponent(s)}`}
+                className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono font-semibold bg-white/[0.06] border border-white/[0.08] text-neutral-200 hover:border-emerald-400/30 hover:text-emerald-300 transition-colors"
+              >
+                {s}
+              </Link>
+            ))}
+          </div>
+          <Link href="/watchlist" className="text-[11px] text-emerald-300 hover:underline">Manage watchlist →</Link>
+        </>
+      )}
     </div>
   );
 }
