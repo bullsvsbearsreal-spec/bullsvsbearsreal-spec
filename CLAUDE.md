@@ -407,18 +407,20 @@ Whale-only:
 - Sub-second priority alert delivery via `/api/cron/whale-alerts`
 - 1:1 Telegram channel with the team
 
-### Dynamic OG images
+### OG images (deferred)
 
-Every shareable page has a 1200×630 OG image generated via `next/og`
-on the Edge runtime. Brand chrome in `lib/og-shared.tsx` (mesh,
-brand mark, chip, frame); per-page `opengraph-image.tsx` provides
-the headline + chips. No external assets — keeps within Twitter's
-~5s timeout.
+We tried `next/og` dynamic OG images but `ImageResponse` 503'd on DO
+App Platform — neither Edge runtime (unsupported) nor Node runtime
+(satori font-loading failure) worked. The 8 `opengraph-image.tsx`
+files were removed in commit `<replace-on-next-deploy>`.
 
-Pages with custom OG cards: `/`, `/pricing`, `/referrals`,
-`/funding-arb`, `/spread-scanner`, `/smart-money`, `/hl-whales`,
-`/spreads`. Add a new one by dropping `opengraph-image.tsx` in the
-page directory using the shared helpers.
+Static OG metadata (titles + descriptions via `lib/seo.ts`) still
+works fine — Twitter / Telegram show the URL preview with proper
+title + description, just no custom hero image. For richer share
+cards, options:
+  1. Pre-render static PNGs offline + drop in `/public/og/`
+  2. Use an external OG service (cloudinary, vercel.app/og)
+  3. Migrate this app to Vercel where `next/og` Just Works
 
 ---
 
