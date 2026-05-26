@@ -116,6 +116,11 @@ function PushToggle() {
 export default function AlertsPage() {
   const { data: session, status } = useSession();
   const searchParams = useSearchParams();
+  // Push-subscription state — used by the per-alert channel picker to
+  // disable the "Push" pill when the user hasn't subscribed yet. The
+  // PushToggle child below calls the same hook independently (hooks
+  // are idempotent + Push's state lives in the browser only).
+  const { isSubscribed: isPushSubscribed } = usePushNotifications();
   // /chart's Tools strip links here with ?symbol=BTC to drop the user
   // into the new-alert flow with the symbol pre-filled. We also auto-
   // open the form so the user doesn't have to click "Add alert" first.
@@ -508,22 +513,47 @@ export default function AlertsPage() {
                       { key: 'discord', label: 'Discord', icon: Hash },
                       { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
                       { key: 'push', label: 'Push', icon: Smartphone },
-                    ].map(({ key, label, icon: Icon }) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => toggleFormChannel(key)}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs transition-colors border ${
-                          formChannels.includes(key)
-                            ? 'bg-hub-yellow/20 border-hub-yellow/40 text-hub-yellow'
-                            : 'bg-white/[0.03] border-white/[0.08] text-neutral-500 hover:text-neutral-300'
-                        }`}
-                      >
-                        <Icon className="w-3 h-3" />
-                        {label}
-                      </button>
-                    ))}
+                    ].map(({ key, label, icon: Icon }) => {
+                      // Push is the only channel we can ground-truth client-side
+                      // (via usePushNotifications). Email/Telegram/Discord/
+                      // WhatsApp config lives in user_prefs on the server and
+                      // would need a round-trip — defer that until we add a
+                      // /api/account/channel-status endpoint. For now, surface
+                      // the un-configured state for Push (which silently fails
+                      // if checked but not subscribed) and let the bottom link
+                      // explain the rest.
+                      const isPushUnconfigured = key === 'push' && !isPushSubscribed;
+                      return (
+                        <button
+                          key={key}
+                          type="button"
+                          onClick={() => {
+                            if (isPushUnconfigured) return;
+                            toggleFormChannel(key);
+                          }}
+                          disabled={isPushUnconfigured}
+                          title={isPushUnconfigured ? 'Enable Push first in Notification Settings below' : undefined}
+                          className={`flex items-center gap-1 px-2.5 py-1 rounded-full text-xs transition-colors border ${
+                            isPushUnconfigured
+                              ? 'bg-white/[0.02] border-white/[0.04] text-neutral-700 cursor-not-allowed line-through'
+                              : formChannels.includes(key)
+                                ? 'bg-hub-yellow/20 border-hub-yellow/40 text-hub-yellow'
+                                : 'bg-white/[0.03] border-white/[0.08] text-neutral-500 hover:text-neutral-300'
+                          }`}
+                        >
+                          <Icon className="w-3 h-3" />
+                          {label}
+                          {isPushUnconfigured && <span className="ml-1 text-[9px] opacity-70">(set up below)</span>}
+                        </button>
+                      );
+                    })}
                   </div>
+                  {/* For non-push channels, point to /profile for setup since
+                      we can't ground-truth those without a server round-trip. */}
+                  <p className="text-[10px] text-neutral-600 mt-2 leading-relaxed">
+                    Channels you haven&apos;t set up will silently drop alerts. Configure email / Telegram / Discord / WhatsApp in{' '}
+                    <Link href="/profile?tab=notifications" className="text-hub-yellow hover:underline">your profile</Link>.
+                  </p>
                 </div>
               )}
             </div>
