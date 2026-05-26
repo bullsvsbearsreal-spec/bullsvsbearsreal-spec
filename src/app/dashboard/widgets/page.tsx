@@ -50,7 +50,7 @@ interface WidgetTypeMeta {
 const WIDGET_CATALOG: WidgetTypeMeta[] = [
   { type: 'funding',      label: 'Funding rate',  description: 'Live funding for one symbol across venues', multiInstance: true,  defaultConfig: { symbol: 'BTC' } },
   { type: 'oi',           label: 'Open interest', description: '24h OI + change for one symbol',            multiInstance: true,  defaultConfig: { symbol: 'BTC' } },
-  { type: 'liquidations', label: 'Liquidations',  description: '24h liquidation summary',                   multiInstance: false },
+  { type: 'liquidations', label: 'Liquidations',  description: '7d liquidation count + biggest hit',        multiInstance: true,  defaultConfig: { symbol: 'BTC' } },
   { type: 'watchlist',    label: 'Watchlist',     description: 'Your watchlisted symbols, live prices',     multiInstance: false },
   { type: 'alerts',       label: 'Alerts',        description: 'Active alert count + recent fires',         multiInstance: false },
   { type: 'whales',       label: 'Whale trades',  description: 'Latest large trades from monitored wallets', multiInstance: false },
@@ -368,7 +368,7 @@ function WidgetBody({ widget }: { widget: Widget }) {
   switch (widget.type) {
     case 'funding':      return <FundingWidget config={widget.config} />;
     case 'oi':           return <OpenInterestWidget config={widget.config} />;
-    case 'liquidations': return <LiquidationsWidget />;
+    case 'liquidations': return <LiquidationsWidget config={widget.config} />;
     case 'alerts':       return <AlertsWidget />;
     case 'watchlist':    return <WatchlistWidget />;
     case 'whales':       return <WhalesWidget />;
@@ -503,46 +503,52 @@ function StubWidget({ label, hint }: { label: string; hint: string }) {
   );
 }
 
-/** Liquidations widget — recent count + biggest hit symbol. Pulls the
- *  default OKX 7d feed from /api/liquidations (no symbol filter). */
-function LiquidationsWidget() {
-  const [data, setData] = useState<{ count: number; biggestSymbol: string | null; biggestUsd: number } | null>(null);
+/** Liquidations widget — recent count + biggest hit (long/short) for the
+ *  configured symbol. /api/liquidations REQUIRES `symbol` so we default
+ *  to BTC if the user didn't customise. Was previously calling without
+ *  a symbol and getting 400 silently. */
+function LiquidationsWidget({ config }: { config?: Record<string, unknown> }) {
+  const symbol = (typeof config?.symbol === 'string' ? config.symbol : 'BTC').toUpperCase();
+  const [data, setData] = useState<{ count: number; biggestSide: 'long' | 'short' | null; biggestUsd: number } | null>(null);
   const [err, setErr] = useState(false);
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch('/api/liquidations?limit=100', { cache: 'no-store' });
+        const res = await fetch(`/api/liquidations?symbol=${encodeURIComponent(symbol)}&limit=100`, { cache: 'no-store' });
         if (!res.ok) { setErr(true); return; }
         const j = await res.json();
         if (cancelled) return;
         const rows: any[] = Array.isArray(j?.data) ? j.data : Array.isArray(j?.liquidations) ? j.liquidations : [];
-        if (rows.length === 0) { setData({ count: 0, biggestSymbol: null, biggestUsd: 0 }); return; }
-        // Find biggest by usd. Tolerant to multiple shape variants.
+        if (rows.length === 0) { setData({ count: 0, biggestSide: null, biggestUsd: 0 }); return; }
         let biggestUsd = 0;
-        let biggestSymbol: string | null = null;
+        let biggestSide: 'long' | 'short' | null = null;
         for (const r of rows) {
           const usd = Number(r?.usd ?? r?.amountUsd ?? r?.value ?? 0);
-          if (usd > biggestUsd) { biggestUsd = usd; biggestSymbol = String(r?.symbol ?? r?.instrument ?? '').toUpperCase() || null; }
+          if (usd > biggestUsd) {
+            biggestUsd = usd;
+            const side = String(r?.side ?? '').toLowerCase();
+            biggestSide = side === 'long' || side === 'buy' ? 'long' : side === 'short' || side === 'sell' ? 'short' : null;
+          }
         }
-        setData({ count: rows.length, biggestSymbol, biggestUsd });
+        setData({ count: rows.length, biggestSide, biggestUsd });
       } catch { if (!cancelled) setErr(true); }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [symbol]);
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Liquidations · last batch</div>
+      <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">{symbol} · Liquidations 7d</div>
       {data ? (
         <>
           <div className="text-2xl font-bold text-white">{data.count.toLocaleString()}</div>
           <div className="text-[10px] text-neutral-500 mt-1">
-            {data.biggestSymbol && data.biggestUsd > 0
-              ? <>biggest: <strong className="text-rose-300">{data.biggestSymbol}</strong> · ${data.biggestUsd.toLocaleString(undefined, { maximumFractionDigits: 0 })}</>
+            {data.biggestUsd > 0
+              ? <>biggest: {data.biggestSide && <strong className={data.biggestSide === 'long' ? 'text-rose-300' : 'text-emerald-300'}>{data.biggestSide.toUpperCase()}</strong>} ${data.biggestUsd.toLocaleString(undefined, { maximumFractionDigits: 0 })}</>
               : <>no liquidations in window</>
             }
           </div>
-          <Link href="/liquidations" className="text-[11px] text-emerald-300 hover:underline mt-2 inline-block">Full feed →</Link>
+          <Link href={`/liquidations?symbol=${symbol}`} className="text-[11px] text-emerald-300 hover:underline mt-2 inline-block">Full feed →</Link>
         </>
       ) : err ? (
         <div className="text-[11px] text-neutral-500">Could not load liquidations.</div>
