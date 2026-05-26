@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
-import { RefreshCw, Search, Filter, ChevronDown, ChevronUp, Save, X, Star, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import { RefreshCw, Search, Filter, ChevronDown, ChevronUp, Save, X, Star, AlertTriangle, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
 import { useFlash } from '@/hooks/useFlash';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import DataFreshness from '@/components/DataFreshness';
@@ -806,10 +806,23 @@ export default function ScreenerPage() {
                       </button>
                     </td>
                     <td className="px-3 py-2 font-semibold text-white">
-                      <Link href={`/symbol/${row.symbol}`} className="hover:text-hub-yellow transition-colors inline-flex items-center gap-1.5">
-                        <TokenIconSimple symbol={row.symbol} size={16} />
-                        {row.symbol}
-                      </Link>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Link href={`/symbol/${row.symbol}`} className="hover:text-hub-yellow transition-colors inline-flex items-center gap-1.5">
+                          <TokenIconSimple symbol={row.symbol} size={16} />
+                          {row.symbol}
+                        </Link>
+                        {/* Direct deeplink to /chart — saves the
+                            screener → symbol page → chart hop. */}
+                        <Link
+                          href={`/chart?s=${row.symbol}`}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Open ${row.symbol} chart`}
+                          title="Open chart"
+                          className="text-neutral-600 hover:text-hub-yellow transition-colors"
+                        >
+                          <BarChart3 className="w-3 h-3" />
+                        </Link>
+                      </span>
                     </td>
                     <td className="px-3 py-2 text-right text-neutral-300 font-mono text-xs">{formatPrice(row.price)}</td>
                     <td className="px-3 py-2 text-right">
