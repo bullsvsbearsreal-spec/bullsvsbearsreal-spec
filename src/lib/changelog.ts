@@ -64,7 +64,7 @@ export const CHANGELOG: ChangelogEntry[] = [
       'TierGate component for paid-launch gating with LAUNCH_GATING_ENABLED master switch. During launch it shows a hint chip ("Pro tier feature — free during launch") instead of paywalling. Flip the constant the day NowPayments goes live.',
       'Dynamic OG images on / · /pricing · /referrals · /funding-arb · /spread-scanner · /smart-money · /hl-whales · /spreads. 1200×630, Edge runtime, system fonts, no external assets — fast + reliable for Twitter/Telegram share cards.',
       'Email template library at lib/email/templates.ts: 7 templates (welcome, affiliate-signup, commission-earned, USDT-payout-sent, launch-cutover, subscription-confirmed, payment-failed). Admin preview at /api/admin/email-preview for QA.',
-      'New-user onboarding: 5-step guided tour on first /dashboard visit covering data terminal, funding arb, alerts, affiliate program, custom dashboard. Persists completion to localStorage.',
+      'New-user onboarding: 6-step guided tour on first /dashboard visit covering data terminal, funding arb, alerts, affiliate program, whale copy-trading, custom dashboard. Persists completion to localStorage.',
       'Bot v2 (AI chat) experiment rolled back — Hub Telegram bot reverts to alerts-only @InfoHubRadarBot. ~3,500 lines of AI-chat scaffolding removed.',
     ],
     links: [

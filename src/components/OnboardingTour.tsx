@@ -3,7 +3,7 @@
 /**
  * <OnboardingTour /> — first-time-user guided intro.
  *
- * Renders a 5-step modal sequence over the page chrome on first
+ * Renders a 6-step modal sequence over the page chrome on first
  * /dashboard visit. Each step highlights one feature the new user
  * should know about. Closes on Done, Esc, or backdrop click;
  * completion persists in localStorage so it never re-fires for the
@@ -23,7 +23,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import {
-  Sparkles, Zap, Bell, Gift, LayoutDashboard, ArrowRight, X as XIcon,
+  Sparkles, Zap, Bell, Gift, LayoutDashboard, Copy, ArrowRight, X as XIcon,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -108,6 +108,24 @@ const STEPS: Step[] = [
       </>
     ),
     cta: { label: 'Grab my referral link', href: '/settings/referrals' },
+  },
+  {
+    icon: Copy,
+    accent: 'emerald',
+    title: "Copy what whales are doing",
+    body: (
+      <>
+        <p style={{ margin: '0 0 8px' }}>
+          Open <strong style={{ color: '#fff' }}>/hl-whales</strong> and you'll see every Hyperliquid wallet over $5M, sorted
+          by their biggest position first. Hit the green <strong style={{ color: '#34d399' }}>Copy →</strong> on any row to
+          mirror their bet — sized to whatever fraction you want (0.25× / 0.5× / 1× / 2×).
+        </p>
+        <p style={{ margin: 0, color: '#a3a3a3', fontSize: 12 }}>
+          You don't have to chase the same entry — we'll warn you when the price has drifted too far from theirs.
+        </p>
+      </>
+    ),
+    cta: { label: 'See whale positions', href: '/hl-whales' },
   },
   {
     icon: LayoutDashboard,
