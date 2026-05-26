@@ -1,29 +1,13 @@
-// Telegram Bot API helper — Hub (InfoHub AI Agent)
+// Telegram Bot API helper — Hub (InfoHub)
 //
-// Two-bot architecture (May 2026):
-//   @InfoHubRadarBot — alerts, daily summary, whale-watch pings (OUTBOUND)
-//   @ihhubbot       — AI chat + trade ideas (INBOUND webhook + OUTBOUND replies)
+// Single-bot deployment (post-v2-rollback, May 2026):
+//   @InfoHubRadarBot — alerts, daily summary, whale-watch pings.
 //
-// Env vars:
-//   TELEGRAM_BOT_TOKEN      → alert bot (default for outbound sendMessage)
-//   TELEGRAM_CHAT_BOT_TOKEN → chat bot (passed explicitly by webhook route via
-//                             getChatBotToken())
-//
-// All helpers accept an optional `botToken` arg. When omitted they fall back
-// to TELEGRAM_BOT_TOKEN, keeping the alert/cron call sites unchanged.
+// AI chat lives on info-hub.io/chat instead of in Telegram. The Telegram
+// webhook (src/app/api/telegram/webhook/route.ts) handles linking, mute,
+// status — that's the full bot surface area.
 
-const DEFAULT_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN ?? '';
-
-function apiBaseFor(botToken?: string): string {
-  const token = (botToken || DEFAULT_BOT_TOKEN).trim();
-  return `https://api.telegram.org/bot${token}`;
-}
-
-/** Returns the chat bot token if configured, else falls back to the default
- *  alert-bot token (single-bot deployments still work). */
-export function getChatBotToken(): string {
-  return (process.env.TELEGRAM_CHAT_BOT_TOKEN || DEFAULT_BOT_TOKEN || '').trim();
-}
+const API_BASE = `https://api.telegram.org/bot${(process.env.TELEGRAM_BOT_TOKEN ?? '').trim()}`;
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -46,14 +30,13 @@ export interface SendMessageResult {
 
 /**
  * Send a text message via Telegram Bot API.
- * Returns the message_id on success (for later editing), or 0 on failure.
+ * Returns true on success, false on failure.
  */
 export async function sendMessage(
   chatId: string | number,
   text: string,
   parseMode: 'HTML' | 'Markdown' | 'MarkdownV2' = 'HTML',
   replyMarkup?: InlineKeyboardMarkup,
-  botToken?: string,
 ): Promise<boolean> {
   try {
     const payload: Record<string, unknown> = {
@@ -64,7 +47,7 @@ export async function sendMessage(
     };
     if (replyMarkup) payload.reply_markup = replyMarkup;
 
-    const res = await fetch(`${apiBaseFor(botToken)}/sendMessage`, {
+    const res = await fetch(`${API_BASE}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -91,7 +74,6 @@ export async function sendMessageWithId(
   text: string,
   parseMode: 'HTML' | 'Markdown' | 'MarkdownV2' = 'HTML',
   replyMarkup?: InlineKeyboardMarkup,
-  botToken?: string,
 ): Promise<number> {
   try {
     const payload: Record<string, unknown> = {
@@ -102,7 +84,7 @@ export async function sendMessageWithId(
     };
     if (replyMarkup) payload.reply_markup = replyMarkup;
 
-    const res = await fetch(`${apiBaseFor(botToken)}/sendMessage`, {
+    const res = await fetch(`${API_BASE}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -128,7 +110,6 @@ export async function editMessage(
   text: string,
   parseMode: 'HTML' | 'Markdown' | 'MarkdownV2' = 'HTML',
   replyMarkup?: InlineKeyboardMarkup,
-  botToken?: string,
 ): Promise<boolean> {
   try {
     const payload: Record<string, unknown> = {
@@ -140,7 +121,7 @@ export async function editMessage(
     };
     if (replyMarkup) payload.reply_markup = replyMarkup;
 
-    const res = await fetch(`${apiBaseFor(botToken)}/editMessageText`, {
+    const res = await fetch(`${API_BASE}/editMessageText`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -161,10 +142,9 @@ export async function answerCallbackQuery(
   callbackQueryId: string,
   text?: string,
   showAlert?: boolean,
-  botToken?: string,
 ): Promise<boolean> {
   try {
-    const res = await fetch(`${apiBaseFor(botToken)}/answerCallbackQuery`, {
+    const res = await fetch(`${API_BASE}/answerCallbackQuery`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -186,12 +166,11 @@ export async function answerCallbackQuery(
 export async function setWebhook(
   url: string,
   secret?: string,
-  botToken?: string,
 ): Promise<Record<string, unknown>> {
   const payload: Record<string, unknown> = { url };
   if (secret) payload.secret_token = secret;
 
-  const res = await fetch(`${apiBaseFor(botToken)}/setWebhook`, {
+  const res = await fetch(`${API_BASE}/setWebhook`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),

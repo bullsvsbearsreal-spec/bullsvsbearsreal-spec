@@ -1788,59 +1788,15 @@ async function initTelegramTables(): Promise<void> {
     )
   `;
 
-  // Hub bot v2 — proactive idea-push opt-in per chat. Pro tier defaults
-  // OFF (must run /notify on), Whale tier defaults ON (set when the link
-  // is created in linkTelegramChat — see notification-defaults in the
-  // command handler). Adding the column post-hoc keeps existing rows
-  // working (NULL ≡ OFF).
-  await sql`
-    ALTER TABLE telegram_links ADD COLUMN IF NOT EXISTS idea_notifications BOOLEAN DEFAULT false
-  `;
-
-  // Hub bot v2 — persistent conversation history. Replaces the in-process
-  // Map that vanished on every App Platform restart. 90-day retention is
-  // enforced by /api/cron/prune-tg-conversations (PR2). For now we just
-  // bound the SELECT to "last 24 hours" so an unpruned table can't blow
-  // up token usage.
-  await sql`
-    CREATE TABLE IF NOT EXISTS telegram_conversations (
-      id BIGSERIAL PRIMARY KEY,
-      chat_id BIGINT NOT NULL,
-      user_id TEXT,
-      role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
-      content TEXT NOT NULL,
-      tool_calls JSONB,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
-  await sql`
-    CREATE INDEX IF NOT EXISTS idx_tg_conv_chat_created
-      ON telegram_conversations (chat_id, created_at DESC)
-  `;
-
-  // Hub bot v2 — trade-idea log. Powers both the proactive-push flow
-  // (status='live' → invalidated/expired) and the public /bot/track page
-  // (PR2). Every idea the bot surfaces is persisted with the full signal
-  // stack JSON so we can tune the scorer from real outcomes.
-  await sql`
-    CREATE TABLE IF NOT EXISTS bot_trade_ideas (
-      id BIGSERIAL PRIMARY KEY,
-      symbol TEXT NOT NULL,
-      side TEXT NOT NULL CHECK (side IN ('long', 'short')),
-      setup_type TEXT NOT NULL,
-      score INTEGER NOT NULL CHECK (score BETWEEN 0 AND 100),
-      signal_stack JSONB NOT NULL,
-      invalidation NUMERIC,
-      horizon_h INTEGER NOT NULL,
-      pushed_to BIGINT[],
-      status TEXT NOT NULL DEFAULT 'live' CHECK (status IN ('live', 'invalidated', 'expired')),
-      closed_at TIMESTAMPTZ,
-      outcome_pct NUMERIC,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
-  await sql`CREATE INDEX IF NOT EXISTS idx_bot_ideas_status ON bot_trade_ideas (status, created_at DESC)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_bot_ideas_symbol_created ON bot_trade_ideas (symbol, created_at DESC)`;
+  // Hub bot v2 AI-chat experiment was reverted (May 2026). The
+  // telegram_conversations + bot_trade_ideas tables and the
+  // idea_notifications column on telegram_links are intentionally NOT
+  // dropped here — leaving them with no writers is safe and avoids a
+  // destructive migration during the rollback. They can be dropped
+  // manually later via:
+  //   DROP TABLE IF EXISTS telegram_conversations;
+  //   DROP TABLE IF EXISTS bot_trade_ideas;
+  //   ALTER TABLE telegram_links DROP COLUMN IF EXISTS idea_notifications;
 }
 
 // No longer needed — replaced by telegram_links
@@ -1851,7 +1807,6 @@ export interface TelegramLink {
   user_id: string;
   active: boolean;
   muted_until: Date | null;
-  idea_notifications?: boolean;
 }
 
 /** Create a link code for a logged-in user (expires in 10 min). */
@@ -1951,7 +1906,7 @@ export async function getTelegramLink(chatId: number): Promise<TelegramLink | nu
   try {
     const sql = getSQL();
     const rows = await sql`
-      SELECT chat_id, user_id, active, muted_until, idea_notifications
+      SELECT chat_id, user_id, active, muted_until
       FROM telegram_links WHERE chat_id = ${chatId}
     `;
     if (rows.length === 0) return null;
@@ -1961,7 +1916,6 @@ export async function getTelegramLink(chatId: number): Promise<TelegramLink | nu
       user_id: r.user_id,
       active: Boolean(r.active),
       muted_until: r.muted_until ? new Date(r.muted_until) : null,
-      idea_notifications: Boolean(r.idea_notifications),
     };
   } catch (e) {
     console.error('DB getTelegramLink error:', e);
@@ -1974,7 +1928,7 @@ export async function getTelegramLinkByUser(userId: string): Promise<TelegramLin
   try {
     const sql = getSQL();
     const rows = await sql`
-      SELECT chat_id, user_id, active, muted_until, idea_notifications
+      SELECT chat_id, user_id, active, muted_until
       FROM telegram_links WHERE user_id = ${userId}
       ORDER BY active DESC, created_at DESC
       LIMIT 1
@@ -1986,24 +1940,10 @@ export async function getTelegramLinkByUser(userId: string): Promise<TelegramLin
       user_id: r.user_id,
       active: Boolean(r.active),
       muted_until: r.muted_until ? new Date(r.muted_until) : null,
-      idea_notifications: Boolean(r.idea_notifications),
     };
   } catch (e) {
     console.error('DB getTelegramLinkByUser error:', e);
     return null;
-  }
-}
-
-/**
- * Toggle proactive trade-idea push notifications for this chat. Pro users
- * opt IN via `/notify on`. Whale users default ON at link time.
- */
-export async function setTelegramIdeaNotifications(chatId: number, enabled: boolean): Promise<void> {
-  try {
-    const sql = getSQL();
-    await sql`UPDATE telegram_links SET idea_notifications = ${enabled} WHERE chat_id = ${chatId}`;
-  } catch (e) {
-    console.error('DB setTelegramIdeaNotifications error:', e);
   }
 }
 
@@ -2052,350 +1992,6 @@ export async function pruneExpiredLinkCodes(): Promise<void> {
   } catch (e) {
     console.error('DB pruneExpiredLinkCodes error:', e);
   }
-}
-
-// ─── Hub Bot v2 — persistent conversation memory ────────────────────────────
-
-export interface TelegramConversationRow {
-  role: 'user' | 'assistant';
-  content: string;
-  created_at: Date;
-}
-
-/**
- * Append one conversation turn. Used after the user's message AND after the
- * bot's response, so the next request can reload the recent context. We
- * persist in two separate calls (one user, one assistant) rather than a
- * batch so a mid-flow failure still records the user message.
- */
-export async function appendTelegramConversation(
-  chatId: number,
-  userId: string | null,
-  role: 'user' | 'assistant',
-  content: string,
-): Promise<void> {
-  try {
-    const sql = getSQL();
-    await sql`
-      INSERT INTO telegram_conversations (chat_id, user_id, role, content)
-      VALUES (${chatId}, ${userId}, ${role}, ${content})
-    `;
-  } catch (e) {
-    console.error('DB appendTelegramConversation error:', e);
-  }
-}
-
-/**
- * Load recent conversation history for a chat, ordered oldest → newest so
- * it can be spliced into the Anthropic/DO Inference messages array
- * directly. Bounded by `limit` (default 12 = 6 turns) and "last 24 hours"
- * so token usage stays predictable even before the 90-day prune cron is
- * in place.
- */
-export async function getTelegramConversation(
-  chatId: number,
-  limit: number = 12,
-): Promise<TelegramConversationRow[]> {
-  try {
-    const sql = getSQL();
-    const rows = await sql`
-      SELECT role, content, created_at
-      FROM telegram_conversations
-      WHERE chat_id = ${chatId}
-        AND created_at > NOW() - INTERVAL '24 hours'
-      ORDER BY created_at DESC
-      LIMIT ${limit}
-    `;
-    return rows
-      .map((r: any) => ({
-        role: r.role as 'user' | 'assistant',
-        content: String(r.content || ''),
-        created_at: new Date(r.created_at),
-      }))
-      .reverse(); // chronological order for the LLM
-  } catch (e) {
-    console.error('DB getTelegramConversation error:', e);
-    return [];
-  }
-}
-
-/**
- * Load all conversation rows for a chat from the last `days` days. Powers
- * the `/recap` command. Bounded to 200 rows to keep one rare power-user
- * from blowing up the response.
- */
-export async function getTelegramConversationForRecap(
-  chatId: number,
-  days: number = 7,
-): Promise<TelegramConversationRow[]> {
-  try {
-    const sql = getSQL();
-    const rows = await sql`
-      SELECT role, content, created_at
-      FROM telegram_conversations
-      WHERE chat_id = ${chatId}
-        AND created_at > NOW() - (${days} || ' days')::INTERVAL
-      ORDER BY created_at ASC
-      LIMIT 200
-    `;
-    return rows.map((r: any) => ({
-      role: r.role as 'user' | 'assistant',
-      content: String(r.content || ''),
-      created_at: new Date(r.created_at),
-    }));
-  } catch (e) {
-    console.error('DB getTelegramConversationForRecap error:', e);
-    return [];
-  }
-}
-
-/**
- * Resolve a Telegram chat to the linked user's tier. Returns 'free' for
- * unlinked chats so the webhook can treat them uniformly without a separate
- * null branch. Used by the Hub bot v2 webhook for /ideas gating.
- */
-export async function getTelegramChatTier(chatId: number): Promise<'free' | 'pro' | 'whale'> {
-  try {
-    const sql = getSQL();
-    const rows = await sql`
-      SELECT u.role, u.billing_tier
-      FROM telegram_links tl
-      JOIN users u ON u.id = tl.user_id
-      WHERE tl.chat_id = ${chatId} AND tl.active = true
-      LIMIT 1
-    `;
-    if (rows.length === 0) return 'free';
-    const role = rows[0].role as string | null;
-    const billing = rows[0].billing_tier as string | null;
-    if (role === 'admin') return 'whale';
-    if (billing === 'pro' || billing === 'whale') return billing;
-    return 'free';
-  } catch (e) {
-    console.error('DB getTelegramChatTier error:', e);
-    return 'free';
-  }
-}
-
-/** Wipe a chat's conversation history. Powers `/forget`. */
-export async function clearTelegramConversation(chatId: number): Promise<void> {
-  try {
-    const sql = getSQL();
-    await sql`DELETE FROM telegram_conversations WHERE chat_id = ${chatId}`;
-  } catch (e) {
-    console.error('DB clearTelegramConversation error:', e);
-  }
-}
-
-/**
- * Hard retention sweep — delete anything older than the cutoff. Called
- * by the `/api/cron/prune-tg-conversations` job (PR2). Returns the row
- * count so the cron can log it.
- */
-export async function pruneOldTelegramConversations(days: number = 90): Promise<number> {
-  try {
-    const sql = getSQL();
-    const result = await sql`
-      DELETE FROM telegram_conversations
-      WHERE created_at < NOW() - (${days} || ' days')::INTERVAL
-    `;
-    return (result as any).count ?? 0;
-  } catch (e) {
-    console.error('DB pruneOldTelegramConversations error:', e);
-    return 0;
-  }
-}
-
-// ─── Hub Bot v2 — trade idea persistence ────────────────────────────────────
-
-export interface TradeIdeaRow {
-  id: string;
-  symbol: string;
-  side: 'long' | 'short';
-  setup_type: string;
-  score: number;
-  signal_stack: any;
-  invalidation: number | null;
-  horizon_h: number;
-  pushed_to: number[];
-  status: 'live' | 'invalidated' | 'expired';
-  closed_at: Date | null;
-  outcome_pct: number | null;
-  created_at: Date;
-}
-
-export interface TradeIdeaInsert {
-  symbol: string;
-  side: 'long' | 'short';
-  setupType: string;
-  score: number;
-  signalStack: unknown;
-  invalidation: number | null;
-  horizonH: number;
-  pushedTo: number[];
-}
-
-/** Insert a new trade idea. Returns the row id for follow-up updates. */
-export async function insertTradeIdea(idea: TradeIdeaInsert): Promise<string | null> {
-  try {
-    const sql = getSQL();
-    const rows = await sql`
-      INSERT INTO bot_trade_ideas
-        (symbol, side, setup_type, score, signal_stack, invalidation, horizon_h, pushed_to)
-      VALUES (
-        ${idea.symbol}, ${idea.side}, ${idea.setupType}, ${idea.score},
-        ${JSON.stringify(idea.signalStack)}::jsonb, ${idea.invalidation},
-        ${idea.horizonH}, ${idea.pushedTo}
-      )
-      RETURNING id
-    `;
-    return rows[0]?.id?.toString() ?? null;
-  } catch (e) {
-    console.error('DB insertTradeIdea error:', e);
-    return null;
-  }
-}
-
-/**
- * Read all currently-live ideas (status='live'). Used by the watch-ideas
- * cron to check each against current market state for invalidation/expiry.
- */
-export async function listLiveTradeIdeas(): Promise<TradeIdeaRow[]> {
-  try {
-    const sql = getSQL();
-    const rows = await sql`
-      SELECT id, symbol, side, setup_type, score, signal_stack,
-             invalidation, horizon_h, pushed_to, status, closed_at,
-             outcome_pct, created_at
-      FROM bot_trade_ideas
-      WHERE status = 'live'
-      ORDER BY created_at DESC
-      LIMIT 200
-    `;
-    return rows.map(_mapTradeIdeaRow);
-  } catch (e) {
-    console.error('DB listLiveTradeIdeas error:', e);
-    return [];
-  }
-}
-
-/**
- * Read the most recent N ideas regardless of status. Used by /bot/track
- * for the public track-record view.
- */
-export async function listRecentTradeIdeas(limit: number = 100): Promise<TradeIdeaRow[]> {
-  try {
-    const sql = getSQL();
-    const rows = await sql`
-      SELECT id, symbol, side, setup_type, score, signal_stack,
-             invalidation, horizon_h, pushed_to, status, closed_at,
-             outcome_pct, created_at
-      FROM bot_trade_ideas
-      WHERE created_at > NOW() - INTERVAL '90 days'
-      ORDER BY created_at DESC
-      LIMIT ${Math.max(1, Math.min(500, limit))}
-    `;
-    return rows.map(_mapTradeIdeaRow);
-  } catch (e) {
-    console.error('DB listRecentTradeIdeas error:', e);
-    return [];
-  }
-}
-
-/**
- * Read the most recent idea for one symbol (any side, any status) so the
- * scan cron can dedup back-to-back pushes for the same coin.
- */
-export async function getLatestIdeaForSymbol(symbol: string): Promise<TradeIdeaRow | null> {
-  try {
-    const sql = getSQL();
-    const rows = await sql`
-      SELECT id, symbol, side, setup_type, score, signal_stack,
-             invalidation, horizon_h, pushed_to, status, closed_at,
-             outcome_pct, created_at
-      FROM bot_trade_ideas
-      WHERE symbol = ${symbol}
-      ORDER BY created_at DESC
-      LIMIT 1
-    `;
-    return rows.length > 0 ? _mapTradeIdeaRow(rows[0]) : null;
-  } catch (e) {
-    console.error('DB getLatestIdeaForSymbol error:', e);
-    return null;
-  }
-}
-
-/** Count ideas pushed in the last N hours. Used for the daily push cap. */
-export async function countIdeasPushedSince(hours: number): Promise<number> {
-  try {
-    const sql = getSQL();
-    const rows = await sql`
-      SELECT COUNT(*)::int AS n
-      FROM bot_trade_ideas
-      WHERE created_at > NOW() - (${hours} || ' hours')::INTERVAL
-        AND array_length(pushed_to, 1) > 0
-    `;
-    return Number(rows[0]?.n ?? 0);
-  } catch (e) {
-    console.error('DB countIdeasPushedSince error:', e);
-    return 0;
-  }
-}
-
-/** Update the status of a live idea to invalidated or expired. */
-export async function closeTradeIdea(
-  id: string,
-  status: 'invalidated' | 'expired',
-  outcomePct: number | null,
-): Promise<void> {
-  try {
-    const sql = getSQL();
-    await sql`
-      UPDATE bot_trade_ideas
-      SET status = ${status},
-          closed_at = NOW(),
-          outcome_pct = ${outcomePct}
-      WHERE id = ${id} AND status = 'live'
-    `;
-  } catch (e) {
-    console.error('DB closeTradeIdea error:', e);
-  }
-}
-
-/** All chat ids opted-in to proactive idea pushes (active, not muted). */
-export async function getIdeaPushSubscribers(): Promise<number[]> {
-  try {
-    const sql = getSQL();
-    const rows = await sql`
-      SELECT chat_id
-      FROM telegram_links
-      WHERE active = true
-        AND idea_notifications = true
-        AND (muted_until IS NULL OR muted_until < NOW())
-      LIMIT 10000
-    `;
-    return rows.map((r: any) => Number(r.chat_id));
-  } catch (e) {
-    console.error('DB getIdeaPushSubscribers error:', e);
-    return [];
-  }
-}
-
-function _mapTradeIdeaRow(r: any): TradeIdeaRow {
-  return {
-    id: String(r.id),
-    symbol: String(r.symbol),
-    side: r.side as 'long' | 'short',
-    setup_type: String(r.setup_type),
-    score: Number(r.score),
-    signal_stack: r.signal_stack,
-    invalidation: r.invalidation === null ? null : Number(r.invalidation),
-    horizon_h: Number(r.horizon_h),
-    pushed_to: Array.isArray(r.pushed_to) ? r.pushed_to.map((n: any) => Number(n)) : [],
-    status: r.status as 'live' | 'invalidated' | 'expired',
-    closed_at: r.closed_at ? new Date(r.closed_at) : null,
-    outcome_pct: r.outcome_pct === null ? null : Number(r.outcome_pct),
-    created_at: new Date(r.created_at),
-  };
 }
 
 // ─── Alert Notification Functions ────────────────────────────────────────────
