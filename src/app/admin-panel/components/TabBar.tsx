@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 
-export type AdminTab = 'overview' | 'pipeline' | 'alerts' | 'database' | 'users' | 'invites' | 'actions';
+export type AdminTab = 'overview' | 'pipeline' | 'alerts' | 'database' | 'users' | 'invites' | 'actions' | 'affiliates';
 
 interface TabDef {
   id: AdminTab;

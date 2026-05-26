@@ -4856,6 +4856,165 @@ export async function getReferralSummary(affiliateUserId: string): Promise<Refer
   }
 }
 
+// ─── Admin affiliate-program stats (May 2026) ───────────────────────────────
+
+export interface AdminAffiliateRow {
+  affiliateUserId: string;
+  affiliateEmail: string | null;
+  affiliateName: string | null;
+  referralCode: string | null;
+  signups: number;
+  conversions: number;
+  totalCommissionUsd: number;
+  paidOutUsd: number;
+  pendingUsd: number;
+}
+
+export interface AdminAffiliateOverview {
+  totalAffiliates: number;
+  totalReferredSignups: number;
+  totalConversions: number;
+  totalCommissionUsd: number;
+  totalPaidOutUsd: number;
+  totalPendingUsd: number;
+  topByConversions: AdminAffiliateRow[];
+  topBySignups: AdminAffiliateRow[];
+  recentEvents: Array<{
+    id: number;
+    affiliateUserId: string;
+    affiliateEmail: string | null;
+    eventType: string;
+    amountUsd: number | null;
+    commissionUsd: number | null;
+    createdAt: Date;
+  }>;
+}
+
+/**
+ * Aggregate the entire affiliate program into one admin payload.
+ * Single function, multiple queries — keeps the /api/admin/affiliates
+ * route handler trivial. All queries are SCOPED reads — no writes,
+ * safe to call as often as the admin dashboard polls.
+ */
+export async function getAdminAffiliateOverview(): Promise<AdminAffiliateOverview> {
+  const empty: AdminAffiliateOverview = {
+    totalAffiliates: 0, totalReferredSignups: 0, totalConversions: 0,
+    totalCommissionUsd: 0, totalPaidOutUsd: 0, totalPendingUsd: 0,
+    topByConversions: [], topBySignups: [], recentEvents: [],
+  };
+  if (!isDBConfigured()) return empty;
+  try {
+    const sql = getSQL();
+
+    // Headline counters — single round-trip via aggregate subqueries.
+    const headline = await sql`
+      SELECT
+        (SELECT COUNT(DISTINCT affiliate_user_id)
+           FROM referral_events) AS total_affiliates,
+        (SELECT COUNT(*)
+           FROM users WHERE referred_by_user_id IS NOT NULL) AS total_referred_signups,
+        (SELECT COUNT(*)
+           FROM referral_events WHERE event_type='conversion') AS total_conversions,
+        (SELECT COALESCE(SUM(commission_usd),0)
+           FROM referral_events WHERE event_type='conversion') AS total_commission,
+        (SELECT COALESCE(SUM(amount_usd),0)
+           FROM referral_events WHERE event_type='payout') AS total_paid_out
+    ` as Array<{
+      total_affiliates: string | number;
+      total_referred_signups: string | number;
+      total_conversions: string | number;
+      total_commission: string | number;
+      total_paid_out: string | number;
+    }>;
+    const h = headline[0] ?? { total_affiliates: 0, total_referred_signups: 0, total_conversions: 0, total_commission: 0, total_paid_out: 0 };
+
+    // Top affiliates by signups
+    const signupRows = await sql`
+      SELECT
+        re.affiliate_user_id,
+        u.email   AS affiliate_email,
+        u.name    AS affiliate_name,
+        u.referral_code,
+        COALESCE(SUM(CASE WHEN re.event_type='signup'     THEN 1 ELSE 0 END), 0) AS signups,
+        COALESCE(SUM(CASE WHEN re.event_type='conversion' THEN 1 ELSE 0 END), 0) AS conversions,
+        COALESCE(SUM(CASE WHEN re.event_type='conversion' THEN re.commission_usd ELSE 0 END), 0) AS commission,
+        COALESCE(SUM(CASE WHEN re.event_type='payout'     THEN re.amount_usd       ELSE 0 END), 0) AS paid_out
+      FROM referral_events re
+      LEFT JOIN users u ON u.id = re.affiliate_user_id
+      GROUP BY re.affiliate_user_id, u.email, u.name, u.referral_code
+      ORDER BY signups DESC, commission DESC
+      LIMIT 20
+    ` as Array<any>;
+
+    // Top affiliates by commission (conversions $)
+    const commissionRows = await sql`
+      SELECT
+        re.affiliate_user_id,
+        u.email   AS affiliate_email,
+        u.name    AS affiliate_name,
+        u.referral_code,
+        COALESCE(SUM(CASE WHEN re.event_type='signup'     THEN 1 ELSE 0 END), 0) AS signups,
+        COALESCE(SUM(CASE WHEN re.event_type='conversion' THEN 1 ELSE 0 END), 0) AS conversions,
+        COALESCE(SUM(CASE WHEN re.event_type='conversion' THEN re.commission_usd ELSE 0 END), 0) AS commission,
+        COALESCE(SUM(CASE WHEN re.event_type='payout'     THEN re.amount_usd       ELSE 0 END), 0) AS paid_out
+      FROM referral_events re
+      LEFT JOIN users u ON u.id = re.affiliate_user_id
+      GROUP BY re.affiliate_user_id, u.email, u.name, u.referral_code
+      HAVING SUM(CASE WHEN re.event_type='conversion' THEN re.commission_usd ELSE 0 END) > 0
+      ORDER BY commission DESC
+      LIMIT 20
+    ` as Array<any>;
+
+    const mapAffiliateRow = (r: any): AdminAffiliateRow => ({
+      affiliateUserId: r.affiliate_user_id,
+      affiliateEmail: r.affiliate_email ?? null,
+      affiliateName: r.affiliate_name ?? null,
+      referralCode: r.referral_code ?? null,
+      signups: Number(r.signups || 0),
+      conversions: Number(r.conversions || 0),
+      totalCommissionUsd: Number(r.commission || 0),
+      paidOutUsd: Number(r.paid_out || 0),
+      pendingUsd: Math.max(0, Number(r.commission || 0) - Number(r.paid_out || 0)),
+    });
+
+    // Most recent activity across the program
+    const recentRaw = await sql`
+      SELECT re.id, re.affiliate_user_id, u.email AS affiliate_email,
+             re.event_type, re.amount_usd, re.commission_usd, re.created_at
+      FROM referral_events re
+      LEFT JOIN users u ON u.id = re.affiliate_user_id
+      ORDER BY re.created_at DESC
+      LIMIT 30
+    ` as Array<any>;
+    const recentEvents = recentRaw.map((r) => ({
+      id: Number(r.id),
+      affiliateUserId: r.affiliate_user_id,
+      affiliateEmail: r.affiliate_email ?? null,
+      eventType: r.event_type as string,
+      amountUsd: r.amount_usd === null ? null : Number(r.amount_usd),
+      commissionUsd: r.commission_usd === null ? null : Number(r.commission_usd),
+      createdAt: new Date(r.created_at),
+    }));
+
+    const totalCommissionUsd = Number(h.total_commission || 0);
+    const totalPaidOutUsd = Number(h.total_paid_out || 0);
+    return {
+      totalAffiliates: Number(h.total_affiliates || 0),
+      totalReferredSignups: Number(h.total_referred_signups || 0),
+      totalConversions: Number(h.total_conversions || 0),
+      totalCommissionUsd,
+      totalPaidOutUsd,
+      totalPendingUsd: Math.max(0, totalCommissionUsd - totalPaidOutUsd),
+      topByConversions: commissionRows.map(mapAffiliateRow),
+      topBySignups: signupRows.map(mapAffiliateRow),
+      recentEvents,
+    };
+  } catch (e) {
+    console.error('DB getAdminAffiliateOverview error:', e);
+    return empty;
+  }
+}
+
 // ─── Custom dashboard widget layouts (Pro tier, May 2026) ───────────────────
 
 /**

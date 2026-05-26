@@ -5,7 +5,7 @@ import { useSession } from 'next-auth/react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import {
-  Shield, Users, Database, Bell, BarChart3, TrendingUp, Zap,
+  Shield, Users, Database, Bell, BarChart3, TrendingUp, Zap, Gift,
   RefreshCw, Send, Activity, Settings,
 } from 'lucide-react';
 import { ToastProvider } from './components/Toast';
@@ -19,6 +19,7 @@ import DatabaseTab from './components/DatabaseTab';
 import UsersTab from './components/UsersTab';
 import InvitesTab from './components/InvitesTab';
 import ActionsTab from './components/ActionsTab';
+import AffiliatesTab from './components/AffiliatesTab';
 
 interface SiteStats {
   totals: {
@@ -57,6 +58,7 @@ const BASE_TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
   { id: 'database', label: 'Database', icon: <Database className="w-3.5 h-3.5" /> },
   { id: 'users', label: 'Users', icon: <Users className="w-3.5 h-3.5" /> },
   { id: 'invites', label: 'Invites', icon: <Send className="w-3.5 h-3.5" /> },
+  { id: 'affiliates', label: 'Affiliates', icon: <Gift className="w-3.5 h-3.5" /> },
   { id: 'actions', label: 'Actions', icon: <Settings className="w-3.5 h-3.5" /> },
 ];
 
@@ -286,6 +288,7 @@ export default function AdminPanelPage() {
               {activeTab === 'database' && <DatabaseTab />}
               {activeTab === 'users' && <UsersTab userRole={userRole} currentUserId={session.user.id} />}
               {activeTab === 'invites' && <InvitesTab />}
+              {activeTab === 'affiliates' && <AffiliatesTab />}
               {activeTab === 'actions' && <ActionsTab userRole={userRole} />}
             </div>
           </div>
