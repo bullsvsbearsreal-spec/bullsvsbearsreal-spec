@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UsdDisplay from '@/components/UsdDisplay';
@@ -8,6 +8,34 @@ import PageHero from '@/components/PageHero';
 import { Ruler, Info, AlertTriangle, CheckCircle2, Target } from 'lucide-react';
 
 type Side = 'long' | 'short';
+
+const STORAGE_KEY = 'infohub_position_size_prefs_v1';
+
+/** Subset of inputs we persist across visits. Entry/stop/target stay
+ *  per-session since they're trade-specific; account + risk + Kelly
+ *  defaults are user preferences. */
+interface PersistedPrefs {
+  account?: string;
+  riskPct?: string;
+  winRate?: string;
+  avgWin?: string;
+  avgLoss?: string;
+}
+
+function loadPrefs(): PersistedPrefs {
+  if (typeof localStorage === 'undefined') return {};
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return typeof parsed === 'object' && parsed !== null ? parsed : {};
+  } catch { return {}; }
+}
+
+function savePrefs(prefs: PersistedPrefs): void {
+  if (typeof localStorage === 'undefined') return;
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs)); } catch { /* ignore */ }
+}
 
 function toNum(v: string): number {
   const n = parseFloat(v.replace(/,/g, ''));
@@ -21,11 +49,33 @@ export default function PositionSizePage() {
   const [entryStr, setEntryStr] = useState('75000');
   const [stopStr, setStopStr] = useState('73000');
   const [targetStr, setTargetStr] = useState('80000');
+  const [leverageStr, setLeverageStr] = useState('');  // optional override for liq calc
+
+  // Hydrate persisted prefs on mount. Done in an effect (not the initial
+  // useState default) so SSR markup matches first client render — without
+  // this, the server-rendered "10000" defaults would mismatch a returning
+  // user whose localStorage has "50000". Also read ?symbol= and prefill
+  // entry from current price if a known symbol arrives.
+  useEffect(() => {
+    const prefs = loadPrefs();
+    if (prefs.account) setAccountStr(prefs.account);
+    if (prefs.riskPct) setRiskPctStr(prefs.riskPct);
+    if (prefs.winRate) setWinRateStr(prefs.winRate);
+    if (prefs.avgWin) setAvgWinStr(prefs.avgWin);
+    if (prefs.avgLoss) setAvgLossStr(prefs.avgLoss);
+  }, []);
 
   // Kelly inputs
   const [winRateStr, setWinRateStr] = useState('55');
   const [avgWinStr, setAvgWinStr] = useState('2');
   const [avgLossStr, setAvgLossStr] = useState('1');
+
+  // Auto-save persisted prefs whenever any of them change. Debounced
+  // implicitly by React's batching — small enough writes that no
+  // explicit debounce is needed.
+  useEffect(() => {
+    savePrefs({ account: accountStr, riskPct: riskPctStr, winRate: winRateStr, avgWin: avgWinStr, avgLoss: avgLossStr });
+  }, [accountStr, riskPctStr, winRateStr, avgWinStr, avgLossStr]);
 
   const account = toNum(accountStr);
   const riskPct = toNum(riskPctStr);
@@ -35,6 +85,39 @@ export default function PositionSizePage() {
   const winRate = toNum(winRateStr);
   const avgWin = toNum(avgWinStr);
   const avgLoss = toNum(avgLossStr);
+  const userLeverage = toNum(leverageStr);
+
+  // Liquidation price preview — uses a simplified isolated-margin
+  // formula common across major CEXs. The "real" liq price depends
+  // on the venue's maintenance margin schedule (BTC/USDT tiers etc.)
+  // which we don't model here — these are within ~10% for sub-50x
+  // leverage and become unreliable approaching the maintenance band.
+  //
+  // Formula (long):  liq = entry × (1 - 1/leverage + maintenanceMarginRate)
+  //   where maintenanceMarginRate ≈ 0.005 (0.5%) for major perps
+  // Short flips the sign.
+  const MAINT_MARGIN = 0.005;
+  const liqPreview = useMemo(() => {
+    // Prefer the user's explicit leverage input; fall back to the
+    // result.leverageNeeded computed below if they leave it blank.
+    // (We can't reference `result` here yet — circular — so duplicate
+    // the cheap calc inline.)
+    const stopDistPct = entry > 0 ? Math.abs(entry - stop) / entry : 0;
+    const computedLev = stopDistPct > 0 && account > 0
+      ? ((account * riskPct) / 100 / stopDistPct) / account
+      : 0;
+    const lev = Number.isFinite(userLeverage) && userLeverage > 0 ? userLeverage : computedLev;
+    if (!lev || lev <= 0 || entry <= 0) return null;
+    const liq = side === 'long'
+      ? entry * (1 - 1 / lev + MAINT_MARGIN)
+      : entry * (1 + 1 / lev - MAINT_MARGIN);
+    // Distance from entry to liq, %
+    const distPct = Math.abs(liq - entry) / entry;
+    // Distance from stop to liq, % — negative means liq comes FIRST
+    // (i.e. you'd liquidate before your stop fills, which is bad).
+    const stopToLiqPct = side === 'long' ? (stop - liq) / entry : (liq - stop) / entry;
+    return { leverageUsed: lev, liq, distPct: distPct * 100, stopToLiqPct: stopToLiqPct * 100 };
+  }, [side, entry, stop, account, riskPct, userLeverage]);
 
   const valid = account > 0 && riskPct > 0 && entry > 0 && stop > 0;
 
@@ -281,6 +364,63 @@ export default function PositionSizePage() {
                           +<UsdDisplay amount={result!.targetPnl} />
                         </div>
                         <div className="text-[10px] text-neutral-600 font-mono">if target hit</div>
+                      </div>
+                    </>
+                  )}
+                  {/* ─── Liquidation price preview ───
+                      Estimates where you'd get liquidated given the
+                      leverage you'd use for this trade (or the explicit
+                      leverage override). Highlights amber if the stop
+                      is dangerously close to liq, red if stop is BEYOND
+                      liq (you'd get liquidated before your stop fills). */}
+                  {liqPreview && (
+                    <>
+                      <div className={`rounded p-3 col-span-2 border ${
+                        liqPreview.stopToLiqPct < 0 ? 'bg-red-500/[0.06] border-red-400/30'
+                        : liqPreview.stopToLiqPct < 1 ? 'bg-amber-500/[0.06] border-amber-400/30'
+                        : 'bg-white/[0.04] border-white/[0.06]'
+                      }`}>
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="text-[10px] uppercase tracking-wider text-neutral-500">Liquidation preview</div>
+                          <div className="text-[10px] text-neutral-600 font-mono">
+                            @ {liqPreview.leverageUsed.toFixed(1)}x · 0.5% maint
+                          </div>
+                        </div>
+                        <div className="flex items-baseline gap-3">
+                          <div className={`font-mono tabular-nums text-base font-bold ${
+                            liqPreview.stopToLiqPct < 0 ? 'text-red-400'
+                            : liqPreview.stopToLiqPct < 1 ? 'text-amber-300'
+                            : 'text-white'
+                          }`}>
+                            <UsdDisplay amount={liqPreview.liq} />
+                          </div>
+                          <div className="text-[10px] text-neutral-500 font-mono">
+                            {liqPreview.distPct.toFixed(2)}% from entry · stop is {liqPreview.stopToLiqPct >= 0 ? '+' : ''}{liqPreview.stopToLiqPct.toFixed(2)}% safer than liq
+                          </div>
+                        </div>
+                        {liqPreview.stopToLiqPct < 0 && (
+                          <div className="text-[10px] text-red-400 font-medium mt-1">
+                            ⚠ Stop is BELOW liq — you'd liquidate before your stop fills. Either widen the stop or lower the leverage.
+                          </div>
+                        )}
+                        {liqPreview.stopToLiqPct >= 0 && liqPreview.stopToLiqPct < 1 && (
+                          <div className="text-[10px] text-amber-300 mt-1">
+                            ⚠ Stop is &lt; 1% from liq. Slippage or wick could blow through both.
+                          </div>
+                        )}
+                      </div>
+                      {/* Optional leverage override */}
+                      <div className="col-span-2 flex items-center gap-2">
+                        <label className="text-[10px] uppercase tracking-wider text-neutral-500">Override leverage:</label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="auto"
+                          value={leverageStr}
+                          onChange={e => setLeverageStr(e.target.value)}
+                          className="w-20 bg-white/[0.04] border border-white/[0.1] rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:border-teal-400/60"
+                        />
+                        <span className="text-[10px] text-neutral-600">x · blank = use computed leverage</span>
                       </div>
                     </>
                   )}

@@ -18,6 +18,7 @@ import { type FundingRateData } from '@/lib/api/types';
 import { type NewsArticle, formatTimeAgo } from '@/lib/api/coinmarketcal';
 import { SatPing, StreamBars, Sparkline } from '@/components/design-system';
 import { BtcHalvingCountdown } from '@/components/BtcHalvingCountdown';
+import CompetitorComparison from '@/components/CompetitorComparison';
 
 // ────────────────────────────────────────────────────────────────────
 // Helpers
@@ -775,6 +776,15 @@ export default function HomePage() {
             <ExchangeBlock label="Decentralized" tone="dex" exchanges={dexExchanges} health={exchangeHealth} healthLoaded={healthLoaded} active={activeDex} />
           </div>
         </Card>
+      </section>
+
+      {/* ── Competitor comparison ──
+          Conversion-lift section for the upcoming ad spend. Anchors
+          InfoHub's free-tier advantage against the three names users
+          will already know. Self-contained component — see
+          components/CompetitorComparison.tsx for the data + updates. */}
+      <section style={{ marginBottom: 14 }}>
+        <CompetitorComparison />
       </section>
 
     </div>
