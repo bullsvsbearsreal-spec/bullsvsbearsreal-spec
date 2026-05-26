@@ -19,13 +19,19 @@ const redis = Redis.fromEnv(); // reads UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_R
  *  3. The cross-surface consistency test can grep these literals
  *     against the user-facing copy.
  *
+ * 4-tier ladder (May 2026): Free → Trader $12 → Pro $29 → Whale $59.
+ * Pro bumped 500→600/min so the new $29 middle tier feels meaningfully
+ * bigger than Trader $12 at 200/min. Whale stays unlimited.
+ *
  * Bump cautiously. The Upstash free tier covers ~1k req/s aggregate
- * across all prefixes; the current ceiling (500 Pro × N partners)
+ * across all prefixes; the current ceiling (600 Pro × N partners)
  * gives plenty of headroom but isn't infinite.
  */
 export const FREE_TIER_PER_MINUTE = 100;
-export const PRO_TIER_PER_MINUTE = 500;
-export const FREE_TIER_PER_DAY = 5000;
+export const TRADER_TIER_PER_MINUTE = 200;
+export const PRO_TIER_PER_MINUTE = 600;
+export const FREE_TIER_PER_DAY = 5_000;
+export const TRADER_TIER_PER_DAY = 25_000;
 
 /** Free tier: 100 req / 1 minute */
 export const freeTierLimiter = new Ratelimit({
@@ -35,7 +41,15 @@ export const freeTierLimiter = new Ratelimit({
   analytics: true,
 });
 
-/** Pro tier: 500 req / 1 minute */
+/** Trader tier: 200 req / 1 minute */
+export const traderTierLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.slidingWindow(TRADER_TIER_PER_MINUTE, '1m'),
+  prefix: 'ih:rl:trader',
+  analytics: true,
+});
+
+/** Pro tier: 600 req / 1 minute */
 export const proTierLimiter = new Ratelimit({
   redis,
   limiter: Ratelimit.slidingWindow(PRO_TIER_PER_MINUTE, '1m'),
@@ -43,11 +57,18 @@ export const proTierLimiter = new Ratelimit({
   analytics: true,
 });
 
-/** Daily limit (free tier only): 5,000 req / day */
-export const dailyLimiter = new Ratelimit({
+/** Free tier daily cap: 5,000 req / day */
+export const freeDailyLimiter = new Ratelimit({
   redis,
   limiter: Ratelimit.fixedWindow(FREE_TIER_PER_DAY, '1d'),
-  prefix: 'ih:rl:daily',
+  prefix: 'ih:rl:daily:free',
+});
+
+/** Trader tier daily cap: 25,000 req / day */
+export const traderDailyLimiter = new Ratelimit({
+  redis,
+  limiter: Ratelimit.fixedWindow(TRADER_TIER_PER_DAY, '1d'),
+  prefix: 'ih:rl:daily:trader',
 });
 
 /** Check rate limit for a given API key based on tier */
@@ -71,17 +92,21 @@ export async function checkRateLimit(keyId: string, tier: string): Promise<{
     };
   }
 
-  const limiter = tier === 'pro' ? proTierLimiter : freeTierLimiter;
+  // Per-minute limiter selection
+  const limiter =
+    tier === 'pro' ? proTierLimiter :
+    tier === 'trader' ? traderTierLimiter :
+    freeTierLimiter;
   const { success, remaining, reset, limit } = await limiter.limit(keyId);
 
   if (!success) {
     return { allowed: false, remaining, reset, limit };
   }
 
-  // Free tier has a daily cap on top of the per-minute window. Pro +
-  // Whale are explicitly "unlimited daily" per /pricing — no daily
-  // limiter applied.
-  if (tier === 'free') {
+  // Daily cap applies to Free + Trader. Pro + Whale are "unlimited
+  // daily" per /pricing so they skip the daily limiter entirely.
+  if (tier === 'free' || tier === 'trader') {
+    const dailyLimiter = tier === 'trader' ? traderDailyLimiter : freeDailyLimiter;
     const daily = await dailyLimiter.limit(keyId);
     if (!daily.success) {
       return { allowed: false, remaining: daily.remaining, reset: daily.reset, limit: daily.limit };

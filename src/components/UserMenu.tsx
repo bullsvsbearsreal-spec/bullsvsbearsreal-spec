@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   User, LogOut, Settings, ChevronDown, LayoutDashboard, Shield, Gift,
-  Sparkles, Zap, Crown, Wallet, Bell, Eye, Link2, Activity,
+  Sparkles, Compass, Zap, Crown, Wallet, Bell, Eye, Link2, Activity,
   ArrowUpRight,
 } from 'lucide-react';
 import { resolveUserTier, TIER_BRANDING, type TierBranding } from '@/lib/constants/tiers';
@@ -295,15 +295,17 @@ function MenuLink({
 function TierChip({
   tier, branding,
 }: {
-  tier: 'free' | 'pro' | 'whale';
+  tier: 'free' | 'trader' | 'pro' | 'whale';
   branding: TierBranding;
 }) {
   const Icon = branding.iconName === 'Sparkles' ? Sparkles
+    : branding.iconName === 'Compass' ? Compass
     : branding.iconName === 'Zap' ? Zap
     : Crown;
   const cls =
     tier === 'pro' ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30 hover:bg-emerald-500/25'
     : tier === 'whale' ? 'bg-amber-500/15 text-amber-300 border-amber-400/30 hover:bg-amber-500/25'
+    : tier === 'trader' ? 'bg-sky-500/15 text-sky-300 border-sky-400/30 hover:bg-sky-500/25'
     : 'bg-white/[0.06] text-neutral-400 border-white/[0.1] hover:bg-white/[0.1] hover:text-neutral-200';
   return (
     <Link

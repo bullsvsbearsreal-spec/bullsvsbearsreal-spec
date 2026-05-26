@@ -115,7 +115,7 @@ export async function isAdmin(userId: string): Promise<boolean> {
  * single place. Defaults to 'free' on any DB error so a transient
  * outage doesn't accidentally lock a paying user out of features.
  */
-export async function getUserTier(userId: string): Promise<'free' | 'pro' | 'whale'> {
+export async function getUserTier(userId: string): Promise<'free' | 'trader' | 'pro' | 'whale'> {
   try {
     const db = getSQL();
     const rows = await db`SELECT role, billing_tier FROM users WHERE id = ${userId}`;
@@ -125,7 +125,7 @@ export async function getUserTier(userId: string): Promise<'free' | 'pro' | 'wha
     const { resolveUserTier } = await import('@/lib/constants/tiers');
     return resolveUserTier({
       role: rows[0].role as string | null,
-      billingTier: rows[0].billing_tier as 'free' | 'pro' | 'whale' | null,
+      billingTier: rows[0].billing_tier as 'free' | 'trader' | 'pro' | 'whale' | null,
     });
   } catch {
     return 'free';
@@ -251,7 +251,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             token.image = img && !img.startsWith('data:') ? img : null;
             token.role = rows[0].role || 'user';
             const tier = rows[0].billing_tier;
-            token.billingTier = (tier === 'pro' || tier === 'whale') ? tier : 'free';
+            token.billingTier = (tier === 'trader' || tier === 'pro' || tier === 'whale') ? tier : 'free';
           }
         } catch { /* keep existing */ }
       }
@@ -268,7 +268,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.role = token.role as 'admin' | 'advisor' | 'user';
       }
       if (token?.billingTier) {
-        session.user.billingTier = token.billingTier as 'free' | 'pro' | 'whale';
+        session.user.billingTier = token.billingTier as 'free' | 'trader' | 'pro' | 'whale';
       }
       return session;
     },

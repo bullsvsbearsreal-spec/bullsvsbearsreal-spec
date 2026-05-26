@@ -311,17 +311,68 @@ async function _doInitDB(): Promise<void> {
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS email_verified TIMESTAMPTZ DEFAULT NULL`;
   // User roles (admin, user)
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS role TEXT DEFAULT 'user'`;
-  // Billing tier — 'free' | 'pro' | 'whale'. Drives the per-tier limits in
-  // lib/constants/tiers.ts (rate limit, alert count, watched wallet cap,
-  // history window). NULL or unknown = 'free'. Admin role auto-resolves to
-  // 'whale' via resolveUserTier regardless of this column.
+  // Billing tier — 'free' | 'trader' | 'pro' | 'whale'. Drives the
+  // per-tier limits in lib/constants/tiers.ts (rate limit, alert count,
+  // watched wallet cap, history window). NULL or unknown = 'free'. Admin
+  // role auto-resolves to 'whale' via resolveUserTier regardless of this
+  // column.
+  //
+  // Tier-rename migration (May 2026): we split the old "Pro" $12 tier
+  // into Trader $12 + Pro $29. Existing 'pro' billing_tier rows stay
+  // 'pro' (they auto-bump to the new $29 tier — a generous grandfather
+  // since paid is free during launch anyway). 'trader' is a new value.
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS billing_tier TEXT NOT NULL DEFAULT 'free'`;
-  // User-to-user referrals: stores the inviter's invite code (the HMAC
-  // string from lib/invite.ts), not a user ID — keeps the link opaque
-  // and avoids a self-FK that PostgreSQL would have to validate on
-  // every signup. Counts roll up via index on this column.
+  // User-to-user referrals (legacy invite system): stores the inviter's
+  // invite code (the HMAC string from lib/invite.ts), not a user ID —
+  // keeps the link opaque and avoids a self-FK that PostgreSQL would
+  // have to validate on every signup. Counts roll up via index on this
+  // column.
   await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_code TEXT`;
   await sql`CREATE INDEX IF NOT EXISTS idx_users_referred_by_code ON users(referred_by_code) WHERE referred_by_code IS NOT NULL`;
+
+  // ─── Affiliate system (May 2026) ────────────────────────────────────
+  // Per-user shareable referral code (the public slug they share). Distinct
+  // from the legacy `referred_by_code` invite system above. Auto-generated
+  // on signup, stored uppercase (humans type it). 8 chars from a no-confusing-
+  // characters alphabet = ~1.1e12 codes, plenty of room before collisions.
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referral_code TEXT`;
+  await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_referral_code ON users(referral_code) WHERE referral_code IS NOT NULL`;
+  // When a user signs up via someone else's referral code, store the
+  // inviter's user_id here. Used for the 20% recurring commission
+  // calculation once payments wire up. Nullable for organic signups.
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS referred_by_user_id UUID REFERENCES users(id) ON DELETE SET NULL`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_users_referred_by_user_id ON users(referred_by_user_id) WHERE referred_by_user_id IS NOT NULL`;
+  // Affiliate payout config. We pay 20% recurring commissions in USDT
+  // on Solana / Arbitrum / Base (low gas). `usdt_payout_wallet` is the
+  // destination address; `usdt_payout_chain` is one of those three.
+  // Both nullable until the affiliate fills in their settings.
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS usdt_payout_wallet TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS usdt_payout_chain TEXT`;
+
+  // referral_events — event log for the affiliate flywheel. We record:
+  //   'click'      — ?ref=CODE landing-page hit (cookie set, no auth)
+  //   'signup'     — referred user completed signup
+  //   'conversion' — referred user's first paid month confirmed (when
+  //                  NowPayments webhook lands — held until then)
+  //   'payout'     — USDT payout sent to the affiliate's wallet
+  // Amount/currency only present on conversion + payout rows.
+  await sql`
+    CREATE TABLE IF NOT EXISTS referral_events (
+      id BIGSERIAL PRIMARY KEY,
+      affiliate_user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      referred_user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      event_type TEXT NOT NULL,
+      amount_usd NUMERIC(12,2),
+      commission_usd NUMERIC(12,2),
+      tx_hash TEXT,
+      chain TEXT,
+      metadata JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_referral_events_affiliate ON referral_events(affiliate_user_id, created_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_referral_events_type ON referral_events(event_type, created_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_referral_events_referred ON referral_events(referred_user_id) WHERE referred_user_id IS NOT NULL`;
   // Seed admin accounts
   const adminEmail = process.env.ADMIN_EMAIL || 'ocelotcex1638a@gmail.com';
   await sql`UPDATE users SET role = 'admin' WHERE email = ${adminEmail} AND role != 'admin'`;
@@ -2826,7 +2877,7 @@ export async function createApiKey(userId: string, name: string = 'Default'): Pr
   // (their role grandfathers them); everyone else gets the tier
   // currently stored on users.billing_tier (default 'free'). Without
   // this, every key was 'free' regardless of who owned it — which
-  // meant /pricing's "Pro 500/min" promise wasn't actually granted to
+  // meant /pricing's "Pro 600/min" promise wasn't actually granted to
   // Pro users.
   const tierRows = await db`SELECT role, billing_tier FROM users WHERE id = ${userId}` as Array<{ role: string | null; billing_tier: string | null }>;
   const userRole = tierRows[0]?.role ?? null;
@@ -4523,6 +4574,271 @@ export async function getBugReportCounts(): Promise<{ open: number; resolved: nu
   } catch (e) {
     console.error('DB getBugReportCounts error:', e);
     return { open: 0, resolved: 0, wontfix: 0 };
+  }
+}
+
+// ─── Affiliate / Referral system (May 2026) ─────────────────────────────────
+
+/** 8-char crypto-secure code from a no-confusing-characters alphabet (no
+ *  0/O/1/I/L). ~1.1e12 unique codes — collision risk is negligible at
+ *  any realistic user count. Uppercase, humans type it. */
+function generateReferralCode(): string {
+  const { randomBytes } = require('crypto') as typeof import('crypto');
+  const alphabet = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+  const bytes = randomBytes(8);
+  let code = '';
+  for (let i = 0; i < 8; i++) code += alphabet[bytes[i] % alphabet.length];
+  return code;
+}
+
+/**
+ * Ensure the user has a referral_code. Idempotent — if one exists,
+ * returns it; otherwise generates + stores one. On the (very rare)
+ * collision path, retries up to 5 times. Returns null on DB failure.
+ */
+export async function ensureUserReferralCode(userId: string): Promise<string | null> {
+  if (!isDBConfigured()) return null;
+  try {
+    const db = getSQL();
+    const existing = await db`SELECT referral_code FROM users WHERE id = ${userId}` as Array<{ referral_code: string | null }>;
+    if (existing[0]?.referral_code) return existing[0].referral_code;
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = generateReferralCode();
+      const updated = await db`
+        UPDATE users
+        SET referral_code = ${code}
+        WHERE id = ${userId}
+          AND referral_code IS NULL
+          AND NOT EXISTS (SELECT 1 FROM users WHERE referral_code = ${code})
+        RETURNING referral_code
+      ` as Array<{ referral_code: string }>;
+      if (updated[0]?.referral_code) return updated[0].referral_code;
+    }
+    return null;
+  } catch (e) {
+    console.error('DB ensureUserReferralCode error:', e);
+    return null;
+  }
+}
+
+/**
+ * Resolve a referral_code → affiliate user_id. Used on signup to
+ * attribute the new user to the referrer. Returns null for invalid /
+ * unknown codes.
+ */
+export async function getUserIdByReferralCode(code: string): Promise<string | null> {
+  if (!isDBConfigured() || !code) return null;
+  try {
+    const db = getSQL();
+    const rows = await db`SELECT id FROM users WHERE referral_code = ${code.toUpperCase()} LIMIT 1` as Array<{ id: string }>;
+    return rows[0]?.id ?? null;
+  } catch (e) {
+    console.error('DB getUserIdByReferralCode error:', e);
+    return null;
+  }
+}
+
+/**
+ * Stamp the new user's `referred_by_user_id` if they signed up via a
+ * referral cookie. Idempotent — silently skips if already set so a
+ * stale cookie on a returning user can't overwrite the original
+ * attribution. Self-referral guarded by SQL `affiliate_user_id != userId`.
+ */
+export async function attributeReferral(userId: string, affiliateUserId: string): Promise<boolean> {
+  if (!isDBConfigured()) return false;
+  if (userId === affiliateUserId) return false; // self-referral guard
+  try {
+    const db = getSQL();
+    const updated = await db`
+      UPDATE users
+      SET referred_by_user_id = ${affiliateUserId}
+      WHERE id = ${userId} AND referred_by_user_id IS NULL
+      RETURNING id
+    ` as Array<{ id: string }>;
+    return updated.length > 0;
+  } catch (e) {
+    console.error('DB attributeReferral error:', e);
+    return false;
+  }
+}
+
+/**
+ * Update the affiliate's USDT payout config. `chain` is one of
+ * 'solana' | 'arbitrum' | 'base' — caller already validates. Wallet
+ * is whatever format is appropriate for the chain (44-char base58 for
+ * Solana, 0x-prefixed EVM for Arbitrum/Base — caller validates).
+ */
+export async function setUsdtPayoutConfig(
+  userId: string,
+  wallet: string | null,
+  chain: 'solana' | 'arbitrum' | 'base' | null,
+): Promise<void> {
+  if (!isDBConfigured()) return;
+  try {
+    const db = getSQL();
+    await db`
+      UPDATE users
+      SET usdt_payout_wallet = ${wallet},
+          usdt_payout_chain = ${chain}
+      WHERE id = ${userId}
+    `;
+  } catch (e) {
+    console.error('DB setUsdtPayoutConfig error:', e);
+  }
+}
+
+export interface UsdtPayoutConfig {
+  wallet: string | null;
+  chain: 'solana' | 'arbitrum' | 'base' | null;
+}
+
+/** Read the user's current USDT payout config + their referral_code. */
+export async function getReferralProfile(userId: string): Promise<{
+  referralCode: string | null;
+  payout: UsdtPayoutConfig;
+} | null> {
+  if (!isDBConfigured()) return null;
+  try {
+    const db = getSQL();
+    const rows = await db`
+      SELECT referral_code, usdt_payout_wallet, usdt_payout_chain
+      FROM users WHERE id = ${userId} LIMIT 1
+    ` as Array<{ referral_code: string | null; usdt_payout_wallet: string | null; usdt_payout_chain: string | null }>;
+    if (rows.length === 0) return null;
+    const chain = rows[0].usdt_payout_chain;
+    return {
+      referralCode: rows[0].referral_code,
+      payout: {
+        wallet: rows[0].usdt_payout_wallet,
+        chain: chain === 'solana' || chain === 'arbitrum' || chain === 'base' ? chain : null,
+      },
+    };
+  } catch (e) {
+    console.error('DB getReferralProfile error:', e);
+    return null;
+  }
+}
+
+export type ReferralEventType = 'click' | 'signup' | 'conversion' | 'payout';
+
+/**
+ * Append a referral_events row. `affiliateUserId` is required so all
+ * events for one affiliate are queryable on the dashboard. For 'click'
+ * events the referredUserId is null (no auth yet).
+ */
+export async function recordReferralEvent(params: {
+  affiliateUserId: string;
+  referredUserId?: string | null;
+  eventType: ReferralEventType;
+  amountUsd?: number | null;
+  commissionUsd?: number | null;
+  txHash?: string | null;
+  chain?: string | null;
+  metadata?: Record<string, unknown> | null;
+}): Promise<void> {
+  if (!isDBConfigured()) return;
+  try {
+    const db = getSQL();
+    await db`
+      INSERT INTO referral_events
+        (affiliate_user_id, referred_user_id, event_type, amount_usd, commission_usd, tx_hash, chain, metadata)
+      VALUES (
+        ${params.affiliateUserId},
+        ${params.referredUserId ?? null},
+        ${params.eventType},
+        ${params.amountUsd ?? null},
+        ${params.commissionUsd ?? null},
+        ${params.txHash ?? null},
+        ${params.chain ?? null},
+        ${params.metadata ? JSON.stringify(params.metadata) : null}
+      )
+    `;
+  } catch (e) {
+    console.error('DB recordReferralEvent error:', e);
+  }
+}
+
+export interface ReferralEventRow {
+  id: number;
+  eventType: ReferralEventType;
+  referredUserId: string | null;
+  amountUsd: number | null;
+  commissionUsd: number | null;
+  txHash: string | null;
+  chain: string | null;
+  createdAt: Date;
+}
+
+/** Recent events for the affiliate's dashboard. Bounded to keep
+ *  response size predictable. */
+export async function listReferralEvents(affiliateUserId: string, limit: number = 100): Promise<ReferralEventRow[]> {
+  if (!isDBConfigured()) return [];
+  try {
+    const db = getSQL();
+    const rows = await db`
+      SELECT id, event_type, referred_user_id, amount_usd, commission_usd, tx_hash, chain, created_at
+      FROM referral_events
+      WHERE affiliate_user_id = ${affiliateUserId}
+      ORDER BY created_at DESC
+      LIMIT ${Math.max(1, Math.min(500, limit))}
+    ` as Array<any>;
+    return rows.map((r) => ({
+      id: Number(r.id),
+      eventType: r.event_type as ReferralEventType,
+      referredUserId: r.referred_user_id,
+      amountUsd: r.amount_usd === null ? null : Number(r.amount_usd),
+      commissionUsd: r.commission_usd === null ? null : Number(r.commission_usd),
+      txHash: r.tx_hash,
+      chain: r.chain,
+      createdAt: new Date(r.created_at),
+    }));
+  } catch (e) {
+    console.error('DB listReferralEvents error:', e);
+    return [];
+  }
+}
+
+export interface ReferralSummary {
+  clicks: number;
+  signups: number;
+  conversions: number;
+  totalCommissionUsd: number;
+  paidOutUsd: number;
+  pendingUsd: number;
+}
+
+/** Aggregate stats for the affiliate dashboard. Single query so the
+ *  dashboard renders fast even for power referrers. */
+export async function getReferralSummary(affiliateUserId: string): Promise<ReferralSummary> {
+  const zero: ReferralSummary = { clicks: 0, signups: 0, conversions: 0, totalCommissionUsd: 0, paidOutUsd: 0, pendingUsd: 0 };
+  if (!isDBConfigured()) return zero;
+  try {
+    const db = getSQL();
+    const rows = await db`
+      SELECT
+        COALESCE(SUM(CASE WHEN event_type = 'click'      THEN 1 ELSE 0 END), 0) AS clicks,
+        COALESCE(SUM(CASE WHEN event_type = 'signup'     THEN 1 ELSE 0 END), 0) AS signups,
+        COALESCE(SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END), 0) AS conversions,
+        COALESCE(SUM(CASE WHEN event_type = 'conversion' THEN commission_usd ELSE 0 END), 0) AS total_commission,
+        COALESCE(SUM(CASE WHEN event_type = 'payout'     THEN amount_usd       ELSE 0 END), 0) AS paid_out
+      FROM referral_events
+      WHERE affiliate_user_id = ${affiliateUserId}
+    ` as Array<{ clicks: string | number; signups: string | number; conversions: string | number; total_commission: string | number; paid_out: string | number }>;
+    if (rows.length === 0) return zero;
+    const r = rows[0];
+    const totalCommissionUsd = Number(r.total_commission || 0);
+    const paidOutUsd = Number(r.paid_out || 0);
+    return {
+      clicks: Number(r.clicks || 0),
+      signups: Number(r.signups || 0),
+      conversions: Number(r.conversions || 0),
+      totalCommissionUsd,
+      paidOutUsd,
+      pendingUsd: Math.max(0, totalCommissionUsd - paidOutUsd),
+    };
+  } catch (e) {
+    console.error('DB getReferralSummary error:', e);
+    return zero;
   }
 }
 

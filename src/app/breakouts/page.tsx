@@ -8,6 +8,7 @@ import DataFreshness from '@/components/DataFreshness';
 import RefreshButton from '@/components/RefreshButton';
 import UsdDisplay from '@/components/UsdDisplay';
 import PageHero from '@/components/PageHero';
+import TierGate from '@/components/TierGate';
 import { Rocket, Info, TrendingUp, TrendingDown, ArrowUpCircle, ArrowDownCircle } from 'lucide-react';
 
 interface BreakoutRow {
@@ -86,6 +87,7 @@ export default function BreakoutsPage() {
     <div className="min-h-screen bg-hub-black">
       <Header />
       <main className="max-w-[1400px] mx-auto w-full px-4 py-6">
+        <TierGate requires="pro">
         <PageHero
           icon={Rocket}
           eyebrow="Scanner · price action"
@@ -219,6 +221,7 @@ export default function BreakoutsPage() {
             <strong className="text-neutral-300"> Recovery</strong> = 1-year drawdown below -50% but 30d positive. Source: CoinGecko.
           </div>
         </div>
+        </TierGate>
       </main>
       <Footer />
     </div>

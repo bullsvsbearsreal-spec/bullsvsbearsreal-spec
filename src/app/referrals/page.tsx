@@ -1,7 +1,21 @@
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
-import { ExternalLink, Gift, Users, Send, ArrowRight, Trophy } from 'lucide-react';
+import { ExternalLink, Gift, Users, Send, ArrowRight, Trophy, DollarSign, Zap, Wallet, Sparkles } from 'lucide-react';
+
+/* ───────────────────────────────────────────────────────────────────────
+ * /referrals — public affiliate program landing.
+ *
+ * Two products in one page:
+ *
+ * 1. InfoHub Affiliate Program (top) — anyone can earn 20% recurring
+ *    lifetime commission on every paid signup. Payouts in USDT on
+ *    Solana/Arbitrum/Base. Referred users get 10% off forever. Sign in
+ *    → /settings/referrals for your code + dashboard.
+ *
+ * 2. Exchange Referrals (below) — the team's personal exchange
+ *    referral links. Fee discounts for users + helps fund the project.
+ * ─────────────────────────────────────────────────────────────────── */
 
 /* ── Referral Partner ──────────────────────────────────────────────── */
 
@@ -125,8 +139,8 @@ export default function ReferralsPage() {
       <Header />
 
       <main id="main-content" className="max-w-[1100px] mx-auto px-4 sm:px-6">
-        {/* ── Hero ── */}
-        <section className="relative py-16 sm:py-24 text-center overflow-hidden">
+        {/* ─── InfoHub Affiliate Program Hero ─── */}
+        <section className="relative py-12 sm:py-16 text-center overflow-hidden">
           <div className="absolute inset-0 hero-mesh opacity-60 pointer-events-none" />
           <div
             className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full pointer-events-none"
@@ -137,45 +151,127 @@ export default function ReferralsPage() {
           />
 
           <div className="relative z-10">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-hub-yellow/10 border border-hub-yellow/20 text-hub-yellow text-xs font-semibold mb-6">
-              <Gift className="w-3.5 h-3.5" />
-              Support the team
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-400/25 text-emerald-300 text-xs font-semibold mb-6">
+              <Sparkles className="w-3.5 h-3.5" />
+              InfoHub Affiliate Program
             </div>
 
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white mb-4">
-              Exchange{' '}
-              <span className="text-gradient">Referrals</span>
+              Earn{' '}
+              <span className="text-gradient">20% recurring</span>
+              <br className="sm:hidden" />
+              {' '}lifetime
             </h1>
 
-            <p className="text-neutral-500 text-sm sm:text-base max-w-xl mx-auto leading-relaxed">
-              Sign up to exchanges through our team&apos;s referral links.
-              You get fee discounts, we keep building InfoHub. Win-win.
+            <p className="text-neutral-400 text-sm sm:text-base max-w-xl mx-auto leading-relaxed mb-2">
+              Share InfoHub with traders. Every paid signup pays you{' '}
+              <strong className="text-emerald-300">20%</strong> of their subscription{' '}
+              <strong className="text-white">forever</strong>. Payouts in USDT.
+            </p>
+            <p className="text-neutral-500 text-xs sm:text-sm max-w-xl mx-auto">
+              Your referrals get <strong className="text-white">10% off</strong> forever.
+              60-day cookie. $25 min payout. Active during launch, commissions begin
+              the day paid checkouts go live.
             </p>
 
-            <div className="mt-6 flex items-center gap-2 justify-center flex-wrap">
+            <div className="mt-7 flex items-center gap-2 justify-center flex-wrap">
               <Link
-                href="/invite"
-                className="group inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-lg bg-emerald-500/[0.08] border border-emerald-400/25 text-emerald-300 hover:bg-emerald-500/[0.15] transition-colors"
+                href="/settings/referrals"
+                className="group inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg bg-emerald-500 text-black hover:bg-emerald-400 transition-colors"
               >
-                <Send className="w-3.5 h-3.5" />
-                Want to refer friends to InfoHub instead?
-                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                <Send className="w-4 h-4" />
+                Get my referral link
+                <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </Link>
               <Link
-                href="/invite/leaderboard"
-                className="group inline-flex items-center gap-2 text-xs font-semibold px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-neutral-400 hover:text-emerald-300 hover:border-emerald-400/25 transition-colors"
+                href="/signup"
+                className="group inline-flex items-center gap-2 text-xs font-semibold px-3.5 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-neutral-300 hover:bg-white/[0.08] hover:text-white transition-colors"
               >
-                <Trophy className="w-3.5 h-3.5" />
-                Leaderboard
+                Sign up first
               </Link>
+            </div>
+
+            {/* ─── Program terms grid ─── */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-10 max-w-3xl mx-auto text-left">
+              <ProgramTerm
+                icon={DollarSign}
+                title="20% recurring lifetime"
+                detail="Every paid month they pay, you earn 20%. Forever — no claw-back, no expiry."
+              />
+              <ProgramTerm
+                icon={Wallet}
+                title="USDT payouts"
+                detail="Paid in USDT on Solana, Arbitrum, or Base. Low gas, fast settlement. $25 minimum."
+              />
+              <ProgramTerm
+                icon={Zap}
+                title="10% off for referrals"
+                detail="Anyone signing up via your link gets 10% off forever — sweetens your share."
+              />
             </div>
           </div>
         </section>
 
         <div className="accent-line mb-10" />
 
-        {/* ── Partners ── */}
-        <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-12">
+        {/* ─── How it works ─── */}
+        <section className="mb-14">
+          <h2 className="text-base font-bold text-white mb-1 px-1">How it works</h2>
+          <p className="text-[12px] text-neutral-500 mb-5 px-1">
+            Three steps. The whole program is automatic.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Step
+              num={1}
+              title="Sign in & grab your link"
+              body="Every InfoHub account gets a referral code at /settings/referrals. Share the link anywhere — Twitter, Telegram, your newsletter, content."
+            />
+            <Step
+              num={2}
+              title="They click & sign up"
+              body="60-day cookie attribution. When someone clicks your link and signs up — even weeks later — they're tagged to you. Their first month is 10% off forever."
+            />
+            <Step
+              num={3}
+              title="They pay, you earn"
+              body="When they upgrade past the free tier, you earn 20% of every paid month for the life of their account. USDT to your wallet once your balance hits $25."
+            />
+          </div>
+        </section>
+
+        {/* ─── Program FAQ ─── */}
+        <section className="mb-14">
+          <h2 className="text-base font-bold text-white mb-3 px-1">Program FAQ</h2>
+          <div className="space-y-2">
+            <FaqRow
+              q="When do commissions actually start?"
+              a="The program is active and tracking right now. Commissions accrue from the day NowPayments checkout goes live (in the next few weeks). Until then we're recording every signup against your code so when paid launches, your retroactive commissions are already attributed."
+            />
+            <FaqRow
+              q="Why USDT and not USD / PayPal?"
+              a="Lower fees, faster settlement, no banking gates. Pick the chain (Solana, Arbitrum, or Base) and address in /settings/referrals. We push payouts monthly once your balance crosses $25."
+            />
+            <FaqRow
+              q="What counts as a 'paid signup'?"
+              a="Their first successful paid month — Trader $12, Pro $29, or Whale $59. Commission is 20% of whatever tier they're on, recurring every renewal."
+            />
+            <FaqRow
+              q="What if they cancel?"
+              a="No commission for that month. If they re-subscribe later, attribution holds — they're still your referral. The 60-day cookie governs first attribution; after that it's permanent."
+            />
+            <FaqRow
+              q="Can I self-refer or stack codes?"
+              a="No on self-referral — the system blocks attribution to your own account. Codes don't stack (one referrer per user). Going through Ben Infin8's link doesn't get you a second commission from your own account."
+            />
+            <FaqRow
+              q="Creator / influencer with audience?"
+              a="DM us on Telegram — we offer custom terms for creators driving meaningful volume (extended cookie, higher rate, co-marketing). Floor is the standard 20%/lifetime."
+            />
+          </div>
+        </section>
+
+        {/* ─── Team (existing partners) ─── */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
           {Object.values(PARTNERS).map((p) => (
             <div
               key={p.name}
@@ -214,7 +310,24 @@ export default function ReferralsPage() {
           ))}
         </section>
 
-        {/* ── Exchange Grid ── */}
+        {/* ─── Exchange referral section ─── */}
+        <section className="mb-6">
+          <div className="flex items-end justify-between mb-2 px-1">
+            <h2 className="text-base font-bold text-white">Exchange referrals</h2>
+            <Link
+              href="/invite"
+              className="text-[11px] text-neutral-500 hover:text-emerald-300 transition-colors"
+            >
+              Refer friends to InfoHub →
+            </Link>
+          </div>
+          <p className="text-[12px] text-neutral-500 mb-5 px-1 leading-relaxed">
+            Personal referral links from the InfoHub team. Most exchanges offer fee discounts
+            when you sign up via a referral — you save, we keep building.
+          </p>
+        </section>
+
+        {/* ─── Exchange Grid ─── */}
         <section className="mb-16">
           <div className="grid gap-3">
             {EXCHANGE_REFERRALS.map((ex) => (
@@ -223,7 +336,6 @@ export default function ReferralsPage() {
                 className="group relative rounded-xl border border-white/[0.06] bg-white/[0.02] hover:border-white/[0.1] transition-all duration-200"
               >
                 <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-0 p-4 sm:p-5">
-                  {/* Exchange logo + name */}
                   <div className="flex items-center gap-3 sm:w-48 flex-shrink-0">
                     <div className="w-8 h-8 rounded-lg bg-white/[0.06] border border-white/[0.06] flex items-center justify-center overflow-hidden flex-shrink-0">
                       <img
@@ -236,7 +348,6 @@ export default function ReferralsPage() {
                     <span className="text-sm font-semibold text-white">{ex.displayName}</span>
                   </div>
 
-                  {/* Referral buttons */}
                   <div className="flex flex-wrap gap-2 sm:ml-auto">
                     {ex.links.map((link) => {
                       const partner = PARTNERS[link.partner];
@@ -273,7 +384,7 @@ export default function ReferralsPage() {
           </div>
         </section>
 
-        {/* ── Info Note ── */}
+        {/* ─── Info Note ─── */}
         <section className="mb-12">
           <div className="relative rounded-xl overflow-hidden border border-white/[0.06]">
             <div className="absolute inset-0 bg-gradient-to-br from-hub-yellow/[0.03] via-transparent to-blue-500/[0.03]" />
@@ -282,9 +393,9 @@ export default function ReferralsPage() {
             <div className="relative p-6 sm:p-8 text-center">
               <Users className="w-5 h-5 text-neutral-600 mx-auto mb-3" />
               <p className="text-neutral-500 text-sm leading-relaxed max-w-lg mx-auto">
-                These are personal referral links from the InfoHub team.
-                Most exchanges offer fee discounts when you sign up through a referral.
-                Check each exchange&apos;s terms for specific benefits.
+                Exchange referrals are personal links from the InfoHub team — they fund the
+                project. The InfoHub affiliate program above pays <strong className="text-emerald-300">you</strong>{' '}
+                20% for every paid InfoHub signup you bring.
               </p>
             </div>
           </div>
@@ -293,5 +404,47 @@ export default function ReferralsPage() {
 
       <Footer />
     </div>
+  );
+}
+
+/* ─── Sub-components ────────────────────────────────────────────────── */
+
+function ProgramTerm({
+  icon: Icon, title, detail,
+}: { icon: typeof DollarSign; title: string; detail: string }) {
+  return (
+    <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon className="w-4 h-4 text-emerald-300" aria-hidden />
+        <h3 className="text-[12px] font-bold text-white tracking-tight">{title}</h3>
+      </div>
+      <p className="text-[11px] text-neutral-400 leading-relaxed">{detail}</p>
+    </div>
+  );
+}
+
+function Step({ num, title, body }: { num: number; title: string; body: string }) {
+  return (
+    <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+      <div className="flex items-center gap-2 mb-1.5">
+        <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-500/15 text-emerald-300 text-[10px] font-bold border border-emerald-400/30">
+          {num}
+        </span>
+        <h3 className="text-[12px] font-bold text-white">{title}</h3>
+      </div>
+      <p className="text-[11px] text-neutral-400 leading-relaxed">{body}</p>
+    </div>
+  );
+}
+
+function FaqRow({ q, a }: { q: string; a: string }) {
+  return (
+    <details className="rounded-lg border border-white/[0.06] bg-white/[0.02] p-3 group">
+      <summary className="text-[13px] font-semibold text-white cursor-pointer list-none flex items-center justify-between">
+        <span>{q}</span>
+        <span className="text-neutral-500 group-open:rotate-45 transition-transform">+</span>
+      </summary>
+      <p className="text-[12px] text-neutral-400 mt-2 leading-relaxed">{a}</p>
+    </details>
   );
 }

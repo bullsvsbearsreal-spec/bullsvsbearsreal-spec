@@ -1,9 +1,16 @@
 /**
  * Cron endpoint: server-side user alert checking.
- * Runs every 5 minutes via Vercel Cron.
+ * Standard cadence: every 5 minutes via systemd timer.
  *
  * Checks each logged-in user's alerts against live market data,
  * sends email and/or Telegram notifications for triggered alerts.
+ *
+ * Tier-aware path split (May 2026):
+ *   - GET (no flag)         → process Free + Trader + Pro users
+ *   - GET ?priority=1       → process Whale users ONLY (low-latency
+ *                              queue, see /api/cron/whale-alerts which
+ *                              runs this same handler more frequently)
+ * Without the split, whale users would double-fire (once from each cron).
  *
  * Security: Verifies CRON_SECRET Bearer token.
  */
@@ -57,6 +64,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   }
 
+  // Tier-mode flag (see file header). `priorityOnly=true` means we ONLY
+  // process Whale users (low-latency queue path). `priorityOnly=false`
+  // is the standard 5min path and skips Whale users so they don't
+  // double-fire.
+  const priorityOnly = request.nextUrl.searchParams.get('priority') === '1';
+
   try {
     await initDB();
 
@@ -65,23 +78,31 @@ export async function GET(request: NextRequest) {
     // Fetch market data
     const marketData = await fetchMarketDataServer(origin);
     if (marketData.size === 0) {
-      return NextResponse.json({ ok: true, skipped: 'no market data' });
+      return NextResponse.json({ ok: true, skipped: 'no market data', priorityOnly });
     }
 
     // Get users with alerts
     const users = await getAllUsersWithAlerts();
     if (users.length === 0) {
-      return NextResponse.json({ ok: true, alerts: 0, users: 0, skipped: 'no users with alerts' });
+      return NextResponse.json({ ok: true, alerts: 0, users: 0, skipped: 'no users with alerts', priorityOnly });
     }
 
     let totalTriggered = 0;
     let totalNotifications = 0;
     let userErrors = 0;
+    let skippedByTier = 0;
 
     for (const user of users) {
       try {
         const enabledAlerts = (user.alerts as Alert[]).filter((a) => a.enabled);
         if (enabledAlerts.length === 0) continue;
+
+        // Tier filter (see file header). Without this, Whale users
+        // would either be skipped entirely or get duplicate alerts.
+        const userTierForFilter = await getUserTier(user.userId);
+        const isWhaleUser = userTierForFilter === 'whale';
+        if (priorityOnly && !isWhaleUser) { skippedByTier += 1; continue; }
+        if (!priorityOnly && isWhaleUser) { skippedByTier += 1; continue; }
 
         const cooldownMins = user.notificationPrefs?.cooldownMinutes ?? 60;
         const emailEnabled = user.notificationPrefs?.email !== false; // default true
@@ -215,17 +236,22 @@ export async function GET(request: NextRequest) {
 
     // Heartbeat reflects per-user error count — previously hardcoded 'ok' so
     // admin pipeline showed green even when half the users were erroring out.
+    // Separate heartbeat key for the priority path so admin can monitor both
+    // ladders independently in /admin-panel.
+    const heartbeatKey = priorityOnly ? 'cron:whale-alerts' : 'cron:alerts';
     const heartbeatStatus: 'ok' | 'degraded' = userErrors === 0 ? 'ok' : 'degraded';
-    await upsertWorkerHeartbeat('cron:alerts', heartbeatStatus, {
+    await upsertWorkerHeartbeat(heartbeatKey, heartbeatStatus, {
       users: users.length, triggered: totalTriggered, notifications: totalNotifications,
-      userErrors,
-    }).catch(e => console.error('[cron:alerts] heartbeat error:', e));
+      userErrors, skippedByTier, mode: priorityOnly ? 'priority' : 'standard',
+    }).catch(e => console.error(`[${heartbeatKey}] heartbeat error:`, e));
 
     return NextResponse.json({
       ok: true,
       users: users.length,
       triggered: totalTriggered,
       notifications: totalNotifications,
+      mode: priorityOnly ? 'priority' : 'standard',
+      skippedByTier,
     });
   } catch (error) {
     console.error('[alert-cron] error:', error);

@@ -782,9 +782,13 @@ function BillingTab() {
   const isAdminGrandfathered = role === 'admin';
   const isPaidTier = tier !== 'free';
 
-  // Pick the "upgrade target" for the CTA — Free users get pointed at Pro,
-  // Pro users at Whale, Whale users get a "you're at the top" state.
-  const upgradeTarget: Tier | null = tier === 'free' ? 'pro' : tier === 'pro' ? 'whale' : null;
+  // Pick the "upgrade target" for the CTA — Free→Trader, Trader→Pro,
+  // Pro→Whale, Whale users get a "you're at the top" state.
+  const upgradeTarget: Tier | null =
+    tier === 'free' ? 'trader'
+    : tier === 'trader' ? 'pro'
+    : tier === 'pro' ? 'whale'
+    : null;
   const upgradeBranding = upgradeTarget ? TIER_BRANDING[upgradeTarget] : null;
 
   return (
@@ -802,6 +806,7 @@ function BillingTab() {
         className={`rounded-lg border px-4 py-3.5 mb-4 ${
           tier === 'whale' ? 'border-amber-400/30 bg-amber-500/5'
           : tier === 'pro' ? 'border-emerald-400/30 bg-emerald-500/5'
+          : tier === 'trader' ? 'border-sky-400/30 bg-sky-500/5'
           : 'border-white/[0.08] bg-white/[0.02]'
         }`}
       >

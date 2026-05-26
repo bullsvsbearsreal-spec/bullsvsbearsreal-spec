@@ -3,10 +3,12 @@
 /**
  * /pricing — public-facing tier comparison page.
  *
- * Three tiers: Free / Pro / Whale. Pro is the conversion target (middle
- * card, "MOST POPULAR" badge). Whale is the premium anchor for funds +
- * power users. All numbers derive from lib/constants/tiers.ts so a tier
- * bump auto-propagates to the cards, the comparison table, and the FAQ.
+ * Four tiers: Free / Trader $12 / Pro $29 / Whale $59. Pro is the
+ * conversion target (the new $29 middle anchor, "MOST POPULAR" badge).
+ * Trader is the cheap-entry paid tier. Whale is the premium anchor for
+ * funds + power users. All numbers derive from lib/constants/tiers.ts so
+ * a tier bump auto-propagates to the cards, the comparison table, and
+ * the FAQ.
  *
  * Today (May 2026): paid tiers are FREE DURING LAUNCH. Prices visible
  * with strike-through so users see the future cost, but the "Subscribe"
@@ -19,7 +21,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PageHero from '@/components/PageHero';
-import { Sparkles, Zap, Crown, Check, X as XIcon, ArrowRight, CreditCard } from 'lucide-react';
+import { Sparkles, Compass, Zap, Crown, Check, X as XIcon, ArrowRight, CreditCard } from 'lucide-react';
 import {
   TIER_ORDER,
   TIER_LIMITS,
@@ -37,8 +39,9 @@ import {
 
 type Period = 'monthly' | 'annual';
 
-function tierIcon(name: 'Sparkles' | 'Zap' | 'Crown') {
+function tierIcon(name: 'Sparkles' | 'Compass' | 'Zap' | 'Crown') {
   if (name === 'Sparkles') return Sparkles;
+  if (name === 'Compass') return Compass;
   if (name === 'Zap') return Zap;
   return Crown;
 }
@@ -48,9 +51,10 @@ function formatLimit(value: number): string {
   return value.toLocaleString();
 }
 
-/** "Pro" sits in the middle of the desktop grid but renders FIRST on
- *  mobile per spec (conversion-focused stacking). */
-const MOBILE_ORDER: Tier[] = ['pro', 'whale', 'free'];
+/** "Pro" is the conversion-target middle tier in the 4-card desktop grid,
+ *  but renders FIRST on mobile (conversion-focused stacking). Whale next
+ *  as the premium anchor, then Trader as the cheap-entry paid, then Free. */
+const MOBILE_ORDER: Tier[] = ['pro', 'whale', 'trader', 'free'];
 
 export default function PricingPage() {
   const { data: session } = useSession();
@@ -89,8 +93,8 @@ export default function PricingPage() {
         <section className="rounded-xl border border-amber-400/30 bg-amber-500/[0.04] px-4 py-3 mb-5 text-center">
           <p className="text-[12px] sm:text-[13px] text-amber-200">
             <Sparkles className="inline w-3.5 h-3.5 -mt-0.5 mr-1.5 text-amber-300" aria-hidden />
-            <span className="font-semibold text-amber-300">Free during launch</span> · Pro
-            + Whale tiers unlocked for every signed-in user while we onboard early users.
+            <span className="font-semibold text-amber-300">Free during launch</span> · Trader,
+            Pro + Whale tiers all unlocked for every signed-in user while we onboard early users.
           </p>
         </section>
 
@@ -126,18 +130,20 @@ export default function PricingPage() {
           </div>
         </div>
 
-        {/* ─── Tier cards (Pro in middle on desktop, Pro first on mobile) ─── */}
-        {/* DOM order is Pro → Whale → Free, which is the mobile order by
-            default (no `order-N` needed). Desktop reorders to Free → Pro →
-            Whale via the literal `sm:order-N` classes Tailwind can find. */}
-        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-10">
+        {/* ─── Tier cards (4 cards — Pro is the conversion anchor) ─── */}
+        {/* DOM order is Pro → Whale → Trader → Free (mobile order). Desktop
+            reorders to Free → Trader → Pro → Whale via the literal
+            `sm:order-N` classes Tailwind can find at build time. 2×2 grid
+            on sm, 4-column row on lg. */}
+        <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-10">
           {MOBILE_ORDER.map((t) => {
-            const desktopOrder = TIER_ORDER.indexOf(t); // 0=free, 1=pro, 2=whale
+            const desktopOrder = TIER_ORDER.indexOf(t); // 0=free, 1=trader, 2=pro, 3=whale
             // Literal class strings so Tailwind's content scanner picks them up
             const desktopOrderClass =
               desktopOrder === 0 ? 'sm:order-1'
               : desktopOrder === 1 ? 'sm:order-2'
-              : 'sm:order-3';
+              : desktopOrder === 2 ? 'sm:order-3'
+              : 'sm:order-4';
             return (
               <TierCard
                 key={t}
@@ -152,19 +158,20 @@ export default function PricingPage() {
           })}
         </section>
 
-        {/* ─── What's in each tier — three cumulative columns showing
-            what Free includes, what Pro adds on top, what Whale adds
-            on top of Pro. Surfaces the upgrade path concretely. ─── */}
+        {/* ─── What's in each tier — four cumulative columns showing
+            what Free includes, what Trader adds, what Pro adds, what
+            Whale adds. Surfaces the upgrade path concretely. ─── */}
         <section className="mb-12">
           <h2 className="text-base font-bold text-white mb-1 px-1">
             What&apos;s in each tier
           </h2>
           <p className="text-[12px] text-neutral-400 mb-4 px-1 leading-relaxed">
-            Each tier is cumulative — Pro includes everything in Free, Whale
-            includes everything in Pro. Below is what each tier adds.
+            Each tier is cumulative — Trader includes everything in Free, Pro
+            includes everything in Trader, Whale includes everything in Pro.
+            Below is what each tier adds.
           </p>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
             {TOOLS_BY_TIER.map((tierList) => (
               <TierToolListCard key={tierList.tier} tierList={tierList} />
             ))}
@@ -252,7 +259,7 @@ export default function PricingPage() {
           <div className="space-y-2">
             <FaqItem
               q="What happens when launch ends?"
-              a="We'll email every signed-in user ahead of time with the exact date. You'll keep all your data and your account; you'll just need to subscribe to keep Pro/Whale features. Free tier stays free forever."
+              a="We'll email every signed-in user ahead of time with the exact date. You'll keep all your data and your account; you'll just need to subscribe to keep Trader/Pro/Whale features. Free tier stays free forever."
             />
             <FaqItem
               q="How does payment work?"
@@ -260,11 +267,11 @@ export default function PricingPage() {
             />
             <FaqItem
               q="Can I cancel anytime?"
-              a="Yes. Cancel from your profile billing tab — you keep Pro/Whale access until the end of the current period, then auto-downgrade to Free. No prorated refunds, but no surprises either."
+              a="Yes. Cancel from your profile billing tab — you keep Trader/Pro/Whale access until the end of the current period, then auto-downgrade to Free. No prorated refunds, but no surprises either."
             />
             <FaqItem
-              q="What's the difference between Pro and Whale?"
-              a={`Pro covers most active traders: ${TIER_LIMITS.pro.apiPerMinute} req/min API, ${TIER_LIMITS.pro.maxAlerts} alerts, ${TIER_LIMITS.pro.maxWatchedWallets} watched wallets, ${TIER_LIMITS.pro.historyDays >= 365 ? `${Math.round(TIER_LIMITS.pro.historyDays / 365)}y` : `${TIER_LIMITS.pro.historyDays}d`} history. Whale adds custom alert webhooks (deliver to your trading bot), sub-second priority alerts, the raw aggregator WebSocket feed, 5 team seats, and a 1:1 channel with the team for feature requests.`}
+              q="What's the difference between Trader, Pro, and Whale?"
+              a={`Trader ($12) is active retail — every venue real-time, ${TIER_LIMITS.trader.maxAlerts} alerts, ${TIER_LIMITS.trader.maxWatchedWallets} wallets, ${TIER_LIMITS.trader.historyDays}d history, ${TIER_LIMITS.trader.apiPerMinute}/min API. Pro ($29) is "trade for a living" — adds API archive (1y) + Tax CSV export + Custom dashboards + Setup scanner, plus ${TIER_LIMITS.pro.maxAlerts} alerts, ${TIER_LIMITS.pro.maxWatchedWallets} wallets, 1y history, ${TIER_LIMITS.pro.apiPerMinute}/min API. Whale ($59) is funds + desks — adds sub-second alert priority (P99 < 2s), custom alert webhooks, 5y archive, unlimited everything, and a 1:1 Telegram channel with the team.`}
             />
             <FaqItem
               q="Do you charge based on usage?"
@@ -273,6 +280,10 @@ export default function PricingPage() {
             <FaqItem
               q="Is there a free trial?"
               a="No traditional trial — but right now everyone gets full Pro features free during launch, which is effectively a long open trial. The Free tier itself stays free forever (no card required, no time limit), so you can always test the data terminal without committing to anything."
+            />
+            <FaqItem
+              q="Earn 20% commission as an affiliate?"
+              a="Yes — every signed-in user gets a referral code at /settings/referrals. Share it; people who sign up via your link get 10% off forever, and you earn 20% of every paid month they pay, for the life of the account. Payouts in USDT to your wallet (Solana, Arbitrum, or Base) with a $25 minimum. Public details on /referrals."
             />
           </div>
         </section>
@@ -422,13 +433,18 @@ function TierCard({
         </Bullet>
         {tier === 'whale' && (
           <>
+            <Bullet>Sub-second alert priority (P99 &lt; 2s)</Bullet>
             <Bullet>Custom alert webhooks (HTTPS)</Bullet>
-            <Bullet>Sub-second priority delivery</Bullet>
-            <Bullet>Raw WebSocket feed</Bullet>
-            <Bullet>Team seats (up to 5)</Bullet>
+            <Bullet>1:1 Telegram channel with the team</Bullet>
           </>
         )}
-        {tier === 'pro' && <Bullet>Priority email + DM support</Bullet>}
+        {tier === 'pro' && (
+          <>
+            <Bullet>API archive (1y) + Tax CSV + Dashboards + Setup scanner</Bullet>
+            <Bullet>Priority email + DM support · 12h response</Bullet>
+          </>
+        )}
+        {tier === 'trader' && <Bullet>Priority email + DM support</Bullet>}
       </ul>
 
       {/* CTA */}
@@ -496,17 +512,23 @@ function TierCta({
     );
   }
 
-  // Paid tier (Pro / Whale) — subscribe button. Logged-out users go to
-  // signup first so they have somewhere to land after checkout.
+  // CTA color per tier — Whale gets amber gradient, Pro gets emerald,
+  // Trader gets sky. Pulled into a helper so logged-out + signed-in
+  // variants stay in sync.
+  const ctaColorClass =
+    tier === 'whale'
+      ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 focus-visible:ring-amber-400/60'
+      : tier === 'pro'
+      ? 'bg-emerald-500 text-black hover:bg-emerald-400 focus-visible:ring-emerald-400/60'
+      : 'bg-sky-500 text-black hover:bg-sky-400 focus-visible:ring-sky-400/60';
+
+  // Paid tier (Trader / Pro / Whale) — subscribe button. Logged-out users
+  // go to signup first so they have somewhere to land after checkout.
   if (!isSignedIn) {
     return (
       <Link
         href={`/signup?callbackUrl=${encodeURIComponent('/pricing')}`}
-        className={`w-full py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider text-center inline-flex items-center justify-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-hub-black ${
-          tier === 'whale'
-            ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 focus-visible:ring-amber-400/60'
-            : 'bg-emerald-500 text-black hover:bg-emerald-400 focus-visible:ring-emerald-400/60'
-        }`}
+        className={`w-full py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider text-center inline-flex items-center justify-center gap-1.5 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-hub-black ${ctaColorClass}`}
       >
         Sign up to get {b.label} <ArrowRight className="w-3 h-3" aria-hidden />
       </Link>
@@ -518,11 +540,7 @@ function TierCta({
     <button
       type="button"
       onClick={onSubscribe}
-      className={`w-full py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-hub-black ${
-        tier === 'whale'
-          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 focus-visible:ring-amber-400/60'
-          : 'bg-emerald-500 text-black hover:bg-emerald-400 focus-visible:ring-emerald-400/60'
-      }`}
+      className={`w-full py-2.5 rounded-lg text-[12px] font-bold uppercase tracking-wider transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-hub-black ${ctaColorClass}`}
     >
       Get {b.label}
     </button>
@@ -544,9 +562,9 @@ function Bullet({ children }: { children: React.ReactNode }) {
  * either clickable links (when `href` present) or plain feature rows
  * (when href omitted — Whale's webhooks, raw WS, etc.).
  *
- * Visual treatment is tier-coded: Free is neutral, Pro is emerald,
- * Whale is amber. Matches the tier cards above so the "this is the
- * Pro column" mapping is unambiguous.
+ * Visual treatment is tier-coded: Free is neutral, Trader is sky, Pro
+ * is emerald, Whale is amber. Matches the tier cards above so the "this
+ * is the Pro column" mapping is unambiguous.
  */
 function TierToolListCard({ tierList }: { tierList: TierToolList }) {
   const branding = TIER_BRANDING[tierList.tier];
@@ -555,10 +573,12 @@ function TierToolListCard({ tierList }: { tierList: TierToolList }) {
   const borderClass =
     tierList.tier === 'whale' ? 'border-amber-400/30'
     : tierList.tier === 'pro' ? 'border-emerald-400/30'
+    : tierList.tier === 'trader' ? 'border-sky-400/30'
     : 'border-white/[0.08]';
   const bgClass =
     tierList.tier === 'whale' ? 'bg-amber-500/[0.03]'
     : tierList.tier === 'pro' ? 'bg-emerald-500/[0.03]'
+    : tierList.tier === 'trader' ? 'bg-sky-500/[0.03]'
     : 'bg-white/[0.02]';
 
   return (

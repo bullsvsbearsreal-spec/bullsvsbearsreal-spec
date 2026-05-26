@@ -935,7 +935,7 @@ function PlanUsagePanel({
   exchangesConnected,
 }: {
   planName: string;
-  userTier: 'free' | 'pro' | 'whale';
+  userTier: 'free' | 'trader' | 'pro' | 'whale';
   isAdmin: boolean;
   watchlistCount: number;
   alertCount: number;

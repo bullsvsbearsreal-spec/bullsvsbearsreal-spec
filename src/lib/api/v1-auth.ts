@@ -145,7 +145,9 @@ export async function authenticateV1Request(request: NextRequest): Promise<
       // (Free hit the cap) vs whether they've genuinely overshot a
       // higher tier (Pro/Whale hit aren't normal — likely runaway client).
       const upsell = keyData.tier === 'free'
-        ? 'Pro tier offers 500/min with no daily cap (free during launch — see /pricing).'
+        ? 'Trader tier offers 200/min, Pro 600/min with no daily cap (free during launch — see /pricing).'
+        : keyData.tier === 'trader'
+        ? 'Pro tier offers 600/min with no daily cap (free during launch — see /pricing).'
         : 'Slow down or contact support if this is unexpected.';
       return {
         ok: false,

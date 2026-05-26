@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
   if (!auth.ok) return auth.response;
   const { searchParams } = request.nextUrl;
   const symbolsParam = searchParams.get('symbols');
-  const tier: Tier = (auth.user.tier === 'pro' || auth.user.tier === 'whale')
+  const tier: Tier = (auth.user.tier === 'trader' || auth.user.tier === 'pro' || auth.user.tier === 'whale')
     ? auth.user.tier
     : 'free';
   // Whale = 5y, clamp to a sane int (Infinity isn't valid for SQL INTERVAL).

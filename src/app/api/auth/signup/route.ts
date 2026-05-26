@@ -6,10 +6,26 @@ import bcrypt from 'bcryptjs';
 import crypto from 'crypto';
 import { Resend } from 'resend';
 import { validatePassword } from '@/lib/auth/password';
-import { isDBConfigured, getSQL, initDB } from '@/lib/db';
+import {
+  isDBConfigured, getSQL, initDB,
+  getUserIdByReferralCode, attributeReferral, ensureUserReferralCode, recordReferralEvent,
+} from '@/lib/db';
 import { signupLimiter, isValidEmail, getClientIP } from '@/lib/auth/rate-limit';
 import { isValidInviteCodeShape } from '@/lib/invite';
 import { verifyTurnstileToken, readClientIp } from '@/lib/auth/turnstile';
+
+const REFERRAL_COOKIE_NAME = 'ih_ref';
+
+/** Read the affiliate referral code from either the request body (signup
+ *  form may forward it) or the `ih_ref` cookie set by middleware. Body
+ *  wins so an explicit URL ?ref= overrides a stale cookie. */
+function readReferralCode(req: Request, bodyRef?: unknown): string | null {
+  const fromBody = typeof bodyRef === 'string' ? bodyRef.toUpperCase() : null;
+  if (fromBody && /^[A-Z0-9]{4,16}$/.test(fromBody)) return fromBody;
+  const cookieHeader = req.headers.get('cookie') || '';
+  const m = cookieHeader.match(new RegExp(`(?:^|; )${REFERRAL_COOKIE_NAME}=([A-Z0-9]{4,16})`, 'i'));
+  return m ? m[1].toUpperCase() : null;
+}
 
 // Suspension flag — must match `SUSPENDED` in /signup/page.tsx. With
 // the page hidden behind a maintenance notice, callers shouldn't be
@@ -45,7 +61,7 @@ export async function POST(req: Request) {
     }
 
     const body = await req.json();
-    const { name, email, password, referredByCode, turnstileToken } = body;
+    const { name, email, password, referredByCode, turnstileToken, affiliateRef } = body;
 
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
@@ -102,6 +118,36 @@ export async function POST(req: Request) {
       VALUES (${id}, ${safeName}, ${email}, ${hash}, ${safeReferralCode})
       RETURNING id, name, email
     `;
+
+    // ─── Affiliate attribution ──────────────────────────────────────
+    // Distinct from the legacy `referred_by_code` invite system above.
+    // The `ih_ref` cookie (set by middleware on `?ref=CODE` landings) or
+    // an explicit `affiliateRef` field in the signup body resolves to an
+    // affiliate user_id; we stamp users.referred_by_user_id + log a
+    // 'signup' event for the affiliate dashboard. Fire-and-forget — a
+    // failure here must NOT block account creation.
+    const refCode = readReferralCode(req, affiliateRef);
+    if (refCode) {
+      try {
+        const affiliateId = await getUserIdByReferralCode(refCode);
+        if (affiliateId && affiliateId !== id) {
+          await attributeReferral(id, affiliateId);
+          await recordReferralEvent({
+            affiliateUserId: affiliateId,
+            referredUserId: id,
+            eventType: 'signup',
+            metadata: { source: 'signup' },
+          });
+        }
+      } catch (e) {
+        console.error('Affiliate attribution failed:', e);
+      }
+    }
+
+    // Generate a referral code for the new user so they can refer others
+    // immediately. Fire-and-forget — silent failure is fine; the code can
+    // be lazily backfilled on first /settings/referrals visit.
+    ensureUserReferralCode(id).catch(() => { /* swallow */ });
 
     // Generate and store verification code
     const code = generateCode();

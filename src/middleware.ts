@@ -147,9 +147,54 @@ export function handleV1Route(request: NextRequest): NextResponse {
 // Main middleware
 // ---------------------------------------------------------------------------
 
+// Affiliate-cookie max-age. 60 days = 60 * 24 * 3600 = 5,184,000 seconds.
+// Long-tail attribution window matches industry-standard 60d cookie.
+const REFERRAL_COOKIE_NAME = 'ih_ref';
+const REFERRAL_COOKIE_MAX_AGE_SEC = 60 * 24 * 3600;
+
+/**
+ * If the URL carries `?ref=CODE`, stamp a long-lived cookie so signup
+ * can attribute the user even if they wander off + come back later.
+ * Returns a response with the cookie set, or null when there's nothing
+ * to do (no `?ref=`, or cookie already set with the same value).
+ *
+ * Validation here is loose (alphanumeric, ≤16 chars) — the actual code
+ * resolution against the users table happens server-side at signup, so
+ * a garbage cookie just no-ops there.
+ */
+function handleReferralCookie(request: NextRequest): NextResponse | null {
+  const ref = request.nextUrl.searchParams.get('ref');
+  if (!ref) return null;
+  // Only accept the alphabet our codes are drawn from + a sane length.
+  if (!/^[A-Z0-9]{4,16}$/i.test(ref)) return null;
+  const upper = ref.toUpperCase();
+  const existing = request.cookies.get(REFERRAL_COOKIE_NAME)?.value;
+  if (existing === upper) return null; // already attributed — don't reset clock
+  const res = NextResponse.next();
+  res.cookies.set({
+    name: REFERRAL_COOKIE_NAME,
+    value: upper,
+    maxAge: REFERRAL_COOKIE_MAX_AGE_SEC,
+    httpOnly: false,    // readable by the /signup form so it can include in the body
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+  });
+  return res;
+}
+
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
 
+  // Affiliate referral cookie — runs on every request so we catch landings
+  // on any page (not just /). Stamps the cookie once and falls through; the
+  // signup route reads it server-side and stamps users.referred_by_user_id.
+  const refRes = handleReferralCookie(request);
+  if (refRes && !pathname.startsWith('/api/')) {
+    // Non-API path: ship the response with the cookie set + skip the
+    // API rate-limit branches below.
+    return refRes;
+  }
 
   // Only rate-limit API routes
   if (!pathname.startsWith('/api/')) return NextResponse.next();

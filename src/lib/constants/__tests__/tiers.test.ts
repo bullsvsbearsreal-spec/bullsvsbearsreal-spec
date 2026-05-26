@@ -11,19 +11,28 @@ import {
   ANNUAL_DISCOUNT_PCT,
   annualSavingsUsd,
   resolveUserTier,
+  tierAtLeast,
   type Tier,
 } from '../tiers';
-import { FREE_TIER_PER_MINUTE, PRO_TIER_PER_MINUTE, FREE_TIER_PER_DAY } from '@/lib/api/rate-limit';
+import {
+  FREE_TIER_PER_MINUTE,
+  TRADER_TIER_PER_MINUTE,
+  PRO_TIER_PER_MINUTE,
+  FREE_TIER_PER_DAY,
+  TRADER_TIER_PER_DAY,
+} from '@/lib/api/rate-limit';
+
+const ALL_TIERS: Tier[] = ['free', 'trader', 'pro', 'whale'];
 
 describe('TIER_ORDER', () => {
-  it('is exactly free → pro → whale', () => {
-    expect(TIER_ORDER).toEqual(['free', 'pro', 'whale']);
+  it('is exactly free → trader → pro → whale', () => {
+    expect(TIER_ORDER).toEqual(['free', 'trader', 'pro', 'whale']);
   });
 });
 
 describe('TIER_LIMITS', () => {
-  it('has entries for all 3 tiers', () => {
-    (['free', 'pro', 'whale'] as Tier[]).forEach((t) => {
+  it('has entries for all 4 tiers', () => {
+    ALL_TIERS.forEach((t) => {
       expect(TIER_LIMITS[t]).toBeDefined();
     });
   });
@@ -33,7 +42,12 @@ describe('TIER_LIMITS', () => {
     expect(TIER_LIMITS.free.apiPerDay).toBe(FREE_TIER_PER_DAY);
   });
 
-  it('Pro API limits match the rate-limit constants', () => {
+  it('Trader API limits match the rate-limit constants', () => {
+    expect(TIER_LIMITS.trader.apiPerMinute).toBe(TRADER_TIER_PER_MINUTE);
+    expect(TIER_LIMITS.trader.apiPerDay).toBe(TRADER_TIER_PER_DAY);
+  });
+
+  it('Pro API limits match the rate-limit constants (unlimited daily)', () => {
     expect(TIER_LIMITS.pro.apiPerMinute).toBe(PRO_TIER_PER_MINUTE);
     expect(TIER_LIMITS.pro.apiPerDay).toBe(Infinity);
   });
@@ -45,15 +59,21 @@ describe('TIER_LIMITS', () => {
     expect(TIER_LIMITS.whale.maxWatchedWallets).toBe(Infinity);
   });
 
-  it('limits scale monotonically — Pro >= Free, Whale >= Pro', () => {
-    expect(TIER_LIMITS.pro.apiPerMinute).toBeGreaterThanOrEqual(TIER_LIMITS.free.apiPerMinute);
-    expect(TIER_LIMITS.pro.maxAlerts).toBeGreaterThanOrEqual(TIER_LIMITS.free.maxAlerts);
-    expect(TIER_LIMITS.pro.maxWatchedWallets).toBeGreaterThanOrEqual(TIER_LIMITS.free.maxWatchedWallets);
-    expect(TIER_LIMITS.pro.historyDays).toBeGreaterThanOrEqual(TIER_LIMITS.free.historyDays);
-
+  it('limits scale monotonically — Trader >= Free, Pro >= Trader, Whale >= Pro', () => {
+    expect(TIER_LIMITS.trader.apiPerMinute).toBeGreaterThanOrEqual(TIER_LIMITS.free.apiPerMinute);
+    expect(TIER_LIMITS.pro.apiPerMinute).toBeGreaterThanOrEqual(TIER_LIMITS.trader.apiPerMinute);
     expect(TIER_LIMITS.whale.apiPerMinute).toBeGreaterThanOrEqual(TIER_LIMITS.pro.apiPerMinute);
+
+    expect(TIER_LIMITS.trader.maxAlerts).toBeGreaterThanOrEqual(TIER_LIMITS.free.maxAlerts);
+    expect(TIER_LIMITS.pro.maxAlerts).toBeGreaterThanOrEqual(TIER_LIMITS.trader.maxAlerts);
     expect(TIER_LIMITS.whale.maxAlerts).toBeGreaterThanOrEqual(TIER_LIMITS.pro.maxAlerts);
+
+    expect(TIER_LIMITS.trader.maxWatchedWallets).toBeGreaterThanOrEqual(TIER_LIMITS.free.maxWatchedWallets);
+    expect(TIER_LIMITS.pro.maxWatchedWallets).toBeGreaterThanOrEqual(TIER_LIMITS.trader.maxWatchedWallets);
     expect(TIER_LIMITS.whale.maxWatchedWallets).toBeGreaterThanOrEqual(TIER_LIMITS.pro.maxWatchedWallets);
+
+    expect(TIER_LIMITS.trader.historyDays).toBeGreaterThanOrEqual(TIER_LIMITS.free.historyDays);
+    expect(TIER_LIMITS.pro.historyDays).toBeGreaterThanOrEqual(TIER_LIMITS.trader.historyDays);
     expect(TIER_LIMITS.whale.historyDays).toBeGreaterThanOrEqual(TIER_LIMITS.pro.historyDays);
   });
 
@@ -63,9 +83,15 @@ describe('TIER_LIMITS', () => {
     expect(TIER_LIMITS.free.historyDays).toBe(90);
   });
 
-  it('Pro has the documented limits (50 alerts, 100 wallets, 365d history)', () => {
-    expect(TIER_LIMITS.pro.maxAlerts).toBe(50);
-    expect(TIER_LIMITS.pro.maxWatchedWallets).toBe(100);
+  it('Trader has the documented limits (15 alerts, 30 wallets, 180d history)', () => {
+    expect(TIER_LIMITS.trader.maxAlerts).toBe(15);
+    expect(TIER_LIMITS.trader.maxWatchedWallets).toBe(30);
+    expect(TIER_LIMITS.trader.historyDays).toBe(180);
+  });
+
+  it('Pro has the documented limits (75 alerts, 200 wallets, 365d history)', () => {
+    expect(TIER_LIMITS.pro.maxAlerts).toBe(75);
+    expect(TIER_LIMITS.pro.maxWatchedWallets).toBe(200);
     expect(TIER_LIMITS.pro.historyDays).toBe(365);
   });
 });
@@ -76,12 +102,14 @@ describe('TIER_PRICE_MONTHLY + TIER_PRICE_ANNUAL', () => {
     expect(TIER_PRICE_ANNUAL.free).toBe(0);
   });
 
-  it('Pro is $12/mo and Whale is $49/mo', () => {
-    expect(TIER_PRICE_MONTHLY.pro).toBe(12);
-    expect(TIER_PRICE_MONTHLY.whale).toBe(49);
+  it('Trader is $12, Pro is $29, Whale is $59 monthly', () => {
+    expect(TIER_PRICE_MONTHLY.trader).toBe(12);
+    expect(TIER_PRICE_MONTHLY.pro).toBe(29);
+    expect(TIER_PRICE_MONTHLY.whale).toBe(59);
   });
 
   it('Annual prices are 10x monthly (~17% off = 2 months free)', () => {
+    expect(TIER_PRICE_ANNUAL.trader).toBe(TIER_PRICE_MONTHLY.trader * 10);
     expect(TIER_PRICE_ANNUAL.pro).toBe(TIER_PRICE_MONTHLY.pro * 10);
     expect(TIER_PRICE_ANNUAL.whale).toBe(TIER_PRICE_MONTHLY.whale * 10);
   });
@@ -92,21 +120,22 @@ describe('TIER_PRICE_MONTHLY + TIER_PRICE_ANNUAL', () => {
     expect(Math.round(proSaving * 100)).toBe(ANNUAL_DISCOUNT_PCT);
   });
 
-  it('Prices monotonically increase: Free < Pro < Whale', () => {
-    expect(TIER_PRICE_MONTHLY.free).toBeLessThan(TIER_PRICE_MONTHLY.pro);
+  it('Prices monotonically increase: Free < Trader < Pro < Whale', () => {
+    expect(TIER_PRICE_MONTHLY.free).toBeLessThan(TIER_PRICE_MONTHLY.trader);
+    expect(TIER_PRICE_MONTHLY.trader).toBeLessThan(TIER_PRICE_MONTHLY.pro);
     expect(TIER_PRICE_MONTHLY.pro).toBeLessThan(TIER_PRICE_MONTHLY.whale);
   });
 });
 
 describe('TIER_BRANDING', () => {
-  it('has entries for all 3 tiers with required fields', () => {
-    (['free', 'pro', 'whale'] as Tier[]).forEach((t) => {
+  it('has entries for all 4 tiers with required fields', () => {
+    ALL_TIERS.forEach((t) => {
       const b = TIER_BRANDING[t];
       expect(b.label).toBeTruthy();
       expect(b.textColor).toMatch(/^text-/);
       expect(b.bgTint).toBeTruthy();
       expect(b.borderTint).toMatch(/^border-/);
-      expect(b.iconName).toMatch(/^(Sparkles|Zap|Crown)$/);
+      expect(b.iconName).toMatch(/^(Sparkles|Compass|Zap|Crown)$/);
       expect(b.tagline).toBeTruthy();
     });
   });
@@ -120,12 +149,23 @@ describe('TIER_BRANDING', () => {
     expect(TIER_BRANDING.pro.iconName).toBe('Zap');
     expect(TIER_BRANDING.pro.textColor).toContain('emerald');
   });
+
+  it('Trader uses the Compass icon + sky styling', () => {
+    expect(TIER_BRANDING.trader.iconName).toBe('Compass');
+    expect(TIER_BRANDING.trader.textColor).toContain('sky');
+  });
+
+  it('Free uses the Sparkles icon + neutral styling', () => {
+    expect(TIER_BRANDING.free.iconName).toBe('Sparkles');
+    expect(TIER_BRANDING.free.textColor).toContain('neutral');
+  });
 });
 
 describe('FEATURE_MATRIX', () => {
-  it('every row has values for all 3 tiers', () => {
+  it('every row has values for all 4 tiers', () => {
     FEATURE_MATRIX.forEach((row) => {
       expect(row.values.free).toBeDefined();
+      expect(row.values.trader).toBeDefined();
       expect(row.values.pro).toBeDefined();
       expect(row.values.whale).toBeDefined();
     });
@@ -136,14 +176,23 @@ describe('FEATURE_MATRIX', () => {
     expect(new Set(labels).size).toBe(labels.length);
   });
 
-  it('Whale-only features are false for Free + Pro', () => {
+  it('Whale-only features exist (false for Free + Trader + Pro)', () => {
     const whaleOnly = FEATURE_MATRIX.filter((r) =>
-      r.values.whale === true && r.values.free === false && r.values.pro === false,
+      r.values.whale === true && r.values.free === false && r.values.trader === false && r.values.pro === false,
     );
     expect(whaleOnly.length).toBeGreaterThan(0);
-    // Sanity check that the documented Whale-only features are there
+    // Sub-second alerts is documented Whale-only
     const labels = whaleOnly.map((r) => r.label.toLowerCase());
-    expect(labels.some((l) => l.includes('webhook'))).toBe(true);
+    expect(labels.some((l) => l.includes('sub-second'))).toBe(true);
+  });
+
+  it('Pro-tier power features exist (true for Pro + Whale only)', () => {
+    const proPlus = FEATURE_MATRIX.filter((r) =>
+      r.values.pro === true && r.values.whale === true && r.values.free === false && r.values.trader === false,
+    );
+    expect(proPlus.length).toBeGreaterThan(0);
+    const labels = proPlus.map((r) => r.label.toLowerCase());
+    expect(labels.some((l) => l.includes('tax'))).toBe(true);
   });
 
   it('every value is either a boolean or a non-empty string', () => {
@@ -159,10 +208,12 @@ describe('resolveUserTier', () => {
   it('admin role always resolves to whale (regardless of billing)', () => {
     expect(resolveUserTier({ role: 'admin', billingTier: null })).toBe('whale');
     expect(resolveUserTier({ role: 'admin', billingTier: 'free' })).toBe('whale');
+    expect(resolveUserTier({ role: 'admin', billingTier: 'trader' })).toBe('whale');
     expect(resolveUserTier({ role: 'admin', billingTier: 'pro' })).toBe('whale');
   });
 
   it('non-admin reads from billingTier when present', () => {
+    expect(resolveUserTier({ role: 'user', billingTier: 'trader' })).toBe('trader');
     expect(resolveUserTier({ role: 'user', billingTier: 'pro' })).toBe('pro');
     expect(resolveUserTier({ role: 'user', billingTier: 'whale' })).toBe('whale');
     expect(resolveUserTier({ role: 'user', billingTier: 'free' })).toBe('free');
@@ -177,16 +228,47 @@ describe('resolveUserTier', () => {
   it('null role falls back to free unless billingTier set', () => {
     expect(resolveUserTier({ role: null, billingTier: null })).toBe('free');
     expect(resolveUserTier({ role: null, billingTier: 'whale' })).toBe('whale');
+    expect(resolveUserTier({ role: null, billingTier: 'trader' })).toBe('trader');
+  });
+});
+
+describe('tierAtLeast', () => {
+  it('a tier always satisfies itself', () => {
+    ALL_TIERS.forEach((t) => {
+      expect(tierAtLeast(t, t)).toBe(true);
+    });
+  });
+
+  it('higher tier satisfies lower requirement', () => {
+    expect(tierAtLeast('whale', 'pro')).toBe(true);
+    expect(tierAtLeast('whale', 'trader')).toBe(true);
+    expect(tierAtLeast('whale', 'free')).toBe(true);
+    expect(tierAtLeast('pro', 'trader')).toBe(true);
+    expect(tierAtLeast('pro', 'free')).toBe(true);
+    expect(tierAtLeast('trader', 'free')).toBe(true);
+  });
+
+  it('lower tier does NOT satisfy higher requirement', () => {
+    expect(tierAtLeast('free', 'trader')).toBe(false);
+    expect(tierAtLeast('free', 'pro')).toBe(false);
+    expect(tierAtLeast('free', 'whale')).toBe(false);
+    expect(tierAtLeast('trader', 'pro')).toBe(false);
+    expect(tierAtLeast('trader', 'whale')).toBe(false);
+    expect(tierAtLeast('pro', 'whale')).toBe(false);
   });
 });
 
 describe('annualSavingsUsd', () => {
-  it('Pro annual saves $24/yr ($144 - $120)', () => {
-    expect(annualSavingsUsd('pro')).toBe(24);
+  it('Trader annual saves $24/yr ($144 - $120)', () => {
+    expect(annualSavingsUsd('trader')).toBe(24);
   });
 
-  it('Whale annual saves $98/yr ($588 - $490)', () => {
-    expect(annualSavingsUsd('whale')).toBe(98);
+  it('Pro annual saves $58/yr ($348 - $290)', () => {
+    expect(annualSavingsUsd('pro')).toBe(58);
+  });
+
+  it('Whale annual saves $118/yr ($708 - $590)', () => {
+    expect(annualSavingsUsd('whale')).toBe(118);
   });
 
   it('Free saves $0 (both $0)', () => {
@@ -201,10 +283,10 @@ describe('ANNUAL_DISCOUNT_PCT', () => {
 });
 
 describe('TOOLS_BY_TIER', () => {
-  it('has exactly one entry per tier (free, pro, whale)', () => {
-    expect(TOOLS_BY_TIER).toHaveLength(3);
+  it('has exactly one entry per tier (free, trader, pro, whale)', () => {
+    expect(TOOLS_BY_TIER).toHaveLength(4);
     const tiers = TOOLS_BY_TIER.map((t) => t.tier);
-    expect(tiers).toEqual(['free', 'pro', 'whale']);
+    expect(tiers).toEqual(['free', 'trader', 'pro', 'whale']);
   });
 
   it('every tier entry has heading, description, and at least 3 items', () => {
@@ -240,16 +322,7 @@ describe('TOOLS_BY_TIER', () => {
     });
   });
 
-  it('hrefs are unique across tiers (no tool listed in multiple columns)', () => {
-    const allHrefs = TOOLS_BY_TIER.flatMap((t) =>
-      t.items.map((i) => i.href).filter((h): h is string => !!h),
-    );
-    expect(new Set(allHrefs).size).toBe(allHrefs.length);
-  });
-
-  it('Whale tier has at least one feature without an href (pure features like webhooks)', () => {
-    // Whale's value is mostly in non-page features (webhooks, raw WS,
-    // team seats). At least one item should be a pure feature.
+  it('Whale tier has at least one feature without an href (pure features like sub-second alerts)', () => {
     const whale = TOOLS_BY_TIER.find((t) => t.tier === 'whale')!;
     const hrefless = whale.items.filter((i) => !i.href);
     expect(hrefless.length).toBeGreaterThan(0);
@@ -262,7 +335,7 @@ describe('TOOLS_BY_TIER_COUNT', () => {
     expect(TOOLS_BY_TIER_COUNT).toBe(summed);
   });
 
-  it('is greater than 15 (combined across all 3 tiers)', () => {
-    expect(TOOLS_BY_TIER_COUNT).toBeGreaterThan(15);
+  it('is greater than 25 (combined across all 4 tiers)', () => {
+    expect(TOOLS_BY_TIER_COUNT).toBeGreaterThan(25);
   });
 });

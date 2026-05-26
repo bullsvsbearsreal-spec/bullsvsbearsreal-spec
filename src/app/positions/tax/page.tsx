@@ -19,6 +19,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PageHero from '@/components/PageHero';
+import TierGate from '@/components/TierGate';
 import { ArrowLeft, Calculator, RefreshCw, Download, Info } from 'lucide-react';
 
 interface OpenPosition {
@@ -147,6 +148,7 @@ export default function TaxPage() {
         <Link href="/positions" className="text-[11px] text-neutral-500 hover:text-hub-yellow inline-flex items-center gap-1 mb-2">
           <ArrowLeft className="w-3 h-3" /> back to positions
         </Link>
+        <TierGate requires="pro">
         <PageHero
           icon={Calculator}
           eyebrow="FIFO · beta"
@@ -285,6 +287,7 @@ export default function TaxPage() {
             </div>
           </>
         )}
+        </TierGate>
       </main>
       <Footer />
     </>

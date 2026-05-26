@@ -190,8 +190,8 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: 'Frequently asked questions about InfoHub, crypto funding rates, open interest, and derivatives data.',
   },
   '/pricing': {
-    title: 'Pricing · Free, Pro, Whale',
-    description: 'Pricing for InfoHub — Free forever with the full data terminal, Pro ($12/mo) for active traders, Whale ($49/mo) for funds + power users with custom webhooks and unlimited everything. Free during launch.',
+    title: 'Pricing · Free, Trader, Pro, Whale',
+    description: 'Pricing for InfoHub — Free forever with the full data terminal, Trader ($12/mo) for active retail with every venue real-time, Pro ($29/mo) for daily traders with API archive + tax export + custom dashboards + setup scanner, Whale ($59/mo) for funds + desks with sub-second alerts and unlimited everything. Free during launch.',
   },
   '/brand': {
     title: 'Brand Assets',
@@ -324,7 +324,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/account/api-keys': {
     title: 'API Keys',
-    description: 'Manage your InfoHub Public API keys — create, revoke, and check usage. Free tier 100 req/min, Pro 500 req/min (free during launch).',
+    description: 'Manage your InfoHub Public API keys — create, revoke, and check usage. Free tier 100 req/min, Trader 200, Pro 600, Whale unlimited (free during launch).',
   },
   '/watch': {
     title: 'Wallet Watch · Hyperliquid + gTrade Position Alerts',
