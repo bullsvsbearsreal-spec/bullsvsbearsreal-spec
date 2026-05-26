@@ -206,8 +206,11 @@ export default function UserMenu() {
           <MenuLink href="/alerts" onClick={() => setOpen(false)} icon={<Bell />}>
             Alerts
           </MenuLink>
-          <MenuLink href="/invite" onClick={() => setOpen(false)} icon={<Gift />} accent="emerald">
+          <MenuLink href="/invite" onClick={() => setOpen(false)} icon={<Gift />}>
             Invite friends
+          </MenuLink>
+          <MenuLink href="/settings/referrals" onClick={() => setOpen(false)} icon={<Gift />} accent="emerald">
+            Affiliate · 20%
           </MenuLink>
 
           {/* ─── Admin (gated) ─────────────────────────────────────── */}
