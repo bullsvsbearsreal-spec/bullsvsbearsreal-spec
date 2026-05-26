@@ -371,9 +371,9 @@ function WidgetBody({ widget }: { widget: Widget }) {
     case 'liquidations': return <LiquidationsWidget />;
     case 'alerts':       return <AlertsWidget />;
     case 'watchlist':    return <WatchlistWidget />;
-    case 'whales':       return <StubWidget label="Whale trades" hint="Wires up next — see /hl-whales for the full live view." />;
-    case 'news':         return <StubWidget label="News" hint="Wires up next — see /news for the full feed." />;
-    case 'positions':    return <StubWidget label="Open positions" hint="Wires up next — see /positions for full PnL." />;
+    case 'whales':       return <WhalesWidget />;
+    case 'news':         return <NewsWidget />;
+    case 'positions':    return <PositionsWidget />;
     default:             return <div className="text-[11px] text-neutral-500">Unknown widget type.</div>;
   }
 }
@@ -530,6 +530,225 @@ function AlertsWidget() {
         <div className="text-[11px] text-neutral-500">{err}</div>
       ) : (
         <div className="text-[11px] text-neutral-500">Loading…</div>
+      )}
+    </div>
+  );
+}
+
+/** Whales widget — mixes 2 HL biggest positions + 1 top smart-money
+ *  trader. Two parallel fetches; the first to finish renders, the
+ *  other replaces its slot on arrival. Tolerant to either endpoint
+ *  failing — partial data is better than empty. */
+function WhalesWidget() {
+  const [hl, setHl] = useState<Array<{ coin: string; side: 'long' | 'short'; usd: number; label: string }> | null>(null);
+  const [sm, setSm] = useState<{ name: string; pnl: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    // HL whales fetch
+    (async () => {
+      try {
+        const res = await fetch('/api/hl-whales', { cache: 'no-store' });
+        if (!res.ok) return;
+        const j = await res.json();
+        if (cancelled) return;
+        // Tolerant to shape variations: top-level array OR { whales: [...] } OR { data: [...] }
+        const whales: any[] = Array.isArray(j) ? j : Array.isArray(j?.whales) ? j.whales : Array.isArray(j?.data) ? j.data : [];
+        // Flatten all positions across whales, sort by USD desc, take top 2
+        const flat: Array<{ coin: string; side: 'long' | 'short'; usd: number; label: string }> = [];
+        for (const w of whales) {
+          const positions: any[] = Array.isArray(w?.positions) ? w.positions : [];
+          for (const p of positions) {
+            const usd = Math.abs(Number(p?.positionValue ?? p?.notional ?? 0));
+            if (!usd || !p?.coin) continue;
+            flat.push({
+              coin: String(p.coin).toUpperCase(),
+              side: p?.side === 'short' ? 'short' : 'long',
+              usd,
+              label: String(w?.label ?? w?.address?.slice(0, 6) ?? '—'),
+            });
+          }
+        }
+        flat.sort((a, b) => b.usd - a.usd);
+        setHl(flat.slice(0, 2));
+      } catch { /* swallow */ }
+    })();
+    // Smart-money top trader fetch
+    (async () => {
+      try {
+        const res = await fetch('/api/smart-money?limit=5', { cache: 'no-store' });
+        if (!res.ok) return;
+        const j = await res.json();
+        if (cancelled) return;
+        const wallets: any[] = Array.isArray(j?.wallets) ? j.wallets : Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : [];
+        if (wallets.length === 0) return;
+        // Pick the highest realised PnL — tolerant to a few naming variations
+        let topPnl = -Infinity;
+        let topName: string | null = null;
+        for (const w of wallets) {
+          const pnl = Number(w?.realizedPnl ?? w?.pnl ?? w?.lifetimePnl ?? 0);
+          if (pnl > topPnl) {
+            topPnl = pnl;
+            topName = String(w?.label ?? w?.displayName ?? w?.address?.slice(0, 6) ?? '—');
+          }
+        }
+        if (topName) setSm({ name: topName, pnl: topPnl });
+      } catch { /* swallow */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  const loaded = hl !== null || sm !== null;
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Whales · live</div>
+      {!loaded ? (
+        <div className="text-[11px] text-neutral-500">Loading…</div>
+      ) : (
+        <div className="space-y-1.5">
+          {(hl ?? []).map((p, i) => (
+            <div key={i} className="flex items-center justify-between text-[11px]">
+              <span className="font-mono font-semibold text-white">
+                <span className={p.side === 'long' ? 'text-emerald-300' : 'text-rose-300'}>{p.side === 'long' ? 'L' : 'S'}</span>{' '}
+                {p.coin}
+              </span>
+              <span className="text-neutral-400 font-mono">${p.usd.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+            </div>
+          ))}
+          {sm && (
+            <div className="flex items-center justify-between text-[11px] pt-1.5 border-t border-white/[0.04]">
+              <span className="text-amber-300 truncate">★ {sm.name}</span>
+              <span className={`font-mono ${sm.pnl >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                ${Math.abs(sm.pnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}
+              </span>
+            </div>
+          )}
+          {(hl ?? []).length === 0 && !sm && (
+            <div className="text-[11px] text-neutral-500 italic">No whale activity in window.</div>
+          )}
+        </div>
+      )}
+      <Link href="/hl-whales" className="text-[11px] text-emerald-300 hover:underline mt-2 inline-block">All whales →</Link>
+    </div>
+  );
+}
+
+/** News widget — 5 latest headlines from /api/news. Trims long titles
+ *  to fit a small tile. Click goes to /news. */
+function NewsWidget() {
+  const [articles, setArticles] = useState<Array<{ title: string; source: string; url: string; ts: number }> | null>(null);
+  const [err, setErr] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/news?limit=5', { cache: 'no-store' });
+        if (!res.ok) { setErr(true); return; }
+        const j = await res.json();
+        if (cancelled) return;
+        // News API shape: array of articles or { articles: [...] } or { data: [...] }
+        const raw: any[] = Array.isArray(j?.articles) ? j.articles : Array.isArray(j?.data) ? j.data : Array.isArray(j) ? j : [];
+        const cleaned = raw.slice(0, 5).map((a) => ({
+          title: String(a?.title ?? '').trim(),
+          source: String(a?.source ?? a?.source_info?.name ?? a?.publisher ?? '').trim(),
+          url: String(a?.url ?? a?.link ?? '#'),
+          ts: Number(a?.published_on ?? a?.publishedAt ?? a?.ts ?? 0) || 0,
+        })).filter((a) => a.title.length > 0);
+        setArticles(cleaned);
+      } catch { if (!cancelled) setErr(true); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">News · latest</div>
+      {articles === null ? (
+        <div className="text-[11px] text-neutral-500">{err ? 'Could not load news.' : 'Loading…'}</div>
+      ) : articles.length === 0 ? (
+        <div className="text-[11px] text-neutral-500 italic">No headlines.</div>
+      ) : (
+        <ul className="space-y-1">
+          {articles.map((a, i) => (
+            <li key={i}>
+              <a
+                href={a.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-[11px] text-neutral-300 hover:text-emerald-300 transition-colors leading-snug line-clamp-2"
+                title={a.title}
+              >
+                {a.title}
+                {a.source && <span className="text-[9px] text-neutral-600 ml-1">· {a.source}</span>}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+      <Link href="/news" className="text-[11px] text-emerald-300 hover:underline mt-2 inline-block">All news →</Link>
+    </div>
+  );
+}
+
+/** Positions widget — count + total unrealised PnL + biggest gainer.
+ *  Hits /api/account/positions (auth required). */
+function PositionsWidget() {
+  const [data, setData] = useState<{ count: number; unrealised: number; biggest: { symbol: string; pct: number } | null } | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/account/positions', { cache: 'no-store' });
+        if (res.status === 401) { setErr('Sign in to see positions.'); return; }
+        if (!res.ok) { setErr('Could not load positions.'); return; }
+        const j = await res.json();
+        if (cancelled) return;
+        const positions: any[] = Array.isArray(j?.positions) ? j.positions : [];
+        if (positions.length === 0) { setData({ count: 0, unrealised: 0, biggest: null }); return; }
+        const unrealised = positions.reduce((acc, p) => acc + Number(p?.unrealizedPnl ?? p?.unrealized ?? 0), 0);
+        // Biggest mover by % roe
+        let biggestPct = -Infinity;
+        let biggestSymbol: string | null = null;
+        for (const p of positions) {
+          const roe = Number(p?.roe ?? p?.unrealizedRoe ?? p?.pnlPct ?? 0);
+          if (Math.abs(roe) > Math.abs(biggestPct)) {
+            biggestPct = roe;
+            biggestSymbol = String(p?.symbol ?? p?.coin ?? '').toUpperCase() || null;
+          }
+        }
+        setData({
+          count: positions.length,
+          unrealised,
+          biggest: biggestSymbol ? { symbol: biggestSymbol, pct: biggestPct } : null,
+        });
+      } catch { if (!cancelled) setErr('Network error.'); }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Open positions</div>
+      {data === null ? (
+        <div className="text-[11px] text-neutral-500">{err ?? 'Loading…'}</div>
+      ) : data.count === 0 ? (
+        <div>
+          <div className="text-2xl font-bold text-neutral-400">0</div>
+          <div className="text-[10px] text-neutral-500 mt-1">No open positions. <Link href="/account/connections" className="text-emerald-300 hover:underline">Connect an exchange →</Link></div>
+        </div>
+      ) : (
+        <>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-white">{data.count}</span>
+            <span className={`text-sm font-mono font-semibold ${data.unrealised >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+              {data.unrealised >= 0 ? '+' : ''}${data.unrealised.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          <div className="text-[10px] text-neutral-500 mt-1">
+            unrealised
+            {data.biggest && (
+              <> · biggest: <strong className={data.biggest.pct >= 0 ? 'text-emerald-300' : 'text-rose-300'}>{data.biggest.symbol} {data.biggest.pct >= 0 ? '+' : ''}{(data.biggest.pct * 100).toFixed(1)}%</strong></>
+            )}
+          </div>
+          <Link href="/positions" className="text-[11px] text-emerald-300 hover:underline mt-2 inline-block">Full positions →</Link>
+        </>
       )}
     </div>
   );

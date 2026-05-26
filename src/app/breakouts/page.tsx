@@ -32,6 +32,7 @@ interface BreakoutRow {
   low24h: number;
   signals: string[];
   score: number;
+  qualityScore: number;
 }
 
 interface BreakoutsResponse {
@@ -198,7 +199,8 @@ export default function BreakoutsPage() {
                 <div className="text-right font-mono text-[10px] tabular-nums text-neutral-500">
                   {fmtDate(r.athDate)}
                 </div>
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1 items-center">
+                  <QualityBadge score={r.qualityScore} />
                   {r.signals.slice(0, 2).map(s => (
                     <span key={s} className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-hub-yellow/15 text-hub-yellow">
                       {s}
@@ -225,5 +227,30 @@ export default function BreakoutsPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+/**
+ * Composite quality-score badge. 0–100 with three colour bands so the
+ * eye can scan a column without reading numbers:
+ *   80+ emerald (high-quality setup)
+ *   50+ amber  (decent)
+ *   <50 neutral (low/poor — usually breakdowns)
+ *
+ * Numbers come from /api/breakouts computed once server-side so the
+ * filter switch doesn't recompute. See route.ts for the weighting.
+ */
+function QualityBadge({ score }: { score: number }) {
+  const cls =
+    score >= 80 ? 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30'
+    : score >= 50 ? 'bg-amber-500/15 text-amber-300 border-amber-400/30'
+    : 'bg-white/[0.04] text-neutral-500 border-white/[0.08]';
+  return (
+    <span
+      title={`Setup quality score: ${score}/100\n• momentum stack\n• range position (ATR proxy)\n• ATH proximity\n• volume/market-cap`}
+      className={`inline-flex items-center text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border font-mono ${cls}`}
+    >
+      Q {score}
+    </span>
   );
 }
