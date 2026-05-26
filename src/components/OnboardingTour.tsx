@@ -27,7 +27,12 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-const LS_KEY = 'infohub_onboarding_v1';
+// Key bump 2026-05-26: v1 → v2 to re-surface the tour to existing
+// users now that the Copy-trader step has been added. Users who
+// already completed v1 will see the tour once more and can dismiss
+// it again. Worth the friction because the Copy → workflow is the
+// marquee feature of the current release.
+const LS_KEY = 'infohub_onboarding_v2';
 
 interface Step {
   /** Icon component from lucide-react. */

@@ -521,6 +521,32 @@ function ChartPageInner() {
   // Tape sidebar (only for crypto)
   const [tapeVisible, setTapeVisible] = useState(false);
 
+  // Quick-switch mode — when on, the symbol picker stays open after
+  // selection so you can flip through BTC → ETH → SOL without
+  // reopening the dropdown every time. Persisted to localStorage.
+  const [quickSwitch, setQuickSwitch] = useState(false);
+  // Keyboard-shortcut hint dismissal — shown once on first chart visit
+  // and never again after the user closes it.
+  const [showKbdHint, setShowKbdHint] = useState(false);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (localStorage.getItem('ih:chart:quick-switch') === '1') setQuickSwitch(true);
+      if (localStorage.getItem('ih:chart:kbd-hint-dismissed') !== '1') setShowKbdHint(true);
+    } catch { /* localStorage may be unavailable in private mode */ }
+  }, []);
+  const dismissKbdHint = useCallback(() => {
+    setShowKbdHint(false);
+    try { localStorage.setItem('ih:chart:kbd-hint-dismissed', '1'); } catch { /* quota */ }
+  }, []);
+  const toggleQuickSwitch = useCallback(() => {
+    setQuickSwitch(v => {
+      const next = !v;
+      try { localStorage.setItem('ih:chart:quick-switch', next ? '1' : '0'); } catch { /* quota */ }
+      return next;
+    });
+  }, []);
+
   // Chart style (candles / heikin-ashi / line / area) + indicator
   // preset + compare overlay. Persisted to localStorage so the user's
   // preferred default sticks across reloads without us having to add
@@ -629,7 +655,9 @@ function ChartPageInner() {
     setTvSymbol(sym.tvSymbol);
     setDisplayLabel(sym.label);
     setDisplayPair(sym.displayPair ?? '');
-    setSymbolOpen(false);
+    // Quick-switch keeps the dropdown open so power users can flip
+    // through several symbols rapidly without re-clicking the picker.
+    if (!quickSwitch) setSymbolOpen(false);
     setSymbolQuery('');
     setFocusedIndex(-1);
     updateURL(sym.label, interval, assetClass);
@@ -637,7 +665,7 @@ function ChartPageInner() {
     // across reloads. Only push for crypto — non-crypto labels often
     // contain slashes ('EUR/USD') which would collide with key encoding.
     if (assetClass === 'crypto') pushRecent(sym.label);
-  }, [interval, assetClass, updateURL, pushRecent]);
+  }, [interval, assetClass, updateURL, pushRecent, quickSwitch]);
 
   const switchAssetClass = useCallback((ac: AssetClass) => {
     setAssetClass(ac);
@@ -729,6 +757,34 @@ function ChartPageInner() {
     // got pushed past the viewport.
     <div id="main-content" className="h-full w-full bg-black flex flex-col overflow-hidden min-h-0">
       <h1 className="sr-only">Chart</h1>
+
+      {/* Keyboard-shortcut hint — shown on first visit only. The Esc /
+          number-key / T shortcuts are wired up below but invisible
+          without this hint. Persists dismissal so power users see it
+          exactly once. */}
+      {showKbdHint && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex-shrink-0 px-3 py-2 bg-emerald-500/[0.08] border-b border-emerald-400/20 flex items-center justify-between gap-3"
+        >
+          <span className="text-[11px] text-emerald-300 leading-tight">
+            <strong className="font-bold">Tip:</strong> press{' '}
+            <kbd className="px-1 py-0.5 rounded bg-white/[0.1] text-white text-[10px] font-mono">1</kbd>–<kbd className="px-1 py-0.5 rounded bg-white/[0.1] text-white text-[10px] font-mono">7</kbd> for timeframes,{' '}
+            <kbd className="px-1 py-0.5 rounded bg-white/[0.1] text-white text-[10px] font-mono">T</kbd> to toggle tape,{' '}
+            <kbd className="px-1 py-0.5 rounded bg-white/[0.1] text-white text-[10px] font-mono">Esc</kbd> to close the picker. Pin the dropdown open from the symbol menu for rapid switching.
+          </span>
+          <button
+            type="button"
+            onClick={dismissKbdHint}
+            aria-label="Dismiss keyboard shortcut hint"
+            className="text-emerald-300 hover:text-emerald-200 shrink-0"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
       {/* ─── Header ─────────────────────────────────────────────────── */}
       <div className="flex-shrink-0 border-b border-white/[0.08] bg-[#060606] relative z-20">
         <div className="flex items-center px-2 sm:px-3 py-1.5 gap-1.5 sm:gap-2">
@@ -832,6 +888,29 @@ function ChartPageInner() {
                       <X className="w-3 h-3" />
                     </button>
                   )}
+                </div>
+
+                {/* Quick-switch toggle — keeps dropdown open between
+                    selections for rapid BTC→ETH→SOL flipping. State
+                    persisted to localStorage. */}
+                <div className="px-3 py-1.5 border-b border-white/[0.04] flex items-center justify-between">
+                  <span className="text-[10px] text-neutral-500">Pin dropdown open</span>
+                  <button
+                    type="button"
+                    onClick={toggleQuickSwitch}
+                    role="switch"
+                    aria-checked={quickSwitch}
+                    aria-label="Toggle quick-switch (pin dropdown open between selections)"
+                    className={`relative inline-flex h-4 w-7 items-center rounded-full transition-colors ${
+                      quickSwitch ? 'bg-emerald-500' : 'bg-white/[0.1]'
+                    }`}
+                  >
+                    <span
+                      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+                        quickSwitch ? 'translate-x-3.5' : 'translate-x-0.5'
+                      }`}
+                    />
+                  </button>
                 </div>
 
                 {/* Asset class sub-tabs inside dropdown */}

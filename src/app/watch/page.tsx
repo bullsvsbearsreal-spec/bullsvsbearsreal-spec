@@ -71,6 +71,51 @@ interface SuggestedWhale {
 
 const ADDR_RE = /^0x[a-fA-F0-9]{40}$/;
 
+/**
+ * Trader tier — derived from smart-money stats. Lets users triage
+ * event noise by glancing at the badge: a fresh open from a SNIPER
+ * is high-signal, the same open from a no-tier wallet you just added
+ * is unproven. The classification is intentionally generous — anyone
+ * who already passes the smart-money cut ($250K realized + $10M
+ * volume + 55% WR) earns at least ELITE.
+ *
+ * Note on data availability: HL leaderboard doesn't expose per-trader
+ * win rate, so SNIPER tier only fires for GMX traders. HL whales
+ * fall back to WHALE/ELITE based on PnL alone.
+ */
+type TraderTier = 'whale' | 'sniper' | 'elite';
+interface TierInfo {
+  tier: TraderTier;
+  realizedPnlUsd: number;
+  winRate: number;  // 0..100
+}
+function classifyTier(w: { realizedPnl: number; winRate: number; liveNotional: number }): TierInfo | null {
+  const pnl = w.realizedPnl ?? 0;
+  const wr  = w.winRate ?? 0;
+  const liveN = w.liveNotional ?? 0;
+  // WHALE — big money. Either $10M+ realized OR $20M+ live notional.
+  if (pnl >= 10_000_000 || liveN >= 20_000_000) {
+    return { tier: 'whale', realizedPnlUsd: pnl, winRate: wr };
+  }
+  // SNIPER — exceptional accuracy with real size (GMX-only since HL
+  // doesn't expose WR).
+  if (wr >= 70 && pnl >= 500_000) {
+    return { tier: 'sniper', realizedPnlUsd: pnl, winRate: wr };
+  }
+  // ELITE — made $1M+ realized (the smart-money baseline is $250K, so
+  // this is the "above-the-fold" tier).
+  if (pnl >= 1_000_000) {
+    return { tier: 'elite', realizedPnlUsd: pnl, winRate: wr };
+  }
+  return null;
+}
+
+const TIER_STYLES: Record<TraderTier, { label: string; cls: string; icon: string }> = {
+  whale:  { label: 'WHALE',  cls: 'bg-violet-500/15 text-violet-300 border-violet-400/30',  icon: '🐋' },
+  sniper: { label: 'SNIPER', cls: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30', icon: '🎯' },
+  elite:  { label: 'ELITE',  cls: 'bg-amber-500/15 text-amber-300 border-amber-400/30',  icon: '★' },
+};
+
 function shortAddr(a: string): string {
   if (!a) return '0x…';
   return `${a.slice(0, 6)}…${a.slice(-4)}`;
@@ -197,6 +242,11 @@ function WatchPageInner() {
   const [suggested, setSuggested] = useState<SuggestedWhale[] | null>(null);
   const [addingAddr, setAddingAddr] = useState<string | null>(null);
   const [filterAddr, setFilterAddr] = useState<string | null>(null);
+  // address → tier info, looked up once from /api/smart-money. Used to
+  // render a SNIPER/ELITE/WHALE chip next to each event row so users
+  // can triage signal from noise without clicking through to a trader
+  // profile.
+  const [tierMap, setTierMap] = useState<Map<string, TierInfo>>(new Map());
 
   // Deep-link affordance: when `?add=` is present the user came from
   // /trader/[address] expecting to add a wallet. Scroll the form into
@@ -274,6 +324,38 @@ function WatchPageInner() {
     };
   }, [status, load]);
 
+  // Wider tier-map fetch — pull 200 wallets across both venues with a
+  // lower PnL bar so we can label user-added wallets that aren't in
+  // the top-8 "suggested" list. Runs once on mount; refreshes every
+  // 10 min to catch wallets that newly cross into ELITE/SNIPER/WHALE.
+  // Cheap because smart-money has aggressive per-include caching.
+  useEffect(() => {
+    if (status !== 'authenticated') return;
+    let cancelled = false;
+    const buildTierMap = async () => {
+      try {
+        const res = await fetch(
+          '/api/smart-money?limit=200&min_pnl=250000&min_volume=10000000&include=both',
+        );
+        if (!res.ok || cancelled) return;
+        const j = await res.json();
+        const rows: { address: string; realizedPnl: number; winRate: number; liveNotional: number }[] = j?.data || [];
+        const next = new Map<string, TierInfo>();
+        for (const w of rows) {
+          const tier = classifyTier(w);
+          if (tier) next.set(w.address.toLowerCase(), tier);
+        }
+        if (!cancelled) setTierMap(next);
+      } catch (e) {
+        // Tier badges are nice-to-have; silent failure is fine
+        if (!cancelled) console.warn('[watch] tier-map fetch failed:', e instanceof Error ? e.message : e);
+      }
+    };
+    buildTierMap();
+    const iv = setInterval(buildTierMap, 10 * 60 * 1000);
+    return () => { cancelled = true; clearInterval(iv); };
+  }, [status]);
+
   // Fetch top wallets from /smart-money to populate the "Suggested whales"
   // section. Was: a single ?include=both call which always returned HL-only
   // suggestions because HL whales have $100-200M lifetime PnL vs GMX top
@@ -300,6 +382,22 @@ function WatchPageInner() {
           if (hlRows[i])  merged.push(hlRows[i]);
           if (gmxRows[i]) merged.push(gmxRows[i]);
         }
+        // Build the tier map opportunistically from the same merged list.
+        // The 8 wallets we have here are the elites — anyone we already
+        // know about gets a tier badge. For unknown addresses (user-
+        // added wallets not on the leaderboard), we'll do a second fetch
+        // below with a larger limit to cast a wider net.
+        const tm = new Map<string, TierInfo>();
+        for (const w of merged) {
+          const tier = classifyTier(w);
+          if (tier) tm.set(w.address.toLowerCase(), tier);
+        }
+        // Don't blow away an existing larger map — just add what we have
+        setTierMap(prev => {
+          const next = new Map(prev);
+          tm.forEach((v, k) => next.set(k, v));
+          return next;
+        });
         setSuggested(merged.slice(0, 8).map(w => ({
           address: w.address,
           displayName: w.displayName ?? null,
@@ -804,6 +902,8 @@ function WatchPageInner() {
               <ul className="divide-y divide-white/[0.04]">
                 {filteredEvents.map(e => {
                   const wallet = wallets.find(w => w.address === e.address);
+                  const tier = tierMap.get(e.address.toLowerCase());
+                  const tierStyle = tier ? TIER_STYLES[tier.tier] : null;
                   return (
                     <li key={e.id} className="px-3.5 py-2.5 flex items-center gap-3 hover:bg-white/[0.02] text-xs">
                       <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${KIND_TONE[e.kind]}`}>
@@ -813,6 +913,14 @@ function WatchPageInner() {
                       <span className="font-mono text-neutral-300 truncate">
                         {wallet?.label || shortAddr(e.address)}
                       </span>
+                      {tierStyle && (
+                        <span
+                          className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${tierStyle.cls} shrink-0`}
+                          title={`${tierStyle.label} · realized ${tier!.realizedPnlUsd >= 1_000_000 ? `$${(tier!.realizedPnlUsd / 1_000_000).toFixed(1)}M` : `$${Math.round(tier!.realizedPnlUsd / 1_000)}K`}${tier!.winRate > 0 ? ` · ${tier!.winRate.toFixed(0)}% WR` : ''}`}
+                        >
+                          {tierStyle.icon} {tierStyle.label}
+                        </span>
+                      )}
                       <span className="text-neutral-500 truncate">·</span>
                       <span className="text-neutral-300 truncate">{formatEvent(e)}</span>
                       <span className="ml-auto text-[10px] text-neutral-600 font-mono shrink-0">{relTime(e.ts)}</span>

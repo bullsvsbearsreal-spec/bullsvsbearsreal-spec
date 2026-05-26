@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
@@ -79,10 +79,27 @@ function deriveSentiment(change24h: number, oiChange: number, funding: number): 
   return { label: 'FLAT', color: 'text-neutral-500 bg-white/[0.02]' };
 }
 
+/**
+ * Shared row-matcher for both the main filter pass + the per-preset
+ * count badges. Was inlined inside the useMemo before — extracting
+ * lets us count without re-applying the search/sort path.
+ */
+function matchesAllConditions(
+  r: ScreenerRow,
+  conditions: FilterCondition[],
+  fieldMap: Record<FilterCondition['field'], keyof ScreenerRow>,
+): boolean {
+  return conditions.every((c) => {
+    const val = r[fieldMap[c.field]] as number;
+    return c.operator === 'gt' ? val > c.value : val < c.value;
+  });
+}
+
 /* ─── Component ──────────────────────────────────────────────────── */
 
 export default function ScreenerPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const searchRef = useRef<HTMLInputElement>(null);
   const authLimit = useAuthLimit(20);
   const [rows, setRows] = useState<ScreenerRow[]>([]);
@@ -91,9 +108,13 @@ export default function ScreenerPage() {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const agg = useAggregatorHealth();
 
-  // Sorting
-  const [sortField, setSortField] = useState<SortField>('volume24h');
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  // Sorting — initial state pulled from URL (?sort=avgFunding&dir=desc)
+  // so a power user can bookmark their preferred view + the sort
+  // survives reload. Falls back to the default volume-desc.
+  const initialSort = (searchParams.get('sort') as SortField) || 'volume24h';
+  const initialDir = searchParams.get('dir') === 'asc' ? 'asc' : 'desc';
+  const [sortField, setSortField] = useState<SortField>(initialSort);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(initialDir);
 
   // Filtering
   const [search, setSearch] = useState('');
@@ -310,12 +331,7 @@ export default function ScreenerPage() {
     };
 
     if (conditions.length > 0) {
-      result = result.filter((r) => {
-        return conditions.every((c) => {
-          const val = r[fieldMap[c.field]] as number;
-          return c.operator === 'gt' ? val > c.value : val < c.value;
-        });
-      });
+      result = result.filter((r) => matchesAllConditions(r, conditions, fieldMap));
     }
 
     // Sort
@@ -336,6 +352,27 @@ export default function ScreenerPage() {
     return authLimit ? filtered.slice(0, authLimit) : filtered;
   }, [filtered, authLimit]);
 
+  // Per-preset match counts — small numeric chip next to each preset
+  // button so users see "Fresh Longs (42)" before clicking. Uses the
+  // same matchesAllConditions helper as the main filter pipeline to
+  // guarantee count parity. Recomputed on `rows` or `presets` change.
+  const presetCounts = useMemo(() => {
+    const fieldMap: Record<FilterCondition['field'], keyof ScreenerRow> = {
+      fundingRate: 'avgFunding',
+      openInterest: 'totalOI',
+      change24h: 'change24h',
+      volume24h: 'volume24h',
+      price: 'price',
+    };
+    const out = new Map<string, number>();
+    for (const p of presets) {
+      if (p.conditions.length === 0) { out.set(p.name, rows.length); continue; }
+      const count = rows.filter((r) => matchesAllConditions(r, p.conditions, fieldMap)).length;
+      out.set(p.name, count);
+    }
+    return out;
+  }, [rows, presets]);
+
   const paged = useMemo(() => {
     return gatedFiltered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
   }, [gatedFiltered, page]);
@@ -345,13 +382,27 @@ export default function ScreenerPage() {
   /* ─── Handlers ────────────────────────────────────────────────── */
 
   const handleSort = (field: SortField) => {
+    // Compute the next direction synchronously so we can mirror it to
+    // the URL alongside the field. Avoids the stale-state pitfall of
+    // reading sortDir on the next tick.
+    const nextDir: 'asc' | 'desc' =
+      sortField === field ? (sortDir === 'asc' ? 'desc' : 'asc') : 'desc';
     if (sortField === field) {
-      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+      setSortDir(nextDir);
     } else {
       setSortField(field);
       setSortDir('desc');
     }
     setPage(0);
+    // Persist to URL so the sorted view is shareable / bookmark-stable.
+    // Use replace so back-button doesn't accumulate one history entry
+    // per click.
+    try {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('sort', field);
+      params.set('dir', nextDir);
+      router.replace(`/screener?${params.toString()}`, { scroll: false });
+    } catch { /* SSR / unavailable router — non-fatal */ }
   };
 
   const addCondition = () => {
@@ -534,14 +585,32 @@ export default function ScreenerPage() {
           {/* Quick presets */}
           {presets.map((p) => {
             const isDefault = DEFAULT_PRESETS.some((d) => d.name === p.name);
+            const count = presetCounts.get(p.name);
             return (
               <div key={p.name} className="flex items-center group">
                 <button
                   onClick={() => applyPreset(p)}
                   className={`py-1.5 rounded-lg text-[11px] font-medium bg-white/[0.04] text-neutral-400 hover:text-white hover:bg-white/[0.08] border border-white/[0.06] transition-colors ${isDefault ? 'px-2.5' : 'pl-2.5 pr-1.5'}`}
                 >
-                  <span className="flex items-center gap-1">
+                  <span className="flex items-center gap-1.5">
                     {p.name}
+                    {/* Count chip — only show when we have rows loaded
+                        AND the preset has at least one condition (the
+                        "all rows" count is noise). Greyed out for zero
+                        matches so users skip presets that would empty
+                        the table. */}
+                    {count !== undefined && count >= 0 && rows.length > 0 && p.conditions.length > 0 && (
+                      <span
+                        className={`text-[9px] font-mono px-1 rounded ${
+                          count === 0
+                            ? 'text-neutral-600 bg-white/[0.02]'
+                            : 'text-neutral-500 bg-white/[0.04]'
+                        }`}
+                        aria-label={`${count} matches`}
+                      >
+                        {count}
+                      </span>
+                    )}
                     {!isDefault && (
                       <span
                         role="button"
