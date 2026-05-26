@@ -1,9 +1,12 @@
 'use client';
 import Image from 'next/image';
 
-// 32 venues — must stay in sync with src/lib/constants/exchanges.ts ALL_EXCHANGES
+// 33 venues — must stay in sync with src/lib/constants/exchanges.ts ALL_EXCHANGES.
+// Was 32 — missing Blofin. Caused the logo strip to show one fewer logo
+// than the "33 venues" tag (and Blofin support shipped May 2026 so its
+// users would have noticed it missing from the brand strip).
 const EXCHANGES = [
-  'binance','bybit','okx','bitget','mexc',
+  'binance','bybit','okx','bitget','mexc','blofin',
   'kraken','bingx','phemex','bitunix','hyperliquid','dydx','aster','lighter',
   'aevo','gmx','kucoin','deribit','htx','bitfinex','whitebit',
   'coinbase','coinex','gtrade','extended','variational',
@@ -21,7 +24,7 @@ interface ExchangeStripProps {
  * glow on a random exchange every 380ms — visually implied "this venue is
  * currently active" without tying to any real venue health signal.
  * Dropped the random pulse so the strip honestly says "we connect to
- * these 32 venues" without false-activity theatrics. Real venue health
+ * these 33 venues" without false-activity theatrics. Real venue health
  * lives on /admin-panel#exchanges and (compactly) in StatusBar's
  * venue-count chip via ThroughputCounter.
  *
