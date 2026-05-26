@@ -4,7 +4,7 @@ import { useState, useMemo, useEffect } from 'react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PageHero from '@/components/PageHero';
-import { ALL_EXCHANGES } from '@/lib/constants';
+import { ALL_EXCHANGES, DEX_EXCHANGES } from '@/lib/constants';
 import { FREE_TIER_PER_MINUTE, PRO_TIER_PER_MINUTE } from '@/lib/api/rate-limit';
 import { slugify } from '@/lib/slugify';
 import { HelpCircle, ChevronDown, Search, X, Link as LinkIcon } from 'lucide-react';
@@ -73,7 +73,10 @@ const faqs: FAQEntry[] = [
   {
     category: 'Data & Features',
     q: 'What DEX exchanges do you support?',
-    a: 'We currently track Hyperliquid, dYdX, GMX, Aevo, Lighter, gTrade, Aster DEX, Extended, edgeX, Nado, and Variational. Each has its own funding mechanism and settlement schedule, all normalized for easy comparison.',
+    // Derived from DEX_EXCHANGES so this stays in sync as we add new
+    // on-chain venues. Was a hand-curated 11-name list that drifted —
+    // missed Backpack / Orderly / Paradex when they shipped.
+    a: `We currently track ${Array.from(DEX_EXCHANGES).join(', ')}. Each has its own funding mechanism and settlement schedule, all normalized for easy comparison.`,
   },
   {
     category: 'Data & Features',
