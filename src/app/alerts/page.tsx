@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
@@ -377,7 +378,12 @@ export default function AlertsPage() {
 
           {/* Sign-in banner for email alerts */}
           {!session && (
-            <AuthPromptBanner variant="email-alerts" dismissKey="alerts" className="mb-6" />
+            <>
+              <AuthPromptBanner variant="email-alerts" dismissKey="alerts" className="mb-3" />
+              <p className="text-[11px] text-neutral-500 mb-6 leading-relaxed">
+                Email + Telegram alerts require sign-in. Browser alerts (this device only) work without an account.
+              </p>
+            </>
           )}
 
           {/* Create Alert Form */}
@@ -594,17 +600,33 @@ export default function AlertsPage() {
                 <Bell className="w-10 h-10 text-neutral-700 mx-auto mb-3" />
                 <p className="text-neutral-400 text-sm">No alerts set up yet.</p>
                 <p className="text-neutral-600 text-xs mt-1">
-                  Click &quot;New Alert&quot; to create your first condition-based alert.
+                  Free tier includes <span className="text-neutral-300 font-semibold">5 custom alerts</span>.{' '}
+                  <Link href="/pricing" className="text-emerald-400 hover:text-emerald-300 underline decoration-emerald-400/30">
+                    Upgrade to Trader (15) or Pro (75)
+                  </Link>{' '}for more.
                 </p>
                 <div className="mt-5 rounded-xl border border-white/[0.05] bg-white/[0.02] p-4 text-left">
                   <p className="text-[11px] uppercase tracking-[0.14em] text-neutral-600">Quick starters</p>
                   <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                    {[
-                      { label: 'BTC breaks above $80k', symbol: 'BTC', metric: 'price' as AlertMetric, operator: 'gt' as AlertOperator, value: '80000' },
-                      { label: 'ETH drops below $2500', symbol: 'ETH', metric: 'price' as AlertMetric, operator: 'lt' as AlertOperator, value: '2500' },
-                      { label: 'SOL funding overheats', symbol: 'SOL', metric: 'fundingRate' as AlertMetric, operator: 'gt' as AlertOperator, value: '0.05' },
-                      { label: 'BTC OI cools off', symbol: 'BTC', metric: 'openInterest' as AlertMetric, operator: 'lt' as AlertOperator, value: '30000000000' },
-                    ].map((suggestion) => (
+                    {(() => {
+                      // When user landed here via ?symbol=X, swap the first
+                      // two suggestions to use that symbol — the static
+                      // BTC/ETH defaults don't match their visible intent.
+                      const psym = (prefilledSymbol || '').toUpperCase();
+                      const haveSym = !!psym && psym !== 'BTC';
+                      const base = [
+                        { label: 'BTC breaks above $80k', symbol: 'BTC', metric: 'price' as AlertMetric, operator: 'gt' as AlertOperator, value: '80000' },
+                        { label: 'ETH drops below $2500', symbol: 'ETH', metric: 'price' as AlertMetric, operator: 'lt' as AlertOperator, value: '2500' },
+                        { label: 'SOL funding overheats', symbol: 'SOL', metric: 'fundingRate' as AlertMetric, operator: 'gt' as AlertOperator, value: '0.05' },
+                        { label: 'BTC OI cools off', symbol: 'BTC', metric: 'openInterest' as AlertMetric, operator: 'lt' as AlertOperator, value: '30000000000' },
+                      ];
+                      if (!haveSym) return base;
+                      return [
+                        { label: `${psym} price breakout`, symbol: psym, metric: 'price' as AlertMetric, operator: 'gt' as AlertOperator, value: '0' },
+                        { label: `${psym} funding overheats`, symbol: psym, metric: 'fundingRate' as AlertMetric, operator: 'gt' as AlertOperator, value: '0.05' },
+                        ...base.slice(0, 2),
+                      ];
+                    })().map((suggestion) => (
                       <button
                         key={suggestion.label}
                         onClick={() => startSuggestedAlert(suggestion)}

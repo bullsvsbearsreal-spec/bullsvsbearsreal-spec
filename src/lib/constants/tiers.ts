@@ -33,6 +33,15 @@ export type Tier = 'free' | 'trader' | 'pro' | 'whale';
 
 export const TIER_ORDER: Tier[] = ['free', 'trader', 'pro', 'whale'];
 
+/**
+ * The tier shown with the "MOST POPULAR" highlight on /pricing. Lives
+ * here (not in pricing/page.tsx) so changing the conversion anchor is a
+ * single-file edit. Picked as Pro because it's the conversion sweet
+ * spot — wide enough features for trade-for-a-living users without
+ * Whale's $59/mo barrier.
+ */
+export const MOST_POPULAR_TIER: Tier = 'pro';
+
 export interface TierLimits {
   /** API requests per minute (per key) */
   apiPerMinute: number;
@@ -205,14 +214,14 @@ export const TOOLS_BY_TIER: TierToolList[] = [
   {
     tier: 'trader',
     heading: 'Trader adds',
-    description: 'Active-retail power tools — all venues, more alerts, longer history',
+    description: 'Active-retail power tools — all venues, wallet copy-trading, more alerts, longer history',
     items: [
       { label: 'Spreads', href: '/spreads', hint: 'Cross-venue arb · net-of-fees' },
       { label: 'Funding Arb', href: '/spread-scanner', hint: 'Long/short pair grader A→D' },
       { label: 'Trade Optimizer', href: '/trade-optimizer', hint: 'Cheapest venue per trade' },
       { label: 'Options', href: '/options', hint: 'Chain · Greeks · IV · max pain' },
       { label: 'Wallet Watch', href: '/watch', hint: 'HL + gTrade position alerter' },
-      { label: 'Smart Money', href: '/smart-money', hint: 'Top trader leaderboard' },
+      { label: 'Smart Money', href: '/smart-money', hint: 'Top trader leaderboard + Consensus mode' },
       { label: 'HL Whales', href: '/hl-whales', hint: 'Top Hyperliquid positions' },
       { label: 'On-Chain', href: '/onchain', hint: 'MVRV · NUPL · network metrics' },
       { label: 'FOMC Playbook', href: '/fomc-playbook' },

@@ -31,6 +31,7 @@ import {
   FEATURE_MATRIX,
   TOOLS_BY_TIER,
   ANNUAL_DISCOUNT_PCT,
+  MOST_POPULAR_TIER,
   annualSavingsUsd,
   resolveUserTier,
   type Tier,
@@ -94,7 +95,7 @@ export default function PricingPage() {
           <p className="text-[12px] sm:text-[13px] text-amber-200">
             <Sparkles className="inline w-3.5 h-3.5 -mt-0.5 mr-1.5 text-amber-300" aria-hidden />
             <span className="font-semibold text-amber-300">Free during launch</span> · Trader,
-            Pro + Whale tiers all unlocked for every signed-in user while we onboard early users.
+            Pro + Whale tiers all unlocked while we onboard early users · <Link href="/referrals" className="underline decoration-amber-400/40 hover:decoration-amber-300 font-medium">10% off forever for anyone you refer</Link>
           </p>
         </section>
 
@@ -150,7 +151,7 @@ export default function PricingPage() {
                 tier={t}
                 period={period}
                 isCurrentTier={currentTier === t}
-                isMostPopular={t === 'pro'}
+                isMostPopular={t === MOST_POPULAR_TIER}
                 onSubscribe={() => setShowCheckoutModal(t)}
                 desktopOrderClass={desktopOrderClass}
               />
@@ -376,7 +377,26 @@ function TierCard({
         )}
       </div>
 
-      <p className="text-[12px] text-neutral-400 mb-4 min-h-[2.5rem]">{b.tagline}</p>
+      <p className="text-[12px] text-neutral-400 mb-3 min-h-[2.5rem]">{b.tagline}</p>
+
+      {/* Pricing rationale — only on the conversion anchor (Pro).
+          Collapses by default so it doesn't bloat the other cards.
+          Addresses the "why isn't this $19?" objection users have
+          before they even ask. */}
+      {tier === MOST_POPULAR_TIER && (
+        <details className="mb-3 group">
+          <summary className="cursor-pointer text-[10px] uppercase tracking-wider text-emerald-400/70 hover:text-emerald-300 select-none list-none flex items-center gap-1">
+            <span className="inline-block transition-transform group-open:rotate-90">›</span>
+            Why ${monthly} not $19?
+          </summary>
+          <p className="text-[11px] text-neutral-500 mt-2 leading-relaxed pl-3 border-l border-emerald-400/20">
+            ${monthly} funds the tools you&apos;re paying for — 1y archive
+            endpoints, tax CSV, custom dashboards, setup scanner. Under-pricing
+            means we can&apos;t invest in tooling. Whale at $59 targets desks
+            where the cost is below a coffee budget.
+          </p>
+        </details>
+      )}
 
       {/* Price block */}
       <div className="mb-4">
