@@ -92,7 +92,7 @@ const pageRegistry: PageEntry[] = [
   { name: 'Guides', href: '/guides', icon: BookOpen, keywords: ['guide', 'tutorial', 'learn', 'how to', 'education'], category: 'More' },
   { name: 'Brand Kit', href: '/brand', icon: Palette, keywords: ['brand', 'logo', 'assets', 'colors'], category: 'More' },
   { name: 'Developers', href: '/developers', icon: BookOpen, keywords: ['api', 'developer', 'key', 'docs', 'integrate'], category: 'More' },
-  { name: 'Pricing · Free, Pro, Whale', href: '/pricing', icon: DollarSign, keywords: ['pricing', 'plans', 'subscribe', 'subscription', 'pro', 'whale', 'free', 'upgrade', 'tier', 'cost', 'price', 'billing'], category: 'More' },
+  { name: 'Pricing · Free, Trader, Pro, Whale', href: '/pricing', icon: DollarSign, keywords: ['pricing', 'plans', 'subscribe', 'subscription', 'trader', 'pro', 'whale', 'free', 'upgrade', 'tier', 'cost', 'price', 'billing'], category: 'More' },
   { name: 'API Docs', href: '/api-docs', icon: BookOpen, keywords: ['api', 'documentation', 'reference', 'endpoints'], category: 'More' },
   // New intel + trader pages
   { name: 'Regional Premiums', href: '/premiums', icon: Globe, keywords: ['premium', 'coinbase', 'kimchi', 'upbit', 'korean', 'us', 'japan', 'regional', 'spread'], category: 'Markets' },

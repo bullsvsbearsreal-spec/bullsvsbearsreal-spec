@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Site-wide banner announcing "Pro + Whale tiers free during launch".
+ * Site-wide banner announcing "Trader + Pro + Whale tiers free during launch".
  * Dismissible per session (sessionStorage) — comes back on next visit.
  *
  * Shown to EVERY user including admins. Admins were previously hidden

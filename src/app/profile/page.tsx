@@ -798,7 +798,7 @@ function BillingTab() {
       description={
         isAdminGrandfathered
           ? "Admin accounts are grandfathered to the Whale tier — all features unlocked, no billing."
-          : "Pro + Whale tiers are free during launch — everyone gets unlimited everything while we onboard early users. See /pricing for what each tier will cost once we exit early access."
+          : "Trader, Pro + Whale tiers are all free during launch — everyone gets unlimited everything while we onboard early users. See /pricing for what each tier will cost once we exit early access."
       }
     >
       {/* Current-tier card */}

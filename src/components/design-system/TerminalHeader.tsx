@@ -158,7 +158,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'portfolio',  label: 'Portfolio (manual)', href: '/portfolio',     hint: 'Manual holdings + P&L' },
       { id: 'compare',    label: 'Compare',       href: '/compare',            hint: 'Side-by-side coins' },
       { id: 'profile',    label: 'Profile',       href: '/profile',            hint: 'Your trader profile' },
-      { id: 'pricing',    label: 'Pricing',       href: '/pricing',            hint: 'Free / Pro / Whale · free during launch' },
+      { id: 'pricing',    label: 'Pricing',       href: '/pricing',            hint: 'Free / Trader / Pro / Whale · free during launch' },
       { id: 'referrals',  label: 'Referrals',     href: '/referrals',          hint: 'Invite friends' },
       { id: 'donate',     label: 'Donate',        href: '/donate',             hint: 'Support InfoHub' },
       { id: 'points',     label: 'Points',        href: '/points',             hint: 'Loyalty rewards' },
@@ -485,7 +485,7 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
           the launch tier system actually discoverable. */}
       <Link
         href="/pricing"
-        title="Free, Pro, Whale — free during launch"
+        title="Free, Trader, Pro, Whale — free during launch"
         style={{
           background: 'linear-gradient(135deg, rgba(16,185,129,0.18) 0%, rgba(245,158,11,0.18) 100%)',
           border: '1px solid rgba(16,185,129,0.35)',
