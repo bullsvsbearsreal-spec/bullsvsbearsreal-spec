@@ -172,6 +172,18 @@ export default function AffiliatesTab() {
           <li>• Pending $ accrue as referral_events rows of type=conversion arrive (auto-logged on first-paid-month).</li>
           <li>• Payouts: manual until automation lands. Workflow: export pending rows → send USDT → INSERT a referral_events row of type=payout with the tx_hash.</li>
           <li>• Pre-paid-launch, conversions = 0 by design. Signups + clicks still accumulate so attribution is preserved.</li>
+          <li>
+            • Email comms templates ready at{' '}
+            <a
+              href="/api/admin/email-preview"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-emerald-300 hover:underline"
+            >
+              /api/admin/email-preview
+            </a>{' '}
+            — affiliate-signup, commission-earned, payout-sent, etc.
+          </li>
         </ul>
       </section>
     </div>

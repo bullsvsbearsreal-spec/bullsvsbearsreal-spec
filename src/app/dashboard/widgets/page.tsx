@@ -422,14 +422,66 @@ function FundingWidget({ config }: { config?: Record<string, unknown> }) {
   );
 }
 
-/** OI widget — placeholder until we wire to /api/open-interest properly. */
+/** OI widget — aggregate open interest for one symbol across venues
+ *  plus 24h change. Fetches /api/openinterest?changes=1 once on mount;
+ *  the endpoint serves a 2-minute server-cached snapshot so per-widget
+ *  fetches are cheap. */
 function OpenInterestWidget({ config }: { config?: Record<string, unknown> }) {
   const symbol = (typeof config?.symbol === 'string' ? config.symbol : 'BTC').toUpperCase();
+  const [data, setData] = useState<{ totalUsd: number; pct24h: number | null; venueCount: number } | null>(null);
+  const [err, setErr] = useState(false);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/openinterest?changes=1', { cache: 'no-store' });
+        if (!res.ok) { setErr(true); return; }
+        const j = await res.json();
+        if (cancelled) return;
+        const rows: any[] = Array.isArray(j?.data) ? j.data : [];
+        // Sum OI USD across all exchanges for the chosen symbol
+        let totalUsd = 0;
+        let venueCount = 0;
+        for (const r of rows) {
+          const rowSym = String(r?.symbol ?? '').toUpperCase();
+          if (rowSym !== symbol) continue;
+          const v = Number(r?.openInterestValue ?? r?.openInterestUsd ?? 0);
+          if (v > 0) { totalUsd += v; venueCount += 1; }
+        }
+        // 24h change from the change map (when ?changes=1 returned it)
+        const changes = (j?.oiChanges && typeof j.oiChanges === 'object') ? j.oiChanges : null;
+        const pct24h = changes && typeof changes[symbol]?.pct24h === 'number' ? changes[symbol].pct24h : null;
+        if (totalUsd === 0) { setErr(true); return; }
+        setData({ totalUsd, pct24h, venueCount });
+      } catch { if (!cancelled) setErr(true); }
+    })();
+    return () => { cancelled = true; };
+  }, [symbol]);
   return (
     <div>
       <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">{symbol} · Open Interest</div>
-      <div className="text-[11px] text-neutral-500 italic">Live wiring lands in next PR — placeholder for now.</div>
-      <Link href={`/open-interest?symbol=${symbol}`} className="text-[11px] text-emerald-300 hover:underline mt-2 inline-block">Open full chart →</Link>
+      {data ? (
+        <>
+          <div className="flex items-baseline gap-2">
+            <span className="text-2xl font-bold text-white">
+              ${data.totalUsd >= 1e9 ? `${(data.totalUsd / 1e9).toFixed(2)}B` : `${(data.totalUsd / 1e6).toFixed(1)}M`}
+            </span>
+            {data.pct24h != null && (
+              <span className={`text-sm font-mono font-semibold ${data.pct24h >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                {data.pct24h >= 0 ? '+' : ''}{data.pct24h.toFixed(2)}%
+              </span>
+            )}
+          </div>
+          <div className="text-[10px] text-neutral-500 mt-1">
+            aggregated · {data.venueCount} {data.venueCount === 1 ? 'venue' : 'venues'}
+          </div>
+          <Link href={`/open-interest?symbol=${symbol}`} className="text-[11px] text-emerald-300 hover:underline mt-2 inline-block">Open full chart →</Link>
+        </>
+      ) : err ? (
+        <div className="text-[11px] text-neutral-500">No OI data for {symbol}.</div>
+      ) : (
+        <div className="text-[11px] text-neutral-500">Loading…</div>
+      )}
     </div>
   );
 }

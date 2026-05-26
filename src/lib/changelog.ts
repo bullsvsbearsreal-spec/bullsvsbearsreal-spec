@@ -23,9 +23,35 @@ export interface ChangelogEntry {
 }
 
 /**
- * Last reviewed: 2026-05-20
+ * Last reviewed: 2026-05-26
  */
 export const CHANGELOG: ChangelogEntry[] = [
+  {
+    date: '2026-05-26',
+    title: '4-tier monetization · affiliate program · Whale priority alerts',
+    summary: 'Pricing restructured into four tiers (Free / Trader $12 / Pro $29 / Whale $59) with a wider anchor for better funnel conversion. Affiliate program goes live with 20% recurring lifetime commission, USDT payouts, 60-day cookie. Whale tier gets a dedicated low-latency alert queue. Custom dashboards (Pro) ship with drag/drop widget customization. Tax CSV export, setup-scanner composite quality score, competitor comparison on /home, dynamic OG cards across 8 pages, and a 5-step onboarding tour round out the release. Still free during launch — gating engages when NowPayments checkout lands.',
+    tags: ['new', 'improved'],
+    bullets: [
+      'Tier ladder: Free $0 / Trader $12 / Pro $29 / Whale $59. Anchor effect via the new $29 middle tier with "MOST POPULAR" badge. Existing Pro users auto-grandfather into the new Pro $29.',
+      'Affiliate program: every account gets a referral code, 20% recurring lifetime commission, USDT payouts on Solana/Arbitrum/Base, $25 minimum, 60-day cookie, 10% off forever for referred users. /referrals public landing + /settings/referrals private dashboard + Admin Affiliates tab for operator oversight.',
+      'Whale-tier priority alert queue: dedicated /api/cron/whale-alerts endpoint runs on its own systemd cadence (every 30s default, 5s for true sub-second P99). Standard /api/cron/alerts skips Whale users to prevent double-fire.',
+      'Custom dashboards (Pro): /dashboard/widgets with HTML5 drag-to-reorder, 8 widget types (7 wired: funding, OI, liquidations, watchlist, alerts, whales, news, positions — OI is a thin shell to /open-interest). Auto-saves layout to user_dashboard_layouts JSONB.',
+      'Tax CSV export server-side at /api/account/tax/csv — 5-section CSV (Summary, By Year, Open Positions, Top Winners, Top Losers). Replaces the previous client-side Blob builder.',
+      'Setup scanner composite quality score (0–100) on every /breakouts row: weighted blend of momentum stack + range position (ATR proxy) + ATH proximity + volume/market-cap ratio. Three-tone Q-badge so the eye can scan quality at a glance.',
+      'Landing-page conversion: competitor comparison table on /home (InfoHub vs CoinGlass / Laevitas / CoinAnk) anchoring our free-tier coverage.',
+      'Position-size calculator: liquidation-price preview with stop-vs-liq distance check (warns AMBER if stop < 1% from liq, RED if stop is BEYOND liq). LocalStorage persistence of account + risk + Kelly inputs.',
+      'TierGate component for paid-launch gating with LAUNCH_GATING_ENABLED master switch. During launch it shows a hint chip ("Pro tier feature — free during launch") instead of paywalling. Flip the constant the day NowPayments goes live.',
+      'Dynamic OG images on / · /pricing · /referrals · /funding-arb · /spread-scanner · /smart-money · /hl-whales · /spreads. 1200×630, Edge runtime, system fonts, no external assets — fast + reliable for Twitter/Telegram share cards.',
+      'Email template library at lib/email/templates.ts: 7 templates (welcome, affiliate-signup, commission-earned, USDT-payout-sent, launch-cutover, subscription-confirmed, payment-failed). Admin preview at /api/admin/email-preview for QA.',
+      'New-user onboarding: 5-step guided tour on first /dashboard visit covering data terminal, funding arb, alerts, affiliate program, custom dashboard. Persists completion to localStorage.',
+      'Bot v2 (AI chat) experiment rolled back — Hub Telegram bot reverts to alerts-only @InfoHubRadarBot. ~3,500 lines of AI-chat scaffolding removed.',
+    ],
+    links: [
+      { label: 'Pricing page', href: '/pricing' },
+      { label: 'Affiliate program', href: '/referrals' },
+      { label: 'Custom dashboard', href: '/dashboard/widgets' },
+    ],
+  },
   {
     date: '2026-05-20',
     title: 'Pricing tiers · Free / Pro / Whale (free during launch)',
