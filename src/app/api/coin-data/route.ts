@@ -56,13 +56,26 @@ function cmcToCoinData(coin: any) {
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const slug = searchParams.get('slug');
+  // `symbol` is a convenience alias — callers (like /position-copy-form
+  // which only knows "BTC", not "bitcoin") shouldn't have to maintain
+  // their own slug map. CMC's quotes endpoint accepts both query
+  // params, so we just forward whichever was provided.
+  const symbol = searchParams.get('symbol');
 
-  if (!slug) {
-    return NextResponse.json(null, { status: 400 });
+  if (!slug && !symbol) {
+    return NextResponse.json(
+      { error: 'Provide ?slug=bitcoin or ?symbol=BTC' },
+      { status: 400 },
+    );
   }
 
+  // Cache by whichever identifier we have. slug and symbol can map to
+  // different CMC IDs in edge cases (multiple coins share a symbol),
+  // so keep them in distinct cache namespaces to avoid cross-pollution.
+  const cacheKey = slug ? `slug:${slug}` : `symbol:${symbol!.toUpperCase()}`;
+
   // L1 cache hit
-  const hit = coinCache.get(slug);
+  const hit = coinCache.get(cacheKey);
   if (hit && Date.now() - hit.ts < COIN_TTL_MS) {
     return NextResponse.json(hit.body, {
       headers: {
@@ -72,9 +85,15 @@ export async function GET(request: Request) {
     });
   }
 
+  // CMC accepts EITHER `slug=bitcoin` OR `symbol=BTC` on the same
+  // endpoint. Build the param we have.
+  const cmcParam = slug
+    ? `slug=${encodeURIComponent(slug)}`
+    : `symbol=${encodeURIComponent(symbol!.toUpperCase())}`;
+
   try {
     const res = await fetchWithTimeout(
-      `https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest?slug=${encodeURIComponent(slug)}&convert=USD`,
+      `https://pro-api.coinmarketcap.com/v2/cryptocurrency/quotes/latest?${cmcParam}&convert=USD`,
       {
         headers: {
           'X-CMC_PRO_API_KEY': CMC_API_KEY,
@@ -86,10 +105,15 @@ export async function GET(request: Request) {
     if (!res.ok) throw new Error(`CMC coin data failed: ${res.status}`);
     const json = await res.json();
 
-    const entries = Object.values(json.data || {});
+    // CMC's `data` field shape differs by query type. For ?symbol=BTC
+    // it returns `{ BTC: [{ ... }] }` (an array per symbol because some
+    // symbols are ambiguous). For ?slug=bitcoin it returns
+    // `{ "1": { ... } }` keyed by numeric CMC id. Flatten both.
+    const raw = Object.values(json.data || {});
+    const entries = raw.flatMap(v => Array.isArray(v) ? v : [v]);
     if (entries.length > 0) {
       const coinData = cmcToCoinData(entries[0]);
-      coinCache.set(slug, { body: coinData, ts: Date.now() });
+      coinCache.set(cacheKey, { body: coinData, ts: Date.now() });
       // Soft cap on cache size — drop oldest when over 500 slugs
       if (coinCache.size > 500) {
         const oldest = coinCache.keys().next().value;

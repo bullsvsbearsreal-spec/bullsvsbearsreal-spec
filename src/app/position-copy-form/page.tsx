@@ -115,7 +115,9 @@ export default function PositionCopyFormPage() {
 
   // Compute display numbers
   const yourSizeUsd = parsed.sizeUsd * scalar;
-  const livePrice: number | null = priceData?.price ?? null;
+  // /api/coin-data returns CoinGecko-shaped data (current_price, not
+  // price). Fall back to .price in case the schema ever loosens.
+  const livePrice: number | null = priceData?.current_price ?? priceData?.price ?? null;
   const slippagePct = livePrice && parsed.entryPrice
     ? ((livePrice - parsed.entryPrice) / parsed.entryPrice) * 100
     : null;
