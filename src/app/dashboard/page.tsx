@@ -31,6 +31,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import SuspendedNotice from '@/components/SuspendedNotice';
+import OnboardingTour from '@/components/OnboardingTour';
 import {
   Activity, Bell, Eye, Wallet, Briefcase, ArrowRight, Loader2, Shield,
   Sparkles, ShieldCheck, Send, Plus, Filter, Flame,
@@ -380,6 +381,7 @@ function RealDashboardPage() {
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
+      <OnboardingTour />
       <main id="main-content" className="text-white">
         {/* ─── Hero (avatar + identity + morning brief) ──────────────── */}
         <section className="relative overflow-hidden border-b border-white/[0.04]">
