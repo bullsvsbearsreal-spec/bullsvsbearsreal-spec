@@ -556,8 +556,11 @@ function TraderDrawer({ address, chain, onClose }: { address: string; chain: Cha
               Cross-Platform <ChevronRight className="w-2.5 h-2.5" />
             </Link>
             <span className="text-neutral-700">·</span>
+            {/* /wallet-tracker now 308-redirects to /watch and the query
+                string drops on redirect. Skip the alias and link straight
+                to /watch with ?add=. Same fix as /trader/[address]. */}
             <Link
-              href={`/wallet-tracker?address=${address}`}
+              href={`/watch?add=${address}`}
               className="inline-flex items-center gap-1 text-[10px] text-neutral-400 hover:text-white"
             >
               Track wallet <ChevronRight className="w-2.5 h-2.5" />
