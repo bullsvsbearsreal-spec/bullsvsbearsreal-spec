@@ -373,6 +373,20 @@ async function _doInitDB(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_referral_events_affiliate ON referral_events(affiliate_user_id, created_at DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_referral_events_type ON referral_events(event_type, created_at DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_referral_events_referred ON referral_events(referred_user_id) WHERE referred_user_id IS NOT NULL`;
+
+  // ─── Custom dashboard layouts (Pro tier feature, May 2026) ──────────
+  // Single row per user holding their personalised widget grid. JSONB
+  // because the schema evolves as we add widget types — no migration
+  // hassle when a new widget config field lands. ON DELETE CASCADE so
+  // account deletion sweeps cleanly.
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_dashboard_layouts (
+      user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      widgets JSONB NOT NULL DEFAULT '[]',
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+
   // Seed admin accounts
   const adminEmail = process.env.ADMIN_EMAIL || 'ocelotcex1638a@gmail.com';
   await sql`UPDATE users SET role = 'admin' WHERE email = ${adminEmail} AND role != 'admin'`;
@@ -4839,6 +4853,83 @@ export async function getReferralSummary(affiliateUserId: string): Promise<Refer
   } catch (e) {
     console.error('DB getReferralSummary error:', e);
     return zero;
+  }
+}
+
+// ─── Custom dashboard widget layouts (Pro tier, May 2026) ───────────────────
+
+/**
+ * Widget config shape. Stored as JSONB inside user_dashboard_layouts.widgets,
+ * always an array (no null/empty differentiation — `[]` is "user reset to
+ * empty"; "no row" is "user never saved → use default").
+ */
+export interface DashboardWidget {
+  /** Stable client-generated id (UUID or crypto.randomUUID). Used as the
+   *  React key + drag-target identifier. */
+  id: string;
+  /** Widget type — drives which client component renders. Add a new value
+   *  here only when adding a new widget renderer. */
+  type:
+    | 'funding'      // funding rate for a single symbol
+    | 'oi'           // open interest for a single symbol
+    | 'liquidations' // 24h liquidations summary
+    | 'watchlist'    // user's watchlist mini
+    | 'alerts'       // alert summary (count active, recent fires)
+    | 'whales'       // recent whale trades
+    | 'news'         // recent news headlines
+    | 'positions';   // user's open positions summary
+  /** Free-form per-widget config (symbol, exchange, max rows, etc.). The
+   *  schema is enforced client-side by the widget renderer. */
+  config?: Record<string, unknown>;
+}
+
+/**
+ * Read the user's saved widget layout. Returns `null` when the user has
+ * never saved a layout (caller should fall back to the default), or `[]`
+ * when they've explicitly cleared their layout.
+ */
+export async function getUserDashboardLayout(userId: string): Promise<DashboardWidget[] | null> {
+  if (!isDBConfigured()) return null;
+  try {
+    const sql = getSQL();
+    const rows = await sql`
+      SELECT widgets FROM user_dashboard_layouts WHERE user_id = ${userId} LIMIT 1
+    ` as Array<{ widgets: unknown }>;
+    if (rows.length === 0) return null;
+    const w = rows[0].widgets;
+    // postgres.js usually returns JSONB as a JS array directly. Defensive
+    // string fallback in case the driver hands back a serialized form.
+    if (typeof w === 'string') {
+      try {
+        const parsed = JSON.parse(w);
+        return Array.isArray(parsed) ? (parsed as DashboardWidget[]) : [];
+      } catch { return []; }
+    }
+    return Array.isArray(w) ? (w as DashboardWidget[]) : [];
+  } catch (e) {
+    console.error('DB getUserDashboardLayout error:', e);
+    return null;
+  }
+}
+
+/** Upsert the user's layout. Caps at 24 widgets to prevent abuse + keep
+ *  the dashboard rendering snappy. */
+export async function setUserDashboardLayout(userId: string, widgets: DashboardWidget[]): Promise<boolean> {
+  if (!isDBConfigured()) return false;
+  try {
+    const sql = getSQL();
+    const capped = widgets.slice(0, 24);
+    await sql`
+      INSERT INTO user_dashboard_layouts (user_id, widgets, updated_at)
+      VALUES (${userId}, ${JSON.stringify(capped)}::jsonb, NOW())
+      ON CONFLICT (user_id) DO UPDATE SET
+        widgets = EXCLUDED.widgets,
+        updated_at = NOW()
+    `;
+    return true;
+  } catch (e) {
+    console.error('DB setUserDashboardLayout error:', e);
+    return false;
   }
 }
 
