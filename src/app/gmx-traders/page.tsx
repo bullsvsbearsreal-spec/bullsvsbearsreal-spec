@@ -421,10 +421,29 @@ function RecentTradeRow({ t }: { t: RecentTrade }) {
   );
 }
 
-function PositionRow({ p }: { p: OpenPosition }) {
+/**
+ * Position row in a GMX trader's drawer. Adds a "Copy →" deeplink to
+ * /position-copy-form so a copy-trader can mirror the bet without
+ * leaving the page. Symmetric with /hl-whales · PositionRow.
+ */
+function PositionRow({
+  p,
+  traderAddress,
+  chain,
+}: {
+  p: OpenPosition;
+  traderAddress: string;
+  chain: Chain;
+}) {
   const pnlColor = p.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400';
   const pctColor = p.pnlPct >= 0 ? 'text-green-400/70' : 'text-red-400/70';
   const symbol = p.marketSymbol !== '?' ? p.marketSymbol : p.market.slice(0, 6) + '…';
+
+  // venue param for /position-copy-form so the "you saw" header reads
+  // "GMX (Arbitrum)" / "GMX (Avalanche)" instead of the bare chain ID
+  const venueParam = chain === 'arbitrum' ? 'gmx-arb' : 'gmx-avax';
+  const copyHref = `/position-copy-form?symbol=${encodeURIComponent(symbol)}&side=${p.isLong ? 'long' : 'short'}&sizeUsd=${Math.round(p.sizeUsd)}&entryPrice=${p.entryPrice}&leverage=${p.leverage ?? 1}&venue=${venueParam}&wallet=${traderAddress}`;
+
   return (
     <div className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
       <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
@@ -459,6 +478,13 @@ function PositionRow({ p }: { p: OpenPosition }) {
           {fmtPct(p.pnlPct)}
         </div>
       </div>
+      <Link
+        href={copyHref}
+        title={`Mirror this ${symbol} ${p.isLong ? 'long' : 'short'} on your account`}
+        className="ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 transition-colors"
+      >
+        Copy →
+      </Link>
     </div>
   );
 }
@@ -637,7 +663,7 @@ function TraderDrawer({ address, chain, onClose }: { address: string; chain: Cha
                   <div className="text-neutral-500 text-xs text-center py-6">No open positions</div>
                 ) : (
                   <div>
-                    {data.openPositions.map(p => <PositionRow key={p.positionKey} p={p} />)}
+                    {data.openPositions.map(p => <PositionRow key={p.positionKey} p={p} traderAddress={address} chain={chain} />)}
                   </div>
                 )}
               </>
