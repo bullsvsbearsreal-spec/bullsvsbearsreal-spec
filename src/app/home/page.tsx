@@ -8,6 +8,7 @@ import Link from 'next/link';
 import {
   Activity, BarChart3, Zap, TrendingUp, Newspaper, Shield, Flame,
   ArrowUp, ArrowDown, ChevronRight, GitCompareArrows, Crosshair,
+  Copy, Eye, Brain,
 } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
@@ -494,6 +495,80 @@ export default function HomePage() {
           />
           <ETFTile data={etf} />
           <BtcHalvingCountdown />
+        </div>
+      </section>
+
+      {/* ── Follow the smartest wallets — surfaces the copy-trader
+           workflow shipped in 0a35ccb6 on the landing page. Three
+           cards link out to the actually-useful copy-trader entry
+           points; no signup needed to use any of them. ── */}
+      <section style={{ marginBottom: 14 }}>
+        <SectionHead
+          title="Follow the smartest wallets"
+          accent="var(--pump-mild)"
+          right={
+            <span style={{
+              fontSize: 10, fontWeight: 600, color: 'var(--fg-muted)',
+              fontFamily: 'var(--font-mono)',
+            }}>
+              No signup required
+            </span>
+          }
+        />
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gap: 10,
+        }}>
+          {/* HL Whales — the marquee copy-trader entry point */}
+          <Card>
+            <CardHeader
+              icon={<Copy size={12} style={{ color: 'var(--pump-mild)' }} />}
+              title="HL Whales — Copy →"
+              accent="var(--pump-mild)"
+              link="/hl-whales"
+              linkLabel="Browse"
+            />
+            <p style={{ fontSize: 11, color: 'var(--fg-muted)', margin: 0, lineHeight: 1.5 }}>
+              Every Hyperliquid wallet over $5M, positions sorted by size. Hit{' '}
+              <span style={{ color: 'var(--pump-mild)', fontWeight: 700 }}>Copy →</span> on any row to
+              mirror their bet at 0.25× / 0.5× / 1× / 2× your size, with a chase-risk warning if
+              the price has drifted.
+            </p>
+          </Card>
+
+          {/* Smart Money — Consensus view */}
+          <Card>
+            <CardHeader
+              icon={<Brain size={12} style={{ color: 'var(--hub-yellow)' }} />}
+              title="Smart Money Consensus"
+              accent="var(--hub-yellow)"
+              link="/smart-money"
+              linkLabel="Open"
+            />
+            <p style={{ fontSize: 11, color: 'var(--fg-muted)', margin: 0, lineHeight: 1.5 }}>
+              Cross-venue leaderboard of wallets with proven alpha — significant lifetime PnL,
+              real volume, consistent win rate. Toggle{' '}
+              <span style={{ color: 'var(--hub-yellow)', fontWeight: 700 }}>Consensus</span> to filter
+              to the top 10 elites and see what they&apos;re collectively long on.
+            </p>
+          </Card>
+
+          {/* Watch — Telegram alerts on followed wallets */}
+          <Card>
+            <CardHeader
+              icon={<Eye size={12} style={{ color: 'var(--hub-accent)' }} />}
+              title="Watch · Telegram alerts"
+              accent="var(--hub-accent)"
+              link="/watch"
+              linkLabel="Setup"
+            />
+            <p style={{ fontSize: 11, color: 'var(--fg-muted)', margin: 0, lineHeight: 1.5 }}>
+              Pick wallets, get Telegram pings when they open / close / size up / get near liq.
+              Severity-graded ({'\u{1F534}'} critical / {'\u{1F7E1}'} warning) so the noise
+              filters itself out.
+            </p>
+          </Card>
         </div>
       </section>
 
