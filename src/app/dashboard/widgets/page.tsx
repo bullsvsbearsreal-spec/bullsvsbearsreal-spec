@@ -806,45 +806,102 @@ function PositionsWidget() {
   );
 }
 
-/** Watchlist widget — reads localStorage `infohub_watchlist` (the same
- *  store the rest of the app uses). Renders up to 6 symbols with a CTA
- *  to the full /watchlist page. Future: pull live prices once a unified
- *  watchlist+prices endpoint lands. */
+/** Watchlist widget — reads localStorage `infohub_watchlist` + joins
+ *  with /api/tickers for live prices + 24h change. Renders the top 5
+ *  symbols as a compact price list. Two fetches that run in parallel:
+ *  localStorage on mount (cheap), then a ticker fetch (network). The
+ *  ticker fetch reuses the same endpoint /watchlist itself uses, so
+ *  the response is already cached server-side. */
 function WatchlistWidget() {
-  const [symbols, setSymbols] = useState<string[] | null>(null);
+  const [rows, setRows] = useState<Array<{ symbol: string; price: number; pct24h: number }> | null>(null);
+  const [empty, setEmpty] = useState(false);
   useEffect(() => {
+    // Read localStorage first — cheap, no network
+    let symbols: string[] = [];
     try {
       const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('infohub_watchlist') : null;
-      if (!raw) { setSymbols([]); return; }
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        const cleaned = parsed.filter((s) => typeof s === 'string').slice(0, 6) as string[];
-        setSymbols(cleaned);
-      } else {
-        setSymbols([]);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          symbols = parsed.filter((s) => typeof s === 'string').slice(0, 5) as string[];
+        }
       }
-    } catch { setSymbols([]); }
+    } catch { /* swallow */ }
+
+    if (symbols.length === 0) { setEmpty(true); return; }
+    const upper = new Set(symbols.map((s) => s.toUpperCase()));
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/tickers', { cache: 'no-store' });
+        if (!res.ok) { setRows([]); return; }
+        const j = await res.json();
+        if (cancelled) return;
+        // Endpoint returns either an array directly or { data: [...] }
+        const raw: any[] = Array.isArray(j) ? j : Array.isArray(j?.data) ? j.data : [];
+        // Aggregate per-symbol: take the highest-volume ticker as the
+        // reference price (binance usually wins; if not, the next venue).
+        const bestBySymbol = new Map<string, { price: number; pct24h: number; volume: number }>();
+        for (const t of raw) {
+          const sym = String(t?.symbol ?? '').toUpperCase().replace(/USDT$|USDC$|USD$/, '');
+          if (!upper.has(sym)) continue;
+          const price = Number(t?.lastPrice ?? t?.price ?? 0);
+          const pct24h = Number(t?.priceChangePercent24h ?? t?.change24h ?? 0);
+          const vol = Number(t?.volume24h ?? 0);
+          if (!price) continue;
+          const existing = bestBySymbol.get(sym);
+          if (!existing || vol > existing.volume) {
+            bestBySymbol.set(sym, { price, pct24h, volume: vol });
+          }
+        }
+        // Preserve the user's watchlist order
+        const ordered = symbols
+          .map((s) => {
+            const u = s.toUpperCase();
+            const v = bestBySymbol.get(u);
+            return v ? { symbol: u, price: v.price, pct24h: v.pct24h } : null;
+          })
+          .filter((x): x is { symbol: string; price: number; pct24h: number } => x !== null);
+        setRows(ordered);
+      } catch { if (!cancelled) setRows([]); }
+    })();
+    return () => { cancelled = true; };
   }, []);
+
   return (
     <div>
-      <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Watchlist</div>
-      {symbols === null ? (
-        <div className="text-[11px] text-neutral-500">Loading…</div>
-      ) : symbols.length === 0 ? (
+      <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">Watchlist · live</div>
+      {empty ? (
         <div className="text-[11px] text-neutral-500 italic">No symbols yet. <Link href="/watchlist" className="text-emerald-300 hover:underline">Add one →</Link></div>
+      ) : rows === null ? (
+        <div className="text-[11px] text-neutral-500">Loading…</div>
+      ) : rows.length === 0 ? (
+        <div className="text-[11px] text-neutral-500 italic">Couldn&apos;t load prices. <Link href="/watchlist" className="text-emerald-300 hover:underline">Open watchlist →</Link></div>
       ) : (
         <>
-          <div className="flex flex-wrap gap-1 mb-2">
-            {symbols.map((s) => (
-              <Link
-                key={s}
-                href={`/chart?symbol=${encodeURIComponent(s)}`}
-                className="inline-flex items-center px-1.5 py-0.5 rounded text-[11px] font-mono font-semibold bg-white/[0.06] border border-white/[0.08] text-neutral-200 hover:border-emerald-400/30 hover:text-emerald-300 transition-colors"
-              >
-                {s}
-              </Link>
+          <ul className="space-y-1 mb-2">
+            {rows.map((r) => (
+              <li key={r.symbol}>
+                <Link
+                  href={`/chart?symbol=${encodeURIComponent(r.symbol)}`}
+                  className="flex items-center justify-between text-[11px] py-0.5 px-1 -mx-1 rounded hover:bg-white/[0.04] transition-colors"
+                >
+                  <span className="font-mono font-semibold text-neutral-200">{r.symbol}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="font-mono text-neutral-300">
+                      ${r.price >= 1000 ? r.price.toLocaleString(undefined, { maximumFractionDigits: 0 })
+                        : r.price >= 1 ? r.price.toFixed(2)
+                        : r.price.toPrecision(4)}
+                    </span>
+                    <span className={`font-mono text-[10px] ${r.pct24h >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                      {r.pct24h >= 0 ? '+' : ''}{r.pct24h.toFixed(1)}%
+                    </span>
+                  </span>
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
           <Link href="/watchlist" className="text-[11px] text-emerald-300 hover:underline">Manage watchlist →</Link>
         </>
       )}
