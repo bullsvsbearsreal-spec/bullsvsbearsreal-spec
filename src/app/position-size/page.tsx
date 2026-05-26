@@ -108,6 +108,13 @@ export default function PositionSizePage() {
       : 0;
     const lev = Number.isFinite(userLeverage) && userLeverage > 0 ? userLeverage : computedLev;
     if (!lev || lev <= 0 || entry <= 0) return null;
+    // Sub-1x leverage means the user's collateral fully covers the
+    // position — there is mathematically no liquidation price (or it's
+    // negative/above the realistic price). Return a sentinel so the UI
+    // can render "No liq risk" instead of a nonsense -$124k value.
+    if (lev < 1) {
+      return { leverageUsed: lev, liq: null, distPct: null, stopToLiqPct: null, noLiqRisk: true as const };
+    }
     const liq = side === 'long'
       ? entry * (1 - 1 / lev + MAINT_MARGIN)
       : entry * (1 + 1 / lev - MAINT_MARGIN);
@@ -116,7 +123,7 @@ export default function PositionSizePage() {
     // Distance from stop to liq, % — negative means liq comes FIRST
     // (i.e. you'd liquidate before your stop fills, which is bad).
     const stopToLiqPct = side === 'long' ? (stop - liq) / entry : (liq - stop) / entry;
-    return { leverageUsed: lev, liq, distPct: distPct * 100, stopToLiqPct: stopToLiqPct * 100 };
+    return { leverageUsed: lev, liq, distPct: distPct * 100, stopToLiqPct: stopToLiqPct * 100, noLiqRisk: false as const };
   }, [side, entry, stop, account, riskPct, userLeverage]);
 
   const valid = account > 0 && riskPct > 0 && entry > 0 && stop > 0;
@@ -373,7 +380,37 @@ export default function PositionSizePage() {
                       leverage override). Highlights amber if the stop
                       is dangerously close to liq, red if stop is BEYOND
                       liq (you'd get liquidated before your stop fills). */}
-                  {liqPreview && (
+                  {liqPreview && liqPreview.noLiqRisk && (
+                    <>
+                      <div className="rounded p-3 col-span-2 border bg-green-500/[0.06] border-green-400/30">
+                        <div className="flex items-center justify-between mb-1">
+                          <div className="text-[10px] uppercase tracking-wider text-neutral-500">Liquidation preview</div>
+                          <div className="text-[10px] text-neutral-600 font-mono">
+                            @ {liqPreview.leverageUsed.toFixed(2)}x · sub-1x
+                          </div>
+                        </div>
+                        <div className="font-mono tabular-nums text-sm font-semibold text-green-400">
+                          No liquidation risk
+                        </div>
+                        <div className="text-[10px] text-neutral-500 mt-1 leading-relaxed">
+                          Your collateral fully covers this position at &lt; 1x leverage. You can lose money — but you can&apos;t be force-liquidated by the exchange. Stop loss is the only thing that closes you.
+                        </div>
+                      </div>
+                      <div className="col-span-2 flex items-center gap-2">
+                        <label className="text-[10px] uppercase tracking-wider text-neutral-500">Override leverage:</label>
+                        <input
+                          type="text"
+                          inputMode="decimal"
+                          placeholder="auto"
+                          value={leverageStr}
+                          onChange={e => setLeverageStr(e.target.value)}
+                          className="w-20 bg-white/[0.04] border border-white/[0.1] rounded px-2 py-1 text-[11px] text-white font-mono focus:outline-none focus:border-teal-400/60"
+                        />
+                        <span className="text-[10px] text-neutral-600">x · try a number to preview with real leverage</span>
+                      </div>
+                    </>
+                  )}
+                  {liqPreview && !liqPreview.noLiqRisk && liqPreview.liq !== null && liqPreview.stopToLiqPct !== null && liqPreview.distPct !== null && (
                     <>
                       <div className={`rounded p-3 col-span-2 border ${
                         liqPreview.stopToLiqPct < 0 ? 'bg-red-500/[0.06] border-red-400/30'
