@@ -63,7 +63,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Data & Features',
     q: 'What data do you provide?',
-    a: 'Funding rates, open interest, liquidations, funding/price/spot arbitrage, spread history, heatmaps (funding, OI, liquidation, market), a screener (RSI, volume, 24h change), CVD, options data (max pain, put/call, IV smile), prediction markets, basis tracking, long/short ratios, whale alerts, stablecoin flows, token unlocks, order flow, exchange reserves, correlation analysis, and news. We keep adding stuff.',
+    a: 'Funding rates, open interest, liquidations, funding/price/spot arbitrage, spread history, heatmaps (funding, OI, liquidation, market), a screener (RSI, volume, 24h change), CVD, options data (max pain, put/call, IV smile), basis tracking, long/short ratios, whale alerts, stablecoin flows, token unlocks, order flow, exchange reserves, correlation analysis, and news. We keep adding stuff.',
   },
   {
     category: 'Data & Features',

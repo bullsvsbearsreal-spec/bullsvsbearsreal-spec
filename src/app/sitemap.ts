@@ -27,7 +27,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/spread-scanner',          priority: 0.8, changeFrequency: 'hourly' as const },
     { path: '/top-movers',              priority: 0.8, changeFrequency: 'hourly' as const },
     { path: '/news',                    priority: 0.8, changeFrequency: 'hourly' as const },
-    { path: '/prediction-markets',      priority: 0.8, changeFrequency: 'hourly' as const },
 
     // ─── Specialty data ───────────────────────────────────────────────
     { path: '/longshort',          priority: 0.7, changeFrequency: 'hourly' as const },

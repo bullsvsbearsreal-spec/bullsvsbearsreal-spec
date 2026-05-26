@@ -128,16 +128,16 @@ referral code wired so attribution kicks in immediately:
 
 ### Custom terms (if needed)
 
-The default program is 60-day cookie, 20% lifetime, 10% off referrals,
-$25 min payout. For Ben specifically you may want:
+The default program is **90-day cookie**, 20% lifetime, 10% off
+referrals, $25 min payout. The 90-day window is already long enough
+to cover most creator funnels (newsletter → email open → sit on it
+→ sign up). For Ben specifically you may still want:
 
-- **Longer cookie window** (90 days) — bigger creators have longer
-  funnels (newsletter → 3 weeks → maybe sign up)
 - **Higher commission** (25-30%) — pays for itself if he drives volume
 
-These aren't in the current code as a tier — would need a
-`users.affiliate_tier` column + per-user commission override. Wait
-for actual volume signals before adding complexity.
+This isn't in the current code as a tier — would need a
+`users.affiliate_commission_pct` column for per-user override. Wait
+for actual volume signals before adding the complexity.
 
 ### Promo code for his audience (optional)
 

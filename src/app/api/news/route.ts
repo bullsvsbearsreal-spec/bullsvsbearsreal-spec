@@ -89,6 +89,20 @@ const RSS_FEEDS: { url: string; name: string; type: SourceType; format?: 'atom' 
   // Blogs / analysis
   { url: 'https://blog.chainalysis.com/feed/', name: 'Chainalysis', type: 'blog' },
   { url: 'https://www.thedefiant.io/feed', name: 'The Defiant', type: 'blog' },
+  // Asia / global coverage (often breaks Asia-hours news first — biggest
+  // gap in our existing US/EU-centric mix, where things like Mt. Gox
+  // distributions and exchange announcements get reported hours later
+  // by the Western press)
+  { url: 'https://en.wublockchain.com/feed/', name: 'WuBlockchain', type: 'news' },
+  { url: 'https://forkast.news/feed/', name: 'Forkast', type: 'news' },
+  // Macro / institutional research (snakether's news-trader bucket —
+  // these surface the macro context a derivatives trader actually needs)
+  { url: 'https://www.galaxy.com/research/feed/', name: 'Galaxy Research', type: 'blog' },
+  { url: 'https://messari.io/rss', name: 'Messari', type: 'blog' },
+  // Bitcoin-development specifically (Optech goes deep on TX-level
+  // changes, dev activity, lightning network — niche but high-signal
+  // for serious BTC traders)
+  { url: 'https://bitcoinops.org/feed.xml', name: 'Bitcoin Optech', type: 'blog' },
 ];
 
 /* ─── Cache ──────────────────────────────────────────────────── */

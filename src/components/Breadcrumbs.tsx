@@ -25,7 +25,6 @@ const PAGE_MAP: Record<string, PageMeta> = {
   '/chart': { label: 'Chart', category: 'Scan & Trade' },
   '/screener': { label: 'Screener', category: 'Scan & Trade' },
   '/options': { label: 'Options', category: 'Scan & Trade' },
-  '/prediction-markets': { label: 'Predictions', category: 'Scan & Trade' },
 
   // Monitor
   '/top-movers': { label: 'Top Movers', category: 'Monitor' },

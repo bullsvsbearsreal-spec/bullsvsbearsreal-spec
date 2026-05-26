@@ -188,11 +188,6 @@ export const CHAT_TOOLS: Tool[] = [
     input_schema: { type: 'object' as const, properties: {} },
   },
   {
-    name: 'get_prediction_markets',
-    description: 'Polymarket + Kalshi prediction markets with cross-platform arbitrage opportunities. Shows event questions, yes/no prices per platform, spread %. Use for: event probability, political/economic odds, prediction arb.',
-    input_schema: { type: 'object' as const, properties: {} },
-  },
-  {
     name: 'get_oi_delta',
     description: 'OI momentum for all tracked symbols: 1h, 4h, 24h percentage change in open interest. Sorted by biggest 1h move. Use for: where is new money flowing RIGHT NOW, real-time positioning shifts.',
     input_schema: { type: 'object' as const, properties: {} },

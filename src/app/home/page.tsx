@@ -188,7 +188,6 @@ const QUICK_LINKS = [
   { name: 'Screener',    href: '/screener',          icon: TrendingUp,       color: '#60a5fa' },
   { name: 'News',        href: '/news',              icon: Newspaper,        color: '#f59e0b' },
   { name: 'Compare',     href: '/compare',           icon: GitCompareArrows, color: 'var(--hub-accent)' },
-  { name: 'Predictions', href: '/prediction-markets', icon: Crosshair,       color: '#e040fb' },
 ];
 
 // ────────────────────────────────────────────────────────────────────

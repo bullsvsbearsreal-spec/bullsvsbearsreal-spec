@@ -37,7 +37,6 @@ const pageRegistry: PageEntry[] = [
   { name: 'Screener', href: '/screener', icon: SlidersHorizontal, keywords: ['screener', 'filter', 'scan', 'search', 'find'], category: 'Trading' },
   { name: 'Options', href: '/options', icon: Shield, keywords: ['options', 'greeks', 'vol', 'volatility', 'puts', 'calls', 'skew'], category: 'Trading' },
   { name: 'Basis', href: '/basis', icon: BarChart2, keywords: ['basis', 'contango', 'backwardation', 'premium', 'spot', 'perp'], category: 'Trading' },
-  { name: 'Prediction Markets', href: '/prediction-markets', icon: Eye, keywords: ['prediction', 'polymarket', 'bet', 'forecast'], category: 'Trading' },
   { name: 'Price Spreads', href: '/spreads', icon: ArrowLeftRight, keywords: ['spread', 'price', 'arb', 'difference', 'cross-exchange'], category: 'Trading' },
   { name: 'Spread Scanner', href: '/spread-scanner', icon: ArrowLeftRight, keywords: ['spread', 'scanner', 'arb', 'multi', 'compare'], category: 'Trading' },
   { name: 'Execution Costs', href: '/execution-costs', icon: Crosshair, keywords: ['execution', 'cost', 'slippage', 'dex', 'fee'], category: 'Trading' },

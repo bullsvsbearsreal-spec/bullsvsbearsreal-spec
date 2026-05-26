@@ -57,7 +57,6 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'execution',    label: 'Execution Costs',   href: '/execution-costs',    hint: 'Slippage + fees' },
       { id: 'trade-opt',    label: 'Trade Optimizer',   href: '/trade-optimizer',    hint: 'Cheapest venue per trade' },
       { id: 'fees',         label: 'Exchange Fees',     href: '/exchange-fees',      hint: 'Maker/taker tiers' },
-      { id: 'predictions',  label: 'Prediction Markets', href: '/prediction-markets', hint: 'Polymarket + others' },
     ]},
   { key: 'monitor', label: 'Monitor',
     icon: <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18"/><path d="m7 14 4-4 4 4 5-5"/></svg>,

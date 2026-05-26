@@ -302,13 +302,29 @@ describe('formatEvent', () => {
     expect(dec).toContain('-40.0%');
   });
 
-  it('liq_danger: includes distance percentage', () => {
-    const msg = formatEvent(
+  it('liq_danger: includes distance percentage + severity grade', () => {
+    // 2.34% from liq → CRITICAL (<5%)
+    const critical = formatEvent(
       { kind: 'liq_danger', symbol: 'BTC', payload: { side: 'long', distPct: 0.0234 } },
       addr,
     );
-    expect(msg).toContain('⚠️ NEAR LIQ');
-    expect(msg).toContain('2.34%');
+    expect(critical).toContain('NEAR LIQ');
+    expect(critical).toContain('2.34%');
+    expect(critical).toContain('CRITICAL');
+
+    // 7% from liq → WARNING (5-10%)
+    const warning = formatEvent(
+      { kind: 'liq_danger', symbol: 'ETH', payload: { side: 'short', distPct: 0.07 } },
+      addr,
+    );
+    expect(warning).toContain('WARNING');
+
+    // 15% from liq → caution (≥10%)
+    const caution = formatEvent(
+      { kind: 'liq_danger', symbol: 'SOL', payload: { side: 'long', distPct: 0.15 } },
+      addr,
+    );
+    expect(caution).toContain('caution');
   });
 
   it('venue tag appears in the message', () => {

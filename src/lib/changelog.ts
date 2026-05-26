@@ -28,12 +28,33 @@ export interface ChangelogEntry {
 export const CHANGELOG: ChangelogEntry[] = [
   {
     date: '2026-05-26',
+    title: 'Copy-trader workflow · prediction markets removed · 5 new news sources',
+    summary: 'Round of focused improvements from operator + power-user feedback. New /position-copy-form deep-linked from every whale page, severity-graded liquidation alerts, "+ Follow trader" CTA on profiles, top-positions-by-size sorting in /hl-whales. Prediction markets feature removed (3 dirs + 17 file references). Affiliate cookie bumped 60→90 days. 5 new high-signal news sources (WuBlockchain, Forkast, Galaxy Research, Messari, Bitcoin Optech). Spending-audit doc with paid-services upgrade order.',
+    tags: ['improved', 'breaking'],
+    bullets: [
+      'Copy trader workflow: new /position-copy-form page reachable from every whale position with a "Copy →" deeplink. Pre-fills symbol/side/size/entry/leverage. Sizing scalar (0.25× / 0.5× / 1× / 2×). Live spot-price vs whale-entry slippage with chase-risk warning when current drift is unfavourable. Steps out to /position-size for Kelly refinement.',
+      '/hl-whales positions: sorted by notional DESC so biggest bets surface first. Largest position in each whale gets a ★ marker. Each row gains a "Copy →" deeplink.',
+      'Liquidation severity grades: "near liq" alerts now prefix with 🔴 CRITICAL (<5%) / 🟡 WARNING (5-10%) / 🟢 caution (≥10%) — both in /watch UI and Telegram delivery. Stops users from learning to ignore the alerts.',
+      '"+ Follow trader" CTA on /trader/[address] profiles deeplinks to /watch with address + display name pre-filled. Frictionless watchlist add from any profile.',
+      'Prediction markets feature removed — page, API, lib, and all 17 references (sidebar, header, command palette, chat tool, sitemap, SEO). One fewer external dependency.',
+      'Affiliate cookie window bumped 60 → 90 days. Long-funnel creator audiences (newsletters, podcasts) get fair attribution credit even when readers sit on a recommendation for weeks. Matches Notion / ConvertKit / Stripe Atlas.',
+      '/news: 5 new sources added — WuBlockchain (Asia-first breaking news), Forkast (Asia coverage), Galaxy Research (macro/institutional), Messari (research), Bitcoin Optech (BTC dev/lightning). Fills the geographic + institutional research gaps in our previous US/EU-centric mix.',
+      'New docs/spending-audit.md — operator reference for what we pay for vs which free tiers will break under paid load. Includes upgrade order (CMC → Upstash → CryptoPanic → CoinMarketCal → Resend) and three cost-model scenarios.',
+    ],
+    links: [
+      { label: 'Whale dashboard', href: '/hl-whales' },
+      { label: 'Watch wallets', href: '/watch' },
+      { label: 'Spending audit', href: 'https://github.com/0x0celot/infohub/blob/main/docs/spending-audit.md' },
+    ],
+  },
+  {
+    date: '2026-05-26',
     title: '4-tier monetization · affiliate program · Whale priority alerts',
     summary: 'Pricing restructured into four tiers (Free / Trader $12 / Pro $29 / Whale $59) with a wider anchor for better funnel conversion. Affiliate program goes live with 20% recurring lifetime commission, USDT payouts, 60-day cookie. Whale tier gets a dedicated low-latency alert queue. Custom dashboards (Pro) ship with drag/drop widget customization. Tax CSV export, setup-scanner composite quality score, competitor comparison on /home, dynamic OG cards across 8 pages, and a 5-step onboarding tour round out the release. Still free during launch — gating engages when NowPayments checkout lands.',
     tags: ['new', 'improved'],
     bullets: [
       'Tier ladder: Free $0 / Trader $12 / Pro $29 / Whale $59. Anchor effect via the new $29 middle tier with "MOST POPULAR" badge. Existing Pro users auto-grandfather into the new Pro $29.',
-      'Affiliate program: every account gets a referral code, 20% recurring lifetime commission, USDT payouts on Solana/Arbitrum/Base, $25 minimum, 60-day cookie, 10% off forever for referred users. /referrals public landing + /settings/referrals private dashboard + Admin Affiliates tab for operator oversight.',
+      'Affiliate program: every account gets a referral code, 20% recurring lifetime commission, USDT payouts on Solana/Arbitrum/Base, $25 minimum, 90-day cookie, 10% off forever for referred users. /referrals public landing + /settings/referrals private dashboard + Admin Affiliates tab for operator oversight.',
       'Whale-tier priority alert queue: dedicated /api/cron/whale-alerts endpoint runs on its own systemd cadence (every 30s default, 5s for true sub-second P99). Standard /api/cron/alerts skips Whale users to prevent double-fire.',
       'Custom dashboards (Pro): /dashboard/widgets with HTML5 drag-to-reorder, 8 widget types (7 wired: funding, OI, liquidations, watchlist, alerts, whales, news, positions — OI is a thin shell to /open-interest). Auto-saves layout to user_dashboard_layouts JSONB.',
       'Tax CSV export server-side at /api/account/tax/csv — 5-section CSV (Summary, By Year, Open Positions, Top Winners, Top Losers). Replaces the previous client-side Blob builder.',

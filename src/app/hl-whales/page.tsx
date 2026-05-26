@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
@@ -151,15 +152,41 @@ function WhaleCardSkeleton() {
 /*  Position row                                                       */
 /* ------------------------------------------------------------------ */
 
-function PositionRow({ pos }: { pos: WhalePosition }) {
+/**
+ * Position row inside a whale card. Renders the position fields + a
+ * "Copy →" deeplink to /position-copy-form so a copy-trader can mirror
+ * the whale's bet in a couple of clicks. The top position in each
+ * whale's book (largest by positionValue) gets a star marker because
+ * concentration matters more than just "trader X is long 8 things".
+ */
+function PositionRow({
+  pos,
+  whaleAddress,
+  whaleLabel,
+  isTop,
+}: {
+  pos: WhalePosition;
+  whaleAddress: string;
+  whaleLabel: string;
+  /** Largest position in this whale's book — flagged with a star */
+  isTop: boolean;
+}) {
   const isLong = pos.side === 'long';
   const pnlColor = pos.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400';
   const sideColor = isLong ? 'text-green-400' : 'text-red-400';
   const sideBg = isLong ? 'bg-green-500/10' : 'bg-red-500/10';
 
+  // Build the copy-form deeplink. We pass all the fields the copy form
+  // needs to render the "you saw" + sizing UI — including entry price
+  // for the chase-risk warning.
+  const copyHref = `/position-copy-form?symbol=${encodeURIComponent(pos.coin)}&side=${pos.side}&sizeUsd=${Math.round(pos.positionValue)}&entryPrice=${pos.entryPrice}&leverage=${pos.leverage}&venue=hl&wallet=${whaleAddress}&label=${encodeURIComponent(whaleLabel)}`;
+
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.02] hover:bg-white/[0.04] transition-colors text-xs">
       <div className="w-16 sm:w-20 flex items-center gap-1.5">
+        {isTop && (
+          <span className="text-amber-400/70" aria-label="Largest position">★</span>
+        )}
         <WatchlistStar symbol={pos.coin} />
         <span className="font-semibold text-white">{pos.coin}</span>
         <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold uppercase ${sideBg} ${sideColor}`}>
@@ -184,6 +211,13 @@ function PositionRow({ pos }: { pos: WhalePosition }) {
       <div className="hidden sm:block w-10 text-right font-mono text-neutral-600">
         {pos.leverage}x
       </div>
+      <Link
+        href={copyHref}
+        title={`Mirror this ${pos.coin} ${pos.side} on your account`}
+        className="ml-1 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 transition-colors"
+      >
+        Copy →
+      </Link>
     </div>
   );
 }
@@ -343,11 +377,23 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
             <div className="hidden sm:block w-10 text-right">Lev</div>
           </div>
 
-          {/* Position rows */}
+          {/* Position rows — sorted by notional DESC so copy-traders see
+              the biggest bets first. The largest gets a ★ marker (see
+              isTop in PositionRow). */}
           <div className="px-3 pb-3 space-y-1">
-            {whale.positions.map((pos) => (
-              <PositionRow key={`${pos.coin}-${pos.side}-${pos.positionValue}`} pos={pos} />
-            ))}
+            {(() => {
+              const sorted = [...whale.positions].sort((a, b) => b.positionValue - a.positionValue);
+              const topValue = sorted[0]?.positionValue ?? 0;
+              return sorted.map((pos) => (
+                <PositionRow
+                  key={`${pos.coin}-${pos.side}-${pos.positionValue}`}
+                  pos={pos}
+                  whaleAddress={whale.address}
+                  whaleLabel={whale.label}
+                  isTop={pos.positionValue === topValue && pos.positionValue > 0}
+                />
+              ));
+            })()}
             {whale.positions.length === 0 && (
               <div className="text-center text-neutral-600 text-xs py-4">No open positions</div>
             )}

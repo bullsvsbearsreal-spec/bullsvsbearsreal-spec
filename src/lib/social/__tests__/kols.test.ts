@@ -43,13 +43,6 @@ describe('TWITTER_KOLS', () => {
     });
   });
 
-  it('includes Polymarket (canonical prediction-market source)', () => {
-    // The fetcher normalises to lowercase before storing, but the source
-    // list keeps the canonical casing
-    const lower = TWITTER_KOLS.map((h) => h.toLowerCase());
-    expect(lower).toContain('polymarket');
-  });
-
   it('contains at least one zachxbt (canonical on-chain investigator)', () => {
     const lower = TWITTER_KOLS.map((h) => h.toLowerCase());
     expect(lower).toContain('zachxbt');

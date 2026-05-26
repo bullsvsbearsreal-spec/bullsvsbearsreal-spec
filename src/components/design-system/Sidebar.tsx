@@ -123,7 +123,6 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     // /listing-radar consolidated into /listings (May 2026)
     { href: '/tge-calendar',      label: 'TGE Calendar', color: MUTE, icon: I.layers },
     { href: '/earnings-calendar', label: 'Earnings Calendar', color: ACC, icon: I.calendar },
-    { href: '/prediction-markets', label: 'Prediction Markets', color: MUTE, icon: I.trophy },
   ]},
   { id: 'discovery', label: 'Movers & Discovery', items: [
     { href: '/top-movers',        label: 'Top Movers',     color: PUMP, icon: I.rocket },

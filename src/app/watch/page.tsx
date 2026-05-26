@@ -112,6 +112,20 @@ const KIND_LABEL: Record<EventRow['kind'], string> = {
   liq_danger: 'NEAR LIQ', realized_pnl: 'PNL', funding_paid: 'FUNDING',
 };
 
+/**
+ * Severity grade for a `liq_danger` event. Without grading, users learn
+ * to ignore the alerts entirely — "8.2% from liq" doesn't communicate
+ * urgency, but 🔴 CRITICAL @ 2.1% does. Thresholds picked from common
+ * cascade behavior on Hyperliquid: cascade events typically trigger
+ * once a cluster of wallets crosses the 5% line.
+ */
+function liqSeverity(distPct: number): { tag: string; tone: 'caution' | 'warning' | 'critical' } {
+  const pct = Math.abs(distPct);
+  if (pct < 0.05) return { tag: '🔴 CRITICAL', tone: 'critical' };  // <5%
+  if (pct < 0.10) return { tag: '🟡 WARNING',  tone: 'warning'  };  // <10%
+  return { tag: '🟢 CAUTION', tone: 'caution' };
+}
+
 function formatEvent(e: EventRow): string {
   const sym = e.symbol;
   // Defensive: parseJsonbObject in the API may return {} or null when
@@ -130,7 +144,12 @@ function formatEvent(e: EventRow): string {
       const d = p.deltaPct ?? 0;
       return `${side} ${sym} · ${fmtUsd(p.prevSizeUsd ?? 0)} → ${fmtUsd(p.sizeUsd ?? 0)} (${d >= 0 ? '+' : ''}${(d * 100).toFixed(1)}%)`;
     }
-    case 'liq_danger':   return `${side} ${sym} · ${((p.distPct ?? 0) * 100).toFixed(2)}% from liq`;
+    case 'liq_danger': {
+      // Severity grade in front lets users triage by glance instead of
+      // doing the "is 8.2% bad?" arithmetic in their head every time.
+      const sev = liqSeverity(p.distPct ?? 1);
+      return `${sev.tag} · ${side} ${sym} · ${((p.distPct ?? 0) * 100).toFixed(2)}% from liq`;
+    }
     case 'realized_pnl': return `${side} ${sym} · realized ${fmtUsd(p.realizedPnl ?? 0)}`;
     case 'funding_paid': return `${side} ${sym} · ${(p.fundingDelta ?? 0) < 0 ? 'paid' : 'received'} ${fmtUsd(Math.abs(p.fundingDelta ?? 0))}`;
     // Future-proof: a kind added server-side before client redeploy

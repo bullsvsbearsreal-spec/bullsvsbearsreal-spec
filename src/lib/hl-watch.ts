@@ -532,8 +532,15 @@ export function formatEvent(e: WatchEvent, address: string, label?: string, venu
       return `${arrow}${venueTag}\n${who}\n${sym} · ${fmtUsd(e.payload.prevSizeUsd ?? 0)} → ${fmtUsd(e.payload.sizeUsd ?? 0)} (${delta >= 0 ? '+' : ''}${(delta * 100).toFixed(1)}%)`;
     }
     case 'liq_danger': {
-      const d = (e.payload.distPct ?? 0) * 100;
-      return `⚠️ NEAR LIQ${venueTag}\n${who}\n${sym} now *${d.toFixed(2)}%* from liquidation`;
+      // Severity grade — copy-traders ignore raw "8.2%" but a coloured
+      // tag forces a glance-triage. Thresholds picked from cascade
+      // behaviour observed on Hyperliquid (<5% = cascade-likely zone).
+      const dist = Math.abs(e.payload.distPct ?? 1);
+      const d = dist * 100;
+      const tag = dist < 0.05 ? '🔴 *CRITICAL*'
+                : dist < 0.10 ? '🟡 *WARNING*'
+                : '🟢 caution';
+      return `${tag} · NEAR LIQ${venueTag}\n${who}\n${sym} now *${d.toFixed(2)}%* from liquidation`;
     }
     case 'realized_pnl': {
       return formatEvent({ ...e, kind: 'closed' }, address, label, venue);

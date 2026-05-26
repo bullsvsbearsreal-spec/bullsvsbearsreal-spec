@@ -147,10 +147,15 @@ export function handleV1Route(request: NextRequest): NextResponse {
 // Main middleware
 // ---------------------------------------------------------------------------
 
-// Affiliate-cookie max-age. 60 days = 60 * 24 * 3600 = 5,184,000 seconds.
-// Long-tail attribution window matches industry-standard 60d cookie.
+// Affiliate-cookie max-age. 90 days = 90 * 24 * 3600 = 7,776,000 seconds.
+// Bumped from the standard 60d because our biggest creator partners
+// (newsletter/podcast audiences) have longer funnels — a reader might
+// see a recommendation, sit on it for 6-8 weeks, then sign up. Costs
+// us nothing at our volume and gives creators meaningful credit for
+// slow conversions. Notion / ConvertKit / Stripe Atlas use similar
+// windows.
 const REFERRAL_COOKIE_NAME = 'ih_ref';
-const REFERRAL_COOKIE_MAX_AGE_SEC = 60 * 24 * 3600;
+const REFERRAL_COOKIE_MAX_AGE_SEC = 90 * 24 * 3600;
 
 /**
  * If the URL carries `?ref=CODE`, stamp a long-lived cookie so signup

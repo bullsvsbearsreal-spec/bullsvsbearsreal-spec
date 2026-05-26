@@ -171,13 +171,3 @@ export function useExchangeHealth() {
   });
 }
 
-export function usePredictionMarkets() {
-  return useApi({
-    key: 'predictionMarkets',
-    fetcher: async () => {
-      const { fetchPredictionMarkets } = await import('@/lib/api/aggregator');
-      return fetchPredictionMarkets();
-    },
-    refreshInterval: 60_000,
-  });
-}

@@ -512,8 +512,11 @@ export default function TraderUnifiedPage() {
                     query string drops in transit. "Watch positions"
                     below already routes correctly with ?add= which the
                     /watch page consumes. Single CTA, no broken alias. */}
-                <Link href={`/watch?add=${address}`} className="text-hub-yellow hover:text-hub-yellow/80 inline-flex items-center gap-1 font-medium">
-                  Watch positions (HL + gTrade)
+                <Link
+                  href={`/watch?add=${address}${hl.data?.displayName ? `&label=${encodeURIComponent(hl.data.displayName)}` : ''}`}
+                  className="inline-flex items-center gap-1 font-semibold text-[11px] px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25 hover:text-emerald-200 transition-colors"
+                >
+                  + Follow trader
                 </Link>
               </div>
             </div>

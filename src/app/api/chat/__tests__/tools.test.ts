@@ -52,9 +52,8 @@ describe('CHAT_TOOLS', () => {
     expect(names).toContain('get_market_cycle');
   });
 
-  it('contains prediction market + macro tools', () => {
+  it('contains macro/event tools', () => {
     const names = CHAT_TOOLS.map((t) => t.name);
-    expect(names).toContain('get_prediction_markets');
     expect(names).toContain('get_economic_calendar');
     expect(names).toContain('get_news');
   });

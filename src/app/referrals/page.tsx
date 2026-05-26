@@ -170,7 +170,7 @@ export default function ReferralsPage() {
             </p>
             <p className="text-neutral-500 text-xs sm:text-sm max-w-xl mx-auto">
               Your referrals get <strong className="text-white">10% off</strong> forever.
-              60-day cookie. $25 min payout. Active during launch, commissions begin
+              90-day cookie. $25 min payout. Active during launch, commissions begin
               the day paid checkouts go live.
             </p>
 
@@ -229,7 +229,7 @@ export default function ReferralsPage() {
             <Step
               num={2}
               title="They click & sign up"
-              body="60-day cookie attribution. When someone clicks your link and signs up — even weeks later — they're tagged to you. Their first month is 10% off forever."
+              body="90-day cookie attribution. When someone clicks your link and signs up — even months later — they're tagged to you. Their first month is 10% off forever."
             />
             <Step
               num={3}
@@ -257,7 +257,7 @@ export default function ReferralsPage() {
             />
             <FaqRow
               q="What if they cancel?"
-              a="No commission for that month. If they re-subscribe later, attribution holds — they're still your referral. The 60-day cookie governs first attribution; after that it's permanent."
+              a="No commission for that month. If they re-subscribe later, attribution holds — they're still your referral. The 90-day cookie governs first attribution; after that it's permanent."
             />
             <FaqRow
               q="Can I self-refer or stack codes?"

@@ -703,26 +703,6 @@ export async function fetchExchangeHealth(): Promise<{
   return { funding: [], meta: { totalExchanges: 0, activeExchanges: 0 } };
 }
 
-// Prediction markets — Polymarket, Kalshi
-export async function fetchPredictionMarkets(): Promise<import('./prediction-markets/types').PredictionMarketsResponse> {
-  const cached = getCached<import('./prediction-markets/types').PredictionMarketsResponse>('predictionMarkets');
-  if (cached) return cached;
-
-  try {
-    const response = await timedFetch('/api/prediction-markets');
-    if (!response.ok) throw new Error('Failed to fetch prediction markets');
-    const data = await response.json();
-    setCache('predictionMarkets', data);
-    return data;
-  } catch {
-    return {
-      arbitrage: [],
-      markets: { polymarket: [], kalshi: [] },
-      meta: { counts: { polymarket: 0, kalshi: 0 }, matchedCount: 0, timestamp: Date.now() },
-    };
-  }
-}
-
 // Fetch execution costs across DEX venues
 export async function fetchExecutionCosts(asset: string, size: number, direction: 'long' | 'short'): Promise<import('@/lib/execution-costs/types').ExecutionCostResponse> {
   const cacheKey = `execCost_${asset}_${size}_${direction}`;

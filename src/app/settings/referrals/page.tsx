@@ -179,7 +179,7 @@ export default function ReferralsDashboardPage() {
                 <CopyField
                   label="Code"
                   value={data.code ?? '—'}
-                  hint="Share this code anywhere — it stamps a 60-day cookie when someone visits with ?ref=CODE"
+                  hint="Share this code anywhere — it stamps a 90-day cookie when someone visits with ?ref=CODE"
                 />
                 <CopyField
                   label="Share link"
@@ -221,7 +221,7 @@ export default function ReferralsDashboardPage() {
                     type="text"
                     value={walletInput}
                     onChange={(e) => setWalletInput(e.target.value)}
-                    placeholder={chainInput === 'solana' ? 'So1ana base58 address…' : '0x…'}
+                    placeholder={chainInput === 'solana' ? 'Solana base58 address…' : '0x…'}
                     className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[12px] text-white placeholder:text-neutral-600 focus:outline-none focus:ring-2 focus:ring-emerald-400/40 font-mono"
                   />
                 </div>

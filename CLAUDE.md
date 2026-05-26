@@ -371,7 +371,7 @@ Enforcement layer:
 ### Affiliate program
 
 20% recurring lifetime commission, USDT payouts on Solana/Arbitrum/Base,
-$25 minimum payout, 60-day cookie, 10% off forever for the referred user.
+$25 minimum payout, 90-day cookie, 10% off forever for the referred user.
 
 Schema:
 - `users.referral_code` (8-char alphanum, generated on signup)

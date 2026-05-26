@@ -41,7 +41,6 @@ const TOOL_LABELS: Record<string, string> = {
   get_oi_delta: 'Measuring OI momentum',
   get_rsi_data: 'Computing RSI levels',
   get_execution_costs: 'Estimating costs',
-  get_prediction_markets: 'Checking prediction markets',
   analyze_portfolio: 'Analyzing your portfolio',
 };
 

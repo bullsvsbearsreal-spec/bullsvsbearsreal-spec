@@ -113,10 +113,6 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Screener',
     description: 'Screen and filter perpetual futures across all exchanges. Sort by funding rate, open interest, volume, and price change.',
   },
-  '/prediction-markets': {
-    title: 'Prediction Market Arbitrage Scanner',
-    description: 'Find mispriced bets across Polymarket & Kalshi. Real-time arbitrage scanner with liquidity scoring, quality filters, and cross-platform spread detection.',
-  },
   '/funding-heatmap': {
     title: 'Funding Heatmap',
     description: 'Visual heatmap of funding rates across all exchanges and symbols. Spot extreme rates and funding trends at a glance.',

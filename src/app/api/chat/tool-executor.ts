@@ -76,8 +76,6 @@ export async function executeTool(
         return await getOnchainMetrics(ctx);
       case 'get_market_cycle':
         return await getMarketCycle(ctx);
-      case 'get_prediction_markets':
-        return await getPredictionMarkets(ctx);
       case 'get_oi_delta':
         return await getOIDelta(ctx);
       case 'get_stablecoin_flows':
@@ -768,29 +766,6 @@ async function getMarketCycle(ctx: ExecuteContext): Promise<string> {
   if (data.weeklyMA200?.ma?.length > 0) {
     const latestMA = data.weeklyMA200.ma[data.weeklyMA200.ma.length - 1];
     lines.push(`200W MA: $${formatNum(latestMA.value)}`);
-  }
-
-  return lines.join('\n');
-}
-
-async function getPredictionMarkets(ctx: ExecuteContext): Promise<string> {
-  const data = await fetchApi(ctx, '/api/prediction-markets');
-  if (!data) return 'Prediction market data unavailable.';
-
-  const arbs: any[] = data.arbitrage || [];
-  const meta = data.meta || {};
-
-  const lines = [`Prediction Markets (${meta.counts?.polymarket || 0} Polymarket, ${meta.counts?.kalshi || 0} Kalshi):`];
-
-  if (arbs.length === 0) {
-    lines.push('No cross-platform arbitrage opportunities found.');
-  } else {
-    lines.push('', 'Top Arb Opportunities:');
-    arbs.slice(0, 7).forEach((a: any, i: number) => {
-      lines.push(`${i + 1}. ${a.question}`);
-      lines.push(`   ${a.platformA?.platform || '?'}: ${((a.platformA?.yesPrice ?? 0) * 100).toFixed(0)}% Yes | ${a.platformB?.platform || '?'}: ${((a.platformB?.yesPrice ?? 0) * 100).toFixed(0)}% Yes`);
-      lines.push(`   Spread: ${a.spreadPercent?.toFixed(1)}% | Category: ${a.category || 'Other'}`);
-    });
   }
 
   return lines.join('\n');

@@ -39,7 +39,6 @@ const QUICK_LINKS = [
   { name: 'Compare', href: '/compare', icon: GitCompareArrows, desc: 'Cross-exchange', color: '#ffa500', bg: 'rgba(255,165,0,0.08)' },
   { name: 'News', href: '/news', icon: Newspaper, desc: 'Crypto news', color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
   { name: 'Spreads', href: '/spreads', icon: ArrowLeftRight, desc: 'Price spreads', color: '#ffa726', bg: 'rgba(255,167,38,0.08)' },
-  { name: 'Predictions', href: '/prediction-markets', icon: Crosshair, desc: 'Arb scanner', color: '#e040fb', bg: 'rgba(224,64,251,0.08)' },
 ];
 
 export default function HomeOrange() {
@@ -121,7 +120,6 @@ export default function HomeOrange() {
         { name: 'Screener', href: '/screener', icon: TrendingUp, color: '#3b82f6' },
         { name: 'Spreads', href: '/spreads', icon: ArrowLeftRight, color: '#ffa726' },
         { name: 'Compare', href: '/compare', icon: GitCompareArrows, color: '#ffa500' },
-        { name: 'Predictions', href: '/prediction-markets', icon: Crosshair, color: '#e040fb' },
       ],
     },
     {
