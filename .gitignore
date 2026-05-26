@@ -58,3 +58,27 @@ C:*
 .vercel
 
 src/remotion/
+
+# Claude/Codex plugin installs — sometimes drop their skill bundles
+# into .agents/skills/* in this repo root. Not part of the app.
+.agents/
+
+# Local design-handoff scratch (PNG/SVG drops, screenshots, prototypes)
+.design-handoff/
+
+# Throwaway QA screenshots from agent runs — .tmp-* / .verify-* /
+# .codex-* / .deslop-* / .improve-* / .ui-* — the actual filename
+# prefix changes per agent but they're all dropped at repo root and
+# never want to be committed.
+.tmp-*.png
+.verify-*.png
+.codex-*.png
+.deslop-*.png
+.improve-*.png
+.ui-*.png
+.codex-next-dev.*
+.next-dev.*
+
+# Other dotfile scratch
+.hl-whales.json
+.env.production-pull
