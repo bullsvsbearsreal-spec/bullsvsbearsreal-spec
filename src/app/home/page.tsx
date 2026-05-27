@@ -14,9 +14,9 @@ import { TokenIconSimple } from '@/components/TokenIcon';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { ALL_EXCHANGES, isExchangeDex } from '@/lib/constants';
 import { isValidNumber, formatPrice } from '@/lib/utils/format';
-import { type ExchangeHealthInfo } from '@/lib/api/aggregator';
+import { type ExchangeHealthInfo, fetchAllFundingRates, fetchExchangeHealth } from '@/lib/api/aggregator';
 import { type FundingRateData } from '@/lib/api/types';
-import { type NewsArticle, formatTimeAgo } from '@/lib/api/coinmarketcal';
+import { type NewsArticle, formatTimeAgo, fetchCryptoNews } from '@/lib/api/coinmarketcal';
 import { SatPing, StreamBars, Sparkline } from '@/components/design-system';
 import { BtcHalvingCountdown } from '@/components/BtcHalvingCountdown';
 import CompetitorComparison from '@/components/CompetitorComparison';
@@ -249,91 +249,143 @@ export default function HomePage() {
 
   useEffect(() => {
     let cancelled = false;
-    async function load() {
-      try {
-        const [{ fetchAllFundingRates, fetchExchangeHealth }, { fetchCryptoNews }] = await Promise.all([
-          import('@/lib/api/aggregator'),
-          import('@/lib/api/coinmarketcal'),
-        ]);
-        const [fundingData, newsData, healthData, marketsRes, moversRes, liqRes, oiRes, fgRes, etfRes, tickersRes] = await Promise.all([
-          fetchAllFundingRates().catch(() => []),
-          fetchCryptoNews(5).catch(() => []),
-          fetchExchangeHealth().catch(() => null),
-          fetch('/api/global-stats').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/top-movers').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/liquidations/aggregate').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/oi-delta').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/fear-greed').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/etf?type=btc').then(r => r.ok ? r.json() : null).catch(() => null),
-          fetch('/api/tickers').then(r => r.ok ? r.json() : null).catch(() => null),
-        ]);
-        // Long/Short — fetch top symbols in parallel since the endpoint is per-symbol.
-        // Binance fapi requires BTCUSDT-style pairs, so suffix bare symbols.
-        const lsSymbols = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP'];
-        const lsBatch: (LSItem | null)[] = await Promise.all(
-          lsSymbols.map(async (s): Promise<LSItem | null> => {
-            try {
-              const r = await fetch(`/api/longshort?symbol=${s}USDT`);
-              if (!r.ok) return null;
-              const j = await r.json();
-              if (!j || j.fallback) return null;
-              return {
-                symbol: s,
-                longRatio:  (typeof j.longRatio  === 'number' ? j.longRatio  : 0) / 100,
-                shortRatio: (typeof j.shortRatio === 'number' ? j.shortRatio : 0) / 100,
-              };
-            } catch {
-              return null;
-            }
-          }),
-        );
-        const lsClean: LSItem[] = [];
-        for (const item of lsBatch) if (item) lsClean.push(item);
-        if (cancelled) return;
 
-        const validFundingAll = (fundingData ?? [])
-          .filter((fr: FundingRateData) => fr && isValidNumber(fr.fundingRate));
-        const validFunding = [...validFundingAll]
-          .sort((a: FundingRateData, b: FundingRateData) => Math.abs(b.fundingRate) - Math.abs(a.fundingRate))
-          .slice(0, 5);
-        setTopFunding(validFunding);
-        // BTC cross-venue average — used by the BtcFundingTile in the
-        // Market Sentiment row. Filters BTC rows only; averaging the
-        // raw venue rates is a fair sentiment proxy without normalizing
-        // to 8h here (the tile labels the value as 8h-equivalent
-        // implicitly, matching /funding's default display).
-        const btcRows = validFundingAll.filter((fr: FundingRateData) => fr.symbol === 'BTC');
-        if (btcRows.length > 0) {
-          const sum = btcRows.reduce((s, fr) => s + fr.fundingRate, 0);
-          setBtcFundingAvg({ rate: sum / btcRows.length, venues: btcRows.length });
-        } else {
-          setBtcFundingAvg(null);
-        }
-        setLatestNews((newsData ?? []).slice(0, 5));
-        setExchangeHealth(healthData?.funding ?? []);
-        setMarketStats(marketsRes);
-        if (moversRes) {
+    // Each fetch resolves independently and immediately drives its
+    // own setState — no Promise.all() barrier blocking the whole
+    // page on the slowest endpoint. Previously this was a 3-stage
+    // waterfall: dynamic imports → 10-fetch Promise.all → 5-fetch
+    // longshort batch. First paint had to wait on the slowest of
+    // ~15 calls. Now each tile/section paints as its data lands.
+    //
+    // Cancellation: each `.then` callback re-checks `cancelled` before
+    // calling setState so unmount during in-flight requests doesn't
+    // warn or thrash state.
+    function load() {
+      // Capture each in-flight promise ONCE so we can chain .then()
+      // (which paints its slice of state immediately) AND wait on the
+      // whole batch settling at the end (which flips loading=false to
+      // unblock the section-level skeleton gate). No double-fetch.
+
+      const fundingP = fetchAllFundingRates()
+        .then(fundingData => {
+          if (cancelled) return;
+          const validFundingAll = (fundingData ?? [])
+            .filter((fr: FundingRateData) => fr && isValidNumber(fr.fundingRate));
+          const validFunding = [...validFundingAll]
+            .sort((a: FundingRateData, b: FundingRateData) => Math.abs(b.fundingRate) - Math.abs(a.fundingRate))
+            .slice(0, 5);
+          setTopFunding(validFunding);
+          // BTC cross-venue average for the BtcFundingTile — derived
+          // from the same fetch, no extra round-trip.
+          const btcRows = validFundingAll.filter((fr: FundingRateData) => fr.symbol === 'BTC');
+          if (btcRows.length > 0) {
+            const sum = btcRows.reduce((s, fr) => s + fr.fundingRate, 0);
+            setBtcFundingAvg({ rate: sum / btcRows.length, venues: btcRows.length });
+          } else {
+            setBtcFundingAvg(null);
+          }
+        })
+        .catch(() => { /* swallow — tile shows skeleton until next refresh */ });
+
+      const newsP = fetchCryptoNews(5)
+        .then(newsData => {
+          if (cancelled) return;
+          setLatestNews((newsData ?? []).slice(0, 5));
+        })
+        .catch(() => {});
+
+      const healthP = fetchExchangeHealth()
+        .then(healthData => {
+          if (cancelled) return;
+          setExchangeHealth(healthData?.funding ?? []);
+        })
+        .catch(() => {});
+
+      const marketsP = fetch('/api/global-stats')
+        .then(r => r.ok ? r.json() : null)
+        .then(marketsRes => { if (!cancelled) setMarketStats(marketsRes); })
+        .catch(() => {});
+
+      const moversP = fetch('/api/top-movers')
+        .then(r => r.ok ? r.json() : null)
+        .then(moversRes => {
+          if (cancelled || !moversRes) return;
           setMovers({
             gainers: (moversRes.gainers ?? []).slice(0, 5),
             losers:  (moversRes.losers  ?? []).slice(0, 5),
           });
-        }
-        setLiqAgg(liqRes);
-        const oiList: OICoin[] = Array.isArray(oiRes?.data) ? oiRes.data : Array.isArray(oiRes?.coins) ? oiRes.coins : Array.isArray(oiRes) ? oiRes : [];
-        // sort by absolute 24h change desc
-        oiList.sort((a, b) => Math.abs((b.pct24h ?? b.oiChange24hPct ?? b.change24h ?? 0)) - Math.abs((a.pct24h ?? a.oiChange24hPct ?? a.change24h ?? 0)));
-        setTopOI(oiList.slice(0, 5));
+        })
+        .catch(() => {});
+
+      const liqP = fetch('/api/liquidations/aggregate')
+        .then(r => r.ok ? r.json() : null)
+        .then(liqRes => { if (!cancelled) setLiqAgg(liqRes); })
+        .catch(() => {});
+
+      const oiP = fetch('/api/oi-delta')
+        .then(r => r.ok ? r.json() : null)
+        .then(oiRes => {
+          if (cancelled) return;
+          const oiList: OICoin[] = Array.isArray(oiRes?.data) ? oiRes.data
+            : Array.isArray(oiRes?.coins) ? oiRes.coins
+            : Array.isArray(oiRes) ? oiRes : [];
+          oiList.sort((a, b) => Math.abs((b.pct24h ?? b.oiChange24hPct ?? b.change24h ?? 0)) - Math.abs((a.pct24h ?? a.oiChange24hPct ?? a.change24h ?? 0)));
+          setTopOI(oiList.slice(0, 5));
+        })
+        .catch(() => {});
+
+      const fgP = fetch('/api/fear-greed')
+        .then(r => r.ok ? r.json() : null)
+        .then(fgRes => { if (!cancelled) setFearGreed(fgRes); })
+        .catch(() => {});
+
+      const etfP = fetch('/api/etf?type=btc')
+        .then(r => r.ok ? r.json() : null)
+        .then(etfRes => { if (!cancelled) setEtf(etfRes); })
+        .catch(() => {});
+
+      const tickersP = fetch('/api/tickers')
+        .then(r => r.ok ? r.json() : null)
+        .then(tickersRes => {
+          if (cancelled) return;
+          const tickerArr: TickerData[] = Array.isArray(tickersRes) ? tickersRes
+            : Array.isArray(tickersRes?.data) ? tickersRes.data : [];
+          setTickers(tickerArr);
+        })
+        .catch(() => {});
+
+      // Long/Short — fire ALL symbols in parallel with the rest, not
+      // after them. Each row updates as it lands.
+      const lsSymbols = ['BTC', 'ETH', 'SOL', 'BNB', 'XRP'];
+      const lsP = Promise.all(lsSymbols.map(async (s): Promise<LSItem | null> => {
+        try {
+          const r = await fetch(`/api/longshort?symbol=${s}USDT`);
+          if (!r.ok) return null;
+          const j = await r.json();
+          if (!j || j.fallback) return null;
+          return {
+            symbol: s,
+            longRatio:  (typeof j.longRatio  === 'number' ? j.longRatio  : 0) / 100,
+            shortRatio: (typeof j.shortRatio === 'number' ? j.shortRatio : 0) / 100,
+          };
+        } catch { return null; }
+      })).then(lsBatch => {
+        if (cancelled) return;
+        const lsClean: LSItem[] = [];
+        for (const item of lsBatch) if (item) lsClean.push(item);
         setLsRatios(lsClean);
-        setFearGreed(fgRes);
-        setEtf(etfRes);
-        // Tickers — major coins for the price tracker
-        const tickerArr: TickerData[] = Array.isArray(tickersRes) ? tickersRes : Array.isArray(tickersRes?.data) ? tickersRes.data : [];
-        setTickers(tickerArr);
-      } catch (e) {
-        console.error('Home data load error:', e);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+      });
+
+      // Once every batched promise has settled, drop the global
+      // loading flag. This still only gates the section-level
+      // <SkeletonRows /> in Funding / OI / LS / ExchangeBlock —
+      // tiles + sentiment row paint progressively above and do
+      // NOT depend on this flag. allSettled (not all) so one
+      // bad endpoint doesn't pin the page in skeleton state.
+      Promise.allSettled([
+        fundingP, newsP, healthP, marketsP, moversP,
+        liqP, oiP, fgP, etfP, tickersP, lsP,
+      ]).then(() => { if (!cancelled) setLoading(false); });
     }
     load();
     // Auto-refresh every 60s. Without this the homepage loaded data
