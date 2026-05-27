@@ -54,7 +54,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/smart-money',        priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/smart-money/leaderboard', priority: 0.7, changeFrequency: 'hourly' as const },
     // /smart-money-composite → /smart-money (consolidated May 2026).
-    { path: '/whale-liq',          priority: 0.7, changeFrequency: 'hourly' as const },
+    // /whale-liq → /liquidations (consolidated May 2026). Was still in
+    // the sitemap, training Google to keep crawling a 308 — same fix
+    // as the funding-flips / skew / etc. block above.
     // /wallet-tracker → /watch (consolidated May 2026).
     { path: '/watch',              priority: 0.7, changeFrequency: 'weekly' as const },
     { path: '/trader-watch',       priority: 0.6, changeFrequency: 'daily' as const },
@@ -63,7 +65,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/outperformers',      priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/trending-tokens',    priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/memecoin-radar',     priority: 0.7, changeFrequency: 'hourly' as const },
-    { path: '/listing-radar',      priority: 0.7, changeFrequency: 'hourly' as const },
+    // /listing-radar → /listings (consolidated May 2026). Excluded so
+    // Google stops re-crawling the redirect.
 
     // ─── Market context + cycle ───────────────────────────────────────
     { path: '/fear-greed',         priority: 0.7, changeFrequency: 'daily' as const },
