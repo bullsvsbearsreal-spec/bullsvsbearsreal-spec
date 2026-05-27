@@ -13,7 +13,7 @@ import {
   ChevronRight, Database, Wifi, ChevronDown, Hash, Scale, Webhook,
 } from 'lucide-react';
 import { ALL_EXCHANGES } from '@/lib/constants';
-import { PRO_TIER_PER_MINUTE, FREE_TIER_PER_MINUTE, FREE_TIER_PER_DAY } from '@/lib/api/rate-limit';
+import { PRO_TIER_PER_MINUTE, TRADER_TIER_PER_MINUTE, FREE_TIER_PER_MINUTE, FREE_TIER_PER_DAY } from '@/lib/api/rate-limit';
 import { copyToClipboard } from '@/lib/copyToClipboard';
 
 interface ApiKeyInfo {
@@ -1037,7 +1037,7 @@ console.log(data);`,
             />
             <FaqItem
               q="What happens if I hit the rate limit?"
-              a={`You'll get a 429 response with a Retry-After header. The limit resets every minute. Every successful 200 response includes X-RateLimit-Limit / X-RateLimit-Remaining / X-RateLimit-Reset headers so you can throttle pre-emptively. Pro tier bumps this to ${PRO_TIER_PER_MINUTE}/min with no daily cap — free during launch on /pricing.`}
+              a={`You'll get a 429 response with a Retry-After header. The limit resets every minute. Every successful 200 response includes X-RateLimit-Limit / X-RateLimit-Remaining / X-RateLimit-Reset headers so you can throttle pre-emptively. Paid tiers bump the cap: Trader ${TRADER_TIER_PER_MINUTE}/min, Pro ${PRO_TIER_PER_MINUTE}/min (no daily cap), Whale unlimited — all free during launch on /pricing.`}
             />
             <FaqItem
               q="Are exchange fees baked into the /arbitrage net spread?"

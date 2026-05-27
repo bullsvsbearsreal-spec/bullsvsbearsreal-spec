@@ -1351,7 +1351,7 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
               </div>
               <CodeBlock title="Error response format">{`{
   "success": false,
-  "error": "Rate limit exceeded. Pro tier offers ${PRO_TIER_PER_MINUTE}/min with no daily cap — free during launch on /pricing."
+  "error": "Rate limit exceeded. Paid tiers bump this cap (Trader, Pro, Whale on /pricing) — all free during launch."
 }`}</CodeBlock>
             </Section>
 
