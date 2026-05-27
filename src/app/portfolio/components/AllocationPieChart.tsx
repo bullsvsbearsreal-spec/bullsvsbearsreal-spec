@@ -17,8 +17,9 @@ interface PieDataItem {
 export default function AllocationPieChart({ pieData }: { pieData: PieDataItem[] }) {
   if (pieData.length === 0) {
     return (
-      <div className="h-60 flex items-center justify-center text-neutral-600 text-sm">
-        No data
+      <div className="h-60 flex flex-col items-center justify-center gap-1 text-neutral-500 text-sm px-6 text-center">
+        <span>No holdings yet</span>
+        <span className="text-[11px] text-neutral-600">Add a row above to see the allocation breakdown.</span>
       </div>
     );
   }

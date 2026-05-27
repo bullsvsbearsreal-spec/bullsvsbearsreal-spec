@@ -965,7 +965,7 @@ export default function ScreenerPage() {
                     ? 'No symbols match — try a different search'
                     : conditions.length > 0
                     ? 'No symbols match your filters — try adjusting criteria'
-                    : 'No data available.'}
+                    : "Couldn't load market data right now. Refresh in a few seconds, or check /api/v1/status for upstream health."}
                 </span>
               </div>
             </div>
