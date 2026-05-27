@@ -161,15 +161,18 @@ export function OpsTab({ onToast }: { onToast: (msg: string, ok: boolean) => voi
             asLink
           />
         </Link>
-        <Link href="/admin-panel/email-preview" style={{ textDecoration: 'none' }}>
+        {/* Email preview is a server-rendered HTML index at the API
+            route itself — no SPA page needed. Opens in a new tab so the
+            admin keeps the dashboard context. */}
+        <a href="/api/admin/email-preview" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'none' }}>
           <ActionCard
             icon={<Mail className="w-4 h-4" />}
             label="Email tester"
-            desc="Render any template (verify / welcome / cutover) with sample data + send a test to your own address."
+            desc="Render any template (welcome / commission / payout / cutover) with sample data. Opens in new tab."
             tone="safe"
             asLink
           />
-        </Link>
+        </a>
       </div>
 
       {/* Aggregator venue board */}
