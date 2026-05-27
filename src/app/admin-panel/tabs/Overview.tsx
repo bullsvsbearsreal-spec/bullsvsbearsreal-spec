@@ -131,14 +131,16 @@ export function OverviewTab({ stats, audit, sysHealth }: {
         const admins = findCount('admin');
         const mods = findCount('moderator');
         const marketers = findCount('marketer');
+        const support = findCount('support');
         const advisors = findCount('advisor');
-        const anyElevated = owners + admins + mods + marketers + advisors > 0;
+        const anyElevated = owners + admins + mods + marketers + support + advisors > 0;
         if (!stats || !anyElevated) return null;
         const ROLES = [
           { id: 'owner',     label: 'Owner',     count: owners,    color: '#f87171' },
           { id: 'admin',     label: 'Admin',     count: admins,    color: '#fbbf24' },
           { id: 'moderator', label: 'Moderator', count: mods,      color: '#7dd3fc' },
           { id: 'marketer',  label: 'Marketer',  count: marketers, color: '#c4b5fd' },
+          { id: 'support',   label: 'Support',   count: support,   color: '#fdba74' },
           { id: 'advisor',   label: 'Advisor',   count: advisors,  color: '#86efac' },
         ];
         return (
@@ -148,7 +150,7 @@ export function OverviewTab({ stats, audit, sysHealth }: {
                 Manage <ArrowRight style={{ width: 11, height: 11 }} />
               </Link>
             } />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 18 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 12, marginBottom: 18 }}>
               {ROLES.map(r => (
                 <div key={r.id} style={{
                   background: 'var(--hub-darker)',

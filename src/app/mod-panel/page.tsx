@@ -17,17 +17,21 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Shield, Users, Bug, RefreshCw, Lock, MessageSquare } from 'lucide-react';
+import { Shield, Users, Bug, RefreshCw, Lock, MessageSquare, AlertTriangle } from 'lucide-react';
 import { UsersTab }    from '../admin-panel/tabs/Users';
 import { FeedbackTab } from '../admin-panel/tabs/Feedback';
+import { TicketsTab }  from '../admin-panel/tabs/Tickets';
+import { SpamTab }     from '../admin-panel/tabs/Spam';
 import { ToastHost, type ToastMsg } from '../admin-panel/components/primitives';
 
-type TabId = 'users' | 'feedback';
+type TabId = 'tickets' | 'users' | 'spam' | 'feedback';
 
 interface TabDef { id: TabId; label: string; icon: React.ReactNode }
 const TABS: TabDef[] = [
-  { id: 'users',    label: 'Users',    icon: <Users style={{ width: 13, height: 13 }} /> },
-  { id: 'feedback', label: 'Feedback', icon: <Bug   style={{ width: 13, height: 13 }} /> },
+  { id: 'tickets',  label: 'Tickets',  icon: <MessageSquare  style={{ width: 13, height: 13 }} /> },
+  { id: 'users',    label: 'Users',    icon: <Users          style={{ width: 13, height: 13 }} /> },
+  { id: 'spam',     label: 'Spam',     icon: <AlertTriangle  style={{ width: 13, height: 13 }} /> },
+  { id: 'feedback', label: 'Feedback', icon: <Bug            style={{ width: 13, height: 13 }} /> },
 ];
 
 export default function ModPanelPage() {
@@ -35,16 +39,16 @@ export default function ModPanelPage() {
   const role = session?.user?.role;
   const allowed = role === 'owner' || role === 'admin' || role === 'moderator';
 
-  const [active, setActive] = useState<TabId>('users');
+  const [active, setActive] = useState<TabId>('tickets');
   const [toast, setToast] = useState<ToastMsg | null>(null);
 
   // Hash routing
   useEffect(() => {
     if (status !== 'authenticated') return;
     const apply = () => {
-      const id = (window.location.hash.replace(/^#/, '') || 'users') as TabId;
+      const id = (window.location.hash.replace(/^#/, '') || 'tickets') as TabId;
       if (TABS.some(t => t.id === id)) setActive(id);
-      else { setActive('users'); history.replaceState(null, '', '#users'); }
+      else { setActive('tickets'); history.replaceState(null, '', '#tickets'); }
     };
     apply();
     window.addEventListener('hashchange', apply);
@@ -172,7 +176,15 @@ export default function ModPanelPage() {
               but the underlying API enforces admin-only; if a moderator
               tries to click them they'll see a 403 toast. */}
           <div style={{ minHeight: 400 }}>
+            {active === 'tickets'  && <TicketsTab  onToast={fireToast} viewerId={session.user.id} />}
             {active === 'users'    && <UsersTab    onToast={fireToast} viewerRole={role} />}
+            {active === 'spam'     && (
+              <SpamTab onToast={fireToast} onOpenUser={(id) => {
+                // Cross-tab handoff: stash id and bounce to Users tab
+                try { sessionStorage.setItem('admin:open_user_id', id); } catch {}
+                goTab('users');
+              }} />
+            )}
             {active === 'feedback' && <FeedbackTab onToast={fireToast} />}
           </div>
         </div>

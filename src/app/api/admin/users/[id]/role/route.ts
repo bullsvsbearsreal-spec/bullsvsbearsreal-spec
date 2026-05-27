@@ -22,10 +22,10 @@ export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
-// Roles ordered owner > admin > moderator/marketer > advisor > user.
+// Roles ordered owner > admin > moderator/marketer/support > advisor > user.
 //   · Owner-only grants/revokes: 'owner', 'admin'
-//   · Admin or owner can grant/revoke: 'moderator', 'marketer', 'advisor', 'user'
-const VALID_ROLES = ['owner', 'admin', 'moderator', 'marketer', 'advisor', 'user'] as const;
+//   · Admin or owner can grant/revoke: 'moderator', 'marketer', 'support', 'advisor', 'user'
+const VALID_ROLES = ['owner', 'admin', 'moderator', 'marketer', 'support', 'advisor', 'user'] as const;
 const OWNER_ONLY_ROLES = new Set<string>(['owner', 'admin']);
 const VALID_TIERS = ['free', 'trader', 'pro', 'whale'] as const;
 

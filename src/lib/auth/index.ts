@@ -122,12 +122,12 @@ export async function isOwner(userId: string): Promise<boolean> {
  * per-role panel auth gates. Returns 'user' on any DB hiccup so a
  * transient outage doesn't accidentally grant elevated access.
  */
-export async function getUserRole(userId: string): Promise<'owner' | 'admin' | 'moderator' | 'marketer' | 'advisor' | 'user'> {
+export async function getUserRole(userId: string): Promise<'owner' | 'admin' | 'moderator' | 'marketer' | 'support' | 'advisor' | 'user'> {
   try {
     const db = getSQL();
     const rows = await db`SELECT role FROM users WHERE id = ${userId}`;
     const r = rows[0]?.role;
-    if (r === 'owner' || r === 'admin' || r === 'moderator' || r === 'marketer' || r === 'advisor') return r;
+    if (r === 'owner' || r === 'admin' || r === 'moderator' || r === 'marketer' || r === 'support' || r === 'advisor') return r;
     return 'user';
   } catch {
     return 'user';
@@ -251,7 +251,8 @@ export async function requireAdminOrAdvisor(): Promise<Response | null> {
             || role === 'admin'
             || role === 'advisor'
             || role === 'moderator'
-            || role === 'marketer';
+            || role === 'marketer'
+            || role === 'support';
     if (!ok) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
@@ -309,6 +310,25 @@ export async function requireMarketer(): Promise<Response | null> {
   return null;
 }
 
+/**
+ * Support gate — anyone who can handle support tickets:
+ *   owner | admin | moderator | support
+ * Marketers cannot read tickets (they have their own panel + we don't
+ * want a marketer reading user-private support content); advisors are
+ * dashboard-read-only and explicitly excluded.
+ */
+export async function requireSupport(): Promise<Response | null> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const role = await getUserRole(session.user.id);
+  if (role !== 'support' && role !== 'moderator' && role !== 'admin' && role !== 'owner') {
+    return Response.json({ error: 'Support access required' }, { status: 403 });
+  }
+  return null;
+}
+
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PostgresAdapter(),
   session: { strategy: 'jwt' }, // JWT sessions — no DB session lookups
@@ -358,7 +378,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         // Type union must mirror src/types/next-auth.d.ts — the cast
         // is what TypeScript sees in `session.user.role === 'owner'`
         // checks across the codebase.
-        session.user.role = token.role as 'owner' | 'admin' | 'moderator' | 'marketer' | 'advisor' | 'user';
+        session.user.role = token.role as 'owner' | 'admin' | 'moderator' | 'marketer' | 'support' | 'advisor' | 'user';
       }
       if (token?.billingTier) {
         session.user.billingTier = token.billingTier as 'free' | 'trader' | 'pro' | 'whale';

@@ -105,6 +105,7 @@ export default function AdminPanelPage() {
   useEffect(() => {
     if (role === 'moderator') window.location.replace('/mod-panel');
     else if (role === 'marketer') window.location.replace('/marketing-panel');
+    else if (role === 'support') window.location.replace('/support-panel');
   }, [role]);
 
   // Tabs filtered by role — advisor only sees overview + growth.

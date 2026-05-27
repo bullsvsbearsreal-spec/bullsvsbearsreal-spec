@@ -43,7 +43,7 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
     | { kind: 'tier'; tier: 'free' | 'trader' | 'pro' | 'whale' }
     | { kind: 'suspend' }
     | { kind: 'unsuspend' }
-    | { kind: 'role'; role: 'admin' | 'moderator' | 'marketer' | 'advisor' | 'user' }
+    | { kind: 'role'; role: 'admin' | 'moderator' | 'marketer' | 'support' | 'advisor' | 'user' }
   >(null);
   const [bulkBusy, setBulkBusy] = useState(false);
 
@@ -273,6 +273,7 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
                 { id: 'admin',     label: 'Admin',     color: '#fbbf24' },
                 { id: 'moderator', label: 'Mod',       color: '#7dd3fc' },
                 { id: 'marketer',  label: 'Mkt',       color: '#c4b5fd' },
+                { id: 'support',   label: 'Support',   color: '#fdba74' },
                 { id: 'advisor',   label: 'Advisor',   color: '#86efac' },
               ] as const
             ).map(r => {
@@ -360,6 +361,7 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
                 ...(viewerRole === 'owner' ? [{ id: 'admin', label: 'Admin', color: '#fbbf24' }] : []),
                 { id: 'moderator', label: 'Mod',     color: '#7dd3fc' },
                 { id: 'marketer',  label: 'Mkt',     color: '#c4b5fd' },
+                { id: 'support',   label: 'Support', color: '#fdba74' },
                 { id: 'advisor',   label: 'Advisor', color: '#86efac' },
                 { id: 'user',      label: 'User',    color: '#94a3b8' },
               ] as const
@@ -505,6 +507,7 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
                           admin:     { label: 'ADMIN',   color: '#fcd34d', bg: 'rgba(251, 191, 36, 0.18)' },
                           moderator: { label: 'MOD',     color: '#7dd3fc', bg: 'rgba(125, 211, 252, 0.18)' },
                           marketer:  { label: 'MKT',     color: '#c4b5fd', bg: 'rgba(196, 181, 253, 0.18)' },
+                          support:   { label: 'SUPPORT', color: '#fdba74', bg: 'rgba(253, 186, 116, 0.18)' },
                           advisor:   { label: 'ADVISOR', color: '#86efac', bg: 'rgba(52, 211, 153, 0.18)' },
                         };
                         const pill = ROLE_PILL[u.role];

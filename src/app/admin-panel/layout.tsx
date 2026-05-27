@@ -40,6 +40,7 @@ export default async function AdminPanelLayout({ children }: { children: React.R
   }
   if (role === 'moderator') redirect('/mod-panel');
   if (role === 'marketer')  redirect('/marketing-panel');
+  if (role === 'support')   redirect('/support-panel');
   if (role !== 'owner' && role !== 'admin' && role !== 'advisor') {
     redirect('/');
   }

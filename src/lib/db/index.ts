@@ -467,6 +467,99 @@ async function _doInitDB(): Promise<void> {
       AND tier != 'whale'
   `;
 
+  // ─── Acquisition tracking (May 2026) ────────────────────────────────
+  // UTM + referer captured at first landing via the `ih_acq` cookie set
+  // by middleware. Stamped onto the user row at signup. Nullable for
+  // organic / direct / no-cookie traffic. Indexed for the marketing
+  // panel breakdown — both source and campaign get their own indexes
+  // so "filter to utm_source=twitter" stays fast even at 100k+ users.
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS acq_utm_source TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS acq_utm_medium TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS acq_utm_campaign TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS acq_referer TEXT`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS acq_landing_path TEXT`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_users_acq_source ON users(acq_utm_source) WHERE acq_utm_source IS NOT NULL`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_users_acq_campaign ON users(acq_utm_campaign) WHERE acq_utm_campaign IS NOT NULL`;
+
+  // ─── Marketing campaigns (May 2026, marketing-panel) ────────────────
+  // Admin-registered campaigns. The Campaign tracker matches
+  // users.acq_utm_campaign against `slug` to compute per-campaign KPIs
+  // (signups, retention, free→paid conversion, optional budget ROI).
+  await sql`
+    CREATE TABLE IF NOT EXISTS marketing_campaigns (
+      id BIGSERIAL PRIMARY KEY,
+      slug TEXT NOT NULL UNIQUE,
+      name TEXT NOT NULL,
+      notes TEXT,
+      target_url TEXT,
+      budget_usd NUMERIC(12,2),
+      created_by_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      archived_at TIMESTAMPTZ DEFAULT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_marketing_campaigns_slug ON marketing_campaigns(slug)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_marketing_campaigns_active ON marketing_campaigns(archived_at) WHERE archived_at IS NULL`;
+
+  // ─── Support tickets (May 2026, mod-panel / support-panel) ──────────
+  // Claim-based queue: status='open' until a mod hits "Claim", then
+  // moves to 'claimed'. status='resolved' closes the thread. 'wontfix'
+  // is for spam / duplicates. Priority is mod-set, defaults to normal.
+  await sql`
+    CREATE TABLE IF NOT EXISTS support_tickets (
+      id BIGSERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      subject TEXT NOT NULL,
+      body TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open',
+      priority TEXT NOT NULL DEFAULT 'normal',
+      assignee_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      claimed_at TIMESTAMPTZ DEFAULT NULL,
+      resolved_at TIMESTAMPTZ DEFAULT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status, created_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_support_tickets_assignee ON support_tickets(assignee_user_id) WHERE assignee_user_id IS NOT NULL`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_support_tickets_user ON support_tickets(user_id, created_at DESC)`;
+
+  // support_ticket_messages — reply thread per ticket. is_internal=true
+  // = mod-only note, never shown to the customer. author can be NULL
+  // after account deletion (FK SET NULL).
+  await sql`
+    CREATE TABLE IF NOT EXISTS support_ticket_messages (
+      id BIGSERIAL PRIMARY KEY,
+      ticket_id BIGINT NOT NULL REFERENCES support_tickets(id) ON DELETE CASCADE,
+      author_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      body TEXT NOT NULL,
+      is_internal BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_support_ticket_messages_ticket ON support_ticket_messages(ticket_id, created_at)`;
+
+  // ─── API request log (May 2026, developer dashboard) ────────────────
+  // One row per /api/v1/* request. Pruned by aggregate-page-views cron
+  // after 30 days (high-volume table). Feeds /developer (self-serve)
+  // and the admin API analytics tab. ip_hash is sha256(ip + DAILY_SALT)
+  // so we can count unique hits without storing raw IP.
+  await sql`
+    CREATE TABLE IF NOT EXISTS api_request_log (
+      id BIGSERIAL PRIMARY KEY,
+      user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      api_key_id TEXT,
+      endpoint TEXT NOT NULL,
+      status_code INTEGER NOT NULL,
+      duration_ms INTEGER,
+      ip_hash TEXT,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_api_request_log_user_time ON api_request_log(user_id, created_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_api_request_log_endpoint_time ON api_request_log(endpoint, created_at DESC)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_api_request_log_time ON api_request_log(created_at DESC)`;
+
   // Admin monitoring metrics (DB size history, coverage snapshots)
   await sql`
     CREATE TABLE IF NOT EXISTS admin_monitoring (

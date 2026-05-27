@@ -69,7 +69,7 @@ export interface AdminUser {
 }
 
 type Tier = 'free' | 'trader' | 'pro' | 'whale';
-type Role = 'owner' | 'admin' | 'moderator' | 'marketer' | 'advisor' | 'user';
+type Role = 'owner' | 'admin' | 'moderator' | 'marketer' | 'support' | 'advisor' | 'user';
 const TIERS: Tier[] = ['free', 'trader', 'pro', 'whale'];
 
 // Visual order + tones for role buttons. owner/admin are owner-only;
@@ -79,6 +79,7 @@ const ROLE_ORDER: { id: Role; label: string; color: string; ownerOnly: boolean }
   { id: 'admin',     label: 'Admin',     color: '#fbbf24', ownerOnly: true  },
   { id: 'moderator', label: 'Moderator', color: '#7dd3fc', ownerOnly: false },
   { id: 'marketer',  label: 'Marketer',  color: '#c4b5fd', ownerOnly: false },
+  { id: 'support',   label: 'Support',   color: '#fdba74', ownerOnly: false },
   { id: 'advisor',   label: 'Advisor',   color: '#86efac', ownerOnly: false },
   { id: 'user',      label: 'User',      color: '#a3a3a3', ownerOnly: false },
 ];

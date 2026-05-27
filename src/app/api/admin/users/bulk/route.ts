@@ -28,7 +28,7 @@ const VALID_TIERS = ['free', 'trader', 'pro', 'whale'] as const;
 // Roles a non-owner admin can grant in bulk. owner + admin are reserved
 // for the per-user role-change flow with type-to-confirm; bulk-granting
 // elevated roles to N users at once is too dangerous to expose.
-const BULK_ROLES_ADMIN  = ['moderator', 'marketer', 'advisor', 'user'] as const;
+const BULK_ROLES_ADMIN  = ['moderator', 'marketer', 'support', 'advisor', 'user'] as const;
 const BULK_ROLES_OWNER  = ['admin', ...BULK_ROLES_ADMIN] as const;
 const MAX_BATCH = 200;
 

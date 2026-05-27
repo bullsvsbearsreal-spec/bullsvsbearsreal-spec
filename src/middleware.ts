@@ -157,6 +157,15 @@ export function handleV1Route(request: NextRequest): NextResponse {
 const REFERRAL_COOKIE_NAME = 'ih_ref';
 const REFERRAL_COOKIE_MAX_AGE_SEC = 90 * 24 * 3600;
 
+// Acquisition cookie — bundles utm_source/medium/campaign + first-touch
+// referer + landing path into a single base64-JSON cookie. First-touch
+// attribution: we set it once and don't overwrite (so a user who clicks
+// a campaign link in week 1 and a different link in week 4 still gets
+// credit to the week-1 campaign). 90-day window matches `ih_ref`.
+const ACQ_COOKIE_NAME = 'ih_acq';
+const ACQ_COOKIE_MAX_AGE_SEC = 90 * 24 * 3600;
+const ACQ_MAX_VALUE_LEN = 120;     // per-field cap to keep cookie under 2KB
+
 /**
  * If the URL carries `?ref=CODE`, stamp a long-lived cookie so signup
  * can attribute the user even if they wander off + come back later.
@@ -167,6 +176,67 @@ const REFERRAL_COOKIE_MAX_AGE_SEC = 90 * 24 * 3600;
  * resolution against the users table happens server-side at signup, so
  * a garbage cookie just no-ops there.
  */
+/**
+ * First-touch acquisition cookie. Captures utm_* + referer + landing
+ * path on the first non-API hit and stamps a 90-day cookie. Signup
+ * route reads + persists to users.acq_* columns. Idempotent: if the
+ * cookie is already set we leave it alone (don't overwrite a 1st-touch
+ * with a 7th-touch).
+ *
+ * Why a JSON-encoded cookie instead of 5 separate cookies: tighter
+ * header budget on routes that already lug NextAuth's session cookies
+ * (which can be 4-6KB on their own with role+tier+billingTier claims),
+ * and a single cookie means a single `Set-Cookie` round-trip.
+ */
+function handleAcquisitionCookie(request: NextRequest): NextResponse | null {
+  // Skip if already set — first-touch wins.
+  if (request.cookies.get(ACQ_COOKIE_NAME)) return null;
+
+  const sp = request.nextUrl.searchParams;
+  const utm_source   = sp.get('utm_source');
+  const utm_medium   = sp.get('utm_medium');
+  const utm_campaign = sp.get('utm_campaign');
+  const referer      = request.headers.get('referer') || '';
+
+  // Heuristic: if we have no UTMs AND the referer is empty or same-host,
+  // there's nothing to record — don't stamp a noise cookie that just
+  // says "direct traffic". Leaving the cookie empty lets a later visit
+  // with real attribution set it for real.
+  const hostHeader = request.headers.get('host') ?? '';
+  let externalReferer = '';
+  if (referer) {
+    try {
+      const refUrl = new URL(referer);
+      if (refUrl.host !== hostHeader) {
+        externalReferer = referer.slice(0, ACQ_MAX_VALUE_LEN);
+      }
+    } catch { /* malformed referer — skip */ }
+  }
+  if (!utm_source && !utm_medium && !utm_campaign && !externalReferer) return null;
+
+  const payload = {
+    s: utm_source?.slice(0, ACQ_MAX_VALUE_LEN) ?? null,
+    m: utm_medium?.slice(0, ACQ_MAX_VALUE_LEN) ?? null,
+    c: utm_campaign?.slice(0, ACQ_MAX_VALUE_LEN) ?? null,
+    r: externalReferer || null,
+    p: request.nextUrl.pathname.slice(0, ACQ_MAX_VALUE_LEN),
+    t: Date.now(),
+  };
+  const encoded = Buffer.from(JSON.stringify(payload), 'utf8').toString('base64url');
+
+  const res = NextResponse.next();
+  res.cookies.set({
+    name: ACQ_COOKIE_NAME,
+    value: encoded,
+    maxAge: ACQ_COOKIE_MAX_AGE_SEC,
+    httpOnly: false,
+    sameSite: 'lax',
+    path: '/',
+    secure: process.env.NODE_ENV === 'production',
+  });
+  return res;
+}
+
 function handleReferralCookie(request: NextRequest): NextResponse | null {
   const ref = request.nextUrl.searchParams.get('ref');
   if (!ref) return null;
@@ -199,6 +269,14 @@ export function middleware(request: NextRequest) {
     // Non-API path: ship the response with the cookie set + skip the
     // API rate-limit branches below.
     return refRes;
+  }
+
+  // First-touch acquisition cookie — only stamps on non-API pages where
+  // a real human landed. We don't capture API/cron/admin hits since
+  // those aren't "landings" in the marketing sense.
+  if (!pathname.startsWith('/api/')) {
+    const acqRes = handleAcquisitionCookie(request);
+    if (acqRes) return acqRes;
   }
 
   // Only rate-limit API routes

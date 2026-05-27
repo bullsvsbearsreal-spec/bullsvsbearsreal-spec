@@ -15,6 +15,37 @@ import { isValidInviteCodeShape } from '@/lib/invite';
 import { verifyTurnstileToken, readClientIp } from '@/lib/auth/turnstile';
 
 const REFERRAL_COOKIE_NAME = 'ih_ref';
+const ACQ_COOKIE_NAME = 'ih_acq';
+
+interface AcquisitionPayload {
+  utm_source: string | null;
+  utm_medium: string | null;
+  utm_campaign: string | null;
+  referer: string | null;
+  landing_path: string | null;
+}
+
+/** Decode the first-touch acquisition cookie set by middleware. Returns
+ *  all nulls if the cookie is missing or malformed. Safe — never throws. */
+function readAcquisitionCookie(req: Request): AcquisitionPayload {
+  const empty: AcquisitionPayload = { utm_source: null, utm_medium: null, utm_campaign: null, referer: null, landing_path: null };
+  const cookieHeader = req.headers.get('cookie') || '';
+  const m = cookieHeader.match(new RegExp(`(?:^|; )${ACQ_COOKIE_NAME}=([^;]+)`));
+  if (!m) return empty;
+  try {
+    const json = Buffer.from(m[1], 'base64url').toString('utf8');
+    const o = JSON.parse(json);
+    return {
+      utm_source:   typeof o?.s === 'string' ? o.s.slice(0, 120) : null,
+      utm_medium:   typeof o?.m === 'string' ? o.m.slice(0, 120) : null,
+      utm_campaign: typeof o?.c === 'string' ? o.c.slice(0, 120) : null,
+      referer:      typeof o?.r === 'string' ? o.r.slice(0, 120) : null,
+      landing_path: typeof o?.p === 'string' ? o.p.slice(0, 120) : null,
+    };
+  } catch {
+    return empty;
+  }
+}
 
 /** Read the affiliate referral code from either the request body (signup
  *  form may forward it) or the `ih_ref` cookie set by middleware. Body
@@ -113,9 +144,20 @@ export async function POST(req: Request) {
     // Hash password and create user (unverified)
     const hash = await bcrypt.hash(password, 12);
     const id = crypto.randomUUID();
+    // First-touch acquisition stamp — read the ih_acq cookie set by
+    // middleware on landing. All-nulls is fine (organic/direct traffic).
+    const acq = readAcquisitionCookie(req);
     const rows = await db`
-      INSERT INTO users (id, name, email, password_hash, referred_by_code)
-      VALUES (${id}, ${safeName}, ${email}, ${hash}, ${safeReferralCode})
+      INSERT INTO users (
+        id, name, email, password_hash, referred_by_code,
+        acq_utm_source, acq_utm_medium, acq_utm_campaign,
+        acq_referer, acq_landing_path
+      )
+      VALUES (
+        ${id}, ${safeName}, ${email}, ${hash}, ${safeReferralCode},
+        ${acq.utm_source}, ${acq.utm_medium}, ${acq.utm_campaign},
+        ${acq.referer}, ${acq.landing_path}
+      )
       RETURNING id, name, email
     `;
 
