@@ -164,7 +164,7 @@ export default function ConnectionsPage() {
           <p className="text-sm text-neutral-500 mb-4">
             Connect your CEX keys + DEX wallets after signing in to your InfoHub account.
           </p>
-          <a href="/login" className="inline-block bg-hub-yellow text-black text-sm font-semibold px-4 py-2 rounded-md hover:bg-hub-yellow/90">
+          <a href="/login?callbackUrl=/account/connections" className="inline-block bg-hub-yellow text-black text-sm font-semibold px-4 py-2 rounded-md hover:bg-hub-yellow/90">
             Sign in
           </a>
         </main>

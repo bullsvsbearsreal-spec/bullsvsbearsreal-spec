@@ -1,10 +1,16 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { ArrowRight, Lock } from 'lucide-react';
 import { ALL_EXCHANGES } from '@/lib/constants';
 
 export default function AuthOverlay() {
+  // Capture the gated path so the user lands back here after login,
+  // not on /dashboard. Without this, every gated page hits Sign In and
+  // dumps the user on the dashboard — they then have to re-navigate.
+  const pathname = usePathname() || '/';
+  const loginHref = `/login?callbackUrl=${encodeURIComponent(pathname)}`;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md">
       <div className="w-full max-w-md mx-4 text-center">
@@ -29,7 +35,7 @@ export default function AuthOverlay() {
 
           <div className="space-y-3">
             <Link
-              href="/login"
+              href={loginHref}
               className="w-full h-12 rounded-xl bg-hub-yellow hover:bg-hub-yellow-light text-black font-semibold text-sm flex items-center justify-center gap-2 shadow-lg shadow-hub-yellow/20 transition-all"
             >
               Sign In

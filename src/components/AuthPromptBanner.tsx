@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { X, LogIn, Cloud, Mail, Key, Shield } from 'lucide-react';
 
 type PromptVariant = 'cloud-sync' | 'email-alerts' | 'api-key' | 'generic';
@@ -50,6 +51,9 @@ export default function AuthPromptBanner({
 }: AuthPromptBannerProps) {
   const storageKey = `infohub-auth-prompt-${dismissKey || variant}`;
   const [dismissed, setDismissed] = useState(false);
+  // Preserve current path so post-login lands back here, not /dashboard.
+  const pathname = usePathname() || '/';
+  const loginHref = `/login?callbackUrl=${encodeURIComponent(pathname)}`;
 
   useEffect(() => {
     try {
@@ -78,7 +82,7 @@ export default function AuthPromptBanner({
           <p className="text-xs text-neutral-400 leading-relaxed">{config.description}</p>
         </div>
         <Link
-          href="/login"
+          href={loginHref}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-hub-yellow text-black text-xs font-semibold hover:bg-hub-yellow/90 transition-colors flex-shrink-0"
         >
           <LogIn className="w-3 h-3" />

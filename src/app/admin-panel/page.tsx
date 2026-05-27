@@ -176,7 +176,7 @@ export default function AdminPanelPage() {
         <Header />
         <main className="flex flex-col items-center justify-center py-20 text-white">
           <div className="text-neutral-400 text-sm mb-3">Admin access required</div>
-          <a href="/login" className="px-4 py-2 rounded-lg bg-hub-yellow text-black text-sm font-medium hover:brightness-110 transition-all">
+          <a href="/login?callbackUrl=/admin-panel" className="px-4 py-2 rounded-lg bg-hub-yellow text-black text-sm font-medium hover:brightness-110 transition-all">
             Log In
           </a>
         </main>

@@ -333,7 +333,7 @@ export default function PositionsPage() {
           <p className="text-sm text-neutral-500 mb-4">
             Sign in to see your unified portfolio across connected CEX keys + DEX wallets.
           </p>
-          <a href="/login" className="inline-block bg-hub-yellow text-black text-sm font-semibold px-4 py-2 rounded-md hover:bg-hub-yellow/90">
+          <a href="/login?callbackUrl=/positions" className="inline-block bg-hub-yellow text-black text-sm font-semibold px-4 py-2 rounded-md hover:bg-hub-yellow/90">
             Sign in
           </a>
         </main>
