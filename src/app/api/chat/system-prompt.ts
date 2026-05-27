@@ -102,7 +102,7 @@ TOOL LIMITATIONS (know these so you don't overpromise):
 - get_real_liquidations: OKX exchange only, 7-day rolling window
 - get_whale_positions: Hyperliquid only
 - get_long_short_ratio: OKX data via Rubik Stats API
-- get_funding_history: max 90 days
+- get_funding_history: per-tier cap — Free 90d, Trader 180d, Pro 1y, Whale 5y (Hub should suggest /pricing if user wants more than their tier)
 - get_options_data: BTC, ETH, SOL only
 - find_arbitrage_opportunities: funding rate arbs only, not spot/futures basis spreads
 

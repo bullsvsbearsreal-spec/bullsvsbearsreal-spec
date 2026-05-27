@@ -33,7 +33,7 @@ export async function GET() {
     },
     endpoints: [
       { path: '/api/v1/funding', method: 'GET', description: `Real-time funding rates across ${ALL_EXCHANGES.length} exchanges` },
-      { path: '/api/v1/funding/history', method: 'GET', description: 'Historical funding rate snapshots (up to 14 days)' },
+      { path: '/api/v1/funding/history', method: 'GET', description: 'Historical funding rate snapshots — per-tier cap (Free 90d / Trader 180d / Pro 1y / Whale 5y)' },
       { path: '/api/v1/funding-arb', method: 'GET', description: 'Cross-exchange funding-rate arbitrage scanner with annualised yield' },
       { path: '/api/v1/arbitrage', method: 'GET', description: 'Funding rate arbitrage opportunities with feasibility grades' },
       { path: '/api/v1/openinterest', method: 'GET', description: 'Open interest data across exchanges' },
