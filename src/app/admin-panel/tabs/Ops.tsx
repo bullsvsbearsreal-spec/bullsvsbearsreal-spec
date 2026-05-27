@@ -16,6 +16,13 @@ import type { AuditEntry } from '../types';
  *  4. Broadcast + email tester (links — heavy enough to deserve sub-pages)
  *  5. Paged audit log with CSV export
  */
+interface WorkerStatus {
+  worker: string;
+  lastBeat: string;
+  status: string;
+  stale: boolean;
+}
+
 export function OpsTab({ onToast }: { onToast: (msg: string, ok: boolean) => void }) {
   const [aggregator, setAggregator] = useState<null | { venues: { name: string; connected: boolean; lastUpdate: number; errors: number }[]; total: number; connected: number }>(null);
   const [audit, setAudit] = useState<AuditEntry[]>([]);
@@ -23,6 +30,8 @@ export function OpsTab({ onToast }: { onToast: (msg: string, ok: boolean) => voi
   const [auditMore, setAuditMore] = useState(true);
   const [confirm, setConfirm] = useState<null | { kind: 'flush' | 'trigger'; cron?: string }>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  // Worker heartbeats — keyed by cron id (without the "cron:" prefix).
+  const [workers, setWorkers] = useState<Record<string, WorkerStatus>>({});
 
   // Load aggregator health
   useEffect(() => {
@@ -43,6 +52,29 @@ export function OpsTab({ onToast }: { onToast: (msg: string, ok: boolean) => voi
     };
     load();
     const id = setInterval(load, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Worker heartbeats — 60s poll. Used to surface "last ran Xm ago"
+  // next to each cron trigger button so the operator can spot stalled
+  // crons before clicking.
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/admin/monitoring/workers');
+        if (!res.ok) return;
+        const d = await res.json();
+        const map: Record<string, WorkerStatus> = {};
+        for (const w of (d.workers ?? []) as WorkerStatus[]) {
+          // Strip "cron:" prefix so the map keys match our button ids.
+          const id = w.worker.startsWith('cron:') ? w.worker.slice(5) : w.worker;
+          map[id] = w;
+        }
+        setWorkers(map);
+      } catch {}
+    };
+    load();
+    const id = setInterval(load, 60_000);
     return () => clearInterval(id);
   }, []);
 
@@ -119,25 +151,57 @@ export function OpsTab({ onToast }: { onToast: (msg: string, ok: boolean) => voi
       <SectionHead title="Cron Jobs" icon={<Activity style={{ width: 13, height: 13 }} />} />
       <Card title="Manual trigger · last-known schedules from CLAUDE.md">
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
-          {crons.map(c => (
-            <button
-              key={c.id}
-              onClick={() => setConfirm({ kind: 'trigger', cron: c.id })}
-              disabled={busy === c.id}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
-                padding: '8px 10px', background: 'rgba(255,255,255,0.02)',
-                border: '1px solid var(--hub-border-subtle)', borderRadius: 6,
-                cursor: 'pointer', textAlign: 'left',
-              }}
-            >
-              <div style={{ minWidth: 0 }}>
-                <div style={{ fontSize: 12, color: '#fff', fontWeight: 600 }}>{c.label}</div>
-                <div style={{ fontSize: 10, color: 'var(--fg-faint)', fontFamily: 'var(--font-mono)' }}>/api/cron/{c.id}</div>
-              </div>
-              <span style={{ fontSize: 10, color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)', flexShrink: 0 }}>{c.schedule}</span>
-            </button>
-          ))}
+          {crons.map(c => {
+            const w = workers[c.id];
+            // Color the freshness dot: green = beat within last 5 min,
+            // amber = within last 30 min, rose = stale (>30) or missing.
+            let dotColor: string;
+            let dotTitle: string;
+            if (!w) {
+              dotColor = 'var(--hub-border-subtle)';
+              dotTitle = 'No heartbeat recorded (cron may not be wired to upsertWorkerHeartbeat)';
+            } else {
+              const age = Date.now() - new Date(w.lastBeat).getTime();
+              if (w.stale || age > 30 * 60_000) {
+                dotColor = '#f87171';
+                dotTitle = `Stale — last beat ${Math.floor(age / 60_000)}m ago`;
+              } else if (age > 5 * 60_000) {
+                dotColor = '#fcd34d';
+                dotTitle = `Last beat ${Math.floor(age / 60_000)}m ago`;
+              } else {
+                dotColor = '#34d399';
+                dotTitle = `Healthy — last beat ${Math.max(1, Math.floor(age / 1000))}s ago`;
+              }
+            }
+            return (
+              <button
+                key={c.id}
+                onClick={() => setConfirm({ kind: 'trigger', cron: c.id })}
+                disabled={busy === c.id}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8,
+                  padding: '8px 10px', background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid var(--hub-border-subtle)', borderRadius: 6,
+                  cursor: 'pointer', textAlign: 'left',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+                  <span title={dotTitle} style={{
+                    width: 8, height: 8, borderRadius: '50%', background: dotColor,
+                    flexShrink: 0,
+                    boxShadow: dotColor === '#34d399' ? '0 0 4px rgba(52,211,153,0.5)' : undefined,
+                  }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 12, color: '#fff', fontWeight: 600 }}>{c.label}</div>
+                    <div style={{ fontSize: 10, color: 'var(--fg-faint)', fontFamily: 'var(--font-mono)' }}>
+                      {w ? fmtAgo(w.lastBeat) : '/api/cron/' + c.id}
+                    </div>
+                  </div>
+                </div>
+                <span style={{ fontSize: 10, color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)', flexShrink: 0 }}>{c.schedule}</span>
+              </button>
+            );
+          })}
         </div>
       </Card>
 
