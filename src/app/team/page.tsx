@@ -82,7 +82,10 @@ const milestones = [
   { date: '2025 Q1', event: 'Smart money + on-chain perps (Hyperliquid, GMX) integrated.' },
   { date: '2025 Q3', event: 'Funding arb scanner, leverage dashboard, public API.' },
   { date: '2026 Q1', event: 'Portfolio sync + alerts across CEX and DEX wallets.' },
-  { date: '2026 Q2', event: 'KOL feed, Telegram bot v2, browser push, deeper alerts.' },
+  // Was "KOL feed, Telegram bot v2, browser push, deeper alerts" —
+  // Bot v2 (AI chat) shipped then got rolled back to alerts-only
+  // @InfoHubRadarBot. Updated to reflect what actually still exists.
+  { date: '2026 Q2', event: 'KOL feed, browser push, 4-tier pricing + affiliate program, copy-trader workflow.' },
 ];
 
 export default function TeamPage() {
