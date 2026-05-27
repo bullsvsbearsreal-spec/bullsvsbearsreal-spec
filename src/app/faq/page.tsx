@@ -51,7 +51,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'General',
     q: 'Can I refer friends to InfoHub?',
-    a: 'Yes \u2014 every signed-in user has a personal invite link at /invite. Friends who sign up through your link are counted on your dashboard, and you both lock in the launch perks: Pro + Whale tier features unlocked free while we onboard early users (see /pricing), plus day-one supporter recognition when paid billing turns on. The link is the same forever, so bookmark /invite and re-use it. (Separate from /referrals, which is exchange affiliate links \u2014 those are for getting fee discounts when signing up to Bybit, MEXC, Hyperliquid, etc.)',
+    a: 'Yes \u2014 every signed-in user has a personal invite link at /invite. Friends who sign up through your link are counted on your dashboard, and you both lock in the launch perks: Trader, Pro + Whale tier features unlocked free while we onboard early users (see /pricing), plus day-one supporter recognition when paid billing turns on. The link is the same forever, so bookmark /invite and re-use it. (Separate from /referrals, which is exchange affiliate links \u2014 those are for getting fee discounts when signing up to Bybit, MEXC, Hyperliquid, etc.)',
   },
   {
     category: 'General',
