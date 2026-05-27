@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import { FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT, ALL_EXCHANGES } from '@/lib/constants/exchanges';
 import {
   FREE_TIER_PER_MINUTE,
+  TRADER_TIER_PER_MINUTE,
   PRO_TIER_PER_MINUTE,
   FREE_TIER_PER_DAY,
+  TRADER_TIER_PER_DAY,
 } from '@/lib/api/rate-limit';
 
 export const runtime = 'nodejs';
@@ -60,19 +62,28 @@ export async function GET() {
       { path: '/api/v1/openapi', method: 'GET', description: 'OpenAPI 3.1 spec for codegen + Swagger / Postman import (no auth)' },
     ],
     tiers: {
+      // All 4 tiers documented. Was missing trader after the May 2026
+      // 4-tier restructure — API consumers reading this endpoint to
+      // size their requests saw a Free→Pro gap with no $12 Trader
+      // option, so might've over-paid for Pro when Trader was enough.
       free: {
         rateLimit: `${FREE_TIER_PER_MINUTE} req/min`,
         dailyLimit: `${FREE_TIER_PER_DAY.toLocaleString()} req/day`,
       },
+      trader: {
+        rateLimit: `${TRADER_TIER_PER_MINUTE} req/min`,
+        dailyLimit: `${TRADER_TIER_PER_DAY.toLocaleString()} req/day`,
+        note: 'Free during launch — see /pricing. $12/mo after launch.',
+      },
       pro: {
         rateLimit: `${PRO_TIER_PER_MINUTE} req/min`,
         dailyLimit: 'unlimited',
-        note: 'Free during launch — see /pricing',
+        note: 'Free during launch — see /pricing. $29/mo after launch.',
       },
       whale: {
         rateLimit: 'unlimited',
         dailyLimit: 'unlimited',
-        note: 'Free during launch — see /pricing. Includes custom webhooks, raw WebSocket feed, team seats.',
+        note: 'Free during launch — see /pricing. $59/mo after launch. Includes custom webhooks, raw WebSocket feed, team seats.',
       },
     },
     documentation: 'https://info-hub.io/developers/docs',
