@@ -214,8 +214,14 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/privacy',           label: 'Privacy',        color: MUTE, icon: I.shield },
     { href: '/terms',             label: 'Terms',          color: MUTE, icon: I.book },
   ]},
-  { id: 'admin', label: 'Admin', items: [
-    { href: '/admin-panel',       label: 'Admin Panel',    color: REKT, icon: I.shield },
+  // 'team' section — populated per-role at render time so each role sees
+  // only the panels they can reach. owner/admin see all four; mod sees
+  // mod-panel; marketer sees marketing-panel; support sees support-panel.
+  { id: 'team', label: 'Team', items: [
+    { href: '/admin-panel',       label: 'Admin Panel',     color: REKT, icon: I.shield },
+    { href: '/mod-panel',         label: 'Mod Panel',       color: REKT, icon: I.shield },
+    { href: '/marketing-panel',   label: 'Marketing Panel', color: REKT, icon: I.shield },
+    { href: '/support-panel',     label: 'Support Panel',   color: REKT, icon: I.shield },
   ]},
 ];
 
@@ -236,14 +242,33 @@ export default function Sidebar({ sections = DEFAULT_SECTIONS, className }: Side
     : 0;
   const pathname = usePathname();
   const { data: session } = useSession();
-  const isAdmin = (session?.user as { role?: string } | undefined)?.role === 'admin';
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  const isOwner    = role === 'owner';
+  const isAdmin    = role === 'admin' || isOwner;
+  const isAdvisor  = role === 'advisor';
+  const isMod      = role === 'moderator' || isAdmin;
+  const isMarketer = role === 'marketer'  || isAdmin;
+  const isSupport  = role === 'support'   || isMod;
   const [q, setQ] = useState('');
 
-  // Hide Admin section unless the current user has the admin role
-  const visibleSections = useMemo(
-    () => isAdmin ? sections : sections.filter(s => s.id !== 'admin'),
-    [sections, isAdmin]
-  );
+  // Per-link gates inside the Team section — each panel surface is shown
+  // only when the current role can actually reach it. Other sections
+  // pass through untouched.
+  const visibleSections = useMemo(() => {
+    return sections
+      .map(s => {
+        if (s.id !== 'team') return s;
+        const items = s.items.filter(it => {
+          if (it.href === '/admin-panel')     return isAdmin || isAdvisor;
+          if (it.href === '/mod-panel')       return isMod;
+          if (it.href === '/marketing-panel') return isMarketer;
+          if (it.href === '/support-panel')   return isSupport;
+          return true;
+        });
+        return { ...s, items };
+      })
+      .filter(s => s.items.length > 0);
+  }, [sections, isAdmin, isAdvisor, isMod, isMarketer, isSupport]);
 
   const filtered = useMemo(() => {
     if (!q.trim()) return visibleSections;

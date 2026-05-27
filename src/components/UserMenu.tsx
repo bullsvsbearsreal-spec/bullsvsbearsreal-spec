@@ -82,8 +82,18 @@ export default function UserMenu() {
     .join('')
     .toUpperCase()
     .slice(0, 2);
-  const isAdmin = session.user?.role === 'admin';
-  const isAdvisor = session.user?.role === 'advisor';
+  // Per-role flags. Owner is the strongest role — bundled into isAdmin
+  // for the "can do admin things" gate. Each panel surface below uses
+  // these to decide whether to render its menu entry.
+  const role = session.user?.role;
+  const isOwner    = role === 'owner';
+  const isAdmin    = role === 'admin' || isOwner;       // owner ⊇ admin
+  const isAdvisor  = role === 'advisor';
+  const isMod      = role === 'moderator' || isAdmin;   // owner/admin can see mod panel
+  const isMarketer = role === 'marketer'  || isAdmin;
+  const isSupport  = role === 'support'   || isMod;     // support ⊆ mod (tickets-only)
+  const hasAnyPanel = isAdmin || isAdvisor || role === 'moderator' || role === 'marketer' || role === 'support';
+
   const tier = resolveUserTier({ role: session.user?.role, billingTier: session.user?.billingTier ?? null });
   const tierBranding = TIER_BRANDING[tier];
   const showUpgradeCta = tier !== 'whale' && !isAdmin;
@@ -213,14 +223,37 @@ export default function UserMenu() {
             Affiliate · 20%
           </MenuLink>
 
-          {/* ─── Admin (gated) ─────────────────────────────────────── */}
-          {(isAdmin || isAdvisor) && (
+          {/* ─── Team panels (role-gated) ──────────────────────────────
+              Owner & admin see every panel.
+              Advisor → admin (read-only Overview + Growth).
+              Moderator → mod-panel.
+              Marketer → marketing-panel.
+              Support → support-panel.
+              Owner gets a small OWNER badge on Admin Panel for clarity. */}
+          {hasAnyPanel && (
             <>
               <div className="h-px bg-white/[0.04] my-1" />
-              <SectionLabel>Admin</SectionLabel>
-              <MenuLink href="/admin-panel" onClick={() => setOpen(false)} icon={<Shield />} accent="amber">
-                Admin Panel
-              </MenuLink>
+              <SectionLabel>{isOwner ? 'Owner' : isAdmin ? 'Admin' : 'Team'}</SectionLabel>
+              {(isAdmin || isAdvisor) && (
+                <MenuLink href="/admin-panel" onClick={() => setOpen(false)} icon={<Shield />} accent="amber">
+                  Admin Panel
+                </MenuLink>
+              )}
+              {isMod && (
+                <MenuLink href="/mod-panel" onClick={() => setOpen(false)} icon={<Shield />} accent="amber">
+                  Mod Panel
+                </MenuLink>
+              )}
+              {isMarketer && (
+                <MenuLink href="/marketing-panel" onClick={() => setOpen(false)} icon={<Shield />} accent="amber">
+                  Marketing Panel
+                </MenuLink>
+              )}
+              {isSupport && (
+                <MenuLink href="/support-panel" onClick={() => setOpen(false)} icon={<Shield />} accent="amber">
+                  Support Panel
+                </MenuLink>
+              )}
               {isAdmin && (
                 <MenuLink href="/health" onClick={() => setOpen(false)} icon={<Activity />} accent="amber">
                   Endpoint health
