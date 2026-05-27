@@ -22,7 +22,7 @@ type RecencyFilter = 'all' | '24h' | '7d' | '30d';
  *   - Click row → UserDrawer
  *   - CSV export top-right
  */
-export function UsersTab({ onToast }: { onToast: (msg: string, ok: boolean) => void }) {
+export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: boolean) => void; viewerRole?: string }) {
   const [users, setUsers] = useState<AdminUser[] | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -465,6 +465,7 @@ export function UsersTab({ onToast }: { onToast: (msg: string, ok: boolean) => v
 
       <UserDrawer
         user={openUser}
+        viewerRole={viewerRole}
         onClose={() => setOpenUser(null)}
         onChanged={() => { load(true); setOpenUser(null); }}
         onToast={onToast}

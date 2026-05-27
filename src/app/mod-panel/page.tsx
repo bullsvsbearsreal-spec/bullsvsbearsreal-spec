@@ -172,7 +172,7 @@ export default function ModPanelPage() {
               but the underlying API enforces admin-only; if a moderator
               tries to click them they'll see a 403 toast. */}
           <div style={{ minHeight: 400 }}>
-            {active === 'users'    && <UsersTab    onToast={fireToast} />}
+            {active === 'users'    && <UsersTab    onToast={fireToast} viewerRole={role} />}
             {active === 'feedback' && <FeedbackTab onToast={fireToast} />}
           </div>
         </div>

@@ -69,15 +69,37 @@ export interface AdminUser {
 }
 
 type Tier = 'free' | 'trader' | 'pro' | 'whale';
+type Role = 'owner' | 'admin' | 'moderator' | 'marketer' | 'advisor' | 'user';
 const TIERS: Tier[] = ['free', 'trader', 'pro', 'whale'];
 
-export function UserDrawer({ user, onClose, onChanged, onToast }: {
+// Visual order + tones for role buttons. owner/admin are owner-only;
+// everything else can be set by any admin/owner.
+const ROLE_ORDER: { id: Role; label: string; color: string; ownerOnly: boolean }[] = [
+  { id: 'owner',     label: 'Owner',     color: '#f87171', ownerOnly: true  },
+  { id: 'admin',     label: 'Admin',     color: '#fbbf24', ownerOnly: true  },
+  { id: 'moderator', label: 'Moderator', color: '#7dd3fc', ownerOnly: false },
+  { id: 'marketer',  label: 'Marketer',  color: '#c4b5fd', ownerOnly: false },
+  { id: 'advisor',   label: 'Advisor',   color: '#86efac', ownerOnly: false },
+  { id: 'user',      label: 'User',      color: '#a3a3a3', ownerOnly: false },
+];
+
+export function UserDrawer({ user, viewerRole, onClose, onChanged, onToast }: {
   user: AdminUser | null;
+  /** Role of the admin currently viewing the drawer — controls which
+   *  role-change buttons are clickable. Defaults to 'admin'. */
+  viewerRole?: 'owner' | 'admin' | string;
   onClose: () => void;
   onChanged: () => void;
   onToast: (msg: string, ok: boolean) => void;
 }) {
-  const [pending, setPending] = useState<null | { kind: 'tier'; tier: Tier } | { kind: 'suspend' } | { kind: 'unsuspend' }>(null);
+  const isOwnerViewer = viewerRole === 'owner';
+  const [pending, setPending] = useState<
+    | null
+    | { kind: 'tier'; tier: Tier }
+    | { kind: 'role'; role: Role }
+    | { kind: 'suspend' }
+    | { kind: 'unsuspend' }
+  >(null);
   const [activity, setActivity] = useState<ActivityEvent[] | null>(null);
   const [activityErr, setActivityErr] = useState<string | null>(null);
   const [notes, setNotes] = useState<UserNote[] | null>(null);
@@ -189,6 +211,25 @@ export function UserDrawer({ user, onClose, onChanged, onToast }: {
       onChanged();
     } catch (e) {
       onToast(`Tier change failed: ${e instanceof Error ? e.message : 'unknown'}`, false);
+    }
+    setPending(null);
+  };
+
+  const performRole = async (role: Role, reason: string) => {
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/role`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role, reason }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        throw new Error(j.error || `HTTP ${res.status}`);
+      }
+      onToast(`${user.email || user.id} role → ${role}`, true);
+      onChanged();
+    } catch (e) {
+      onToast(`Role change failed: ${e instanceof Error ? e.message : 'unknown'}`, false);
     }
     setPending(null);
   };
@@ -431,6 +472,55 @@ export function UserDrawer({ user, onClose, onChanged, onToast }: {
           </Section>
 
           {/* Tier override */}
+          {/* Role override — owner sees all 6 buttons; non-owner admins
+              see only the 4 non-restricted ones (moderator/marketer/
+              advisor/user). The current role is highlighted + disabled. */}
+          <Section title="Role">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6 }}>
+              {ROLE_ORDER.map(r => {
+                const isCurrent = user.role === r.id;
+                const blockedByPolicy = r.ownerOnly && !isOwnerViewer;
+                const isOwnerTarget = user.role === 'owner';
+                // Non-owner admins can't demote the current owner
+                const demoteBlocked = isOwnerTarget && !isOwnerViewer;
+                const disabled = isCurrent || blockedByPolicy || demoteBlocked;
+                const title = blockedByPolicy
+                  ? 'Owner role required'
+                  : demoteBlocked
+                    ? 'Only owner can change owner'
+                    : isCurrent
+                      ? 'Current role'
+                      : `Change role to ${r.label}`;
+                return (
+                  <button
+                    key={r.id}
+                    type="button"
+                    onClick={() => !disabled && setPending({ kind: 'role', role: r.id })}
+                    disabled={disabled}
+                    title={title}
+                    style={{
+                      padding: '8px 6px',
+                      background: isCurrent ? `${r.color}22` : 'rgba(255,255,255,0.03)',
+                      border: `1px solid ${isCurrent ? r.color + '55' : 'var(--hub-border-subtle)'}`,
+                      borderRadius: 6,
+                      color: isCurrent ? r.color : (blockedByPolicy || demoteBlocked) ? 'var(--fg-faint)' : '#fff',
+                      fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+                      cursor: disabled ? 'not-allowed' : 'pointer',
+                      opacity: (blockedByPolicy || demoteBlocked) ? 0.4 : 1,
+                    }}
+                  >
+                    {r.label}{isCurrent && ' ✓'}
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{ fontSize: 10, color: 'var(--fg-faint)', marginTop: 8 }}>
+              {isOwnerViewer
+                ? 'You can grant any role. Demoting the owner requires explicit confirmation.'
+                : 'Owner + admin roles are owner-only. Demoting the current owner is also blocked.'}
+            </div>
+          </Section>
+
           <Section title="Tier Override">
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 6 }}>
               {TIERS.map(t => {
@@ -503,6 +593,29 @@ export function UserDrawer({ user, onClose, onChanged, onToast }: {
       </aside>
 
       {/* Confirm modals */}
+      <ConfirmModal
+        open={pending?.kind === 'role'}
+        title={pending?.kind === 'role' ? `Change role to ${pending.role.toUpperCase()}?` : ''}
+        description={
+          pending?.kind === 'role' ? (
+            <>This will set <strong style={{ color: '#fff' }}>{user.email || user.id}</strong>&apos;s role to{' '}
+            <code style={{ fontFamily: 'var(--font-mono)', color: ROLE_ORDER.find(r => r.id === pending.role)?.color ?? '#fff' }}>
+              {pending.role}
+            </code>{' '}
+            and write to audit_log.
+            {(pending.role === 'owner' || pending.role === 'admin') && (
+              <> <strong style={{ color: '#fca5a5' }}>This grants high-trust access.</strong></>
+            )}
+            </>
+          ) : ''
+        }
+        confirmText={pending?.kind === 'role' && (pending.role === 'owner' || pending.role === 'admin') ? 'GRANT' : 'CONFIRM'}
+        confirmLabel="Change role"
+        danger={pending?.kind === 'role' && (pending.role === 'owner' || pending.role === 'admin')}
+        onConfirm={(reason) => pending?.kind === 'role' ? performRole(pending.role, reason) : Promise.resolve()}
+        onCancel={() => setPending(null)}
+      />
+
       <ConfirmModal
         open={pending?.kind === 'tier'}
         title={pending?.kind === 'tier' ? `Change tier to ${pending.tier.toUpperCase()}?` : ''}

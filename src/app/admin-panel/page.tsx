@@ -520,7 +520,7 @@ export default function AdminPanelPage() {
           {/* Tab content */}
           <div style={{ minHeight: 400 }}>
             {active === 'overview'      && <OverviewTab      stats={stats} audit={audit} sysHealth={sysHealth} />}
-            {active === 'users'         && isAdmin && <UsersTab        onToast={fireToast} />}
+            {active === 'users'         && isAdmin && <UsersTab        onToast={fireToast} viewerRole={role} />}
             {active === 'growth'        && <GrowthTab        stats={stats} />}
             {active === 'revenue'       && <RevenueTab />}
             {active === 'api'           && isAdmin && <ApiAnalyticsTab />}
