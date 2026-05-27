@@ -19,6 +19,7 @@
 
 import { NextRequest } from 'next/server';
 import { GET as standardAlertsHandler } from '../alerts/route';
+import { upsertWorkerHeartbeat } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -36,5 +37,14 @@ export async function GET(request: NextRequest) {
     headers: request.headers,
     method: 'GET',
   });
-  return standardAlertsHandler(delegated);
+  const startedAt = Date.now();
+  const res = await standardAlertsHandler(delegated);
+  // Heartbeat under our own worker key so the Ops tab shows whale-alerts
+  // as healthy (and distinct from standard /cron/alerts). The delegated
+  // handler heartbeats `cron:alerts` itself.
+  await upsertWorkerHeartbeat('cron:whale-alerts', res.ok ? 'ok' : 'degraded', {
+    elapsedMs: Date.now() - startedAt,
+    status: res.status,
+  }).catch(() => {});
+  return res;
 }

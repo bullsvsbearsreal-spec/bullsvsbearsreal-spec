@@ -8,7 +8,7 @@
  * Security: CRON_SECRET Bearer token (same as every other /api/cron/*).
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { isDBConfigured, prunePageViews, recordAuditEvent } from '@/lib/db';
+import { isDBConfigured, prunePageViews, recordAuditEvent, upsertWorkerHeartbeat } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -29,6 +29,8 @@ export async function GET(request: NextRequest) {
   const elapsedMs = Date.now() - startedAt;
 
   await recordAuditEvent('cron_aggregate_page_views', { pruned, elapsedMs }).catch(() => {});
+  // Heartbeat so the admin Ops tab can show this cron as healthy.
+  await upsertWorkerHeartbeat('cron:aggregate-page-views', 'ok', { pruned, elapsedMs }).catch(() => {});
 
   return NextResponse.json({ success: true, pruned, elapsedMs });
 }

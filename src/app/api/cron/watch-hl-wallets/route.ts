@@ -9,6 +9,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { runWatchTick } from '@/lib/hl-watch-runner';
+import { upsertWorkerHeartbeat } from '@/lib/db';
 import { verifyCronAuth } from '../_auth';
 
 export const runtime = 'nodejs';
@@ -19,7 +20,22 @@ export const maxDuration = 60;
 export async function GET(req: NextRequest) {
   const authErr = verifyCronAuth(req);
   if (authErr) return authErr;
-  const stats = await runWatchTick();
+  const startedAt = Date.now();
+  let status: 'ok' | 'degraded' = 'ok';
+  let stats: any;
+  try {
+    stats = await runWatchTick();
+  } catch (e) {
+    status = 'degraded';
+    stats = { error: e instanceof Error ? e.message : String(e) };
+  }
+  await upsertWorkerHeartbeat('cron:watch-hl-wallets', status, {
+    elapsedMs: Date.now() - startedAt,
+    ...(stats && typeof stats === 'object' ? stats : {}),
+  }).catch(() => {});
+  if (status === 'degraded') {
+    return NextResponse.json(stats, { status: 500 });
+  }
   return NextResponse.json(stats);
 }
 
