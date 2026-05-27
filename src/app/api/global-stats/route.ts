@@ -76,8 +76,12 @@ async function fetchDerivativesOI(): Promise<number | null> {
       if (typeof oi === 'number' && oi > 0) totalOiBtc += oi;
     }
 
-    // Get BTC price from simple/price endpoint, fallback to reasonable estimate
-    let btcPrice = 90000;
+    // Get BTC price from simple/price endpoint. Fallback is used only
+    // when CoinGecko's price endpoint fails — chosen to be a sane
+    // "spring 2026" anchor. Refresh roughly when BTC moves $15k+ from
+    // this anchor (i.e. crosses $90k or drops below $60k) so the
+    // total-OI USD figure doesn't drift outrageously during outages.
+    let btcPrice = 75_000;
     if (priceRes.ok) {
       try {
         const priceData = await priceRes.json();

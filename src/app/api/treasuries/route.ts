@@ -94,7 +94,10 @@ async function fetchBTCPrice(): Promise<{ price: number; source: 'yahoo' | 'coin
   const gecko = await fetchBTCPriceCoinGecko();
   if (gecko) return { price: gecko, source: 'coingecko' };
 
-  return { price: 68_000, source: 'fallback' }; // conservative fallback
+  // Fallback only when both Yahoo + CoinGecko fail. Sane "spring 2026"
+  // anchor so total $USD held doesn't display outrageously wrong during
+  // upstream outages. Refresh when BTC moves $15k+ from this anchor.
+  return { price: 75_000, source: 'fallback' };
 }
 
 /* --- Main handler --------------------------------------------------------- */

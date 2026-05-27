@@ -33,6 +33,11 @@ interface TreasuryResponse {
   totalValueUsd: number;
   holders: Holder[];
   entityCount: number;
+  // ISO date of the last manual verification of the holder list — the
+  // API exposes this so the page can be honest about freshness instead
+  // of letting users assume the holdings are real-time. Surfaced as a
+  // chip next to the totals.
+  dataAsOf?: string;
   timestamp: number;
 }
 
@@ -334,6 +339,17 @@ export default function BitcoinTreasuriesPage() {
 
         {data && (
           <>
+            {/* Data-freshness disclosure — the holder list is manually
+                maintained from filings + media reports, not live. Surface
+                the as-of date so users don't assume real-time. The BTC
+                price IS live (Yahoo + CoinGecko fallback). */}
+            {data.dataAsOf && (
+              <p className="text-[11px] text-neutral-500 mb-3 leading-relaxed">
+                <span className="font-semibold text-neutral-400">Holdings as of {data.dataAsOf}</span>{' '}
+                — list compiled from public filings, blockchain data, and media reports. BTC price is live.
+              </p>
+            )}
+
             {/* Summary Cards */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
               {/* Total BTC Held */}
