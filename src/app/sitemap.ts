@@ -151,6 +151,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/alerts',             priority: 0.6, changeFrequency: 'daily' as const },
     { path: '/portfolio',          priority: 0.5, changeFrequency: 'daily' as const },
     { path: '/positions',          priority: 0.5, changeFrequency: 'daily' as const },
+    { path: '/contact',            priority: 0.4, changeFrequency: 'monthly' as const },
     { path: '/referrals',          priority: 0.4, changeFrequency: 'monthly' as const },
     { path: '/leaderboard',        priority: 0.6, changeFrequency: 'hourly' as const },
     { path: '/invite/leaderboard', priority: 0.5, changeFrequency: 'hourly' as const },

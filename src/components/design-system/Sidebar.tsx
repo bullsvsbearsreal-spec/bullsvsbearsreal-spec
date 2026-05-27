@@ -207,6 +207,7 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
   { id: 'resources', label: 'Resources', items: [
     { href: '/guides',            label: 'Guides',         color: MUTE, icon: I.book },
     { href: '/faq',               label: 'FAQ',            color: MUTE, icon: I.book },
+    { href: '/contact',           label: 'Contact Support', color: ACC, icon: I.user },
     { href: '/api-docs',          label: 'API Docs',       color: MUTE, icon: I.book },
     { href: '/developers',        label: 'Developers',     color: MUTE, icon: I.cube },
     { href: '/brand',             label: 'Brand',          color: MUTE, icon: I.heart },
