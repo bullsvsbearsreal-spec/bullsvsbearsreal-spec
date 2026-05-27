@@ -104,7 +104,9 @@ export function OverviewTab({ stats, audit, sysHealth }: {
           {!stats?.users?.recent ? (
             <SkeletonBlock w="100%" h={120} />
           ) : stats.users.recent.length === 0 ? (
-            <div style={{ fontSize: 11, color: 'var(--fg-faint)', textAlign: 'center', padding: '20px 0' }}>No signups yet.</div>
+            <div style={{ fontSize: 11, color: 'var(--fg-faint)', textAlign: 'center', padding: '20px 0' }}>
+              No signups yet — waiting for the first user.
+            </div>
           ) : (
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
               <thead>
@@ -116,7 +118,18 @@ export function OverviewTab({ stats, audit, sysHealth }: {
               </thead>
               <tbody>
                 {stats.users.recent.map(r => (
-                  <tr key={r.id} style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+                  <tr
+                    key={r.id}
+                    title="Click to open in user drawer"
+                    onClick={() => {
+                      try { sessionStorage.setItem('admin:open_user_id', r.id); } catch {}
+                      // navigate to the Users tab; the tab listens on mount and pops the drawer.
+                      window.location.hash = 'users';
+                    }}
+                    style={{ borderTop: '1px solid rgba(255,255,255,0.03)', cursor: 'pointer', transition: 'background 120ms' }}
+                    onMouseEnter={e => { (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(255,255,255,0.02)'; }}
+                    onMouseLeave={e => { (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; }}
+                  >
                     <td style={{ padding: '8px 0' }}>
                       <div style={{ color: '#fff', fontWeight: 600, maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {r.name || (r.email ? r.email.split('@')[0] : '(no name)')}
@@ -147,7 +160,9 @@ export function OverviewTab({ stats, audit, sysHealth }: {
           </Link>
         }>
           {audit.length === 0 ? (
-            <div style={{ fontSize: 11, color: 'var(--fg-faint)', textAlign: 'center', padding: '20px 0' }}>No recent admin actions.</div>
+            <div style={{ fontSize: 11, color: 'var(--fg-faint)', textAlign: 'center', padding: '20px 0' }}>
+              No admin actions yet. Anything mutating (cron trigger, broadcast, tier change, suspend) writes here.
+            </div>
           ) : (
             <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
               <thead>

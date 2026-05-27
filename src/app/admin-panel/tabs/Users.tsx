@@ -74,6 +74,21 @@ export function UsersTab({ onToast }: { onToast: (msg: string, ok: boolean) => v
 
   useEffect(() => { load(); }, [load]);
 
+  // Cross-tab handoff: Overview's Recent Signups row click stashes a
+  // userId in sessionStorage, then navigates to #users. Once the user
+  // list loads, find that user and open the drawer.
+  useEffect(() => {
+    if (!users) return;
+    let pending: string | null = null;
+    try { pending = sessionStorage.getItem('admin:open_user_id'); } catch {}
+    if (!pending) return;
+    const target = users.find(u => u.id === pending);
+    if (target) {
+      setOpenUser(target);
+      try { sessionStorage.removeItem('admin:open_user_id'); } catch {}
+    }
+  }, [users]);
+
   const filtered = useMemo(() => {
     if (!users) return [];
     const q = search.trim().toLowerCase();

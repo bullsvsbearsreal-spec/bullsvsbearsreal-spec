@@ -109,6 +109,8 @@ export default function AdminPanelPage() {
   const [openBugCount, setOpenBugCount] = useState<{ high: number; total: number } | null>(null);
   const [refreshing, setRefreshing]     = useState(false);
   const [lastRefresh, setLastRefresh]   = useState<Date | null>(null);
+  const [onlineNow, setOnlineNow]       = useState<number | null>(null);
+  const [now, setNow] = useState<number>(() => Date.now()); // ticks every second for the countdown
   const [toast, setToast] = useState<ToastMsg | null>(null);
 
   // ─── Hash routing ────────────────────────────────────────────────
@@ -203,6 +205,31 @@ export default function AdminPanelPage() {
     const id = setInterval(load, 120_000); // 2-min auto-refresh
     return () => clearInterval(id);
   }, [hasAccess, load]);
+
+  // Online-now widget — fast 30s poll, independent of the heavier 2-min
+  // stats poll so the "live right now" indicator stays responsive.
+  useEffect(() => {
+    if (!hasAccess) return;
+    let cancelled = false;
+    const pull = () => {
+      fetch('/api/admin/online-now?minutes=5')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (!cancelled && d && typeof d.count === 'number') setOnlineNow(d.count); })
+        .catch(() => {});
+    };
+    pull();
+    const id = setInterval(pull, 30_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [hasAccess]);
+
+  // 1Hz tick — feeds the "next refresh in Xs" countdown so the header
+  // doesn't go stale-looking between polls. Cheap enough — single
+  // setState every second when the dashboard is open.
+  useEffect(() => {
+    if (!hasAccess) return;
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [hasAccess]);
 
   // ─── Red-banner conditions ───────────────────────────────────────
   const bannerMessages = useMemo(() => {
@@ -311,15 +338,43 @@ export default function AdminPanelPage() {
                 Live operations + product analytics · refresh every 2 min
               </p>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              {lastRefresh && (
-                <span style={{
-                  fontSize: 10, color: 'var(--fg-faint)',
-                  fontFamily: 'var(--font-mono)',
-                }}>
-                  Updated {lastRefresh.toLocaleTimeString()}
-                </span>
-              )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+              {/* Online-now pill — pulsing dot + count of users seen in last 5 min */}
+              <span title="Users active in the last 5 minutes" style={{
+                display: 'inline-flex', alignItems: 'center', gap: 6,
+                padding: '4px 10px',
+                background: 'rgba(34, 197, 94, 0.08)',
+                border: '1px solid rgba(34, 197, 94, 0.25)',
+                borderRadius: 999,
+                fontSize: 10.5, fontWeight: 700,
+                letterSpacing: '0.06em', textTransform: 'uppercase',
+                color: '#86efac',
+                fontFamily: 'var(--font-mono)',
+              }}>
+                <span className="pulse-success" style={{
+                  width: 7, height: 7, borderRadius: '50%',
+                  background: '#22c55e',
+                  boxShadow: '0 0 6px rgba(34,197,94,0.7)',
+                }} />
+                {onlineNow === null ? '—' : onlineNow} online
+              </span>
+
+              {/* Refresh countdown — text-only, ticks every second */}
+              {lastRefresh && (() => {
+                const elapsed = Math.max(0, Math.floor((now - lastRefresh.getTime()) / 1000));
+                const nextIn = Math.max(0, 120 - elapsed);
+                const mm = Math.floor(nextIn / 60);
+                const ss = String(nextIn % 60).padStart(2, '0');
+                return (
+                  <span title={`Last refresh at ${lastRefresh.toLocaleTimeString()}`} style={{
+                    fontSize: 10, color: 'var(--fg-faint)',
+                    fontFamily: 'var(--font-mono)',
+                  }}>
+                    next refresh {mm}:{ss}
+                  </span>
+                );
+              })()}
+
               <button
                 type="button"
                 onClick={load}

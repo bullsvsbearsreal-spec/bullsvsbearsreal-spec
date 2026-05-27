@@ -3,7 +3,7 @@ export const preferredRegion = 'bom1';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getUserData, setUserData, UserData, getTelegramLinkByUser } from '@/lib/db';
+import { getUserData, setUserData, UserData, getTelegramLinkByUser, touchLastSeen } from '@/lib/db';
 
 /**
  * GET /api/user/data — fetch the authenticated user's synced data
@@ -13,6 +13,13 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
+
+  // Heartbeat — update last_seen for DAU/WAU/MAU + the admin "online now"
+  // widget. Fire-and-forget so it never blocks the response. The
+  // useUserSync hook calls this endpoint on every page load and after
+  // every session refresh, so an authenticated user's last_seen
+  // updates on roughly the same cadence as their navigation.
+  touchLastSeen(session.user.id).catch(() => {});
 
   const [data, tgLink] = await Promise.all([
     getUserData(session.user.id),
