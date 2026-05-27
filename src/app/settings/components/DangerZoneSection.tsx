@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signOut } from 'next-auth/react';
 import { AlertTriangle, Trash2, Loader2 } from 'lucide-react';
 
@@ -8,6 +8,22 @@ export default function DangerZoneSection() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
+
+  // Esc cancels the delete-account modal. Deliberately no backdrop-
+  // click dismissal (preserves the original "prevent accidental
+  // close on destructive action" intent) — but a keyboard user
+  // shouldn't be trapped requiring the mouse to reach Cancel.
+  useEffect(() => {
+    if (!showDeleteModal) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !deleting) {
+        setShowDeleteModal(false);
+        setDeleteConfirm('');
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [showDeleteModal, deleting]);
 
   const handleDeleteAccount = async () => {
     if (deleteConfirm !== 'DELETE') return;

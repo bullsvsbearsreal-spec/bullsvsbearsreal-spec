@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { Heart, Copy, CheckCircle2, Info, Bitcoin, ExternalLink, Sparkles } from 'lucide-react';
 import { TerminalPageTitle, SatPing } from '@/components/design-system';
@@ -70,6 +70,16 @@ function AddressCard({ asset }: { asset: DonationAsset }) {
   const [copied, setCopied] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const payload = asset.uri ? asset.uri(asset.address) : asset.address;
+
+  // Esc dismisses the expanded QR modal. Was only dismissible by
+  // clicking the backdrop or the close button — keyboard users
+  // couldn't escape without reaching for the mouse.
+  useEffect(() => {
+    if (!expanded) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setExpanded(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [expanded]);
 
   const copy = useCallback(async () => {
     try {
