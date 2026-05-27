@@ -231,6 +231,46 @@ export default function AdminPanelPage() {
     return () => clearInterval(id);
   }, [hasAccess]);
 
+  // Keyboard shortcuts:
+  //   Cmd/Ctrl + 1..9 → jump to tab N
+  //   R              → manual refresh
+  //   ? or /         → focus search (handled by individual tabs if open)
+  // Ignored when typing in an input/textarea or with modifiers other
+  // than the platform meta key.
+  useEffect(() => {
+    if (!hasAccess) return;
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const inEditable = !!target && (
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.isContentEditable
+      );
+      if (inEditable) return;
+
+      // Cmd/Ctrl + digit → tab jump
+      if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
+        const digit = parseInt(e.key, 10);
+        if (Number.isFinite(digit) && digit >= 1 && digit <= visibleTabs.length) {
+          e.preventDefault();
+          const target = visibleTabs[digit - 1];
+          history.replaceState(null, '', `#${target.id}`);
+          setActive(target.id);
+        }
+        return;
+      }
+
+      if (e.altKey || e.metaKey || e.ctrlKey) return;
+      if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        load();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [hasAccess, visibleTabs, load]);
+
   // ─── Red-banner conditions ───────────────────────────────────────
   const bannerMessages = useMemo(() => {
     const msgs: string[] = [];
@@ -424,17 +464,14 @@ export default function AdminPanelPage() {
                 >
                   {t.icon}
                   {t.label}
+                  {/* Tab counters — small numeric badge next to the label
+                      for tabs that have a meaningful tally. Pulled from
+                      already-loaded stats so no extra fetch needed. */}
+                  {t.id === 'users' && stats?.totals.users != null && (
+                    <TabCount value={stats.totals.users} />
+                  )}
                   {t.id === 'feedback' && openBugCount && openBugCount.total > 0 && (
-                    <span style={{
-                      marginLeft: 2, padding: '0 6px', minWidth: 18, height: 16,
-                      fontSize: 9, fontWeight: 700,
-                      borderRadius: 999,
-                      background: openBugCount.high > 0 ? '#f43f5e' : 'rgba(255,255,255,0.1)',
-                      color: '#fff',
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                    }}>
-                      {openBugCount.total}
-                    </span>
+                    <TabCount value={openBugCount.total} hot={openBugCount.high > 0} />
                   )}
                 </button>
               );
@@ -461,5 +498,26 @@ export default function AdminPanelPage() {
       <Footer />
       <ToastHost toast={toast} onClear={() => setToast(null)} />
     </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// TabCount — small numeric badge rendered next to a tab label
+// ────────────────────────────────────────────────────────────────────
+function TabCount({ value, hot }: { value: number; hot?: boolean }) {
+  // Compact format so 1.2K fits in the tab without wrapping.
+  const text = value >= 10_000 ? `${(value / 1_000).toFixed(0)}K`
+             : value >= 1_000  ? `${(value / 1_000).toFixed(1)}K`
+             : String(value);
+  return (
+    <span style={{
+      marginLeft: 2, padding: '0 6px', minWidth: 18, height: 16,
+      fontSize: 9, fontWeight: 700,
+      borderRadius: 999,
+      background: hot ? '#f43f5e' : 'rgba(255,255,255,0.08)',
+      color: hot ? '#fff' : 'var(--fg-default)',
+      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      fontFamily: 'var(--font-mono)', fontVariantNumeric: 'tabular-nums',
+    }}>{text}</span>
   );
 }
