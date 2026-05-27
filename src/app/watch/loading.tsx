@@ -1,5 +1,5 @@
 /**
- * Loading skeleton for /watch — Wallet Watch (HL + gTrade + GMX
+ * Loading skeleton for /watch — Wallet Alerts (HL + gTrade + GMX
  * Telegram alerter). Matches the page layout: hero with venue chips,
  * add-wallet form, watched-wallets table, recent-events feed.
  */
