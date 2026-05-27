@@ -1,11 +1,12 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import UsdDisplay from '@/components/UsdDisplay';
 import PageHero from '@/components/PageHero';
-import { Ruler, Info, AlertTriangle, CheckCircle2, Target } from 'lucide-react';
+import { Ruler, Info, AlertTriangle, CheckCircle2, Target, Copy } from 'lucide-react';
 
 type Side = 'long' | 'short';
 
@@ -208,6 +209,16 @@ export default function PositionSizePage() {
               exact position you should take. Plus R:R ratio, expected value,
               and Kelly sizing — the four numbers that decide whether a setup
               is actually worth taking.</>
+          }
+          actions={
+            <Link
+              href="/hl-whales"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-emerald-400/30 bg-emerald-500/[0.08] text-emerald-300 hover:bg-emerald-500/[0.14] transition-colors"
+              title="Pick a whale position to mirror — sizing pre-fills here"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              Copying a whale? Start there
+            </Link>
           }
           className="mb-4"
         />
