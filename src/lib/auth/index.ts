@@ -94,14 +94,43 @@ if (process.env.AUTH_TWITTER_ID && process.env.AUTH_TWITTER_SECRET) {
   }));
 }
 
-/** Check if a user has admin role */
+/** Check if a user has admin role. Owner is implicitly admin. */
 export async function isAdmin(userId: string): Promise<boolean> {
   try {
     const db = getSQL();
     const rows = await db`SELECT role FROM users WHERE id = ${userId}`;
-    return rows.length > 0 && rows[0].role === 'admin';
+    const role = rows[0]?.role;
+    return role === 'admin' || role === 'owner';
   } catch {
     return false;
+  }
+}
+
+/** Owner role check — restricted-actions (grant admin, grant owner, etc.) */
+export async function isOwner(userId: string): Promise<boolean> {
+  try {
+    const db = getSQL();
+    const rows = await db`SELECT role FROM users WHERE id = ${userId}`;
+    return rows[0]?.role === 'owner';
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Fetch a user's role with a real-time DB lookup. Used by the
+ * per-role panel auth gates. Returns 'user' on any DB hiccup so a
+ * transient outage doesn't accidentally grant elevated access.
+ */
+export async function getUserRole(userId: string): Promise<'owner' | 'admin' | 'moderator' | 'marketer' | 'advisor' | 'user'> {
+  try {
+    const db = getSQL();
+    const rows = await db`SELECT role FROM users WHERE id = ${userId}`;
+    const r = rows[0]?.role;
+    if (r === 'owner' || r === 'admin' || r === 'moderator' || r === 'marketer' || r === 'advisor') return r;
+    return 'user';
+  } catch {
+    return 'user';
   }
 }
 
@@ -199,22 +228,83 @@ export async function requireAdmin(): Promise<Response | null> {
   return null;
 }
 
-/** Require admin or advisor role — re-verifies against DB to prevent stale JWT exploits */
+/**
+ * Require any dashboard-read role — owner / admin / advisor / moderator
+ * / marketer. The name is historical (used to be strictly admin-or-
+ * advisor); it now covers every role that has some kind of dashboard
+ * access. Re-verifies against DB so a stale JWT can't bypass.
+ *
+ * Routes that need to gate tighter than "any dashboard read" should
+ * use requireAdmin, requireOwner, requireMod, or requireMarketer
+ * instead of this helper.
+ */
 export async function requireAdminOrAdvisor(): Promise<Response | null> {
   const session = await auth();
   if (!session?.user?.id) {
     return Response.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  // Real-time DB check — JWT role can be stale after revocation
   try {
     const db = getSQL();
     const rows = await db`SELECT role FROM users WHERE id = ${session.user.id}`;
     const role = rows.length > 0 ? rows[0].role : null;
-    if (role !== 'admin' && role !== 'advisor') {
+    const ok = role === 'owner'
+            || role === 'admin'
+            || role === 'advisor'
+            || role === 'moderator'
+            || role === 'marketer';
+    if (!ok) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
   } catch {
     return Response.json({ error: 'Forbidden' }, { status: 403 });
+  }
+  return null;
+}
+
+/**
+ * Owner-only gate — for the few mutations that require the highest
+ * privilege (granting/revoking admin or owner, system-wide tier
+ * comp). Re-checks the DB on every call.
+ */
+export async function requireOwner(): Promise<Response | null> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  if (!(await isOwner(session.user.id))) {
+    return Response.json({ error: 'Owner only' }, { status: 403 });
+  }
+  return null;
+}
+
+/**
+ * Moderator gate — moderators + admins + owner. Used by mod-panel
+ * routes (Users read + notes + Feedback).
+ */
+export async function requireMod(): Promise<Response | null> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const role = await getUserRole(session.user.id);
+  if (role !== 'moderator' && role !== 'admin' && role !== 'owner') {
+    return Response.json({ error: 'Moderator access required' }, { status: 403 });
+  }
+  return null;
+}
+
+/**
+ * Marketer gate — marketers + admins + owner. Used by marketing-panel
+ * routes (Growth + Revenue + Affiliates + Broadcast).
+ */
+export async function requireMarketer(): Promise<Response | null> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+  const role = await getUserRole(session.user.id);
+  if (role !== 'marketer' && role !== 'admin' && role !== 'owner') {
+    return Response.json({ error: 'Marketer access required' }, { status: 403 });
   }
   return null;
 }
@@ -273,14 +363,16 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session;
     },
   },
-  // Lightweight audit hooks — fire-and-forget DB writes so a slow DB
-  // doesn't block the sign-in flow. Recorded events power the
-  // "Recent logins" panel on the admin Users tab and the audit log.
+  // Lightweight audit hooks — TRULY fire-and-forget (no `await` on the
+  // DB INSERT) so a slow DB doesn't add latency to sign-in. NextAuth
+  // awaits event handlers, so we let the inner SQL promise float; if
+  // it rejects we just log. Recorded events power the audit log + the
+  // user activity timeline.
   events: {
-    async signIn({ user, account, isNewUser }) {
+    signIn({ user, account, isNewUser }) {
       try {
         const db = getSQL();
-        await db`
+        db`
           INSERT INTO admin_monitoring (metric, value, details)
           VALUES (
             ${'audit_auth_signin'},
@@ -292,12 +384,12 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
               isNewUser: !!isNewUser,
             })}
           )
-        `;
+        `.catch((e: unknown) => console.warn('[auth] signIn audit failed:', e instanceof Error ? e.message : e));
       } catch (e) {
         console.warn('[auth] signIn audit failed:', e instanceof Error ? e.message : e);
       }
     },
-    async signOut(payload) {
+    signOut(payload) {
       try {
         const db = getSQL();
         // NextAuth fires signOut with either { token } (JWT) or { session }
@@ -307,10 +399,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         const email = (payload as any)?.token?.email
           ?? (payload as any)?.session?.user?.email
           ?? null;
-        await db`
+        db`
           INSERT INTO admin_monitoring (metric, value, details)
           VALUES (${'audit_auth_signout'}, ${0}, ${JSON.stringify({ userId, email })})
-        `;
+        `.catch((e: unknown) => console.warn('[auth] signOut audit failed:', e instanceof Error ? e.message : e));
       } catch (e) {
         console.warn('[auth] signOut audit failed:', e instanceof Error ? e.message : e);
       }

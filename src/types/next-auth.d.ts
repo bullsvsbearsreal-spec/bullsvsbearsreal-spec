@@ -4,7 +4,7 @@ declare module 'next-auth' {
   interface Session {
     user: {
       id: string;
-      role?: 'admin' | 'advisor' | 'user';
+      role?: 'owner' | 'admin' | 'moderator' | 'marketer' | 'advisor' | 'user';
       /** Billing tier from users.billing_tier — admin role auto-resolves
        *  to 'whale' via resolveUserTier regardless of this value. */
       billingTier?: 'free' | 'trader' | 'pro' | 'whale';

@@ -3,7 +3,7 @@ export const preferredRegion = 'bom1';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
-import { getUserData, setUserData, UserData, getTelegramLinkByUser, touchLastSeen } from '@/lib/db';
+import { getUserData, setUserData, UserData, getTelegramLinkByUser, touchLastSeen, initDB } from '@/lib/db';
 
 /**
  * GET /api/user/data — fetch the authenticated user's synced data
@@ -19,7 +19,14 @@ export async function GET() {
   // useUserSync hook calls this endpoint on every page load and after
   // every session refresh, so an authenticated user's last_seen
   // updates on roughly the same cadence as their navigation.
-  touchLastSeen(session.user.id).catch(() => {});
+  //
+  // initDB() is invoked first so a cold-start (post-deploy, before
+  // any schema migration has run for this process) doesn't try to
+  // touch a not-yet-added column. initDB is cached via initPromise
+  // so this is a no-op on subsequent hits.
+  initDB()
+    .then(() => touchLastSeen(session.user.id!))
+    .catch(() => {});
 
   const [data, tgLink] = await Promise.all([
     getUserData(session.user.id),

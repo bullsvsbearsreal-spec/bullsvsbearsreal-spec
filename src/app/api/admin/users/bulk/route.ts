@@ -16,7 +16,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, verifySameOrigin, auth } from '@/lib/auth';
-import { initDB, isDBConfigured, getSQL, recordAuditEvent, suspendUser, unsuspendUser } from '@/lib/db';
+import { initDB, isDBConfigured, getSQL, recordAuditEvent } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -96,14 +96,36 @@ export async function POST(request: NextRequest) {
       for (const id of targets) results.push({ userId: id, ok: false, reason: 'DB error' });
     }
   } else if (action === 'suspend') {
-    for (const id of targets) {
-      const ok = await suspendUser(id);
-      results.push({ userId: id, ok, reason: ok ? undefined : 'not found or already suspended' });
+    // Single atomic UPDATE — same pattern as the tier branch above.
+    // Avoids the partial-apply window the prior N-round-trip loop had.
+    try {
+      const updated = await db`
+        UPDATE users SET suspended_at = NOW()
+        WHERE id = ANY(${targets}::text[])
+          AND suspended_at IS NULL
+        RETURNING id
+      `;
+      const updatedIds = new Set((updated as any[]).map(r => String(r.id)));
+      for (const id of targets) {
+        results.push({ userId: id, ok: updatedIds.has(id), reason: updatedIds.has(id) ? undefined : 'not found or already suspended' });
+      }
+    } catch {
+      for (const id of targets) results.push({ userId: id, ok: false, reason: 'DB error' });
     }
   } else if (action === 'unsuspend') {
-    for (const id of targets) {
-      const ok = await unsuspendUser(id);
-      results.push({ userId: id, ok, reason: ok ? undefined : 'not found or not suspended' });
+    try {
+      const updated = await db`
+        UPDATE users SET suspended_at = NULL
+        WHERE id = ANY(${targets}::text[])
+          AND suspended_at IS NOT NULL
+        RETURNING id
+      `;
+      const updatedIds = new Set((updated as any[]).map(r => String(r.id)));
+      for (const id of targets) {
+        results.push({ userId: id, ok: updatedIds.has(id), reason: updatedIds.has(id) ? undefined : 'not found or not suspended' });
+      }
+    } catch {
+      for (const id of targets) results.push({ userId: id, ok: false, reason: 'DB error' });
     }
   }
 

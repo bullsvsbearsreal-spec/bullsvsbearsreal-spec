@@ -433,16 +433,32 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_user_notes_user ON user_notes(user_id, created_at DESC)`;
 
-  // Seed admin accounts
-  const adminEmail = process.env.ADMIN_EMAIL || 'ocelotcex1638a@gmail.com';
-  await sql`UPDATE users SET role = 'admin' WHERE email = ${adminEmail} AND role != 'admin'`;
-  // Backfill: every existing API key owned by an admin gets bumped to
-  // 'whale' tier (resolveUserTier's admin→whale rule applies to keys
+  // ─── Role system (May 2026) ─────────────────────────────────────────
+  // Roles: owner > admin > moderator/marketer > advisor > user.
+  //   · owner     — full control + only role that can grant other
+  //                 elevated roles. Reserved for 0xocelot.
+  //   · admin     — full control of the admin dashboard.
+  //   · moderator — support: Users tab (read + notes), Feedback.
+  //   · marketer  — growth/marketing: Growth, Revenue, Affiliates,
+  //                 Broadcast composer.
+  //   · advisor   — stripped admin view (Overview + Growth only).
+  //   · user      — default; no admin access.
+  //
+  // OWNER_EMAIL is hardcoded to the InfoHub creator and cannot be
+  // overridden via env (so a misconfigured environment can't escalate
+  // someone to owner). ADMIN_EMAIL is kept for backwards compat —
+  // it's promoted to admin (not owner).
+  const ownerEmail = 'ocelotcex1638a@gmail.com';
+  const adminEmail = process.env.ADMIN_EMAIL || ownerEmail;
+  await sql`UPDATE users SET role = 'owner' WHERE email = ${ownerEmail} AND role != 'owner'`;
+  await sql`UPDATE users SET role = 'admin' WHERE email = ${adminEmail} AND email != ${ownerEmail} AND role NOT IN ('admin', 'owner')`;
+  // Backfill: every existing API key owned by an admin/owner gets bumped
+  // to 'whale' tier (resolveUserTier's admin→whale rule applies to keys
   // too — admins should never be artificially throttled). Without this,
   // pre-existing admin keys stay on 'free' until they regenerate.
   await sql`
     UPDATE api_keys SET tier = 'whale'
-    WHERE user_id IN (SELECT id FROM users WHERE role = 'admin')
+    WHERE user_id IN (SELECT id FROM users WHERE role IN ('admin', 'owner'))
       AND tier != 'whale'
   `;
 
@@ -2894,12 +2910,12 @@ export async function unsuspendUser(userId: string): Promise<boolean> {
  * /api/track-page-view beacon. Routes are normalised by the API route
  * so dynamic segments don't blow up cardinality.
  *
- * Note on `uniques`: without per-session identity (which the beacon
- * deliberately doesn't carry — anonymous-by-design), we can't compute
- * true unique visitors. We treat `uniques` as a coarse approximation
- * (incremented alongside `count`) so the column isn't permanently
- * frozen at 1 once a (route, day) row first lands. A future iteration
- * could swap in a per-session cookie hash if needed.
+ * Note on `uniques`: without per-session identity (the beacon is
+ * anonymous-by-design), we can't compute true unique visitors.
+ * Initialize uniques=1 on INSERT and leave unchanged on UPDATE —
+ * effectively counting first-seen-per-day per route. Better than
+ * bumping it like `count` (which made every metric look identical
+ * and misled the Growth tab into showing 100% bounce rate).
  */
 export async function recordPageView(route: string, day: string): Promise<void> {
   try {
@@ -2908,8 +2924,7 @@ export async function recordPageView(route: string, day: string): Promise<void> 
       INSERT INTO page_views (route, day, count, uniques)
       VALUES (${route}, ${day}::date, 1, 1)
       ON CONFLICT (route, day) DO UPDATE
-      SET count   = page_views.count + 1,
-          uniques = page_views.uniques + 1
+      SET count = page_views.count + 1
     `;
   } catch (e) {
     console.error('DB recordPageView error:', e);
@@ -2986,14 +3001,28 @@ export async function getActivationFunnel(): Promise<{
 }> {
   try {
     const db = getSQL();
+    // alert_created — picks up BOTH alert kinds:
+    //   · legacy user_prefs.prefs->'alerts' (jsonb array)
+    //   · new rule-based user_position_alerts table
+    // A user who created either kind counts as "activated".
     const [row] = await db`
       SELECT
         (SELECT COUNT(*)::int FROM users WHERE suspended_at IS NULL) AS signed_up,
         (SELECT COUNT(*)::int FROM users WHERE suspended_at IS NULL AND email_verified IS NOT NULL) AS verified,
-        (SELECT COUNT(DISTINCT up.user_id)::int FROM user_prefs up
-           JOIN users u ON u.id = up.user_id AND u.suspended_at IS NULL
-           WHERE jsonb_typeof(up.prefs->'alerts') = 'array'
-             AND jsonb_array_length(up.prefs->'alerts') > 0) AS alert_created,
+        (SELECT COUNT(DISTINCT u.id)::int FROM users u
+           WHERE u.suspended_at IS NULL
+             AND (
+               EXISTS (
+                 SELECT 1 FROM user_prefs up
+                  WHERE up.user_id = u.id
+                    AND jsonb_typeof(up.prefs->'alerts') = 'array'
+                    AND jsonb_array_length(up.prefs->'alerts') > 0
+               )
+               OR EXISTS (
+                 SELECT 1 FROM user_position_alerts pa
+                  WHERE pa.user_id = u.id
+               )
+             )) AS alert_created,
         (SELECT COUNT(DISTINCT u.id)::int FROM users u
            WHERE u.suspended_at IS NULL
              AND (

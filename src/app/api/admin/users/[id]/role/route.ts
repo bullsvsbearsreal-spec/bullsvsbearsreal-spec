@@ -15,14 +15,18 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdmin, verifySameOrigin, auth } from '@/lib/auth';
+import { requireAdmin, verifySameOrigin, auth, isOwner } from '@/lib/auth';
 import { isDBConfigured, getSQL, recordAuditEvent } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
-const VALID_ROLES = ['admin', 'advisor', 'user'] as const;
+// Roles ordered owner > admin > moderator/marketer > advisor > user.
+//   · Owner-only grants/revokes: 'owner', 'admin'
+//   · Admin or owner can grant/revoke: 'moderator', 'marketer', 'advisor', 'user'
+const VALID_ROLES = ['owner', 'admin', 'moderator', 'marketer', 'advisor', 'user'] as const;
+const OWNER_ONLY_ROLES = new Set<string>(['owner', 'admin']);
 const VALID_TIERS = ['free', 'trader', 'pro', 'whale'] as const;
 
 export async function PUT(
@@ -52,7 +56,22 @@ export async function PUT(
     return NextResponse.json({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` }, { status: 400 });
   }
 
-  if (id === session?.user?.id && role !== 'admin') {
+  // Owner-only roles (owner/admin) require the caller to be owner.
+  if (OWNER_ONLY_ROLES.has(role) && !(await isOwner(session?.user?.id ?? ''))) {
+    return NextResponse.json({ error: 'Owner role required to grant owner/admin' }, { status: 403 });
+  }
+  // Block demoting an existing owner via the PUT path too.
+  if (role !== 'owner' && !(await isOwner(session?.user?.id ?? ''))) {
+    try {
+      const db = getSQL();
+      const existing = await db`SELECT role FROM users WHERE id = ${id}`;
+      if (existing[0]?.role === 'owner') {
+        return NextResponse.json({ error: 'Cannot demote the owner' }, { status: 403 });
+      }
+    } catch {}
+  }
+
+  if (id === session?.user?.id && role !== 'admin' && role !== 'owner') {
     return NextResponse.json({ error: 'Cannot change your own role' }, { status: 403 });
   }
 
@@ -142,7 +161,23 @@ export async function POST(
   if (newRole && !VALID_ROLES.includes(newRole as (typeof VALID_ROLES)[number])) {
     return NextResponse.json({ error: `Invalid role. Must be one of: ${VALID_ROLES.join(', ')}` }, { status: 400 });
   }
-  if (id === session?.user?.id && newRole && newRole !== 'admin') {
+  // Owner-only roles: grants/revokes of 'owner' and 'admin' require
+  // the caller to be the owner. Admins can still grant moderator /
+  // marketer / advisor / user.
+  if (newRole && OWNER_ONLY_ROLES.has(newRole) && !(await isOwner(session?.user?.id ?? ''))) {
+    return NextResponse.json({ error: 'Owner role required to grant owner/admin' }, { status: 403 });
+  }
+  // Also block demotion of an existing owner unless the caller is owner.
+  if (newRole && newRole !== 'owner' && !(await isOwner(session?.user?.id ?? ''))) {
+    try {
+      const db = getSQL();
+      const existing = await db`SELECT role FROM users WHERE id = ${id}`;
+      if (existing[0]?.role === 'owner') {
+        return NextResponse.json({ error: 'Cannot demote the owner — only owner can change owner role' }, { status: 403 });
+      }
+    } catch { /* fall through to UPDATE which will succeed if non-owner */ }
+  }
+  if (id === session?.user?.id && newRole && newRole !== 'admin' && newRole !== 'owner') {
     return NextResponse.json({ error: 'Cannot change your own role' }, { status: 403 });
   }
 

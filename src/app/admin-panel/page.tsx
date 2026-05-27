@@ -94,9 +94,18 @@ function computeHealthScore(stats: StatsResp | null): { label: string; detail: s
 export default function AdminPanelPage() {
   const { data: session, status } = useSession();
   const role = session?.user?.role;
-  const isAdmin   = role === 'admin';
+  const isOwner   = role === 'owner';
+  const isAdmin   = role === 'admin' || isOwner; // owner inherits admin
   const isAdvisor = role === 'advisor';
   const hasAccess = isAdmin || isAdvisor;
+
+  // Mod / Marketer roles bounce to their dedicated panel — the admin
+  // panel surfaces would render lots of locked tabs for them and
+  // confuse them.
+  useEffect(() => {
+    if (role === 'moderator') window.location.replace('/mod-panel');
+    else if (role === 'marketer') window.location.replace('/marketing-panel');
+  }, [role]);
 
   // Tabs filtered by role — advisor only sees overview + growth.
   const visibleTabs = useMemo(
