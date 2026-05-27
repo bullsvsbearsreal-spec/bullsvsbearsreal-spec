@@ -37,6 +37,7 @@ export async function GET(request: NextRequest) {
       const d = (e.details ?? {}) as Record<string, unknown>;
       const actorEmail = typeof d.admin === 'string' ? d.admin as string
                        : typeof d.actorEmail === 'string' ? d.actorEmail as string
+                       : typeof d.email === 'string' ? d.email as string  // auth_signin/signout uses `email`
                        : null;
       const actorName  = typeof d.actorName === 'string' ? d.actorName as string : null;
       return {

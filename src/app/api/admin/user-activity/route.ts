@@ -67,8 +67,11 @@ export async function GET(request: NextRequest) {
            WHERE user_id = ${userId} ORDER BY sent_at DESC LIMIT 10`.catch(() => []),
       db`SELECT metric, details, recorded_at FROM admin_monitoring
            WHERE metric LIKE 'audit_%'
-             AND details::jsonb ->> 'targetUserId' = ${userId}
-           ORDER BY recorded_at DESC LIMIT 10`.catch(() => []),
+             AND (
+               details::jsonb ->> 'targetUserId' = ${userId}
+               OR details::jsonb ->> 'userId' = ${userId}
+             )
+           ORDER BY recorded_at DESC LIMIT 15`.catch(() => []),
     ]);
 
     if ((user as any[]).length === 0) {

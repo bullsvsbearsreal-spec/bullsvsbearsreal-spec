@@ -273,5 +273,48 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session;
     },
   },
+  // Lightweight audit hooks — fire-and-forget DB writes so a slow DB
+  // doesn't block the sign-in flow. Recorded events power the
+  // "Recent logins" panel on the admin Users tab and the audit log.
+  events: {
+    async signIn({ user, account, isNewUser }) {
+      try {
+        const db = getSQL();
+        await db`
+          INSERT INTO admin_monitoring (metric, value, details)
+          VALUES (
+            ${'audit_auth_signin'},
+            ${0},
+            ${JSON.stringify({
+              userId: user?.id ?? null,
+              email: user?.email ?? null,
+              provider: account?.provider ?? null,
+              isNewUser: !!isNewUser,
+            })}
+          )
+        `;
+      } catch (e) {
+        console.warn('[auth] signIn audit failed:', e instanceof Error ? e.message : e);
+      }
+    },
+    async signOut(payload) {
+      try {
+        const db = getSQL();
+        // NextAuth fires signOut with either { token } (JWT) or { session }
+        const userId = (payload as any)?.token?.id
+          ?? (payload as any)?.session?.user?.id
+          ?? null;
+        const email = (payload as any)?.token?.email
+          ?? (payload as any)?.session?.user?.email
+          ?? null;
+        await db`
+          INSERT INTO admin_monitoring (metric, value, details)
+          VALUES (${'audit_auth_signout'}, ${0}, ${JSON.stringify({ userId, email })})
+        `;
+      } catch (e) {
+        console.warn('[auth] signOut audit failed:', e instanceof Error ? e.message : e);
+      }
+    },
+  },
   trustHost: true,
 });

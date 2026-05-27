@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Search, Download, RefreshCw, Crown, Shield, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { Card, SectionHead, SkeletonBlock, fmtAgo, fmtNumber, TIER_COLORS } from '../components/primitives';
+import { Card, SectionHead, SkeletonBlock, ConfirmModal, fmtAgo, fmtNumber, TIER_COLORS } from '../components/primitives';
 import { UserDrawer, type AdminUser } from '../components/UserDrawer';
 
 type SortKey = 'createdAt' | 'lastSeen' | 'alertCount' | 'watchedWalletsCount' | 'email';
@@ -34,6 +34,12 @@ export function UsersTab({ onToast }: { onToast: (msg: string, ok: boolean) => v
   const [sortKey, setSortKey] = useState<SortKey>('createdAt');
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [openUser, setOpenUser] = useState<AdminUser | null>(null);
+
+  // Bulk-selection state — held as a Set of user ids. Cleared when
+  // filters change or a bulk action runs.
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkConfirm, setBulkConfirm] = useState<null | { kind: 'tier'; tier: 'free' | 'trader' | 'pro' | 'whale' } | { kind: 'suspend' } | { kind: 'unsuspend' }>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   // load stays stable (empty deps) — uses functional setUsers in the
   // catch branch so we don't need `users` in the closure. Prior shape
@@ -151,6 +157,39 @@ export function UsersTab({ onToast }: { onToast: (msg: string, ok: boolean) => v
     window.location.href = '/api/admin/users/csv';
   };
 
+  const fireBulk = async (reason: string) => {
+    if (!bulkConfirm) return;
+    setBulkBusy(true);
+    try {
+      const userIds = Array.from(selected);
+      const payload: Record<string, unknown> = {
+        userIds,
+        reason,
+        action: bulkConfirm.kind === 'tier' ? 'tier' : bulkConfirm.kind,
+      };
+      if (bulkConfirm.kind === 'tier') payload.billingTier = bulkConfirm.tier;
+      const res = await fetch('/api/admin/users/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        onToast(json.error || `HTTP ${res.status}`, false);
+        return;
+      }
+      const summary = `${json.processed}/${userIds.length} processed${json.skippedSelf ? ` · 1 self skipped` : ''}`;
+      onToast(summary, json.processed > 0);
+      setSelected(new Set());
+      await load(true);
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : 'Network error', false);
+    } finally {
+      setBulkBusy(false);
+      setBulkConfirm(null);
+    }
+  };
+
   return (
     <>
       <SectionHead
@@ -241,6 +280,67 @@ export function UsersTab({ onToast }: { onToast: (msg: string, ok: boolean) => v
         </div>
       </Card>
 
+      {/* Bulk-action toolbar — only renders when at least one row is selected */}
+      {selected.size > 0 && (
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 10,
+          padding: '10px 14px', marginTop: 8,
+          background: 'rgba(251, 191, 36, 0.06)',
+          border: '1px solid rgba(251, 191, 36, 0.25)',
+          borderRadius: 8,
+          position: 'sticky', top: 0, zIndex: 5,
+        }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: '#fcd34d', fontFamily: 'var(--font-mono)' }}>
+            {selected.size} selected
+          </span>
+          <span style={{ flex: 1, fontSize: 10, color: 'var(--fg-faint)' }}>
+            All bulk actions need a reason. Your own account is silently skipped.
+          </span>
+          {(['free', 'trader', 'pro', 'whale'] as const).map(t => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setBulkConfirm({ kind: 'tier', tier: t })}
+              style={{
+                padding: '5px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                background: 'rgba(255,255,255,0.05)', color: TIER_COLORS[t] ?? '#fff',
+                border: `1px solid ${TIER_COLORS[t] ?? '#fff'}33`,
+                cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.06em',
+              }}
+            >→ {t}</button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setBulkConfirm({ kind: 'suspend' })}
+            style={{
+              padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+              background: 'rgba(244, 63, 94, 0.12)', color: '#fca5a5',
+              border: '1px solid rgba(244, 63, 94, 0.3)', cursor: 'pointer',
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+            }}
+          >Suspend</button>
+          <button
+            type="button"
+            onClick={() => setBulkConfirm({ kind: 'unsuspend' })}
+            style={{
+              padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+              background: 'rgba(52, 211, 153, 0.1)', color: '#86efac',
+              border: '1px solid rgba(52, 211, 153, 0.25)', cursor: 'pointer',
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+            }}
+          >Unsuspend</button>
+          <button
+            type="button"
+            onClick={() => setSelected(new Set())}
+            style={{
+              padding: '5px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600,
+              background: 'transparent', color: 'var(--fg-muted)',
+              border: '1px solid var(--hub-border-subtle)', cursor: 'pointer',
+            }}
+          >Clear</button>
+        </div>
+      )}
+
       {/* Table */}
       <div style={{
         marginTop: 12,
@@ -264,6 +364,20 @@ export function UsersTab({ onToast }: { onToast: (msg: string, ok: boolean) => v
           <table style={{ width: '100%', fontSize: 12, borderCollapse: 'collapse' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid var(--hub-border-subtle)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--fg-faint)' }}>
+                <th style={{ width: 32, padding: '10px 0 10px 12px' }}>
+                  <input
+                    type="checkbox"
+                    aria-label="Select all rows on this page"
+                    checked={filtered.length > 0 && filtered.slice(0, 200).every(u => selected.has(u.id))}
+                    onChange={e => {
+                      const next = new Set(selected);
+                      const visible = filtered.slice(0, 200);
+                      if (e.target.checked) visible.forEach(u => next.add(u.id));
+                      else visible.forEach(u => next.delete(u.id));
+                      setSelected(next);
+                    }}
+                  />
+                </th>
                 <Th label="User"     onClick={() => setSort('email')}             sorted={sortKey === 'email' ? sortDir : null} />
                 <Th label="Tier"     onClick={() => undefined} sorted={null} />
                 <Th label="Alerts"   onClick={() => setSort('alertCount')}        sorted={sortKey === 'alertCount' ? sortDir : null} alignRight />
@@ -280,10 +394,23 @@ export function UsersTab({ onToast }: { onToast: (msg: string, ok: boolean) => v
                   style={{
                     borderTop: '1px solid rgba(255,255,255,0.03)',
                     cursor: 'pointer',
+                    background: selected.has(u.id) ? 'rgba(251, 191, 36, 0.05)' : undefined,
                   }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.02)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = ''}
+                  onMouseEnter={e => { if (!selected.has(u.id)) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.02)'; }}
+                  onMouseLeave={e => { if (!selected.has(u.id)) (e.currentTarget as HTMLElement).style.background = ''; }}
                 >
+                  <td style={{ padding: '10px 0 10px 12px' }} onClick={e => e.stopPropagation()}>
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${u.email ?? u.id}`}
+                      checked={selected.has(u.id)}
+                      onChange={e => {
+                        const next = new Set(selected);
+                        if (e.target.checked) next.add(u.id); else next.delete(u.id);
+                        setSelected(next);
+                      }}
+                    />
+                  </td>
                   <td style={{ padding: '10px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       {/* Live-status dot — green pulse if last_seen < 5 min */}
@@ -341,6 +468,28 @@ export function UsersTab({ onToast }: { onToast: (msg: string, ok: boolean) => v
         onClose={() => setOpenUser(null)}
         onChanged={() => { load(true); setOpenUser(null); }}
         onToast={onToast}
+      />
+
+      <ConfirmModal
+        open={bulkConfirm !== null && !bulkBusy}
+        title={
+          bulkConfirm?.kind === 'tier' ? `Set ${selected.size} users to ${bulkConfirm.tier.toUpperCase()}?` :
+          bulkConfirm?.kind === 'suspend' ? `Suspend ${selected.size} users?` :
+          bulkConfirm?.kind === 'unsuspend' ? `Unsuspend ${selected.size} users?` : ''
+        }
+        description={
+          <>This will affect <strong style={{ color: '#fff' }}>{selected.size}</strong> user{selected.size === 1 ? '' : 's'}.
+          Your own account is silently skipped. Each row writes its own audit entry plus one batch summary.</>
+        }
+        confirmText={bulkConfirm?.kind === 'suspend' ? 'SUSPEND' : bulkConfirm?.kind === 'unsuspend' ? 'RESTORE' : 'CONFIRM'}
+        confirmLabel={
+          bulkConfirm?.kind === 'tier' ? 'Change tier' :
+          bulkConfirm?.kind === 'suspend' ? 'Suspend all' :
+          bulkConfirm?.kind === 'unsuspend' ? 'Unsuspend all' : 'Confirm'
+        }
+        danger={bulkConfirm?.kind === 'suspend' || (bulkConfirm?.kind === 'tier' && (bulkConfirm.tier === 'whale' || bulkConfirm.tier === 'pro'))}
+        onConfirm={fireBulk}
+        onCancel={() => setBulkConfirm(null)}
       />
     </>
   );
