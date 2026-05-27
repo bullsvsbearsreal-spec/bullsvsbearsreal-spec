@@ -481,6 +481,20 @@ export default function AdminPanelPage() {
           {/* Red banner */}
           <RedBanner messages={bannerMessages} />
 
+          {/* Keyboard shortcut hint — small, faint, dismissible-feeling */}
+          <div style={{
+            display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 6,
+            marginBottom: 8, fontSize: 9.5, color: 'var(--fg-faint)',
+            letterSpacing: '0.06em', textTransform: 'uppercase',
+          }}>
+            <kbd style={{ fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--hub-border-subtle)', borderRadius: 4, padding: '1px 5px' }}>⌘</kbd>
+            <kbd style={{ fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--hub-border-subtle)', borderRadius: 4, padding: '1px 5px' }}>1..{visibleTabs.length}</kbd>
+            <span>jump tabs</span>
+            <span style={{ margin: '0 4px', color: 'var(--hub-border-subtle)' }}>·</span>
+            <kbd style={{ fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--hub-border-subtle)', borderRadius: 4, padding: '1px 5px' }}>R</kbd>
+            <span>refresh</span>
+          </div>
+
           {/* Tab content */}
           <div style={{ minHeight: 400 }}>
             {active === 'overview'      && <OverviewTab      stats={stats} audit={audit} sysHealth={sysHealth} />}

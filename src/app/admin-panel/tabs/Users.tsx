@@ -286,6 +286,15 @@ export function UsersTab({ onToast }: { onToast: (msg: string, ok: boolean) => v
                 >
                   <td style={{ padding: '10px 12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {/* Live-status dot — green pulse if last_seen < 5 min */}
+                      {u.lastSeen && (Date.now() - new Date(u.lastSeen).getTime()) < 5 * 60_000 && (
+                        <span title="Active in the last 5 minutes" className="pulse-success" style={{
+                          width: 6, height: 6, borderRadius: '50%',
+                          background: '#22c55e',
+                          boxShadow: '0 0 4px rgba(34,197,94,0.6)',
+                          flexShrink: 0,
+                        }} />
+                      )}
                       <span style={{ color: '#fff', fontWeight: 600 }}>
                         {u.name || (u.email ? u.email.split('@')[0] : '(no name)')}
                       </span>
