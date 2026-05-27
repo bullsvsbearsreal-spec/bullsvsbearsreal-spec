@@ -41,13 +41,20 @@ export default function PageViewBeacon() {
     lastFired.current = now;
 
     const body = JSON.stringify({ route: pathname });
+
+    // sendBeacon is preferred (survives page unload), but it returns
+    // false when the queue rejects the payload (size cap, disabled,
+    // disconnected). On false we fall through to fetch with keepalive
+    // — same survive-unload property, slightly slower path.
+    let queued = false;
     try {
       if (typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function') {
         const blob = new Blob([body], { type: 'application/json' });
-        navigator.sendBeacon('/api/track-page-view', blob);
-        return;
+        queued = navigator.sendBeacon('/api/track-page-view', blob);
       }
     } catch { /* fall through to fetch */ }
+
+    if (queued) return;
 
     try {
       void fetch('/api/track-page-view', {

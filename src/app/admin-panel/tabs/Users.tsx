@@ -35,6 +35,10 @@ export function UsersTab({ onToast }: { onToast: (msg: string, ok: boolean) => v
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [openUser, setOpenUser] = useState<AdminUser | null>(null);
 
+  // load stays stable (empty deps) — uses functional setUsers in the
+  // catch branch so we don't need `users` in the closure. Prior shape
+  // had `[users]` as a dep which invalidated the callback on every
+  // refresh and re-triggered the loading spinner.
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setRefreshing(true);
@@ -62,13 +66,13 @@ export function UsersTab({ onToast }: { onToast: (msg: string, ok: boolean) => v
       setUsers(list);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load users');
-      if (!users) setUsers([]);
+      setUsers(prev => prev ?? []);
     }
     setLoading(false);
     setRefreshing(false);
-  }, [users]);
+  }, []);
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { load(); }, [load]);
 
   const filtered = useMemo(() => {
     if (!users) return [];

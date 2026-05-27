@@ -159,25 +159,30 @@ export default function AdminPanelPage() {
         .catch(() => {}),
     );
 
-    // Bug-report counts (red banner)
-    tasks.push(
-      fetch('/api/feedback?status=open&limit=100')
-        .then(r => r.ok ? r.json() : null)
-        .then(d => {
-          if (!d?.success || !Array.isArray(d.data)) return;
-          const list = d.data as BugReport[];
-          setOpenBugCount({
-            high: list.filter(r => r.severity === 'high').length,
-            total: list.length,
-          });
-        })
-        .catch(() => {}),
-    );
+    // Bug-report counts (red banner). /api/feedback GET is admin-only —
+    // advisors get 403, so skip the fetch entirely for them. Their red
+    // banner just won't surface the bug-count condition; everything
+    // else still works.
+    if (isAdmin) {
+      tasks.push(
+        fetch('/api/feedback?status=open&limit=100')
+          .then(r => r.ok ? r.json() : null)
+          .then(d => {
+            if (!d?.success || !Array.isArray(d.data)) return;
+            const list = d.data as BugReport[];
+            setOpenBugCount({
+              high: list.filter(r => r.severity === 'high').length,
+              total: list.length,
+            });
+          })
+          .catch(() => {}),
+      );
+    }
 
     await Promise.allSettled(tasks);
     setLastRefresh(new Date());
     setRefreshing(false);
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     if (!hasAccess) return;

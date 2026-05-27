@@ -2878,6 +2878,13 @@ export async function unsuspendUser(userId: string): Promise<boolean> {
  * Record a page view — upserts (route, day, count). Called by the
  * /api/track-page-view beacon. Routes are normalised by the API route
  * so dynamic segments don't blow up cardinality.
+ *
+ * Note on `uniques`: without per-session identity (which the beacon
+ * deliberately doesn't carry — anonymous-by-design), we can't compute
+ * true unique visitors. We treat `uniques` as a coarse approximation
+ * (incremented alongside `count`) so the column isn't permanently
+ * frozen at 1 once a (route, day) row first lands. A future iteration
+ * could swap in a per-session cookie hash if needed.
  */
 export async function recordPageView(route: string, day: string): Promise<void> {
   try {
@@ -2886,7 +2893,8 @@ export async function recordPageView(route: string, day: string): Promise<void> 
       INSERT INTO page_views (route, day, count, uniques)
       VALUES (${route}, ${day}::date, 1, 1)
       ON CONFLICT (route, day) DO UPDATE
-      SET count = page_views.count + 1
+      SET count   = page_views.count + 1,
+          uniques = page_views.uniques + 1
     `;
   } catch (e) {
     console.error('DB recordPageView error:', e);
@@ -2895,14 +2903,21 @@ export async function recordPageView(route: string, day: string): Promise<void> 
 
 /**
  * Top pages by view count over the last N days. Used by the Growth tab.
+ *
+ * Interval is built as a plain JS string and passed in as a single
+ * parameter — `(NOW() - ($1::text)::interval)`. Earlier shape used
+ * `${days} || ' days'` which Postgres rejects (`integer || text` has
+ * no implicit cast), so the function silently returned [] for every
+ * call.
  */
 export async function getTopPages(days = 7, limit = 10): Promise<{ route: string; views: number; uniques: number }[]> {
   try {
     const db = getSQL();
+    const interval = `${Math.max(1, Math.min(days, 90))} days`;
     const rows = await db`
       SELECT route, SUM(count)::bigint AS views, SUM(uniques)::bigint AS uniques
       FROM page_views
-      WHERE day >= (NOW() - (${days} || ' days')::interval)::date
+      WHERE day >= (NOW() - ${interval}::interval)::date
       GROUP BY route
       ORDER BY views DESC
       LIMIT ${limit}
@@ -2920,14 +2935,15 @@ export async function getTopPages(days = 7, limit = 10): Promise<{ route: string
 
 /**
  * Prune page_views older than `days`. Called by the daily cron so
- * the table stays bounded.
+ * the table stays bounded. Same interval-binding fix as getTopPages.
  */
 export async function prunePageViews(days = 90): Promise<number> {
   try {
     const db = getSQL();
+    const interval = `${Math.max(1, days)} days`;
     const r = await db`
       DELETE FROM page_views
-      WHERE day < (NOW() - (${days} || ' days')::interval)::date
+      WHERE day < (NOW() - ${interval}::interval)::date
     `;
     return r.count ?? 0;
   } catch (e) {
@@ -2941,12 +2957,11 @@ export async function prunePageViews(days = 90): Promise<number> {
  * superset condition over the users table:
  *   1. Signed up        (every non-suspended row in users)
  *   2. Email verified   (email_verified IS NOT NULL)
- *   3. Created an alert (users.alerts jsonb has at least one entry)
- *   4. Connected (has an exchange key OR watched wallet OR DEX wallet)
+ *   3. Created an alert (user_prefs.prefs->'alerts' jsonb array has ≥1 entry)
+ *   4. Connected        (has an exchange key OR watched wallet OR DEX wallet)
  *
- * Tables used reflect the actual schema (alerts are in a jsonb column
- * on users; wallets/keys live in hl_watched_wallets, user_exchange_keys,
- * user_wallets — same source the stats route reads from).
+ * Alerts live in user_prefs.prefs->'alerts', not on users — see
+ * getAllUsersWithAlerts for the source of truth.
  */
 export async function getActivationFunnel(): Promise<{
   signedUp: number;
@@ -2960,10 +2975,10 @@ export async function getActivationFunnel(): Promise<{
       SELECT
         (SELECT COUNT(*)::int FROM users WHERE suspended_at IS NULL) AS signed_up,
         (SELECT COUNT(*)::int FROM users WHERE suspended_at IS NULL AND email_verified IS NOT NULL) AS verified,
-        (SELECT COUNT(*)::int FROM users
-           WHERE suspended_at IS NULL
-             AND jsonb_typeof(alerts) = 'array'
-             AND jsonb_array_length(alerts) > 0) AS alert_created,
+        (SELECT COUNT(DISTINCT up.user_id)::int FROM user_prefs up
+           JOIN users u ON u.id = up.user_id AND u.suspended_at IS NULL
+           WHERE jsonb_typeof(up.prefs->'alerts') = 'array'
+             AND jsonb_array_length(up.prefs->'alerts') > 0) AS alert_created,
         (SELECT COUNT(DISTINCT u.id)::int FROM users u
            WHERE u.suspended_at IS NULL
              AND (

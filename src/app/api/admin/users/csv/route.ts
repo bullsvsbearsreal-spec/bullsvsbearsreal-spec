@@ -4,6 +4,11 @@
  * CSV export of the full user roster for the admin Users tab. Each
  * column is RFC-4180 escaped — no helper dep, just inline. Streaming
  * not worth it at our scale (single-digit thousands of rows).
+ *
+ * Schema-aligned with GET /api/admin/users: alerts live in
+ * `user_prefs.prefs->'alerts'`, not `users.alerts`. The earlier draft
+ * referenced a non-existent column and silently returned 0 for every
+ * row's alert_count.
  */
 import { NextResponse } from 'next/server';
 import { requireAdminOrAdvisor } from '@/lib/auth';
@@ -36,12 +41,22 @@ export async function GET() {
         COALESCE(u.billing_tier, 'free') AS billing_tier,
         u.created_at, u.last_seen, u.suspended_at, u.email_verified,
         u.referral_code, u.referred_by_user_id,
-        (CASE WHEN jsonb_typeof(u.alerts) = 'array'
-              THEN jsonb_array_length(u.alerts) ELSE 0 END) AS alert_count,
-        (SELECT COUNT(*) FROM hl_watched_wallets w WHERE w.user_id = u.id) AS watched_wallets,
-        (SELECT COUNT(*) FROM user_exchange_keys k WHERE k.user_id = u.id) AS connected_keys,
-        (SELECT COUNT(*) FROM user_wallets w WHERE w.user_id = u.id) AS connected_wallets
+        COALESCE(
+          jsonb_array_length(
+            CASE WHEN jsonb_typeof(up.prefs->'alerts') = 'array'
+                 THEN up.prefs->'alerts'
+                 ELSE '[]'::jsonb END
+          ), 0
+        ) AS alert_count,
+        COUNT(DISTINCT hw.id)::int  AS watched_wallets,
+        COUNT(DISTINCT uek.id)::int AS connected_keys,
+        COUNT(DISTINCT uw.id)::int  AS connected_wallets
       FROM users u
+      LEFT JOIN user_prefs         up  ON up.user_id = u.id
+      LEFT JOIN hl_watched_wallets hw  ON hw.user_id = u.id
+      LEFT JOIN user_exchange_keys uek ON uek.user_id = u.id
+      LEFT JOIN user_wallets       uw  ON uw.user_id = u.id
+      GROUP BY u.id, up.prefs
       ORDER BY u.created_at DESC NULLS LAST
       LIMIT 10000
     `;

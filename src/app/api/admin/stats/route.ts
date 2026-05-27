@@ -27,6 +27,18 @@ export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
 
+// ────────────────────────────────────────────────────────────────────
+// L1 cache — 60s TTL. The dashboard polls this every 2 min; a 60s cache
+// means two simultaneous admin tabs see the same payload without
+// double-running the ~20 SQL queries that build this response. The
+// stats are inherently delayed (DAU / retention etc) so a minute of
+// staleness costs nothing operationally.
+// ────────────────────────────────────────────────────────────────────
+const CACHE_TTL_MS = 60_000;
+let cachedAt = 0;
+let cached: unknown = null;
+let inflight: Promise<unknown> | null = null;
+
 export async function GET() {
   const denied = await requireAdminOrAdvisor();
   if (denied) return denied;
@@ -35,8 +47,23 @@ export async function GET() {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   }
 
-  try {
-    const db = getSQL();
+  // Serve from cache when fresh
+  const now = Date.now();
+  if (cached && now - cachedAt < CACHE_TTL_MS) {
+    return NextResponse.json(cached);
+  }
+
+  // Dedupe concurrent rebuilds — first request through builds, others
+  // ride the same promise. Without this, two parallel tabs blow up
+  // into ~40 SQL queries instead of 20.
+  if (inflight) {
+    const data = await inflight;
+    return NextResponse.json(data);
+  }
+
+  inflight = (async () => {
+    try {
+      const db = getSQL();
 
     const [
       userCount,
@@ -130,9 +157,16 @@ export async function GET() {
       alertsActive, alertsTotal,
       watchedWallets, connectedKeys, connectedWallets,
     ] = await Promise.all([
-      // alerts is a jsonb column on users; an "active" alert has enabled=true.
-      db`SELECT COALESCE(SUM(jsonb_array_length(alerts)), 0) as count FROM users WHERE jsonb_typeof(alerts) = 'array'`.catch(() => [{ count: 0 }]),
-      db`SELECT COUNT(*) as count FROM users WHERE jsonb_typeof(alerts) = 'array' AND jsonb_array_length(alerts) > 0`.catch(() => [{ count: 0 }]),
+      // Alerts live in user_prefs.prefs->'alerts' (jsonb array).
+      // activeAlertsTotal = SUM of array lengths across all users.
+      // usersWithAlerts   = users whose array has at least one entry.
+      db`SELECT COALESCE(SUM(jsonb_array_length(prefs->'alerts')), 0) AS count
+           FROM user_prefs
+           WHERE jsonb_typeof(prefs->'alerts') = 'array'`.catch(() => [{ count: 0 }]),
+      db`SELECT COUNT(*) AS count
+           FROM user_prefs
+           WHERE jsonb_typeof(prefs->'alerts') = 'array'
+             AND jsonb_array_length(prefs->'alerts') > 0`.catch(() => [{ count: 0 }]),
       db`SELECT COUNT(*) as count FROM hl_watched_wallets`.catch(() => [{ count: 0 }]),
       db`SELECT COUNT(*) as count FROM user_exchange_keys`.catch(() => [{ count: 0 }]),
       db`SELECT COUNT(*) as count FROM user_wallets`.catch(() => [{ count: 0 }]),
@@ -150,78 +184,96 @@ export async function GET() {
       db`SELECT COUNT(*) as count FROM users WHERE usdt_payout_wallet IS NOT NULL AND usdt_payout_wallet <> ''`.catch(() => [{ count: 0 }]),
     ]);
 
-    return NextResponse.json({
-      totals: {
-        users: Number(userCount[0]?.count ?? 0),
-        alertNotifications: Number(alertNotifCount[0]?.count ?? 0),
-        fundingSnapshots: Number(fundingRows[0]?.count ?? 0),
-        oiSnapshots: Number(oiRows[0]?.count ?? 0),
-        liquidationSnapshots: Number(liqRows[0]?.count ?? 0),
-        telegramUsers: Number(telegramUsers[0]?.count ?? 0),
-        pushSubscriptions: Number(pushSubs[0]?.count ?? 0),
-      },
-      last24h: {
-        alertNotifications: Number(recentNotifs[0]?.count ?? 0),
-        fundingSnapshots: Number(recentFunding[0]?.count ?? 0),
-        liquidationSnapshots: Number(recentLiqs[0]?.count ?? 0),
-      },
-      trends: {
-        alerts: toArr(trendAlerts),
-        funding: toArr(trendFunding),
-        oi: toArr(trendOI),
-        liquidations: toArr(trendLiqs),
-      },
-      users: {
-        tiers: (tierMix as any[]).map(r => ({ tier: String(r.tier), count: Number(r.count) })),
-        roles: (roleMix as any[]).map(r => ({ role: String(r.role), count: Number(r.count) })),
-        verified: (verifiedMix as any[]).reduce((acc, r) => {
-          acc[r.verified ? 'verified' : 'unverified'] = Number(r.count);
-          return acc;
-        }, { verified: 0, unverified: 0 } as Record<string, number>),
-        signups: {
-          last7d:  Number(signups7d[0]?.count  ?? 0),
-          last30d: Number(signups30d[0]?.count ?? 0),
-          last90d: Number(signups90d[0]?.count ?? 0),
+      return {
+        totals: {
+          users: Number(userCount[0]?.count ?? 0),
+          alertNotifications: Number(alertNotifCount[0]?.count ?? 0),
+          fundingSnapshots: Number(fundingRows[0]?.count ?? 0),
+          oiSnapshots: Number(oiRows[0]?.count ?? 0),
+          liquidationSnapshots: Number(liqRows[0]?.count ?? 0),
+          telegramUsers: Number(telegramUsers[0]?.count ?? 0),
+          pushSubscriptions: Number(pushSubs[0]?.count ?? 0),
         },
-        recent: (recentSignups as any[]).map(r => ({
-          id: String(r.id),
-          email: r.email ? String(r.email) : null,
-          name: r.name ? String(r.name) : null,
-          createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
-          tier: r.billing_tier ? String(r.billing_tier) : 'free',
-          role: r.role ? String(r.role) : 'user',
-        })),
-        active: {
-          dau: Number((dauWauMau as any[])[0]?.dau ?? 0),
-          wau: Number((dauWauMau as any[])[0]?.wau ?? 0),
-          mau: Number((dauWauMau as any[])[0]?.mau ?? 0),
+        last24h: {
+          alertNotifications: Number(recentNotifs[0]?.count ?? 0),
+          fundingSnapshots: Number(recentFunding[0]?.count ?? 0),
+          liquidationSnapshots: Number(recentLiqs[0]?.count ?? 0),
         },
-      },
-      retention: {
-        d1:  pctRetention((retentionRows as any[])[0]?.d1_total,  (retentionRows as any[])[0]?.d1_retained),
-        d7:  pctRetention((retentionRows as any[])[0]?.d7_total,  (retentionRows as any[])[0]?.d7_retained),
-        d30: pctRetention((retentionRows as any[])[0]?.d30_total, (retentionRows as any[])[0]?.d30_retained),
-      },
-      engagement: {
-        activeAlertsTotal: Number(alertsActive[0]?.count ?? 0),
-        usersWithAlerts:   Number(alertsTotal[0]?.count  ?? 0),
-        watchedWallets:    Number(watchedWallets[0]?.count   ?? 0),
-        connectedKeys:     Number(connectedKeys[0]?.count    ?? 0),
-        connectedWallets:  Number(connectedWallets[0]?.count ?? 0),
-      },
-      notifications: {
-        byChannel: (notifsByChannel as any[]).map(r => ({ channel: String(r.channel), count: Number(r.count) })),
-        sent:   Number((notifsSuccess as any[])[0]?.sent   ?? 0),
-        failed: Number((notifsSuccess as any[])[0]?.failed ?? 0),
-        total:  Number((notifsSuccess as any[])[0]?.total  ?? 0),
-      },
-      affiliate: {
-        referredUsers:     Number(referredUsers[0]?.count    ?? 0),
-        payoutsConfigured: Number(payoutsConfigured[0]?.count ?? 0),
-      },
-      dbSize: dbSize[0]?.size ?? 'unknown',
-    });
+        trends: {
+          alerts: toArr(trendAlerts),
+          funding: toArr(trendFunding),
+          oi: toArr(trendOI),
+          liquidations: toArr(trendLiqs),
+        },
+        users: {
+          tiers: (tierMix as any[]).map(r => ({ tier: String(r.tier), count: Number(r.count) })),
+          roles: (roleMix as any[]).map(r => ({ role: String(r.role), count: Number(r.count) })),
+          verified: (verifiedMix as any[]).reduce((acc, r) => {
+            acc[r.verified ? 'verified' : 'unverified'] = Number(r.count);
+            return acc;
+          }, { verified: 0, unverified: 0 } as Record<string, number>),
+          signups: {
+            last7d:  Number(signups7d[0]?.count  ?? 0),
+            last30d: Number(signups30d[0]?.count ?? 0),
+            last90d: Number(signups90d[0]?.count ?? 0),
+          },
+          recent: (recentSignups as any[]).map(r => ({
+            id: String(r.id),
+            email: r.email ? String(r.email) : null,
+            name: r.name ? String(r.name) : null,
+            createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+            tier: r.billing_tier ? String(r.billing_tier) : 'free',
+            role: r.role ? String(r.role) : 'user',
+          })),
+          active: {
+            dau: Number((dauWauMau as any[])[0]?.dau ?? 0),
+            wau: Number((dauWauMau as any[])[0]?.wau ?? 0),
+            mau: Number((dauWauMau as any[])[0]?.mau ?? 0),
+          },
+        },
+        retention: {
+          d1:  pctRetention((retentionRows as any[])[0]?.d1_total,  (retentionRows as any[])[0]?.d1_retained),
+          d7:  pctRetention((retentionRows as any[])[0]?.d7_total,  (retentionRows as any[])[0]?.d7_retained),
+          d30: pctRetention((retentionRows as any[])[0]?.d30_total, (retentionRows as any[])[0]?.d30_retained),
+        },
+        engagement: {
+          activeAlertsTotal: Number(alertsActive[0]?.count ?? 0),
+          usersWithAlerts:   Number(alertsTotal[0]?.count  ?? 0),
+          watchedWallets:    Number(watchedWallets[0]?.count   ?? 0),
+          connectedKeys:     Number(connectedKeys[0]?.count    ?? 0),
+          connectedWallets:  Number(connectedWallets[0]?.count ?? 0),
+        },
+        notifications: {
+          byChannel: (notifsByChannel as any[]).map(r => ({ channel: String(r.channel), count: Number(r.count) })),
+          sent:   Number((notifsSuccess as any[])[0]?.sent   ?? 0),
+          failed: Number((notifsSuccess as any[])[0]?.failed ?? 0),
+          total:  Number((notifsSuccess as any[])[0]?.total  ?? 0),
+        },
+        affiliate: {
+          referredUsers:     Number(referredUsers[0]?.count    ?? 0),
+          payoutsConfigured: Number(payoutsConfigured[0]?.count ?? 0),
+        },
+        dbSize: dbSize[0]?.size ?? 'unknown',
+      };
+    } catch (e) {
+      console.error('Admin stats error:', e);
+      throw e;
+    } finally {
+      // Always clear the inflight handle so the next request can rebuild.
+      // The cached value gets set in the outer caller after `inflight`
+      // resolves successfully.
+      // (intentional: inflight is cleared below, after we read the value)
+    }
+  })();
+
+  try {
+    const data = await inflight;
+    cached   = data;
+    cachedAt = Date.now();
+    inflight = null;
+    return NextResponse.json(data);
   } catch (e) {
+    inflight = null;
     console.error('Admin stats error:', e);
     return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });
   }
