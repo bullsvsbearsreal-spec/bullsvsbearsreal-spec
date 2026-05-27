@@ -406,10 +406,21 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 function Field({ label, value, mono }: { label: string; value: React.ReactNode; mono?: boolean }) {
+  // Grid layout (not flex space-between) so the value column can
+  // shrink and break long content (UUIDs, emails, addresses) without
+  // forcing the drawer to widen. Right-aligned + word-break:break-all
+  // means a 36-char UUID still fits the 520px drawer.
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '5px 0' }}>
-      <span style={{ fontSize: 11, color: 'var(--fg-muted)' }}>{label}</span>
-      <span style={{ fontSize: 12, color: '#fff', fontFamily: mono ? 'var(--font-mono)' : 'inherit' }}>{value}</span>
+    <div style={{ display: 'grid', gridTemplateColumns: 'auto minmax(0, 1fr)', alignItems: 'start', gap: 12, padding: '5px 0' }}>
+      <span style={{ fontSize: 11, color: 'var(--fg-muted)', whiteSpace: 'nowrap' }}>{label}</span>
+      <span style={{
+        fontSize: 12, color: '#fff',
+        fontFamily: mono ? 'var(--font-mono)' : 'inherit',
+        textAlign: 'right',
+        minWidth: 0,
+        overflowWrap: 'anywhere',
+        wordBreak: 'break-word',
+      }}>{value}</span>
     </div>
   );
 }
@@ -417,9 +428,9 @@ function Field({ label, value, mono }: { label: string; value: React.ReactNode; 
 function ActivityRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: number }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 0' }}>
-      <span style={{ color: 'var(--fg-muted)' }}>{icon}</span>
-      <span style={{ flex: 1, fontSize: 12, color: 'var(--fg-default)' }}>{label}</span>
-      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#fff' }}>{fmtNumber(value)}</span>
+      <span style={{ color: 'var(--fg-muted)', flexShrink: 0 }}>{icon}</span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 12, color: 'var(--fg-default)' }}>{label}</span>
+      <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 700, color: '#fff', flexShrink: 0 }}>{fmtNumber(value)}</span>
     </div>
   );
 }

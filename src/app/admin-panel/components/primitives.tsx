@@ -197,7 +197,10 @@ export function ConfirmModal({
           <AlertTriangle className="w-3 h-3" /> Confirm destructive action
         </div>
         <h2 style={{ fontSize: 17, fontWeight: 700, color: '#fff', marginBottom: 8, letterSpacing: '-0.01em' }}>{title}</h2>
-        <div style={{ fontSize: 13, color: 'var(--fg-muted)', lineHeight: 1.55, marginBottom: 16 }}>{description}</div>
+        <div style={{
+          fontSize: 13, color: 'var(--fg-muted)', lineHeight: 1.55, marginBottom: 16,
+          overflowWrap: 'anywhere', wordBreak: 'break-word',
+        }}>{description}</div>
 
         {requireReason && (
           <div style={{ marginBottom: 12 }}>
