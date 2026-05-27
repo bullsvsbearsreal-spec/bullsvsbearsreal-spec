@@ -342,7 +342,7 @@ export default function DonatePage() {
           <Heart style={{ width: 22, height: 22, color: '#f43f5e', fill: '#f43f5e' }} />
         </div>
         <p style={{ flex: 1, fontSize: 13, color: 'var(--fg-default)', lineHeight: 1.55, margin: 0 }}>
-          Running InfoHub costs real money in API calls, RPC quotas, and DB storage. Pro + Whale tiers are live (free during launch — see <Link href="/pricing" style={{ color: 'var(--hub-accent)' }}>/pricing</Link>), but core tools stay free for most users. A tip now keeps me shipping
+          Running InfoHub costs real money in API calls, RPC quotas, and DB storage. Trader, Pro + Whale tiers are live (free during launch — see <Link href="/pricing" style={{ color: 'var(--hub-accent)' }}>/pricing</Link>), but core tools stay free for most users. A tip now keeps me shipping
           full-time, and you get credited as a <strong style={{ color: 'var(--hub-accent)' }}>day-one supporter</strong> when paid billing turns on.
         </p>
       </div>
