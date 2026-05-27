@@ -280,7 +280,7 @@ export default function PricingPage() {
             />
             <FaqItem
               q="Is there a free trial?"
-              a="No traditional trial — but right now everyone gets full Pro features free during launch, which is effectively a long open trial. The Free tier itself stays free forever (no card required, no time limit), so you can always test the data terminal without committing to anything."
+              a="No traditional trial — but right now everyone gets full Trader + Pro + Whale features free during launch, which is effectively a long open trial of every paid tier. The Free tier itself stays free forever (no card required, no time limit), so you can always test the data terminal without committing to anything."
             />
             <FaqItem
               q="Earn 20% commission as an affiliate?"
