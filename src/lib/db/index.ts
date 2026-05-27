@@ -448,26 +448,15 @@ async function _doInitDB(): Promise<void> {
   // overridden via env (so a misconfigured environment can't escalate
   // someone to owner). ADMIN_EMAIL is kept for backwards compat —
   // it's promoted to admin (not owner).
-  // Owner seed runs AFTER the new auth helpers ship, so the bump from
-  // 'admin' → 'owner' doesn't lock the user out during a deploy
-  // ordering window. Guarded by a feature flag — set
-  // OWNER_SEED_ENABLED=1 on the server once you've confirmed
-  // requireAdminOrAdvisor / isAdmin both accept 'owner' on the live
-  // deploy. Until then, the ocelot user stays 'admin' (which both
-  // old and new helpers accept).
+  // Owner seed — unconditional now that the auth helpers
+  // (requireAdminOrAdvisor + isAdmin) are confirmed accepting
+  // 'owner' on the live deploy. The previous flag-gated path is
+  // gone; the only way back to 'admin' is to manually UPDATE the
+  // row in psql (which is intentional — owner role is sticky).
   const ownerEmail = 'ocelotcex1638a@gmail.com';
   const adminEmail = process.env.ADMIN_EMAIL || ownerEmail;
-  if (process.env.OWNER_SEED_ENABLED === '1') {
-    await sql`UPDATE users SET role = 'owner' WHERE email = ${ownerEmail} AND role != 'owner'`;
-  }
+  await sql`UPDATE users SET role = 'owner' WHERE email = ${ownerEmail} AND role != 'owner'`;
   await sql`UPDATE users SET role = 'admin' WHERE email = ${adminEmail} AND email != ${ownerEmail} AND role NOT IN ('admin', 'owner')`;
-  // Backwards-compat: if the OWNER_SEED_ENABLED flag is OFF and the
-  // user is already 'owner' (e.g. an earlier deploy ran the unguarded
-  // seed), revert them to 'admin' so the OLD helper code can still
-  // authorize them. Once OWNER_SEED_ENABLED=1, this no-ops.
-  if (process.env.OWNER_SEED_ENABLED !== '1') {
-    await sql`UPDATE users SET role = 'admin' WHERE email = ${ownerEmail} AND role = 'owner'`.catch(() => {});
-  }
   // Backfill: every existing API key owned by an admin/owner gets bumped
   // to 'whale' tier (resolveUserTier's admin→whale rule applies to keys
   // too — admins should never be artificially throttled). Without this,
