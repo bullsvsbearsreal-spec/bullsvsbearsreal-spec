@@ -120,6 +120,55 @@ export function OverviewTab({ stats, audit, sysHealth }: {
         })}
       </div>
 
+      {/* Role distribution — quick count of who has elevated access.
+          Pulled from stats.users.roles (already loaded). Hides
+          when there are zero of every elevated role (clean dashboards
+          shouldn't carry a row of zero-state tiles). */}
+      {(() => {
+        const roles = stats?.users?.roles ?? [];
+        const findCount = (r: string) => roles.find(x => x.role === r)?.count ?? 0;
+        const owners = findCount('owner');
+        const admins = findCount('admin');
+        const mods = findCount('moderator');
+        const marketers = findCount('marketer');
+        const advisors = findCount('advisor');
+        const anyElevated = owners + admins + mods + marketers + advisors > 0;
+        if (!stats || !anyElevated) return null;
+        const ROLES = [
+          { id: 'owner',     label: 'Owner',     count: owners,    color: '#f87171' },
+          { id: 'admin',     label: 'Admin',     count: admins,    color: '#fbbf24' },
+          { id: 'moderator', label: 'Moderator', count: mods,      color: '#7dd3fc' },
+          { id: 'marketer',  label: 'Marketer',  count: marketers, color: '#c4b5fd' },
+          { id: 'advisor',   label: 'Advisor',   count: advisors,  color: '#86efac' },
+        ];
+        return (
+          <>
+            <SectionHead title="Team Roles" icon={<Shield style={{ width: 13, height: 13 }} />} right={
+              <Link href="#users" style={{ fontSize: 10, color: 'var(--hub-accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+                Manage <ArrowRight style={{ width: 11, height: 11 }} />
+              </Link>
+            } />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 12, marginBottom: 18 }}>
+              {ROLES.map(r => (
+                <div key={r.id} style={{
+                  background: 'var(--hub-darker)',
+                  border: `1px solid ${r.count > 0 ? r.color + '33' : 'var(--hub-border-subtle)'}`,
+                  borderRadius: 10, padding: '10px 14px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+                }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: r.count > 0 ? r.color : 'var(--fg-muted)' }}>
+                    {r.label}
+                  </span>
+                  <span style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-mono)', color: r.count > 0 ? '#fff' : 'var(--fg-faint)' }}>
+                    {r.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        );
+      })()}
+
       {/* Aggregator strip — single row, 3 mini stats so the operator
           can spot a WS outage from Overview without flipping to Ops. */}
       <SectionHead title="Aggregator · live WS connection state" icon={<Server style={{ width: 13, height: 13 }} />} right={
