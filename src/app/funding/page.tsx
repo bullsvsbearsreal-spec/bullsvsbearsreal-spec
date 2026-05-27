@@ -151,11 +151,26 @@ export default function FundingPage() {
   const tabCacheRef = useRef<Map<string, FundingData>>(new Map());
 
   const fetcher = useCallback(async () => {
-    const [data, arbData, oiData, tickerRes] = await Promise.all([
+    // Kick off arb-history as soon as arbData lands rather than
+    // awaiting the rest of the batch first. arbHistory only depends
+    // on arbData.symbols; previously this was a `await fetchArbHistory`
+    // AFTER the Promise.all resolved, adding ~200-500ms to every
+    // funding-page load. Now it runs in parallel with everything else.
+    const arbDataP = fetchFundingArbitrage(assetClass as AssetClassFilter);
+    const arbHistoryP = arbDataP
+      .then(arbData => {
+        const arbSymbols = (Array.isArray(arbData) ? arbData : [])
+          .map((a: { symbol?: string }) => a.symbol)
+          .filter((s): s is string => !!s);
+        return fetchArbHistory(arbSymbols);
+      })
+      .catch(() => new Map());
+    const [data, arbData, oiData, tickerRes, arbHistory] = await Promise.all([
       fetchAllFundingRates(assetClass as AssetClassFilter),
-      fetchFundingArbitrage(assetClass as AssetClassFilter),
+      arbDataP,
       fetchAllOpenInterest(),
       fetch('/api/tickers').then(r => r.ok ? r.json() : { data: [] }),
+      arbHistoryP,
     ]);
     const tickerData = Array.isArray(tickerRes) ? tickerRes : (tickerRes.data ?? []);
     const validData = data.filter(fr => fr && isValidNumber(fr.fundingRate));
@@ -168,9 +183,6 @@ export default function FundingPage() {
     });
     // Detect cross-exchange price arbs from raw tickers
     const priceArbs = detectPriceArbitrage(tickerData as any[]);
-    // Fetch arb history for stability/trend (non-blocking — don't delay page load)
-    const arbSymbols = (Array.isArray(arbData) ? arbData : []).map((a: { symbol?: string }) => a.symbol).filter((s): s is string => !!s);
-    const arbHistory = await fetchArbHistory(arbSymbols).catch(() => new Map());
     const result: FundingData = { fundingRates: validData, arbitrageData: arbData, priceArbs, oiMap, arbHistory, _assetClass: assetClass };
     // Cache this tab's data for instant switching
     tabCacheRef.current.set(assetClass, result);
