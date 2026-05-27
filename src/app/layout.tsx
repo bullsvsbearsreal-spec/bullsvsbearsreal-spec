@@ -232,6 +232,14 @@ export default function RootLayout({
         <meta name="theme-color" content="#0f1117" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        {/* Preconnect to the aggregator (used by the StatusBar venue
+            counter + StreamStatusBadge + the chart's CryptoMetricsPanel)
+            so the TCP/TLS handshake is already warm before the first
+            useAggregatorHealth poll fires. Cuts ~100-200ms off the
+            first /health fetch on cold loads. dns-prefetch is a cheap
+            fallback for browsers that skip preconnect. */}
+        <link rel="preconnect" href="https://prices.info-hub.io" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://prices.info-hub.io" />
         {/* Prevent FOUC: apply saved theme before first paint */}
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('infohub-theme');if(t==='light')document.documentElement.dataset.theme=t}catch(e){}` }} />
       </head>

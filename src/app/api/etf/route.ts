@@ -337,7 +337,7 @@ export async function GET(request: NextRequest) {
   const cached = l1Cache.get(cacheKey);
   if (cached && Date.now() - cached.timestamp < L1_TTL) {
     return NextResponse.json(cached.body, {
-      headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+      headers: { 'X-Cache': 'HIT', 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900' },
     });
   }
 
@@ -400,6 +400,6 @@ export async function GET(request: NextRequest) {
   l1Cache.set(cacheKey, { body, timestamp: Date.now() });
 
   return NextResponse.json(body, {
-    headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+    headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=900' },
   });
 }
