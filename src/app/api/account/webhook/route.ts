@@ -9,8 +9,8 @@
  *                                     verify their receiver works.
  *
  * Whale tier only — /pricing's "Custom alert webhooks (your own HTTPS
- * endpoint)" row is a Whale-tier entitlement. Free + Pro users get a 403
- * with an upgrade message.
+ * endpoint)" row is a Whale-tier entitlement. Free / Trader / Pro users
+ * get a 403 with an upgrade message.
  *
  * Payload format + HMAC scheme documented in lib/notifications.ts
  * (sendAlertWebhook). Receivers verify authenticity via
