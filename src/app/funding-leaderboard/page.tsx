@@ -6,9 +6,6 @@
  * cumulative-rate × open-interest but slice by different dimensions.
  * Consolidated to /funding-paid in May 2026 — the per-coin view is
  * more useful for most users.
- *
- * Original implementation backed up at page.tsx.bak in case we want
- * to re-add the per-exchange slice as a tab on /funding-paid.
  */
 import { redirect } from 'next/navigation';
 

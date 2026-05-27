@@ -5,8 +5,6 @@
  * per coin (derived from Binance's premium-index running average).
  * Consolidated into /funding in May 2026 — predictions are an
  * enhancement of the main funding rates view, not a separate page.
- *
- * Original implementation backed up at page.tsx.bak.
  */
 import { redirect } from 'next/navigation';
 

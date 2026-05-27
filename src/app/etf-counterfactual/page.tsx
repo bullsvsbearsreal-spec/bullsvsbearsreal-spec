@@ -5,8 +5,6 @@
  * what price action would look like minus institutional ETF demand.
  * Low-traffic, overlapping conceptually with /etf-flows. Consolidated
  * in May 2026.
- *
- * Original implementation backed up at page.tsx.bak.
  */
 import { redirect } from 'next/navigation';
 

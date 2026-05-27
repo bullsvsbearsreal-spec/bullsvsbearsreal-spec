@@ -5,8 +5,6 @@
  * does the same job (track HL + gTrade wallets) plus Telegram alerts
  * on opens/closes/size-changes/liq-danger, per-wallet activity badges,
  * and a clean event log.
- *
- * Original implementation backed up at page.tsx.bak.
  */
 import { redirect } from 'next/navigation';
 

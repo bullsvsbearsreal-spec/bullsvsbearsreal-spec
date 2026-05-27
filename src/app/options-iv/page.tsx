@@ -6,8 +6,6 @@
  * IV smile across strikes for the live expiry. Deeper IV-only views
  * (term structure, surface contour) from this page can be re-added
  * as sections of /options if needed.
- *
- * Original implementation backed up at page.tsx.bak.
  */
 import { redirect } from 'next/navigation';
 

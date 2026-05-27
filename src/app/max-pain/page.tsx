@@ -5,8 +5,6 @@
  * in May 2026 — the main options page already prominently displays
  * the max-pain strike for the live expiry. Per-expiry max-pain
  * comparison from this page can be re-added as a section of /options.
- *
- * Original implementation backed up at page.tsx.bak.
  */
 import { redirect } from 'next/navigation';
 

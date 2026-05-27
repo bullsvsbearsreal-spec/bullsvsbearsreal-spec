@@ -3,8 +3,6 @@
  *
  * Was a sub-view of the smart-money rankings showing the composite
  * score. Folded into the main /smart-money page in May 2026.
- *
- * Original implementation backed up at page.tsx.bak.
  */
 import { redirect } from 'next/navigation';
 

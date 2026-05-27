@@ -5,9 +5,6 @@
  * with /liquidations (same data, different framing). Consolidated to
  * the canonical liquidations feed in May 2026.
  *
- * Original implementation backed up at page.tsx.bak in case we want
- * to resurrect any of the unique copy/UI later.
- *
  * `force-dynamic` prevents Next.js from pre-rendering the redirect
  * statically — without it the redirect can be cached as the page
  * itself and stop firing.

@@ -4,8 +4,6 @@
  * Was the "Liquidation Roulette" gamified view of large-liquidation
  * data. Same upstream data as /liquidations; consolidated to the
  * canonical feed in May 2026.
- *
- * Original implementation backed up at page.tsx.bak.
  */
 import { redirect } from 'next/navigation';
 

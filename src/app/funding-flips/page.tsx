@@ -5,9 +5,6 @@
  * funding payment flipped sign vs the previous one. Consolidated into
  * /funding (the main funding rates view) in May 2026 — sign flips are
  * an alert-style overlay on the same underlying data.
- *
- * Original implementation backed up at page.tsx.bak in case the flip
- * radar warrants its own tab on /funding.
  */
 import { redirect } from 'next/navigation';
 
