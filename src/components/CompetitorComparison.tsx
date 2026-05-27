@@ -16,6 +16,7 @@
 
 import Link from 'next/link';
 import { ALL_EXCHANGES } from '@/lib/constants/exchanges';
+import { TIER_PRICE_MONTHLY } from '@/lib/constants/tiers';
 import { Check, X as XIcon, ExternalLink } from 'lucide-react';
 
 type Cell = boolean | string;
@@ -78,7 +79,9 @@ const COMPARISON_ROWS: Row[] = [
   },
   {
     feature: 'Starting paid tier (monthly)',
-    values: { infohub: '$12', coinglass: '$29', laevitas: '$99', coinank: '$25' },
+    // InfoHub price derived from TIER_PRICE_MONTHLY so the table can't
+    // silently drift behind a future Trader-tier price change.
+    values: { infohub: `$${TIER_PRICE_MONTHLY.trader}`, coinglass: '$29', laevitas: '$99', coinank: '$25' },
   },
 ];
 
