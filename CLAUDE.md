@@ -39,7 +39,7 @@ ssh root@46.101.247.54
 systemctl status infohub-aggregator
 journalctl -u infohub-aggregator -n 200 -f
 
-# Crons (13 timers, all hit info-hub.io/api/cron/*).
+# Crons (14 timers, all hit info-hub.io/api/cron/*).
 # Note: /api/cron/watch-hl-wallets does NOT have its own timer —
 # it piggybacks on the snapshot cron's tail-call (see "Wallet
 # Watch" section below). One cron handles both jobs every 60s.
@@ -50,13 +50,14 @@ journalctl -u 'infohub-cron@*' --since '10 minutes ago' --output=cat | grep 'HTT
 cat /etc/infohub-cron.env   # mode 600, contains only CRON_SECRET=...
 ```
 
-The 13 cron timers and their schedules:
+The 14 cron timers and their schedules:
 
 | Endpoint | Schedule |
 | --- | --- |
 | `/api/cron/snapshot` | every minute |
 | `/api/cron/ingest-liquidations` | every minute |
 | `/api/cron/sync-positions` | every minute |
+| `/api/cron/whale-alerts` | every 30s (5s for sub-second P99 — Whale-tier priority path) |
 | `/api/cron/whale-trades` | every 2 min |
 | `/api/cron/alerts` | every 5 min |
 | `/api/cron/check-position-alerts` | every 5 min |
