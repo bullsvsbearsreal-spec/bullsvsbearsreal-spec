@@ -827,8 +827,9 @@ function AddKeyForm({ exchanges, onSaved }: { exchanges: string[]; onSaved: () =
  * which DEXes will populate /positions for each chain choice. Keep this in
  * sync with the routing table in `src/lib/wallet-clients/index.ts` —
  * `live` rows correspond to wallet clients that actually return positions
- * today; `stub` rows are wired but still return empty (gTrade) and
- * `soon` rows have no fetcher yet (Solana, Base).
+ * today, and `soon` rows have no fetcher yet (Solana, Base). gTrade used
+ * to be `stub` (wired but empty) until its eth_call fetcher landed; it's
+ * now `live` alongside GMX V2 on Arbitrum.
  */
 const CHAIN_COVERAGE: Record<string, { protocols: { name: string; status: 'live' | 'stub' | 'soon' }[]; addressHint: string }> = {
   hyperliquid: {
