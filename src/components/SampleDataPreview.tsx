@@ -4,27 +4,34 @@ import { TokenIconSimple } from './TokenIcon';
 
 /* ------------------------------------------------------------------ */
 /*  Sample data for preview tables on empty personal pages             */
+/*                                                                     */
+/*  Numbers below are deliberately rounded to vaguely-current ranges   */
+/*  so the faded sample doesn't look obviously stale to a visitor      */
+/*  who knows live prices. They will go stale over months — refresh    */
+/*  roughly when BTC moves $10k+ from the anchor below.                */
+/*                                                                     */
+/*  Last refreshed: 2026-05-26 (BTC ~$76k, ETH ~$2.5k, SOL ~$160).     */
 /* ------------------------------------------------------------------ */
 
 export const SAMPLE_WATCHLIST = [
-  { symbol: 'BTC', price: 66738, change24h: 0.54, avgFunding: 0.0042, totalOI: 14_200_000_000, volume: 28_400_000_000 },
-  { symbol: 'ETH', price: 2057, change24h: 0.68, avgFunding: 0.0031, totalOI: 5_100_000_000, volume: 12_800_000_000 },
-  { symbol: 'SOL', price: 148.2, change24h: -1.23, avgFunding: 0.0058, totalOI: 2_300_000_000, volume: 4_100_000_000 },
-  { symbol: 'DOGE', price: 0.178, change24h: 2.41, avgFunding: 0.0125, totalOI: 680_000_000, volume: 1_600_000_000 },
-  { symbol: 'XRP', price: 0.612, change24h: -0.31, avgFunding: -0.0012, totalOI: 720_000_000, volume: 2_100_000_000 },
+  { symbol: 'BTC', price: 76000, change24h: 0.54, avgFunding: 0.0042, totalOI: 21_500_000_000, volume: 32_100_000_000 },
+  { symbol: 'ETH', price: 2480, change24h: 0.68, avgFunding: 0.0031, totalOI: 7_300_000_000, volume: 14_200_000_000 },
+  { symbol: 'SOL', price: 162, change24h: -1.23, avgFunding: 0.0058, totalOI: 2_900_000_000, volume: 5_400_000_000 },
+  { symbol: 'DOGE', price: 0.184, change24h: 2.41, avgFunding: 0.0125, totalOI: 740_000_000, volume: 1_900_000_000 },
+  { symbol: 'XRP', price: 2.14, change24h: -0.31, avgFunding: -0.0012, totalOI: 1_200_000_000, volume: 2_800_000_000 },
 ];
 
 export const SAMPLE_PORTFOLIO = [
-  { symbol: 'BTC', qty: 0.5, entry: 62000, current: 66738, value: 33369, pnl: 2369, pnlPct: 7.63, allocation: 58.2 },
-  { symbol: 'ETH', qty: 5, entry: 1900, current: 2057, value: 10285, pnl: 785, pnlPct: 8.26, allocation: 17.9 },
-  { symbol: 'SOL', qty: 50, entry: 135, current: 148.2, value: 7410, pnl: 660, pnlPct: 9.78, allocation: 12.9 },
-  { symbol: 'LINK', qty: 200, entry: 14.5, current: 16.2, value: 3240, pnl: 340, pnlPct: 11.72, allocation: 5.7 },
-  { symbol: 'AVAX', qty: 100, entry: 28, current: 30.5, value: 3050, pnl: 250, pnlPct: 8.93, allocation: 5.3 },
+  { symbol: 'BTC', qty: 0.5, entry: 72000, current: 76000, value: 38000, pnl: 2000, pnlPct: 5.56, allocation: 58.2 },
+  { symbol: 'ETH', qty: 5, entry: 2300, current: 2480, value: 12400, pnl: 900, pnlPct: 7.83, allocation: 19.0 },
+  { symbol: 'SOL', qty: 50, entry: 150, current: 162, value: 8100, pnl: 600, pnlPct: 8.00, allocation: 12.4 },
+  { symbol: 'LINK', qty: 200, entry: 22, current: 25.5, value: 5100, pnl: 700, pnlPct: 15.91, allocation: 7.8 },
+  { symbol: 'AVAX', qty: 100, entry: 35, current: 36.5, value: 3650, pnl: 150, pnlPct: 4.29, allocation: 5.6 },
 ];
 
 export const SAMPLE_ALERTS = [
-  { symbol: 'BTC', metric: 'Price', condition: 'drops below', value: '$60,000', active: true },
-  { symbol: 'ETH', metric: 'Price', condition: 'rises above', value: '$2,500', active: true },
+  { symbol: 'BTC', metric: 'Price', condition: 'drops below', value: '$70,000', active: true },
+  { symbol: 'ETH', metric: 'Price', condition: 'rises above', value: '$3,000', active: true },
   { symbol: 'SOL', metric: 'Funding Rate', condition: 'exceeds', value: '0.05%', active: false },
   { symbol: 'BTC', metric: 'OI Change 1h', condition: 'drops below', value: '-5%', active: true },
 ];
