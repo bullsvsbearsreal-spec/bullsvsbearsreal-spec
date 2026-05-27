@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { Copy, Check, ArrowLeft, ChevronRight, ExternalLink, Link as LinkIcon } from 'lucide-react';
 import {
   FREE_TIER_PER_MINUTE,
+  TRADER_TIER_PER_MINUTE,
+  TRADER_TIER_PER_DAY,
   PRO_TIER_PER_MINUTE,
   FREE_TIER_PER_DAY,
 } from '@/lib/api/rate-limit';
@@ -401,31 +403,45 @@ export default function DocsPage() {
               <CodeBlock>{`X-RateLimit-Limit: ${FREE_TIER_PER_MINUTE}
 X-RateLimit-Remaining: 97
 X-RateLimit-Reset: 1709248060`}</CodeBlock>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-4">
-                  <div className="text-white font-semibold text-sm mb-2">Free Tier</div>
-                  <div className="text-gray-400 text-[13px] space-y-1">
-                    <div className="flex justify-between"><span>Per minute</span><span className="text-white font-mono">{FREE_TIER_PER_MINUTE}</span></div>
-                    <div className="flex justify-between"><span>Per day</span><span className="text-white font-mono">{FREE_TIER_PER_DAY.toLocaleString()}</span></div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3">
+                  <div className="text-white font-semibold text-xs mb-2">Free</div>
+                  <div className="text-gray-400 text-[12px] space-y-1">
+                    <div className="flex justify-between gap-2"><span>/min</span><span className="text-white font-mono">{FREE_TIER_PER_MINUTE}</span></div>
+                    <div className="flex justify-between gap-2"><span>/day</span><span className="text-white font-mono">{FREE_TIER_PER_DAY.toLocaleString()}</span></div>
                   </div>
                 </div>
-                <div className="bg-white/[0.02] border border-emerald-500/15 rounded-xl p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="text-white font-semibold text-sm">Pro Tier</span>
-                    <span className="text-[9px] text-emerald-300 border border-emerald-400/30 rounded-full px-1.5 py-0.5 uppercase font-bold tracking-wider">Free during launch</span>
+                <div className="bg-white/[0.02] border border-white/[0.06] rounded-xl p-3">
+                  <div className="text-white font-semibold text-xs mb-2">Trader</div>
+                  <div className="text-gray-400 text-[12px] space-y-1">
+                    <div className="flex justify-between gap-2"><span>/min</span><span className="text-white font-mono">{TRADER_TIER_PER_MINUTE}</span></div>
+                    <div className="flex justify-between gap-2"><span>/day</span><span className="text-white font-mono">{TRADER_TIER_PER_DAY.toLocaleString()}</span></div>
                   </div>
-                  <div className="text-gray-400 text-[13px] space-y-1">
-                    <div className="flex justify-between"><span>Per minute</span><span className="text-white font-mono">{PRO_TIER_PER_MINUTE}</span></div>
-                    <div className="flex justify-between"><span>Per day</span><span className="text-emerald-300">Unlimited</span></div>
+                </div>
+                <div className="bg-white/[0.02] border border-emerald-500/15 rounded-xl p-3">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className="text-white font-semibold text-xs">Pro</span>
+                    <span className="text-[8px] text-emerald-300 border border-emerald-400/30 rounded-full px-1 py-0.5 uppercase font-bold tracking-wider">Launch · free</span>
                   </div>
-                  <Link
-                    href="/pricing"
-                    className="mt-2 text-[11px] text-emerald-300 hover:text-emerald-200 font-semibold inline-flex items-center gap-1"
-                  >
-                    See pricing →
-                  </Link>
+                  <div className="text-gray-400 text-[12px] space-y-1">
+                    <div className="flex justify-between gap-2"><span>/min</span><span className="text-white font-mono">{PRO_TIER_PER_MINUTE}</span></div>
+                    <div className="flex justify-between gap-2"><span>/day</span><span className="text-emerald-300">∞</span></div>
+                  </div>
+                </div>
+                <div className="bg-white/[0.02] border border-violet-500/15 rounded-xl p-3">
+                  <div className="text-white font-semibold text-xs mb-2">Whale</div>
+                  <div className="text-gray-400 text-[12px] space-y-1">
+                    <div className="flex justify-between gap-2"><span>/min</span><span className="text-violet-300">∞</span></div>
+                    <div className="flex justify-between gap-2"><span>/day</span><span className="text-violet-300">∞</span></div>
+                  </div>
                 </div>
               </div>
+              <Link
+                href="/pricing"
+                className="text-[11px] text-emerald-300 hover:text-emerald-200 font-semibold inline-flex items-center gap-1 mb-3"
+              >
+                Tier comparison + pricing →
+              </Link>
               <p className="text-gray-500 text-[13px]">
                 Exceeding the limit returns <code className="text-amber-400">429</code> with a <code className="text-amber-400">Retry-After</code> header indicating seconds until the window resets.
               </p>
