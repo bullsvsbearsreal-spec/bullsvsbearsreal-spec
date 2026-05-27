@@ -73,8 +73,8 @@ const PAGE_MAP: Record<string, PageMeta> = {
   '/compare': { label: 'Compare', category: 'My Tools' },
   // /wallet-tracker removed (308 → /watch); /watch + /trader-watch are
   // the live destinations Snake's pages send users to.
-  '/watch': { label: 'Wallet Watch', category: 'My Tools' },
-  '/trader-watch': { label: 'Trader Watch', category: 'My Tools' },
+  '/watch': { label: 'Wallet Alerts', category: 'My Tools' },
+  '/trader-watch': { label: 'Tracked Traders', category: 'My Tools' },
   '/brand': { label: 'Brand Kit', category: 'My Tools' },
   '/team': { label: 'Team', category: 'My Tools' },
   '/referrals': { label: 'Referrals', category: 'My Tools' },

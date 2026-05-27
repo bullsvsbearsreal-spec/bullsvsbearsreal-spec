@@ -17,7 +17,7 @@ import { resolveUserTier, TIER_BRANDING, type TierBranding } from '@/lib/constan
  * Organized into 4 sections for scannability:
  *   1. Identity card — avatar + name + email + tier chip + role badge
  *   2. Account     — Dashboard / Positions / Profile / Settings
- *   3. My tools    — Connections / Wallet Watch / Alerts / Invite
+ *   3. My tools    — Connections / Wallet Alerts / Alerts / Invite
  *   4. Admin (gated) — Admin Panel / Endpoint Health
  *
  * Sign out lives in its own footer row with a divider + red accent so
@@ -201,7 +201,7 @@ export default function UserMenu() {
             Connections
           </MenuLink>
           <MenuLink href="/watch" onClick={() => setOpen(false)} icon={<Eye />}>
-            Wallet Watch
+            Wallet Alerts
           </MenuLink>
           <MenuLink href="/alerts" onClick={() => setOpen(false)} icon={<Bell />}>
             Alerts

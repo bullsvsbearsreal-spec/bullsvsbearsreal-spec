@@ -85,7 +85,7 @@ const pageRegistry: PageEntry[] = [
   { name: 'Portfolio', href: '/portfolio', icon: Wallet, keywords: ['portfolio', 'positions', 'pnl', 'holdings', 'balance'], category: 'Portfolio' },
   // /wallet-tracker → /watch (consolidated May 2026). Same direct-route
   // treatment as Whale Alert above.
-  { name: 'Wallet Watch', href: '/watch', icon: SearchIcon, keywords: ['wallet', 'address', 'track', 'balance', 'multichain', 'watch', 'alerts'], category: 'Portfolio' },
+  { name: 'Wallet Alerts', href: '/watch', icon: SearchIcon, keywords: ['wallet', 'address', 'track', 'balance', 'multichain', 'watch', 'alerts', 'wallet watch'], category: 'Portfolio' },
   { name: 'Dashboard', href: '/dashboard', icon: BarChart3, keywords: ['dashboard', 'widgets', 'custom', 'home', 'overview'], category: 'Portfolio' },
   // More
   { name: 'Economic Calendar', href: '/economic-calendar', icon: Calendar, keywords: ['economic', 'calendar', 'events', 'fomc', 'cpi', 'macro'], category: 'More' },
@@ -106,7 +106,7 @@ const pageRegistry: PageEntry[] = [
   { name: 'GMX Traders', href: '/gmx-traders', icon: Trophy, keywords: ['gmx', 'traders', 'leaderboard', 'arbitrum', 'avalanche', 'pnl'], category: 'Sentiment' },
   { name: 'HL Traders', href: '/hl-traders', icon: Zap, keywords: ['hyperliquid', 'traders', 'leaderboard', 'pnl'], category: 'Sentiment' },
   { name: 'Compare Traders', href: '/compare-traders', icon: GitCompareArrows, keywords: ['compare', 'traders', 'wallet', 'side by side'], category: 'Sentiment' },
-  { name: 'Trader Watch · Bookmarked positions', href: '/trader-watch', icon: Star, keywords: ['trader', 'watch', 'star', 'bookmark', 'follow', 'copy trade', 'snake', 'shake', 'gmx', 'hyperliquid', 'gtrade', 'positions'], category: 'Sentiment' },
+  { name: 'Tracked Traders · Bookmarked positions', href: '/trader-watch', icon: Star, keywords: ['trader', 'watch', 'star', 'bookmark', 'follow', 'copy trade', 'snake', 'shake', 'gmx', 'hyperliquid', 'gtrade', 'positions', 'trader watch', 'tracked'], category: 'Sentiment' },
   { name: 'Invite Friends · Get your referral link', href: '/invite', icon: Gift, keywords: ['invite', 'referral', 'share', 'friend', 'refer', 'invite friend', 'invite code', 'invite link', 'share link', 'tell a friend'], category: 'More' },
   { name: 'Referral Leaderboard', href: '/invite/leaderboard', icon: Trophy, keywords: ['referral leaderboard', 'top referrers', 'invite leaderboard', 'ranking', 'top invites'], category: 'More' },
   { name: 'Liquidation Levels', href: '/liquidation-levels', icon: AlertTriangle, keywords: ['liquidation', 'levels', 'cluster', 'cascade', 'forecast'], category: 'Trading' },

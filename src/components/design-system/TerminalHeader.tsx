@@ -154,7 +154,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'positions',  label: 'Positions',     href: '/positions',          hint: 'Live positions across CEX + DEX with funding context' },
       { id: 'connections', label: 'Connections',  href: '/account/connections', hint: 'Connect CEX API keys + wallets' },
       { id: 'social',     label: 'KOL Feed',      href: '/social',             hint: 'Curated crypto/macro voices' },
-      { id: 'watchlist',  label: 'Watchlists',    href: '/watchlist',          hint: 'Pinned coins' },
+      { id: 'watchlist',  label: 'Symbol Watchlist', href: '/watchlist',        hint: 'Pinned coins' },
       { id: 'portfolio',  label: 'Portfolio (manual)', href: '/portfolio',     hint: 'Manual holdings + P&L' },
       { id: 'compare',    label: 'Compare',       href: '/compare',            hint: 'Side-by-side coins' },
       { id: 'profile',    label: 'Profile',       href: '/profile',            hint: 'Your trader profile' },
@@ -586,7 +586,7 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
               {[
                 { href: '/dashboard', label: 'Dashboard' },
                 { href: '/portfolio', label: 'Portfolio' },
-                { href: '/watchlist', label: 'Watchlists' },
+                { href: '/watchlist', label: 'Symbol Watchlist' },
                 { href: '/profile',   label: 'Profile' },
                 { href: '/settings',  label: 'Settings' },
               ].map(it => (

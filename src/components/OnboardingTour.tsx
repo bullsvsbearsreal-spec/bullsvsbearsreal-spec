@@ -27,12 +27,22 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 
-// Key bump 2026-05-26: v1 → v2 to re-surface the tour to existing
-// users now that the Copy-trader step has been added. Users who
-// already completed v1 will see the tour once more and can dismiss
-// it again. Worth the friction because the Copy → workflow is the
-// marquee feature of the current release.
+// 2026-05-27: dual-key model so existing users aren't punished with a
+// full 6-step replay for one new step.
+//   - LS_KEY (v2) tracks the *current* tour completion.
+//   - LS_KEY_V1 is the legacy key. If a user has the legacy
+//     "completed" marker but not the v2 one, we surface ONLY the new
+//     Copy-trader step (single-step "What's new" modal). First-time
+//     users with neither marker still get the full 6-step intro.
+// Bump LS_KEY *and* update LEGACY_KEYS when adding the next batch of
+// new-feature steps so prior cohorts get just-the-deltas instead of
+// the whole tour again.
 const LS_KEY = 'infohub_onboarding_v2';
+const LS_KEY_V1 = 'infohub_onboarding_v1';
+
+/** Step index of the most-recent addition. Returning users who
+ *  completed an earlier tour version see only this step. */
+const NEW_STEP_INDEX = 4; // "Copy what whales are doing"
 
 interface Step {
   /** Icon component from lucide-react. */
@@ -159,34 +169,45 @@ const ACCENT_STYLES: Record<Step['accent'], { color: string; bg: string; border:
   violet:  { color: '#c4b5fd', bg: 'rgba(196,181,253,0.10)', border: 'rgba(196,181,253,0.30)' },
 };
 
+type TourMode = 'full' | 'whats-new' | 'closed';
+
 /**
- * Reads localStorage to decide whether the tour should show. Returns
- * `null` during the first client render to avoid an SSR/CSR mismatch
- * — the tour either appears on the second tick or never.
+ * Reads localStorage to decide what (if anything) the tour should show:
+ *   - 'full'       → first-time user, run the 6-step intro
+ *   - 'whats-new'  → returning user who completed v1, show only the new step
+ *   - 'closed'     → user is up-to-date, don't render
+ * Returns `null` during the first client render to avoid SSR/CSR mismatch.
  */
-function shouldShowTour(): boolean | null {
+function tourModeFor(): TourMode | null {
   if (typeof localStorage === 'undefined') return null;
   try {
-    return localStorage.getItem(LS_KEY) !== 'completed';
+    if (localStorage.getItem(LS_KEY) === 'completed') return 'closed';
+    if (localStorage.getItem(LS_KEY_V1) === 'completed') return 'whats-new';
+    return 'full';
   } catch {
-    return false;
+    return 'closed';
   }
 }
 
 export default function OnboardingTour() {
-  // null = haven't checked yet; false = checked + dismissed; true = open
-  const [open, setOpen] = useState<boolean | null>(null);
+  // null = haven't checked yet; otherwise the chosen mode (or 'closed').
+  const [mode, setMode] = useState<TourMode | null>(null);
+  // Start index depends on mode: 'whats-new' jumps straight to the new step.
   const [stepIdx, setStepIdx] = useState(0);
 
   useEffect(() => {
-    setOpen(shouldShowTour() ?? false);
+    const m = tourModeFor() ?? 'closed';
+    setMode(m);
+    if (m === 'whats-new') setStepIdx(NEW_STEP_INDEX);
   }, []);
+
+  const open = mode === 'full' || mode === 'whats-new';
 
   const close = useCallback((markCompleted: boolean) => {
     if (markCompleted) {
       try { localStorage.setItem(LS_KEY, 'completed'); } catch { /* ignore */ }
     }
-    setOpen(false);
+    setMode('closed');
   }, []);
 
   // Esc to close + body scroll lock while open. Esc dismisses without
@@ -209,8 +230,12 @@ export default function OnboardingTour() {
   const step = STEPS[stepIdx];
   const StepIcon = step.icon;
   const accent = ACCENT_STYLES[step.accent];
-  const isLast = stepIdx === STEPS.length - 1;
-  const isFirst = stepIdx === 0;
+
+  // In 'whats-new' mode we only show the single new step; Done finishes
+  // the tour immediately and the Back button is hidden.
+  const isWhatsNew = mode === 'whats-new';
+  const isLast = isWhatsNew || stepIdx === STEPS.length - 1;
+  const isFirst = isWhatsNew || stepIdx === 0;
 
   return (
     <div
@@ -251,7 +276,7 @@ export default function OnboardingTour() {
           <XIcon className="w-4 h-4" />
         </button>
 
-        {/* Step badge */}
+        {/* Step badge — "What's new" for returning users, "Step N of M" for first-timers */}
         <div style={{
           display: 'inline-flex', alignItems: 'center', gap: 8,
           padding: '5px 11px', borderRadius: 999,
@@ -260,7 +285,7 @@ export default function OnboardingTour() {
           marginBottom: 14, textTransform: 'uppercase', letterSpacing: '0.08em',
         }}>
           <StepIcon className="w-3 h-3" aria-hidden />
-          Step {stepIdx + 1} of {STEPS.length}
+          {isWhatsNew ? "What's new" : `Step ${stepIdx + 1} of ${STEPS.length}`}
         </div>
 
         {/* Title */}
@@ -298,39 +323,45 @@ export default function OnboardingTour() {
           </Link>
         )}
 
-        {/* Dot indicator + nav buttons */}
+        {/* Dot indicator + nav buttons. Dots + Back are hidden in
+            'whats-new' mode since it's a single-step modal. */}
         <div style={{
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           marginTop: 22, paddingTop: 16, borderTop: '1px solid #262626',
         }}>
           {/* Dots */}
-          <div style={{ display: 'flex', gap: 6 }}>
-            {STEPS.map((_, i) => (
-              <span
-                key={i}
-                aria-label={`Step ${i + 1}${i === stepIdx ? ' (current)' : ''}`}
-                style={{
-                  width: i === stepIdx ? 18 : 6, height: 6, borderRadius: 999,
-                  background: i === stepIdx ? accent.color : '#3f3f3f',
-                  transition: 'all 0.2s',
-                }}
-              />
-            ))}
-          </div>
+          {!isWhatsNew && (
+            <div style={{ display: 'flex', gap: 6 }}>
+              {STEPS.map((_, i) => (
+                <span
+                  key={i}
+                  aria-label={`Step ${i + 1}${i === stepIdx ? ' (current)' : ''}`}
+                  style={{
+                    width: i === stepIdx ? 18 : 6, height: 6, borderRadius: 999,
+                    background: i === stepIdx ? accent.color : '#3f3f3f',
+                    transition: 'all 0.2s',
+                  }}
+                />
+              ))}
+            </div>
+          )}
+          {isWhatsNew && <div />}
 
           <div style={{ display: 'flex', gap: 8 }}>
-            <button
-              type="button"
-              onClick={() => setStepIdx(isFirst ? 0 : stepIdx - 1)}
-              disabled={isFirst}
-              style={{
-                padding: '7px 13px', borderRadius: 7, fontSize: 12, fontWeight: 600,
-                background: 'transparent', color: isFirst ? '#3f3f3f' : '#a3a3a3',
-                border: '1px solid #262626', cursor: isFirst ? 'default' : 'pointer',
-              }}
-            >
-              Back
-            </button>
+            {!isWhatsNew && (
+              <button
+                type="button"
+                onClick={() => setStepIdx(isFirst ? 0 : stepIdx - 1)}
+                disabled={isFirst}
+                style={{
+                  padding: '7px 13px', borderRadius: 7, fontSize: 12, fontWeight: 600,
+                  background: 'transparent', color: isFirst ? '#3f3f3f' : '#a3a3a3',
+                  border: '1px solid #262626', cursor: isFirst ? 'default' : 'pointer',
+                }}
+              >
+                Back
+              </button>
+            )}
             <button
               type="button"
               onClick={() => (isLast ? close(true) : setStepIdx(stepIdx + 1))}
@@ -340,7 +371,7 @@ export default function OnboardingTour() {
                 textTransform: 'uppercase', letterSpacing: '0.05em',
               }}
             >
-              {isLast ? 'Done' : 'Next'}
+              {isLast ? 'Got it' : 'Next'}
             </button>
           </div>
         </div>

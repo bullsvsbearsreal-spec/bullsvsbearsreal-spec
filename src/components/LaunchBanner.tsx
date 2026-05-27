@@ -2,7 +2,15 @@
 
 /**
  * Site-wide banner announcing "Trader + Pro + Whale tiers free during launch".
- * Dismissible per session (sessionStorage) — comes back on next visit.
+ * Dismissible — persists in localStorage so once a returning user has
+ * closed the X they don't get re-yelled-at on every subsequent visit.
+ *
+ * Previously sessionStorage, which meant the banner came back on every
+ * new browser session. Daily/weekly returning users (i.e. the entire
+ * target audience) saw an "annoying ad bar" they couldn't stop. Now
+ * localStorage so dismiss = permanent until we ship a new banner key.
+ * Bump STORAGE_KEY when the message materially changes (e.g. launch
+ * ends, prices change) so the banner re-surfaces for everyone.
  *
  * Shown to EVERY user including admins. Admins were previously hidden
  * (rationale: "already Whale, no upsell") but that meant the team
@@ -20,18 +28,20 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Sparkles, X, ArrowRight } from 'lucide-react';
 
-const STORAGE_KEY = 'launch-banner-dismissed';
+// Bump when the banner message materially changes so the new copy
+// re-surfaces for users who'd dismissed the previous one.
+const STORAGE_KEY = 'launch-banner-dismissed-v1';
 
 export default function LaunchBanner() {
   const { status } = useSession();
   const pathname = usePathname();
   const [dismissed, setDismissed] = useState(false);
 
-  // Restore dismissed state from session storage on mount.
+  // Restore dismissed state from localStorage on mount.
   useEffect(() => {
     try {
-      if (sessionStorage.getItem(STORAGE_KEY) === '1') setDismissed(true);
-    } catch { /* sessionStorage unavailable — show anyway */ }
+      if (localStorage.getItem(STORAGE_KEY) === '1') setDismissed(true);
+    } catch { /* localStorage unavailable — show anyway */ }
   }, []);
 
   // Don't show on /pricing itself (redundant). Uses usePathname so it
@@ -45,7 +55,7 @@ export default function LaunchBanner() {
   if (dismissed) return null;
 
   const dismiss = () => {
-    try { sessionStorage.setItem(STORAGE_KEY, '1'); } catch { /* noop */ }
+    try { localStorage.setItem(STORAGE_KEY, '1'); } catch { /* noop */ }
     setDismissed(true);
   };
 
