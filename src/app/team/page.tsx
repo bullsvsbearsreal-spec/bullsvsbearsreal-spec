@@ -50,10 +50,10 @@ const projectStats = [
   // is the honest, verifiable count (matches /api/v1/openapi).
   { value: '26', label: 'Endpoints', sub: 'REST API' },
   { value: '60s', label: 'Refresh', sub: 'Funding cadence' },
-  // Was "24/7 Uptime · No batch jobs". 13 cron jobs run on 1-30 min
-  // timers + one daily 12:00 UTC snapshot — those ARE batch jobs.
-  // The serving layer is 24/7 (DO App Platform) but the wording was
-  // contradictory.
+  // Was "24/7 Uptime · No batch jobs". 14 cron jobs run on 5s-30 min
+  // timers + two daily ones (12:00 UTC snapshot, 08:00 UTC telegram) —
+  // those ARE batch jobs. The serving layer is 24/7 (DO App Platform)
+  // but the wording was contradictory.
   { value: '24/7', label: 'Live data', sub: 'WS aggregator' },
 ];
 
