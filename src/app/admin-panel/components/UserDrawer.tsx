@@ -17,8 +17,30 @@
  */
 
 import { useState, useEffect } from 'react';
-import { X as XIcon, Crown, Shield, ChevronRight, Bell, Wallet, Key, Calendar, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { X as XIcon, Crown, Shield, ChevronRight, Bell, Wallet, Key, Calendar, Eye, EyeOff, AlertCircle, Clock, CheckCircle2, UserPlus, Send } from 'lucide-react';
 import { ConfirmModal, TIER_COLORS, fmtAgo, fmtNumber, SkeletonBlock } from './primitives';
+
+interface ActivityEvent {
+  type: string;
+  label: string;
+  detail?: string | null;
+  timestamp: string;
+}
+
+function activityIcon(type: string) {
+  switch (type) {
+    case 'signup':            return <UserPlus      style={{ width: 11, height: 11, color: '#7dd3fc' }} />;
+    case 'verified':          return <CheckCircle2  style={{ width: 11, height: 11, color: '#34d399' }} />;
+    case 'last_seen':         return <Clock         style={{ width: 11, height: 11, color: 'var(--fg-muted)' }} />;
+    case 'suspended':         return <EyeOff        style={{ width: 11, height: 11, color: '#f87171' }} />;
+    case 'wallet_added':      return <Eye           style={{ width: 11, height: 11, color: '#c4b5fd' }} />;
+    case 'key_added':         return <Key           style={{ width: 11, height: 11, color: '#fcd34d' }} />;
+    case 'dex_wallet_added':  return <Wallet        style={{ width: 11, height: 11, color: '#34d399' }} />;
+    case 'notification':      return <Send          style={{ width: 11, height: 11, color: '#fbbf24' }} />;
+    case 'admin_action':      return <Shield        style={{ width: 11, height: 11, color: '#fbbf24' }} />;
+    default:                  return <ChevronRight  style={{ width: 11, height: 11, color: 'var(--fg-muted)' }} />;
+  }
+}
 
 export interface AdminUser {
   id: string;
@@ -47,6 +69,8 @@ export function UserDrawer({ user, onClose, onChanged, onToast }: {
   onToast: (msg: string, ok: boolean) => void;
 }) {
   const [pending, setPending] = useState<null | { kind: 'tier'; tier: Tier } | { kind: 'suspend' } | { kind: 'unsuspend' }>(null);
+  const [activity, setActivity] = useState<ActivityEvent[] | null>(null);
+  const [activityErr, setActivityErr] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -58,6 +82,20 @@ export function UserDrawer({ user, onClose, onChanged, onToast }: {
       document.body.style.overflow = '';
     };
   }, [user, onClose]);
+
+  // Load activity timeline whenever the drawer opens for a new user
+  useEffect(() => {
+    if (!user) return;
+    setActivity(null);
+    setActivityErr(null);
+    fetch(`/api/admin/user-activity?userId=${encodeURIComponent(user.id)}`)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(d => {
+        if (d?.error) { setActivityErr(d.error); return; }
+        setActivity(Array.isArray(d?.events) ? d.events : []);
+      })
+      .catch(e => setActivityErr(e.message ?? 'Network error'));
+  }, [user]);
 
   if (!user) return null;
 
@@ -204,6 +242,43 @@ export function UserDrawer({ user, onClose, onChanged, onToast }: {
             <ActivityRow icon={<Key className="w-3 h-3" />}     label="Connected keys"     value={user.connectedKeysCount} />
             <ActivityRow icon={<Wallet className="w-3 h-3" />}  label="Connected wallets"  value={user.connectedWalletsCount} />
             <ActivityRow icon={<Calendar className="w-3 h-3" />} label="Notifications sent" value={user.notificationsSent} />
+          </Section>
+
+          {/* Activity timeline — lifecycle + behaviour events */}
+          <Section title="Activity Timeline">
+            {activityErr ? (
+              <div style={{ fontSize: 11, color: '#fda4af' }}>{activityErr}</div>
+            ) : activity === null ? (
+              <SkeletonBlock w="100%" h={80} />
+            ) : activity.length === 0 ? (
+              <div style={{ fontSize: 11, color: 'var(--fg-faint)', padding: '4px 0' }}>
+                No timeline events yet.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 4 }}>
+                {activity.map((e, i) => (
+                  <div key={`${e.type}-${e.timestamp}-${i}`} style={{
+                    display: 'grid', gridTemplateColumns: '18px 1fr 70px', alignItems: 'center', gap: 8,
+                    padding: '4px 0',
+                  }}>
+                    <span>{activityIcon(e.type)}</span>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontSize: 11, color: 'var(--fg-default)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {e.label}
+                      </div>
+                      {e.detail && (
+                        <div style={{ fontSize: 10, color: 'var(--fg-faint)', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          {e.detail}
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 10, color: 'var(--fg-muted)', textAlign: 'right', fontFamily: 'var(--font-mono)' }}>
+                      {fmtAgo(e.timestamp)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </Section>
 
           {/* Tier override */}

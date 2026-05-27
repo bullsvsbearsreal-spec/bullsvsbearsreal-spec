@@ -31,6 +31,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import {
   Shield, Users, BarChart3, Bell, Cog, Bug, RefreshCw, Lock,
+  DollarSign, Key, Activity,
 } from 'lucide-react';
 import { OverviewTab }      from './tabs/Overview';
 import { UsersTab }         from './tabs/Users';
@@ -38,13 +39,18 @@ import { GrowthTab }        from './tabs/Growth';
 import { NotificationsTab } from './tabs/Notifications';
 import { OpsTab }           from './tabs/Ops';
 import { FeedbackTab }      from './tabs/Feedback';
+import { RevenueTab }       from './tabs/Revenue';
+import { ApiAnalyticsTab }  from './tabs/ApiAnalytics';
+import { AlertsHealthTab }  from './tabs/AlertsHealth';
 import { RedBanner, ToastHost, type ToastMsg, fmtNumber } from './components/primitives';
 import type { StatsResp, AuditEntry, BugReport } from './types';
 
 // ────────────────────────────────────────────────────────────────────
 // Tab definitions
 // ────────────────────────────────────────────────────────────────────
-type TabId = 'overview' | 'users' | 'growth' | 'notifications' | 'ops' | 'feedback';
+type TabId =
+  | 'overview' | 'users' | 'growth' | 'revenue' | 'api'
+  | 'notifications' | 'alerts' | 'ops' | 'feedback';
 
 interface TabDef {
   id: TabId;
@@ -54,12 +60,15 @@ interface TabDef {
 }
 
 const ALL_TABS: TabDef[] = [
-  { id: 'overview',      label: 'Overview',      icon: <Shield    style={{ width: 13, height: 13 }} />, advisor: true  },
-  { id: 'users',         label: 'Users',         icon: <Users     style={{ width: 13, height: 13 }} />, advisor: false },
-  { id: 'growth',        label: 'Growth',        icon: <BarChart3 style={{ width: 13, height: 13 }} />, advisor: true  },
-  { id: 'notifications', label: 'Notifications', icon: <Bell      style={{ width: 13, height: 13 }} />, advisor: false },
-  { id: 'ops',           label: 'Ops',           icon: <Cog       style={{ width: 13, height: 13 }} />, advisor: false },
-  { id: 'feedback',      label: 'Feedback',      icon: <Bug       style={{ width: 13, height: 13 }} />, advisor: false },
+  { id: 'overview',      label: 'Overview',      icon: <Shield     style={{ width: 13, height: 13 }} />, advisor: true  },
+  { id: 'users',         label: 'Users',         icon: <Users      style={{ width: 13, height: 13 }} />, advisor: false },
+  { id: 'growth',        label: 'Growth',        icon: <BarChart3  style={{ width: 13, height: 13 }} />, advisor: true  },
+  { id: 'revenue',       label: 'Revenue',       icon: <DollarSign style={{ width: 13, height: 13 }} />, advisor: true  },
+  { id: 'api',           label: 'API',           icon: <Key        style={{ width: 13, height: 13 }} />, advisor: false },
+  { id: 'notifications', label: 'Notifications', icon: <Bell       style={{ width: 13, height: 13 }} />, advisor: false },
+  { id: 'alerts',        label: 'Alerts',        icon: <Activity   style={{ width: 13, height: 13 }} />, advisor: false },
+  { id: 'ops',           label: 'Ops',           icon: <Cog        style={{ width: 13, height: 13 }} />, advisor: false },
+  { id: 'feedback',      label: 'Feedback',      icon: <Bug        style={{ width: 13, height: 13 }} />, advisor: false },
 ];
 
 // ────────────────────────────────────────────────────────────────────
@@ -103,13 +112,17 @@ export default function AdminPanelPage() {
   const [toast, setToast] = useState<ToastMsg | null>(null);
 
   // ─── Hash routing ────────────────────────────────────────────────
+  // Wait for the session to load before resolving the tab — otherwise
+  // a deep-link to #users on first render snaps to #overview because
+  // isAdmin is still false (visibleTabs only has the advisor subset).
   useEffect(() => {
+    if (status !== 'authenticated') return;
     const applyHash = () => {
       const id = (window.location.hash.replace(/^#/, '') || 'overview') as TabId;
       if (visibleTabs.some(t => t.id === id)) {
         setActive(id);
       } else {
-        // Advisor landed on a hidden tab via stale URL → snap to overview
+        // User landed on a hidden tab via stale URL → snap to overview
         setActive('overview');
         if (id) history.replaceState(null, '', '#overview');
       }
@@ -117,7 +130,7 @@ export default function AdminPanelPage() {
     applyHash();
     window.addEventListener('hashchange', applyHash);
     return () => window.removeEventListener('hashchange', applyHash);
-  }, [visibleTabs]);
+  }, [visibleTabs, status]);
 
   const goTab = useCallback((id: TabId) => {
     history.replaceState(null, '', `#${id}`);
@@ -381,7 +394,10 @@ export default function AdminPanelPage() {
             {active === 'overview'      && <OverviewTab      stats={stats} audit={audit} sysHealth={sysHealth} />}
             {active === 'users'         && isAdmin && <UsersTab        onToast={fireToast} />}
             {active === 'growth'        && <GrowthTab        stats={stats} />}
+            {active === 'revenue'       && <RevenueTab />}
+            {active === 'api'           && isAdmin && <ApiAnalyticsTab />}
             {active === 'notifications' && isAdmin && <NotificationsTab stats={stats} />}
+            {active === 'alerts'        && isAdmin && <AlertsHealthTab />}
             {active === 'ops'           && isAdmin && <OpsTab          onToast={fireToast} />}
             {active === 'feedback'      && isAdmin && <FeedbackTab     onToast={fireToast} />}
           </div>
