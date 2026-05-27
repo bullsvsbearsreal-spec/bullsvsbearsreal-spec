@@ -1,7 +1,8 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Users, Activity, Bell, Shield, Heart, BarChart3, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Users, Activity, Bell, Shield, Heart, BarChart3, AlertTriangle, ArrowRight, Server } from 'lucide-react';
 import { Card, SectionHead, SkeletonBlock, Sparkline, fmtNumber, fmtPct, fmtAgo, TIER_COLORS } from '../components/primitives';
 import type { StatsResp, AuditEntry } from '../types';
 
@@ -15,6 +16,32 @@ export function OverviewTab({ stats, audit, sysHealth }: {
   audit: AuditEntry[];
   sysHealth: { label: string; detail: string; tone: string };
 }) {
+  // Aggregator health — refresh every 60s. Same source the Ops tab
+  // venue board uses, but surfaced on Overview so the operator sees
+  // venue count at a glance without switching tabs.
+  const [agg, setAgg] = useState<{ connected: number; total: number; degraded: number } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = () => {
+      fetch('https://prices.info-hub.io/health', { signal: AbortSignal.timeout(5000) })
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (cancelled || !d?.health) return;
+          const venues = Object.values(d.health) as Array<{ connected: boolean; lastUpdate: number; errors: number }>;
+          const connected = venues.filter(v => v.connected).length;
+          // "Degraded" = connected but no update in the last 60s
+          const now = Date.now();
+          const degraded = venues.filter(v => v.connected && (!v.lastUpdate || now - v.lastUpdate > 60_000)).length;
+          setAgg({ connected, total: venues.length, degraded });
+        })
+        .catch(() => {});
+    };
+    load();
+    const id = setInterval(load, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
   return (
     <>
       {/* Hero KPIs */}
@@ -46,8 +73,12 @@ export function OverviewTab({ stats, audit, sysHealth }: {
           icon={<Shield style={{ width: 16, height: 16 }} />}
           label="System health"
           value={sysHealth.label}
-          sub={sysHealth.detail}
-          tint={sysHealth.tone}
+          sub={
+            agg
+              ? `${agg.connected}/${agg.total} venues${agg.degraded > 0 ? ` · ${agg.degraded} stale` : ''} · ${sysHealth.detail}`
+              : sysHealth.detail
+          }
+          tint={agg && agg.connected < agg.total ? 'rose' : sysHealth.tone}
         />
       </div>
 
@@ -87,6 +118,31 @@ export function OverviewTab({ stats, audit, sysHealth }: {
             </div>
           );
         })}
+      </div>
+
+      {/* Aggregator strip — single row, 3 mini stats so the operator
+          can spot a WS outage from Overview without flipping to Ops. */}
+      <SectionHead title="Aggregator · live WS connection state" icon={<Server style={{ width: 13, height: 13 }} />} right={
+        <Link href="#ops" style={{ fontSize: 10, color: 'var(--hub-accent)', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 3 }}>
+          Full venue board <ArrowRight style={{ width: 11, height: 11 }} />
+        </Link>
+      } />
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 18 }}>
+        <MiniStatTile
+          label="Venues connected"
+          value={agg ? `${agg.connected}/${agg.total}` : null}
+          color={agg && agg.connected < agg.total ? '#f87171' : '#34d399'}
+        />
+        <MiniStatTile
+          label="Stale (>60s)"
+          value={agg ? String(agg.degraded) : null}
+          color={agg && agg.degraded > 0 ? '#fcd34d' : '#9ca3af'}
+        />
+        <MiniStatTile
+          label="Aggregator endpoint"
+          value={agg ? 'reachable' : null}
+          color={agg ? '#34d399' : '#9ca3af'}
+        />
       </div>
 
       {/* 7-day activity sparklines */}
@@ -173,15 +229,36 @@ export function OverviewTab({ stats, audit, sysHealth }: {
                 </tr>
               </thead>
               <tbody>
-                {audit.map(r => (
-                  <tr key={r.id} style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+                {audit.map(r => {
+                  // Audit rows that touched a specific user become
+                  // clickable — open that user in the drawer via the
+                  // same sessionStorage handoff Recent Signups uses.
+                  const targetUserId = (r.metadata as any)?.targetUserId as string | undefined;
+                  const clickable = typeof targetUserId === 'string' && targetUserId.length > 0;
+                  return (
+                  <tr
+                    key={r.id}
+                    onClick={clickable ? () => {
+                      try { sessionStorage.setItem('admin:open_user_id', targetUserId!); } catch {}
+                      window.location.hash = 'users';
+                    } : undefined}
+                    title={clickable ? 'Click to open affected user in drawer' : undefined}
+                    style={{
+                      borderTop: '1px solid rgba(255,255,255,0.03)',
+                      cursor: clickable ? 'pointer' : 'default',
+                      transition: 'background 120ms',
+                    }}
+                    onMouseEnter={clickable ? e => { (e.currentTarget as HTMLTableRowElement).style.background = 'rgba(255,255,255,0.02)'; } : undefined}
+                    onMouseLeave={clickable ? e => { (e.currentTarget as HTMLTableRowElement).style.background = 'transparent'; } : undefined}
+                  >
                     <td style={{ padding: '8px 0', fontFamily: 'var(--font-mono)', fontSize: 11, color: '#fcd34d' }}>{r.action}</td>
                     <td style={{ padding: '8px 8px', color: 'var(--fg-default)', maxWidth: 160, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {r.actorName || r.actorEmail || '—'}
                     </td>
                     <td style={{ padding: '8px 0', textAlign: 'right', color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)' }}>{fmtAgo(r.timestamp)}</td>
                   </tr>
-                ))}
+                );
+                })}
               </tbody>
             </table>
           )}
@@ -244,6 +321,24 @@ function SparkTile({ label, value, trend, color }: { label: string; value?: numb
         </div>
         <Sparkline data={trend} color={color} />
       </div>
+    </div>
+  );
+}
+
+function MiniStatTile({ label, value, color }: { label: string; value: string | null; color: string }) {
+  return (
+    <div style={{
+      background: 'var(--hub-darker)',
+      border: '1px solid var(--hub-border-subtle)',
+      borderRadius: 10, padding: '10px 14px',
+      display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+    }}>
+      <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--fg-muted)' }}>
+        {label}
+      </span>
+      {value === null ? <SkeletonBlock w={60} h={18} /> : (
+        <span style={{ fontSize: 16, fontWeight: 800, fontFamily: 'var(--font-mono)', color }}>{value}</span>
+      )}
     </div>
   );
 }
