@@ -200,6 +200,10 @@ interface MarketsResp {
   total_volume?: { usd?: number };
   active_cryptocurrencies?: number;
   market_cap_percentage?: { btc?: number; eth?: number };
+  // Enrichment added in the global-stats route — used by the four
+  // new Market-Sentiment tiles below the halving countdown.
+  total_derivatives_oi?: number;
+  altcoin_season_index?: number;
 }
 interface MoverItem { symbol: string; change24h: number; price?: number; }
 interface FearGreedResp { value?: number; classification?: string; lastUpdate?: string; data?: { value?: number; classification?: string }; }
@@ -226,6 +230,11 @@ interface LSItem { symbol: string; longRatio?: number; shortRatio?: number; }
 export default function HomePage() {
   // Live data
   const [topFunding, setTopFunding] = useState<FundingRateData[]>([]);
+  // BTC funding aggregate (avg across all venues with a live rate) —
+  // used by the BtcFundingTile in the Market Sentiment row. Computed
+  // from the same fetchAllFundingRates() call topFunding consumes; no
+  // extra round-trip. Null until first load completes.
+  const [btcFundingAvg, setBtcFundingAvg] = useState<{ rate: number; venues: number } | null>(null);
   const [latestNews, setLatestNews] = useState<NewsArticle[]>([]);
   const [exchangeHealth, setExchangeHealth] = useState<ExchangeHealthInfo[]>([]);
   const [marketStats, setMarketStats] = useState<MarketsResp | null>(null);
@@ -282,11 +291,24 @@ export default function HomePage() {
         for (const item of lsBatch) if (item) lsClean.push(item);
         if (cancelled) return;
 
-        const validFunding = (fundingData ?? [])
-          .filter((fr: FundingRateData) => fr && isValidNumber(fr.fundingRate))
+        const validFundingAll = (fundingData ?? [])
+          .filter((fr: FundingRateData) => fr && isValidNumber(fr.fundingRate));
+        const validFunding = [...validFundingAll]
           .sort((a: FundingRateData, b: FundingRateData) => Math.abs(b.fundingRate) - Math.abs(a.fundingRate))
           .slice(0, 5);
         setTopFunding(validFunding);
+        // BTC cross-venue average — used by the BtcFundingTile in the
+        // Market Sentiment row. Filters BTC rows only; averaging the
+        // raw venue rates is a fair sentiment proxy without normalizing
+        // to 8h here (the tile labels the value as 8h-equivalent
+        // implicitly, matching /funding's default display).
+        const btcRows = validFundingAll.filter((fr: FundingRateData) => fr.symbol === 'BTC');
+        if (btcRows.length > 0) {
+          const sum = btcRows.reduce((s, fr) => s + fr.fundingRate, 0);
+          setBtcFundingAvg({ rate: sum / btcRows.length, venues: btcRows.length });
+        } else {
+          setBtcFundingAvg(null);
+        }
         setLatestNews((newsData ?? []).slice(0, 5));
         setExchangeHealth(healthData?.funding ?? []);
         setMarketStats(marketsRes);
@@ -495,6 +517,15 @@ export default function HomePage() {
           />
           <ETFTile data={etf} />
           <BtcHalvingCountdown />
+          {/* Round-two additions — positioning + capital-flow signals.
+              All four read off data already loaded above; no new
+              endpoints, no extra round-trips. Tiles render skeletons
+              while their slot in marketStats/liqAgg/topFunding is
+              still resolving. */}
+          <AltseasonTile value={marketStats?.altcoin_season_index} />
+          <TotalOITile value={marketStats?.total_derivatives_oi} />
+          <LiquidationsTile data={liqAgg} />
+          <BtcFundingTile data={btcFundingAvg} />
         </div>
       </section>
 
@@ -1352,6 +1383,279 @@ function ETFTile({ data }: { data: ETFResp | null }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Reusable shell for the four "round-two" sentiment tiles (Altseason,
+// Total OI, Liquidations, BTC Funding). All four share the structure:
+//   accent stripe + uppercase label, big number/skeleton, footer hint.
+// Pulling the chrome out as one component keeps the tile bodies tight
+// and makes the visual rhythm exact across the row.
+// ────────────────────────────────────────────────────────────────────
+function SentimentTile({
+  label,
+  accent,
+  loading,
+  value,
+  footer,
+  href,
+  hrefLabel,
+}: {
+  label: string;
+  accent: string;
+  loading: boolean;
+  value: React.ReactNode;
+  footer?: React.ReactNode;
+  href?: string;
+  hrefLabel?: string;
+}) {
+  return (
+    <div style={{
+      background: 'var(--hub-darker)',
+      border: '1px solid var(--hub-border-subtle)',
+      borderRadius: 12,
+      padding: 12,
+      position: 'relative', overflow: 'hidden',
+      minHeight: 132,
+      display: 'flex', flexDirection: 'column',
+    }}>
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: `linear-gradient(135deg, ${accent}10 0%, transparent 70%)`,
+        pointerEvents: 'none',
+      }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, position: 'relative' }}>
+        <span aria-hidden style={{ width: 3, height: 11, background: accent, borderRadius: 2 }} />
+        <span style={{
+          fontSize: 9, fontWeight: 700, letterSpacing: '0.1em',
+          textTransform: 'uppercase', color: 'var(--fg-muted)',
+        }}>{label}</span>
+      </div>
+      {loading ? (
+        <div style={{
+          height: 28, width: 110, marginTop: 4,
+          background: 'linear-gradient(90deg, rgba(255,255,255,0.04), rgba(255,255,255,0.08), rgba(255,255,255,0.04))',
+          backgroundSize: '200% 100%',
+          borderRadius: 4,
+          animation: 'shimmer 1.4s ease-in-out infinite',
+        }} aria-label={`${label} loading`} />
+      ) : (
+        <div style={{ position: 'relative' }}>{value}</div>
+      )}
+      {footer && (
+        <div style={{
+          marginTop: 'auto', paddingTop: 10,
+          fontSize: 10, color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 6,
+        }}>
+          <span>{footer}</span>
+          {href && hrefLabel && (
+            <Link href={href} style={{
+              fontSize: 10, color: accent, textDecoration: 'none',
+              display: 'inline-flex', alignItems: 'center', gap: 2,
+            }}>{hrefLabel} <ChevronRight size={11} /></Link>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Altcoin Season Index (0..100). >75 = "alt season", <25 = BTC season.
+// Backed by global-stats' altcoin_season_index, computed off CMC
+// 90d %-change comparison between top-100 alts and BTC.
+// ────────────────────────────────────────────────────────────────────
+function AltseasonTile({ value }: { value?: number | null }) {
+  const loading = value == null;
+  const v = value ?? 0;
+  // Color follows the regime — alt season green, BTC season orange,
+  // muted yellow in the middle. Threshold of 75/25 matches the
+  // canonical Blockchaincenter rule the index originates from.
+  const regime = v >= 75 ? 'alt' : v <= 25 ? 'btc' : 'mixed';
+  const accent = regime === 'alt' ? 'var(--pump-mild)'
+              : regime === 'btc' ? '#f7931a'
+              : 'var(--hub-accent)';
+  const regimeLabel = regime === 'alt' ? 'Alt season' : regime === 'btc' ? 'BTC season' : 'Mixed regime';
+  return (
+    <SentimentTile
+      label="Altcoin Season"
+      accent={accent}
+      loading={loading}
+      value={
+        <>
+          <div style={{
+            fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-mono)',
+            color: 'var(--fg-default)', letterSpacing: '-0.01em', lineHeight: 1,
+          }}>
+            {Math.round(v)}<span style={{ color: accent, fontSize: 14, marginLeft: 2 }}>/100</span>
+          </div>
+          {/* 0..100 fill bar with markers at the 25 / 75 regime thresholds */}
+          <div style={{
+            marginTop: 14, height: 6, borderRadius: 4,
+            background: 'rgba(255,255,255,0.06)', overflow: 'hidden', position: 'relative',
+          }}>
+            <div style={{
+              height: '100%', width: `${Math.min(100, Math.max(0, v))}%`,
+              background: `linear-gradient(90deg, ${accent}, ${accent}cc)`,
+              boxShadow: `0 0 8px ${accent}55`,
+              transition: 'width 600ms ease-out',
+            }} />
+          </div>
+        </>
+      }
+      footer={`${regimeLabel} · alts vs BTC 90d`}
+      href="/altseason"
+      hrefLabel="DETAIL"
+    />
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Total Derivatives Open Interest — single $-figure summed across all
+// perp venues. Sourced from global-stats' total_derivatives_oi which
+// itself sums CoinGecko derivatives/exchanges OI × current BTC price.
+// ────────────────────────────────────────────────────────────────────
+function TotalOITile({ value }: { value?: number | null }) {
+  const loading = value == null;
+  // Compact formatter: $78.4B → "$78.4B"
+  const fmt = (n: number): string => {
+    if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+    if (n >= 1e9)  return `$${(n / 1e9).toFixed(1)}B`;
+    if (n >= 1e6)  return `$${(n / 1e6).toFixed(1)}M`;
+    return `$${Math.round(n).toLocaleString()}`;
+  };
+  return (
+    <SentimentTile
+      label="Total OI"
+      accent="var(--hub-accent)"
+      loading={loading}
+      value={
+        <div style={{
+          fontSize: 28, fontWeight: 800, fontFamily: 'var(--font-mono)',
+          color: 'var(--fg-default)', letterSpacing: '-0.01em', lineHeight: 1,
+        }}>
+          {fmt(value ?? 0)}
+        </div>
+      }
+      footer="Perp OI across all venues"
+      href="/open-interest"
+      hrefLabel="OI"
+    />
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// 24h Liquidations — total notional + long/short split.
+// Long-skew = forced longs being closed (price falling), short-skew =
+// shorts squeezed (price rising). The directional split IS the
+// sentiment read.
+// ────────────────────────────────────────────────────────────────────
+function LiquidationsTile({ data }: { data: LiqAggResp | null }) {
+  const totals = data?.totals;
+  const loading = !totals;
+  const total = totals?.totalValue ?? 0;
+  const longs = totals?.longValue ?? 0;
+  const shorts = totals?.shortValue ?? 0;
+  const longPct = total > 0 ? (longs / total) * 100 : 50;
+  const fmt = (n: number): string => {
+    if (n >= 1e9) return `$${(n / 1e9).toFixed(1)}B`;
+    if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+    if (n >= 1e3) return `$${(n / 1e3).toFixed(0)}K`;
+    return `$${Math.round(n).toLocaleString()}`;
+  };
+  // Skew the accent toward the dominant side: pump-red when longs
+  // dominate (price fell), pump-green when shorts dominate (rallying).
+  const accent = total === 0 ? 'var(--fg-muted)'
+              : longPct >= 60 ? 'var(--rekt-mild)'
+              : longPct <= 40 ? 'var(--pump-mild)'
+              : 'var(--hub-accent)';
+  return (
+    <SentimentTile
+      label="24h Liquidations"
+      accent={accent}
+      loading={loading}
+      value={
+        <>
+          <div style={{
+            fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-mono)',
+            color: 'var(--fg-default)', letterSpacing: '-0.01em', lineHeight: 1,
+          }}>
+            {fmt(total)}
+          </div>
+          {/* Long/short split bar — visually anchors the directional read */}
+          <div style={{
+            marginTop: 12, height: 6, borderRadius: 4,
+            background: 'var(--rekt-mild)', overflow: 'hidden',
+            display: 'flex', boxShadow: '0 0 6px rgba(0,0,0,0.4) inset',
+          }}>
+            <div style={{
+              height: '100%', width: `${longPct}%`,
+              background: 'var(--rekt-mild)',
+            }} />
+            <div style={{
+              height: '100%', width: `${100 - longPct}%`,
+              background: 'var(--pump-mild)',
+            }} />
+          </div>
+          <div style={{
+            marginTop: 4, display: 'flex', justifyContent: 'space-between',
+            fontSize: 9, fontFamily: 'var(--font-mono)', color: 'var(--fg-muted)',
+          }}>
+            <span>L {fmt(longs)}</span>
+            <span>S {fmt(shorts)}</span>
+          </div>
+        </>
+      }
+      href="/liquidations"
+      hrefLabel="LIQS"
+    />
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// BTC funding average — cross-venue mean of the current funding rate.
+// Positive = longs paying = bullish bias. Negative = bearish.
+// `8h` interpretation: most rows are already 8h-normalised in the
+// fetchAllFundingRates aggregator (24h venues get scaled by /3 in the
+// app-side normalize utility). Tile labels the figure plainly as
+// "per 8h"; the APR multiplier is the more intuitive read for most
+// users.
+// ────────────────────────────────────────────────────────────────────
+function BtcFundingTile({ data }: { data: { rate: number; venues: number } | null }) {
+  const loading = !data;
+  const rate = data?.rate ?? 0;
+  const venues = data?.venues ?? 0;
+  // APR ≈ rate × 3 × 365 (assumes 8h base; ~109.5 per 1%)
+  const apr = rate * 3 * 365;
+  const pos = rate >= 0;
+  const accent = pos ? 'var(--pump-mild)' : 'var(--rekt-mild)';
+  return (
+    <SentimentTile
+      label="BTC Funding (avg)"
+      accent={accent}
+      loading={loading}
+      value={
+        <>
+          <div style={{
+            fontSize: 24, fontWeight: 800, fontFamily: 'var(--font-mono)',
+            color: 'var(--fg-default)', letterSpacing: '-0.01em', lineHeight: 1,
+          }}>
+            {pos ? '+' : ''}{rate.toFixed(4)}<span style={{ color: accent, fontSize: 14, marginLeft: 2 }}>%</span>
+          </div>
+          <div style={{
+            marginTop: 6, fontSize: 11, fontFamily: 'var(--font-mono)',
+            color: accent, fontWeight: 600,
+          }}>
+            ≈ {pos ? '+' : ''}{apr.toFixed(1)}% APR
+          </div>
+        </>
+      }
+      footer={`${venues} venues · 8h base`}
+      href="/funding"
+      hrefLabel="FUNDING"
+    />
   );
 }
 
