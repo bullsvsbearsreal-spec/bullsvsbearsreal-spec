@@ -184,6 +184,13 @@ export default function ReferralsPage() {
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
               </Link>
               <Link
+                href="/leaderboard"
+                className="group inline-flex items-center gap-2 text-xs font-semibold px-3.5 py-2.5 rounded-lg bg-amber-500/10 border border-amber-400/25 text-amber-300 hover:bg-amber-500/15 hover:text-amber-200 transition-colors"
+              >
+                <Trophy className="w-3.5 h-3.5" />
+                Leaderboard
+              </Link>
+              <Link
                 href="/signup"
                 className="group inline-flex items-center gap-2 text-xs font-semibold px-3.5 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-neutral-300 hover:bg-white/[0.08] hover:text-white transition-colors"
               >

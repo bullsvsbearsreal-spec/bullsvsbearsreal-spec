@@ -38,7 +38,13 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
   // Bulk-selection state — held as a Set of user ids. Cleared when
   // filters change or a bulk action runs.
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkConfirm, setBulkConfirm] = useState<null | { kind: 'tier'; tier: 'free' | 'trader' | 'pro' | 'whale' } | { kind: 'suspend' } | { kind: 'unsuspend' }>(null);
+  const [bulkConfirm, setBulkConfirm] = useState<
+    | null
+    | { kind: 'tier'; tier: 'free' | 'trader' | 'pro' | 'whale' }
+    | { kind: 'suspend' }
+    | { kind: 'unsuspend' }
+    | { kind: 'role'; role: 'admin' | 'moderator' | 'marketer' | 'advisor' | 'user' }
+  >(null);
   const [bulkBusy, setBulkBusy] = useState(false);
 
   // load stays stable (empty deps) — uses functional setUsers in the
@@ -165,9 +171,10 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
       const payload: Record<string, unknown> = {
         userIds,
         reason,
-        action: bulkConfirm.kind === 'tier' ? 'tier' : bulkConfirm.kind,
+        action: bulkConfirm.kind, // 'tier' | 'suspend' | 'unsuspend' | 'role'
       };
       if (bulkConfirm.kind === 'tier') payload.billingTier = bulkConfirm.tier;
+      if (bulkConfirm.kind === 'role') payload.role = bulkConfirm.role;
       const res = await fetch('/api/admin/users/bulk', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -316,7 +323,7 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
       {/* Bulk-action toolbar — only renders when at least one row is selected */}
       {selected.size > 0 && (
         <div style={{
-          display: 'flex', alignItems: 'center', gap: 10,
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
           padding: '10px 14px', marginTop: 8,
           background: 'rgba(251, 191, 36, 0.06)',
           border: '1px solid rgba(251, 191, 36, 0.25)',
@@ -326,42 +333,73 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
           <span style={{ fontSize: 12, fontWeight: 700, color: '#fcd34d', fontFamily: 'var(--font-mono)' }}>
             {selected.size} selected
           </span>
-          <span style={{ flex: 1, fontSize: 10, color: 'var(--fg-faint)' }}>
+          <span style={{ flex: 1, fontSize: 10, color: 'var(--fg-faint)', minWidth: 180 }}>
             All bulk actions need a reason. Your own account is silently skipped.
           </span>
-          {(['free', 'trader', 'pro', 'whale'] as const).map(t => (
+          {/* Tier buttons */}
+          <div style={{ display: 'flex', gap: 4 }}>
+            {(['free', 'trader', 'pro', 'whale'] as const).map(t => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setBulkConfirm({ kind: 'tier', tier: t })}
+                style={{
+                  padding: '5px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                  background: 'rgba(255,255,255,0.05)', color: TIER_COLORS[t] ?? '#fff',
+                  border: `1px solid ${TIER_COLORS[t] ?? '#fff'}33`,
+                  cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.06em',
+                }}
+              >→ {t}</button>
+            ))}
+          </div>
+          {/* Role buttons — owner sees 'admin' too, others can't grant admin or owner.
+              Owner grant is always per-user (with type-to-confirm), never bulk. */}
+          <div style={{ display: 'flex', gap: 4, paddingLeft: 8, borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
+            {(
+              [
+                ...(viewerRole === 'owner' ? [{ id: 'admin', label: 'Admin', color: '#fbbf24' }] : []),
+                { id: 'moderator', label: 'Mod',     color: '#7dd3fc' },
+                { id: 'marketer',  label: 'Mkt',     color: '#c4b5fd' },
+                { id: 'advisor',   label: 'Advisor', color: '#86efac' },
+                { id: 'user',      label: 'User',    color: '#94a3b8' },
+              ] as const
+            ).map(r => (
+              <button
+                key={r.id}
+                type="button"
+                onClick={() => setBulkConfirm({ kind: 'role', role: r.id as any })}
+                style={{
+                  padding: '5px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                  background: 'rgba(255,255,255,0.05)', color: r.color,
+                  border: `1px solid ${r.color}33`,
+                  cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.06em',
+                }}
+                title={`Grant ${r.id} role to ${selected.size} users`}
+              >→ {r.label}</button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 4, paddingLeft: 8, borderLeft: '1px solid rgba(255,255,255,0.08)' }}>
             <button
-              key={t}
               type="button"
-              onClick={() => setBulkConfirm({ kind: 'tier', tier: t })}
+              onClick={() => setBulkConfirm({ kind: 'suspend' })}
               style={{
-                padding: '5px 10px', borderRadius: 6, fontSize: 10, fontWeight: 700,
-                background: 'rgba(255,255,255,0.05)', color: TIER_COLORS[t] ?? '#fff',
-                border: `1px solid ${TIER_COLORS[t] ?? '#fff'}33`,
-                cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.06em',
+                padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                background: 'rgba(244, 63, 94, 0.12)', color: '#fca5a5',
+                border: '1px solid rgba(244, 63, 94, 0.3)', cursor: 'pointer',
+                textTransform: 'uppercase', letterSpacing: '0.06em',
               }}
-            >→ {t}</button>
-          ))}
-          <button
-            type="button"
-            onClick={() => setBulkConfirm({ kind: 'suspend' })}
-            style={{
-              padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
-              background: 'rgba(244, 63, 94, 0.12)', color: '#fca5a5',
-              border: '1px solid rgba(244, 63, 94, 0.3)', cursor: 'pointer',
-              textTransform: 'uppercase', letterSpacing: '0.06em',
-            }}
-          >Suspend</button>
-          <button
-            type="button"
-            onClick={() => setBulkConfirm({ kind: 'unsuspend' })}
-            style={{
-              padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
-              background: 'rgba(52, 211, 153, 0.1)', color: '#86efac',
-              border: '1px solid rgba(52, 211, 153, 0.25)', cursor: 'pointer',
-              textTransform: 'uppercase', letterSpacing: '0.06em',
-            }}
-          >Unsuspend</button>
+            >Suspend</button>
+            <button
+              type="button"
+              onClick={() => setBulkConfirm({ kind: 'unsuspend' })}
+              style={{
+                padding: '5px 12px', borderRadius: 6, fontSize: 10, fontWeight: 700,
+                background: 'rgba(52, 211, 153, 0.1)', color: '#86efac',
+                border: '1px solid rgba(52, 211, 153, 0.25)', cursor: 'pointer',
+                textTransform: 'uppercase', letterSpacing: '0.06em',
+              }}
+            >Unsuspend</button>
+          </div>
           <button
             type="button"
             onClick={() => setSelected(new Set())}
