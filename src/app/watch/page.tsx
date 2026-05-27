@@ -671,8 +671,8 @@ function WatchPageInner() {
             <Link href="/smart-money" className="text-neutral-400 hover:text-hub-yellow inline-flex items-center gap-0.5">
               /smart-money <ExternalLink className="w-2.5 h-2.5" />
             </Link>
-            <Link href="/whale-liq" className="text-neutral-400 hover:text-hub-yellow inline-flex items-center gap-0.5">
-              /whale-liq <ExternalLink className="w-2.5 h-2.5" />
+            <Link href="/liquidations" className="text-neutral-400 hover:text-hub-yellow inline-flex items-center gap-0.5">
+              /liquidations <ExternalLink className="w-2.5 h-2.5" />
             </Link>
           </div>
         </section>
