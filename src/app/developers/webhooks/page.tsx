@@ -43,9 +43,10 @@ export default function WebhooksGuidePage() {
           <Crown className="w-5 h-5 text-amber-300 shrink-0 mt-0.5" aria-hidden />
           <div className="text-[12px] text-amber-200 leading-relaxed">
             <span className="font-semibold text-amber-300">Whale tier required.</span>{' '}
-            Webhook endpoints return 403 for Free/Pro accounts.
-            During launch, Pro+Whale features are unlocked for every signed-in user —
-            so you can test this now. After launch, you&apos;ll need an active Whale subscription.
+            Webhook endpoints return 403 for Free / Trader / Pro accounts.
+            During launch, every paid-tier feature (Trader, Pro, Whale) is unlocked
+            for every signed-in user — so you can test webhooks now. After launch,
+            you&apos;ll need an active Whale subscription.
           </div>
         </section>
 
