@@ -545,7 +545,7 @@ function WatchPageInner() {
                 <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Watcher</span>
               </div>
               <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
-                Wallet <span className="text-hub-yellow">watch</span>
+                Wallet <span className="text-hub-yellow">alerts</span>
               </h1>
               <div className="flex items-center gap-1.5 flex-wrap mt-3">
                 {[

@@ -456,9 +456,9 @@ export default function TraderWatchPage() {
           accent color on the noun, live counters in the subline. */}
       <PageHero
         icon={Star}
-        eyebrow="Watchlist"
-        title="Trader"
-        accentNoun="watch"
+        eyebrow="My tools"
+        title="Tracked"
+        accentNoun="traders"
         accent="hub-yellow"
         description={
           <span className="font-mono">
