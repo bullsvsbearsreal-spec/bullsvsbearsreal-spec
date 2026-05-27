@@ -10,7 +10,7 @@
  */
 import { NextResponse } from 'next/server';
 import { requireAdminOrAdvisor } from '@/lib/auth';
-import { isDBConfigured, getSQL } from '@/lib/db';
+import { initDB, isDBConfigured, getSQL } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -24,6 +24,7 @@ export async function GET() {
   }
 
   try {
+    await initDB();
     const db = getSQL();
 
     const [

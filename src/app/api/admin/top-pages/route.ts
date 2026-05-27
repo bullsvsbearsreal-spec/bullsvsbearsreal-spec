@@ -7,7 +7,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrAdvisor } from '@/lib/auth';
-import { isDBConfigured, getTopPages } from '@/lib/db';
+import { initDB, isDBConfigured, getTopPages } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -27,6 +27,8 @@ export async function GET(request: NextRequest) {
   const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 50) : 10;
 
   try {
+    // Ensure page_views table exists (initDB is idempotent).
+    await initDB();
     const pages = await getTopPages(days, limit);
     return NextResponse.json({ pages, days, limit });
   } catch (e) {

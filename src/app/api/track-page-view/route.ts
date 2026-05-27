@@ -18,7 +18,7 @@
  * page views are best-effort analytics, never user-facing.
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { isDBConfigured, recordPageView } from '@/lib/db';
+import { initDB, isDBConfigured, recordPageView } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -68,6 +68,9 @@ export async function POST(request: NextRequest) {
   if (!route) {
     return new NextResponse(null, { status: 204 });
   }
+
+  // Lazy-init schema (idempotent) so the page_views table exists.
+  await initDB().catch(() => {});
 
   const day = new Date().toISOString().slice(0, 10); // YYYY-MM-DD UTC
   await recordPageView(route, day);

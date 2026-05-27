@@ -8,7 +8,7 @@
  */
 import { NextResponse } from 'next/server';
 import { requireAdminOrAdvisor } from '@/lib/auth';
-import { isDBConfigured, getActivationFunnel } from '@/lib/db';
+import { initDB, isDBConfigured, getActivationFunnel } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -22,6 +22,10 @@ export async function GET() {
   }
 
   try {
+    // initDB is idempotent (cached via initPromise). Ensures the new
+    // users.suspended_at column + page_views table exist before any
+    // query references them — critical on cold-start after this build.
+    await initDB();
     const f = await getActivationFunnel();
     const steps = [
       { key: 'signedUp',     label: 'Signed up',         count: f.signedUp     },

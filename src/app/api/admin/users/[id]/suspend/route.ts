@@ -9,7 +9,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, verifySameOrigin, auth } from '@/lib/auth';
-import { isDBConfigured, suspendUser, unsuspendUser, recordAuditEvent, getSQL } from '@/lib/db';
+import { initDB, isDBConfigured, suspendUser, unsuspendUser, recordAuditEvent, getSQL } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -33,6 +33,8 @@ async function preflight(request: NextRequest, id: string): Promise<Response | {
   if (!isDBConfigured()) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
   }
+  // Ensure suspended_at column exists (idempotent).
+  await initDB();
   const session = await auth();
   if (id === session?.user?.id) {
     return NextResponse.json({ error: 'Cannot suspend yourself' }, { status: 403 });

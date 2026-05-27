@@ -20,7 +20,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrAdvisor } from '@/lib/auth';
-import { isDBConfigured, getSQL } from '@/lib/db';
+import { initDB, isDBConfigured, getSQL } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -38,6 +38,9 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const rawLimit = parseInt(url.searchParams.get('limit') || '500', 10);
     const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 5000) : 500;
+
+    // Ensure suspended_at + last_seen columns exist (idempotent).
+    await initDB();
 
     const db = getSQL();
     // The JOINs are LEFT so users with zero rows in the satellite tables
