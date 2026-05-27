@@ -300,7 +300,7 @@ function RealDashboardPage() {
     billingTier: (session?.user as { billingTier?: string } | undefined)?.billingTier ?? null,
   });
   // Admin gets the explicit "Admin" badge (covers the staff case); other
-  // users get the tier label they'd see anywhere else (Free / Pro / Whale).
+  // users get the tier label they'd see anywhere else (Free / Trader / Pro / Whale).
   const planName = isAdmin ? 'Admin' : TIER_BRANDING[userTier].label;
   const planTone = isAdmin ? 'rose' : 'emerald';
 
