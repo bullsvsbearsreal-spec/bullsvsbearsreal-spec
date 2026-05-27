@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdmin, verifySameOrigin, auth } from '@/lib/auth';
 import { initDB, isDBConfigured, getSQL, recordAuditEvent } from '@/lib/db';
+import { isOwner } from '@/lib/auth';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -24,6 +25,11 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
 
 const VALID_TIERS = ['free', 'trader', 'pro', 'whale'] as const;
+// Roles a non-owner admin can grant in bulk. owner + admin are reserved
+// for the per-user role-change flow with type-to-confirm; bulk-granting
+// elevated roles to N users at once is too dangerous to expose.
+const BULK_ROLES_ADMIN  = ['moderator', 'marketer', 'advisor', 'user'] as const;
+const BULK_ROLES_OWNER  = ['admin', ...BULK_ROLES_ADMIN] as const;
 const MAX_BATCH = 200;
 
 export async function POST(request: NextRequest) {
@@ -46,8 +52,8 @@ export async function POST(request: NextRequest) {
   const reason = typeof body?.reason === 'string' ? body.reason.trim() : '';
   const userIds: string[] = Array.isArray(body?.userIds) ? body.userIds.filter((x: unknown) => typeof x === 'string') : [];
 
-  if (!['tier', 'suspend', 'unsuspend'].includes(action)) {
-    return NextResponse.json({ error: 'action must be tier | suspend | unsuspend' }, { status: 400 });
+  if (!['tier', 'suspend', 'unsuspend', 'role'].includes(action)) {
+    return NextResponse.json({ error: 'action must be tier | suspend | unsuspend | role' }, { status: 400 });
   }
   if (!reason) {
     return NextResponse.json({ error: 'reason is required (audit trail)' }, { status: 400 });
@@ -70,6 +76,20 @@ export async function POST(request: NextRequest) {
 
   const session = await auth();
   const selfId = session?.user?.id ?? null;
+  const callerIsOwner = await isOwner(selfId ?? '');
+
+  let newRole: string | null = null;
+  if (action === 'role') {
+    const r = String(body?.role ?? '');
+    const allowed = callerIsOwner ? BULK_ROLES_OWNER : BULK_ROLES_ADMIN;
+    if (!(allowed as readonly string[]).includes(r)) {
+      return NextResponse.json({
+        error: `role must be one of: ${allowed.join(', ')}` +
+          (callerIsOwner ? '' : '. (Owner role is reserved for the per-user flow.)'),
+      }, { status: 400 });
+    }
+    newRole = r;
+  }
 
   await initDB();
   const db = getSQL();
@@ -127,6 +147,24 @@ export async function POST(request: NextRequest) {
     } catch {
       for (const id of targets) results.push({ userId: id, ok: false, reason: 'DB error' });
     }
+  } else if (action === 'role' && newRole) {
+    // Bulk role grant. Filter out targets whose CURRENT role is owner
+    // (only owner can demote owner — even owner-callers do that via the
+    // per-user flow). Single atomic UPDATE.
+    try {
+      const updated = await db`
+        UPDATE users SET role = ${newRole}
+        WHERE id = ANY(${targets}::text[])
+          AND role IS DISTINCT FROM 'owner'
+        RETURNING id
+      `;
+      const updatedIds = new Set((updated as any[]).map(r => String(r.id)));
+      for (const id of targets) {
+        results.push({ userId: id, ok: updatedIds.has(id), reason: updatedIds.has(id) ? undefined : 'not found or is owner' });
+      }
+    } catch {
+      for (const id of targets) results.push({ userId: id, ok: false, reason: 'DB error' });
+    }
   }
 
   await recordAuditEvent('admin_bulk_user', {
@@ -135,6 +173,7 @@ export async function POST(request: NextRequest) {
     actorEmail: session?.user?.email ?? null,
     action,
     billingTier: newTier,
+    newRole,
     reason,
     requested: userIds.length,
     processed: results.filter(r => r.ok).length,

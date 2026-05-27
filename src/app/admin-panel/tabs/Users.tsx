@@ -458,23 +458,35 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
                       <span style={{ color: '#fff', fontWeight: 600 }}>
                         {u.name || (u.email ? u.email.split('@')[0] : '(no name)')}
                       </span>
-                      {u.role === 'owner' && <Crown style={{ width: 12, height: 12, color: '#f87171' }} />}
-                      {u.role === 'admin' && <Crown style={{ width: 12, height: 12, color: '#fbbf24' }} />}
-                      {u.role === 'advisor' && <Shield style={{ width: 12, height: 12, color: '#7dd3fc' }} />}
-                      {u.role === 'moderator' && (
-                        <span style={{
-                          fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 999,
-                          background: 'rgba(125, 211, 252, 0.15)', color: '#7dd3fc',
-                          textTransform: 'uppercase', letterSpacing: '0.06em',
-                        }}>Mod</span>
-                      )}
-                      {u.role === 'marketer' && (
-                        <span style={{
-                          fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 999,
-                          background: 'rgba(196, 181, 253, 0.15)', color: '#c4b5fd',
-                          textTransform: 'uppercase', letterSpacing: '0.06em',
-                        }}>Mkt</span>
-                      )}
+                      {(() => {
+                        // Unified role badge — text pill so every elevated
+                        // role is immediately legible (the prior icons-only
+                        // shape made the badges easy to miss).
+                        const ROLE_PILL: Record<string, { label: string; color: string; bg: string }> = {
+                          owner:     { label: 'OWNER',   color: '#fca5a5', bg: 'rgba(244, 63, 94, 0.18)' },
+                          admin:     { label: 'ADMIN',   color: '#fcd34d', bg: 'rgba(251, 191, 36, 0.18)' },
+                          moderator: { label: 'MOD',     color: '#7dd3fc', bg: 'rgba(125, 211, 252, 0.18)' },
+                          marketer:  { label: 'MKT',     color: '#c4b5fd', bg: 'rgba(196, 181, 253, 0.18)' },
+                          advisor:   { label: 'ADVISOR', color: '#86efac', bg: 'rgba(52, 211, 153, 0.18)' },
+                        };
+                        const pill = ROLE_PILL[u.role];
+                        if (!pill) return null;
+                        return (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: 3,
+                            fontSize: 9, fontWeight: 800,
+                            padding: '2px 6px', borderRadius: 4,
+                            background: pill.bg, color: pill.color,
+                            letterSpacing: '0.08em',
+                            border: `1px solid ${pill.color}44`,
+                          }}>
+                            {u.role === 'owner' && <Crown style={{ width: 9, height: 9 }} />}
+                            {u.role === 'admin' && <Crown style={{ width: 9, height: 9 }} />}
+                            {u.role === 'advisor' && <Shield style={{ width: 9, height: 9 }} />}
+                            {pill.label}
+                          </span>
+                        );
+                      })()}
                       {u.suspendedAt && (
                         <span style={{
                           fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 999,

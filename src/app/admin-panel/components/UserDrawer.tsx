@@ -226,7 +226,13 @@ export function UserDrawer({ user, viewerRole, onClose, onChanged, onToast }: {
         const j = await res.json().catch(() => ({}));
         throw new Error(j.error || `HTTP ${res.status}`);
       }
-      onToast(`${user.email || user.id} role → ${role}`, true);
+      // Short display label — avoid pushing the toast wide with a
+      // full email address. Prefer the display name, fall back to
+      // the local-part of the email, then the first chunk of the id.
+      const label = user.name?.trim()
+        || user.email?.split('@')[0]
+        || user.id.slice(0, 6);
+      onToast(`${label} → ${role}`, true);
       onChanged();
     } catch (e) {
       onToast(`Role change failed: ${e instanceof Error ? e.message : 'unknown'}`, false);

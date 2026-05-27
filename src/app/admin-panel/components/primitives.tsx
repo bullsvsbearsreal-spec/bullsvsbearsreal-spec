@@ -95,24 +95,30 @@ export interface ToastMsg { msg: string; ok: boolean }
 export function ToastHost({ toast, onClear }: { toast: ToastMsg | null; onClear: () => void }) {
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(onClear, 4000);
+    const t = setTimeout(onClear, 3500);
     return () => clearTimeout(t);
   }, [toast, onClear]);
   if (!toast) return null;
   return (
-    <div style={{
-      position: 'fixed', bottom: 20, right: 20, zIndex: 100,
-      background: toast.ok ? 'rgba(34, 197, 94, 0.15)' : 'rgba(239, 68, 68, 0.15)',
-      border: `1px solid ${toast.ok ? 'rgba(34, 197, 94, 0.4)' : 'rgba(239, 68, 68, 0.4)'}`,
-      borderRadius: 8, padding: '10px 14px',
-      fontSize: 12, fontWeight: 600,
-      color: toast.ok ? '#86efac' : '#fca5a5',
-      boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
-      display: 'flex', alignItems: 'center', gap: 8,
-      maxWidth: 420,
-    }}>
-      {toast.ok ? <CheckCircle2 className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
-      <span>{toast.msg}</span>
+    <div
+      role="status"
+      onClick={onClear}
+      style={{
+        position: 'fixed', bottom: 16, right: 16, zIndex: 100,
+        background: toast.ok ? 'rgba(34, 197, 94, 0.92)' : 'rgba(239, 68, 68, 0.92)',
+        backdropFilter: 'blur(6px)',
+        borderRadius: 6, padding: '7px 12px',
+        fontSize: 11.5, fontWeight: 600,
+        color: '#fff',
+        boxShadow: '0 4px 16px rgba(0,0,0,0.35)',
+        display: 'flex', alignItems: 'center', gap: 7,
+        maxWidth: 340, cursor: 'pointer',
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      }}
+      title="Click to dismiss"
+    >
+      {toast.ok ? <CheckCircle2 style={{ width: 13, height: 13, flexShrink: 0 }} /> : <XCircle style={{ width: 13, height: 13, flexShrink: 0 }} />}
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{toast.msg}</span>
     </div>
   );
 }
