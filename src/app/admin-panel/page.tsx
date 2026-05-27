@@ -41,6 +41,7 @@ import { OpsTab }           from './tabs/Ops';
 import { FeedbackTab }      from './tabs/Feedback';
 import { RevenueTab }       from './tabs/Revenue';
 import { ApiAnalyticsTab }  from './tabs/ApiAnalytics';
+import { ApiUsageTab }      from './tabs/ApiUsage';
 import { AlertsHealthTab }  from './tabs/AlertsHealth';
 import { CommandPalette }   from './components/CommandPalette';
 import { RedBanner, ToastHost, type ToastMsg, fmtNumber } from './components/primitives';
@@ -50,7 +51,7 @@ import type { StatsResp, AuditEntry, BugReport } from './types';
 // Tab definitions
 // ────────────────────────────────────────────────────────────────────
 type TabId =
-  | 'overview' | 'users' | 'growth' | 'revenue' | 'api'
+  | 'overview' | 'users' | 'growth' | 'revenue' | 'api' | 'api-log'
   | 'notifications' | 'alerts' | 'ops' | 'feedback';
 
 interface TabDef {
@@ -66,6 +67,7 @@ const ALL_TABS: TabDef[] = [
   { id: 'growth',        label: 'Growth',        icon: <BarChart3  style={{ width: 13, height: 13 }} />, advisor: true  },
   { id: 'revenue',       label: 'Revenue',       icon: <DollarSign style={{ width: 13, height: 13 }} />, advisor: true  },
   { id: 'api',           label: 'API',           icon: <Key        style={{ width: 13, height: 13 }} />, advisor: false },
+  { id: 'api-log',       label: 'API Log',       icon: <Activity   style={{ width: 13, height: 13 }} />, advisor: false },
   { id: 'notifications', label: 'Notifications', icon: <Bell       style={{ width: 13, height: 13 }} />, advisor: false },
   { id: 'alerts',        label: 'Alerts',        icon: <Activity   style={{ width: 13, height: 13 }} />, advisor: false },
   { id: 'ops',           label: 'Ops',           icon: <Cog        style={{ width: 13, height: 13 }} />, advisor: false },
@@ -525,6 +527,7 @@ export default function AdminPanelPage() {
             {active === 'growth'        && <GrowthTab        stats={stats} />}
             {active === 'revenue'       && <RevenueTab />}
             {active === 'api'           && isAdmin && <ApiAnalyticsTab />}
+            {active === 'api-log'       && isAdmin && <ApiUsageTab     onToast={fireToast} />}
             {active === 'notifications' && isAdmin && <NotificationsTab stats={stats} />}
             {active === 'alerts'        && isAdmin && <AlertsHealthTab />}
             {active === 'ops'           && isAdmin && <OpsTab          onToast={fireToast} />}

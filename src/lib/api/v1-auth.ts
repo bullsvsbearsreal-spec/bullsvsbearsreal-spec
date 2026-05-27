@@ -179,9 +179,56 @@ export async function authenticateV1Request(request: NextRequest): Promise<
     }
   }
 
+  // Fire-and-forget log into api_request_log for the developer dashboard.
+  // Sampled to 1 in 5 requests to keep the table size manageable at peak —
+  // we lose some resolution but the aggregations (top endpoints, error
+  // rate, requests/min) are still statistically meaningful at 20%.
+  // Heavy hitters with 100req/s still produce 20 rows/sec which is fine.
+  if (Math.random() < 0.2) {
+    const url = new URL(request.url);
+    // Normalise endpoint — strip query params + any /api/v1 prefix to
+    // keep the aggregation buckets clean.
+    const endpoint = url.pathname;
+    const startedAt = (request as any).__startedAt as number | undefined;
+    const durationMs = startedAt ? Date.now() - startedAt : null;
+    void logApiRequestSafe({
+      userId: keyData.userId,
+      apiKeyId: keyData.keyId,
+      endpoint,
+      statusCode: 200, // logged on success — non-200 paths log themselves
+      durationMs,
+    });
+  }
+
   return {
     ok: true,
     user: { userId: keyData.userId, tier: keyData.tier, keyId: keyData.keyId },
     headers: rateLimitHeaders,
   };
+}
+
+/**
+ * Fire-and-forget insert into api_request_log. Lazy-imports lib/db so
+ * we don't pay the postgres.js connection cost on requests that never
+ * touch the DB.
+ */
+async function logApiRequestSafe(row: {
+  userId: string;
+  apiKeyId: string;
+  endpoint: string;
+  statusCode: number;
+  durationMs: number | null;
+}): Promise<void> {
+  try {
+    const { getSQL, isDBConfigured } = await import('@/lib/db');
+    if (!isDBConfigured()) return;
+    const db = getSQL();
+    await db`
+      INSERT INTO api_request_log (user_id, api_key_id, endpoint, status_code, duration_ms)
+      VALUES (${row.userId}, ${row.apiKeyId}, ${row.endpoint}, ${row.statusCode}, ${row.durationMs})
+    `;
+  } catch (e) {
+    // Don't let log failures fail the request — silently swallow.
+    console.warn('api_request_log insert failed:', e instanceof Error ? e.message : e);
+  }
 }

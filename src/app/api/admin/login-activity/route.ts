@@ -25,18 +25,32 @@ export async function GET(request: NextRequest) {
 
   const raw = parseInt(request.nextUrl.searchParams.get('limit') || '30', 10);
   const limit = Number.isFinite(raw) && raw > 0 ? Math.min(raw, 200) : 30;
+  // Per-user filter — admin user drawer pulls a single user's history.
+  // Cheap to filter inline: details->>'userId' is a JSON path and the
+  // matching set is tiny.
+  const userIdFilter = request.nextUrl.searchParams.get('userId');
 
   try {
     await initDB();
     const db = getSQL();
-    const rows = await db`
-      SELECT m.id, m.metric, m.details, m.recorded_at
-        FROM admin_monitoring m
-       WHERE m.metric IN ('audit_auth_signin', 'audit_auth_signout')
-         AND m.recorded_at > NOW() - INTERVAL '7 days'
-       ORDER BY m.recorded_at DESC
-       LIMIT ${limit}
-    `;
+    const rows = userIdFilter
+      ? await db`
+          SELECT m.id, m.metric, m.details, m.recorded_at
+            FROM admin_monitoring m
+           WHERE m.metric IN ('audit_auth_signin', 'audit_auth_signout')
+             AND m.details->>'userId' = ${userIdFilter}
+             AND m.recorded_at > NOW() - INTERVAL '90 days'
+           ORDER BY m.recorded_at DESC
+           LIMIT ${limit}
+        `
+      : await db`
+          SELECT m.id, m.metric, m.details, m.recorded_at
+            FROM admin_monitoring m
+           WHERE m.metric IN ('audit_auth_signin', 'audit_auth_signout')
+             AND m.recorded_at > NOW() - INTERVAL '7 days'
+           ORDER BY m.recorded_at DESC
+           LIMIT ${limit}
+        `;
     return NextResponse.json({
       events: (rows as any[]).map(r => {
         const d = (r.details ?? {}) as Record<string, unknown>;

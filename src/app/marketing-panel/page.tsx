@@ -19,17 +19,22 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Shield, BarChart3, DollarSign, RefreshCw, Lock, Megaphone, Gift, Send } from 'lucide-react';
-import { GrowthTab }  from '../admin-panel/tabs/Growth';
-import { RevenueTab } from '../admin-panel/tabs/Revenue';
+import { Shield, BarChart3, DollarSign, RefreshCw, Lock, Megaphone, Gift, Send, TrendingUp } from 'lucide-react';
+import { GrowthTab }      from '../admin-panel/tabs/Growth';
+import { RevenueTab }     from '../admin-panel/tabs/Revenue';
+import { AcquisitionTab } from '../admin-panel/tabs/Acquisition';
+import { CampaignsTab }   from '../admin-panel/tabs/Campaigns';
+import { ToastHost, type ToastMsg } from '../admin-panel/components/primitives';
 import type { StatsResp } from '../admin-panel/types';
 
-type TabId = 'growth' | 'revenue';
+type TabId = 'growth' | 'acquisition' | 'campaigns' | 'revenue';
 
 interface TabDef { id: TabId; label: string; icon: React.ReactNode }
 const TABS: TabDef[] = [
-  { id: 'growth',  label: 'Growth',  icon: <BarChart3  style={{ width: 13, height: 13 }} /> },
-  { id: 'revenue', label: 'Revenue', icon: <DollarSign style={{ width: 13, height: 13 }} /> },
+  { id: 'growth',      label: 'Growth',      icon: <BarChart3  style={{ width: 13, height: 13 }} /> },
+  { id: 'acquisition', label: 'Acquisition', icon: <TrendingUp style={{ width: 13, height: 13 }} /> },
+  { id: 'campaigns',   label: 'Campaigns',   icon: <Megaphone  style={{ width: 13, height: 13 }} /> },
+  { id: 'revenue',     label: 'Revenue',     icon: <DollarSign style={{ width: 13, height: 13 }} /> },
 ];
 
 export default function MarketingPanelPage() {
@@ -41,6 +46,8 @@ export default function MarketingPanelPage() {
   const [stats, setStats] = useState<StatsResp | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
+  const [toast, setToast] = useState<ToastMsg | null>(null);
+  const fireToast = useCallback((msg: string, ok: boolean) => setToast({ msg, ok }), []);
 
   // Hash routing
   useEffect(() => {
@@ -234,12 +241,15 @@ export default function MarketingPanelPage() {
               commit. For now marketing-panel admin/owner roles work; we'll
               extend requireAdminOrAdvisor → requireDashboardRead. */}
           <div style={{ minHeight: 400 }}>
-            {active === 'growth'  && <GrowthTab  stats={stats} />}
-            {active === 'revenue' && <RevenueTab />}
+            {active === 'growth'      && <GrowthTab      stats={stats} />}
+            {active === 'acquisition' && <AcquisitionTab onToast={fireToast} />}
+            {active === 'campaigns'   && <CampaignsTab   onToast={fireToast} />}
+            {active === 'revenue'     && <RevenueTab />}
           </div>
         </div>
       </main>
       <Footer />
+      <ToastHost toast={toast} onClear={() => setToast(null)} />
     </div>
   );
 }

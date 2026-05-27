@@ -103,6 +103,9 @@ export function UserDrawer({ user, viewerRole, onClose, onChanged, onToast }: {
   >(null);
   const [activity, setActivity] = useState<ActivityEvent[] | null>(null);
   const [activityErr, setActivityErr] = useState<string | null>(null);
+  const [logins, setLogins] = useState<Array<{
+    id: number; kind: 'signin' | 'signout'; provider: string | null; timestamp: string;
+  }> | null>(null);
   const [notes, setNotes] = useState<UserNote[] | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [noteBusy, setNoteBusy] = useState(false);
@@ -130,6 +133,17 @@ export function UserDrawer({ user, viewerRole, onClose, onChanged, onToast }: {
         setActivity(Array.isArray(d?.events) ? d.events : []);
       })
       .catch(e => setActivityErr(e.message ?? 'Network error'));
+  }, [user]);
+
+  // Login history — sessions over the last 90 days. Separate from the
+  // activity timeline which only shows the most recent signup/last_seen.
+  useEffect(() => {
+    if (!user) return;
+    setLogins(null);
+    fetch(`/api/admin/login-activity?userId=${encodeURIComponent(user.id)}&limit=30`)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(d => setLogins(Array.isArray(d?.events) ? d.events : []))
+      .catch(() => setLogins([]));
   }, [user]);
 
   // Load notes
@@ -399,6 +413,50 @@ export function UserDrawer({ user, viewerRole, onClose, onChanged, onToast }: {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+          </Section>
+
+          {/* Login history — last 30 sign-in/sign-out events for this user.
+              Pulled from admin_monitoring audit log via the existing
+              /api/admin/login-activity endpoint (filtered by userId). */}
+          <Section title="Login History">
+            {logins === null ? (
+              <SkeletonBlock w="100%" h={60} />
+            ) : logins.length === 0 ? (
+              <div style={{ fontSize: 11, color: 'var(--fg-faint)', padding: '4px 0' }}>
+                No recorded sign-ins in the last 90 days.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 3 }}>
+                {logins.slice(0, 12).map(ev => (
+                  <div key={ev.id} style={{
+                    display: 'grid', gridTemplateColumns: '60px 1fr 70px',
+                    alignItems: 'center', gap: 8, padding: '3px 0',
+                    fontSize: 11,
+                  }}>
+                    <span style={{
+                      fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                      color: ev.kind === 'signin' ? '#86efac' : 'var(--fg-muted)',
+                      padding: '2px 6px', borderRadius: 3,
+                      background: ev.kind === 'signin' ? 'rgba(52, 211, 153, 0.1)' : 'rgba(255,255,255,0.03)',
+                      textAlign: 'center',
+                    }}>
+                      {ev.kind === 'signin' ? 'In' : 'Out'}
+                    </span>
+                    <span style={{ color: 'var(--fg-default)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {ev.provider || 'session'}
+                    </span>
+                    <span style={{ fontSize: 10, color: 'var(--fg-muted)', textAlign: 'right', fontFamily: 'var(--font-mono)' }}>
+                      {fmtAgo(ev.timestamp)}
+                    </span>
+                  </div>
+                ))}
+                {logins.length > 12 && (
+                  <div style={{ fontSize: 10, color: 'var(--fg-faint)', textAlign: 'center', marginTop: 4 }}>
+                    +{logins.length - 12} more
+                  </div>
+                )}
               </div>
             )}
           </Section>
