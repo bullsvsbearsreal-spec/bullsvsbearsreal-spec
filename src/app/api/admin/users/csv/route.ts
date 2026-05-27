@@ -11,7 +11,7 @@
  * row's alert_count.
  */
 import { NextResponse } from 'next/server';
-import { requireAdminOrAdvisor } from '@/lib/auth';
+import { requireAdmin } from '@/lib/auth';
 import { initDB, isDBConfigured, getSQL } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -26,7 +26,7 @@ function csvEsc(v: unknown): string {
 }
 
 export async function GET() {
-  const denied = await requireAdminOrAdvisor();
+  const denied = await requireAdmin();
   if (denied) return denied;
   if (!isDBConfigured()) {
     return NextResponse.json({ error: 'Database not configured' }, { status: 503 });

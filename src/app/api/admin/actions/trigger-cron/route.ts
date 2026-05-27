@@ -14,7 +14,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminOrAdvisor, verifySameOrigin, auth } from '@/lib/auth';
+import { requireAdmin, verifySameOrigin, auth } from '@/lib/auth';
 import { recordAuditEvent } from '@/lib/db';
 
 export const runtime = 'nodejs';
@@ -55,7 +55,7 @@ const ALLOWED_CRONS: Record<string, { description: string; estTimeoutMs: number 
 export async function POST(req: NextRequest) {
   const originErr = verifySameOrigin(req);
   if (originErr) return originErr;
-  const adminErr = await requireAdminOrAdvisor();
+  const adminErr = await requireAdmin();
   if (adminErr) return adminErr;
 
   const session = await auth();
@@ -147,7 +147,7 @@ export async function POST(req: NextRequest) {
  * Returns the allowlist (used by the UI to render dynamic cron buttons).
  */
 export async function GET() {
-  const adminErr = await requireAdminOrAdvisor();
+  const adminErr = await requireAdmin();
   if (adminErr) return adminErr;
 
   return NextResponse.json({

@@ -109,11 +109,11 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
           u.id.toLowerCase().includes(q)
         )) return false;
         if (tierFilter.size > 0) {
-          // tierFilter holds "tier" values OR "admin" (a role, not a tier).
+          // tierFilter holds "tier" values OR role values.
           // Match if user's role matches, OR user's billing_tier matches.
           const tier = u.billingTier;
           const matchTier = tierFilter.has(tier);
-          const matchRole = tierFilter.has('admin') && u.role === 'admin';
+          const matchRole = tierFilter.has(u.role);
           if (!matchTier && !matchRole) return false;
         }
         if (recencyMs > 0 && u.createdAt) {
@@ -236,7 +236,7 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
 
           {/* Tier chips */}
           <div style={{ display: 'flex', gap: 4 }}>
-            {(['free', 'trader', 'pro', 'whale', 'admin'] as const).map(t => {
+            {(['free', 'trader', 'pro', 'whale'] as const).map(t => {
               const active = tierFilter.has(t);
               return (
                 <button
@@ -252,6 +252,39 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
                     cursor: 'pointer',
                   }}
                 >{t}</button>
+              );
+            })}
+          </div>
+
+          {/* Role chips — same filter set as tier chips so toggling any
+              of these narrows the rows to that role OR tier. Useful for
+              "show me all moderators" or "show all marketers". */}
+          <div style={{ display: 'flex', gap: 4 }}>
+            {(
+              [
+                { id: 'owner',     label: 'Owner',     color: '#f87171' },
+                { id: 'admin',     label: 'Admin',     color: '#fbbf24' },
+                { id: 'moderator', label: 'Mod',       color: '#7dd3fc' },
+                { id: 'marketer',  label: 'Mkt',       color: '#c4b5fd' },
+                { id: 'advisor',   label: 'Advisor',   color: '#86efac' },
+              ] as const
+            ).map(r => {
+              const active = tierFilter.has(r.id);
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => toggleTier(r.id)}
+                  style={{
+                    padding: '5px 10px',
+                    background: active ? `${r.color}22` : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${active ? r.color + '55' : 'var(--hub-border-subtle)'}`,
+                    borderRadius: 999,
+                    fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.06em',
+                    color: active ? r.color : 'var(--fg-muted)',
+                    cursor: 'pointer',
+                  }}
+                  title={`Filter to ${r.id} role`}
+                >{r.label}</button>
               );
             })}
           </div>
@@ -425,8 +458,23 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
                       <span style={{ color: '#fff', fontWeight: 600 }}>
                         {u.name || (u.email ? u.email.split('@')[0] : '(no name)')}
                       </span>
+                      {u.role === 'owner' && <Crown style={{ width: 12, height: 12, color: '#f87171' }} />}
                       {u.role === 'admin' && <Crown style={{ width: 12, height: 12, color: '#fbbf24' }} />}
                       {u.role === 'advisor' && <Shield style={{ width: 12, height: 12, color: '#7dd3fc' }} />}
+                      {u.role === 'moderator' && (
+                        <span style={{
+                          fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 999,
+                          background: 'rgba(125, 211, 252, 0.15)', color: '#7dd3fc',
+                          textTransform: 'uppercase', letterSpacing: '0.06em',
+                        }}>Mod</span>
+                      )}
+                      {u.role === 'marketer' && (
+                        <span style={{
+                          fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 999,
+                          background: 'rgba(196, 181, 253, 0.15)', color: '#c4b5fd',
+                          textTransform: 'uppercase', letterSpacing: '0.06em',
+                        }}>Mkt</span>
+                      )}
                       {u.suspendedAt && (
                         <span style={{
                           fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 999,

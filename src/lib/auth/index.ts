@@ -355,7 +355,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         session.user.image = token.image as string;
       }
       if (token?.role) {
-        session.user.role = token.role as 'admin' | 'advisor' | 'user';
+        // Type union must mirror src/types/next-auth.d.ts — the cast
+        // is what TypeScript sees in `session.user.role === 'owner'`
+        // checks across the codebase.
+        session.user.role = token.role as 'owner' | 'admin' | 'moderator' | 'marketer' | 'advisor' | 'user';
       }
       if (token?.billingTier) {
         session.user.billingTier = token.billingTier as 'free' | 'trader' | 'pro' | 'whale';
