@@ -18,6 +18,12 @@ interface ToolInput {
 interface ExecuteContext {
   origin: string; // e.g., "https://info-hub.io"
   portfolio?: Array<{ symbol: string; quantity: number; avgPrice: number }>;
+  /** Max history days the caller's tier allows. Defaults to 90 (Free
+   *  tier) when not provided. Used to cap the `days` param on funding/
+   *  OI history tools so paying users actually see longer lookbacks
+   *  via chat. Was hardcoded 90 in getFundingHistory + getOiHistory,
+   *  which silently capped Pro (1y) and Whale (5y) users. */
+  historyDays?: number;
 }
 
 /** Sanitize a string for safe use in URL query params (strip anything non-alphanumeric) */
@@ -322,7 +328,8 @@ async function getTickers(input: ToolInput, ctx: ExecuteContext): Promise<string
 async function getFundingHistory(input: ToolInput, ctx: ExecuteContext): Promise<string> {
   const sym = sanitizeParam(input.symbol?.toUpperCase() || '');
   if (!sym) return 'Symbol is required for funding history.';
-  const days = Math.min(input.days || 30, 90);
+  const cap = ctx.historyDays ?? 90;
+  const days = Math.min(input.days || 30, cap);
   const exParam = input.exchange ? `&exchange=${sanitizeParam(input.exchange)}` : '';
   const data = await fetchApi(ctx, `/api/history/funding?symbol=${sym}&days=${days}${exParam}`);
   const entries: any[] = data.points || data.data || [];
@@ -520,7 +527,8 @@ async function getLiquidations(input: ToolInput, ctx: ExecuteContext): Promise<s
 async function getOiHistory(input: ToolInput, ctx: ExecuteContext): Promise<string> {
   const sym = sanitizeParam(input.symbol?.toUpperCase() || '');
   if (!sym) return 'Symbol is required for OI history.';
-  const days = Math.min(input.days || 7, 90);
+  const cap = ctx.historyDays ?? 90;
+  const days = Math.min(input.days || 7, cap);
   const data = await fetchApi(ctx, `/api/history/oi?symbol=${sym}&days=${days}`);
   const points: any[] = data.points || data.data || [];
 

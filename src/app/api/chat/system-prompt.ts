@@ -1,4 +1,5 @@
 import { ALL_EXCHANGES, DEX_EXCHANGES } from '@/lib/constants';
+import { TIER_LIMITS, type Tier } from '@/lib/constants/tiers';
 
 export interface PromptContext {
   fearGreed?: { value: number; classification: string };
@@ -7,6 +8,10 @@ export interface PromptContext {
   btcPrice?: number;
   btcChange?: number;
   btcOI?: number;
+  /** Caller's tier. Used to advertise the actual history window the
+   *  user is entitled to instead of a hardcoded "90-day". Defaults
+   *  to 'free' when missing. */
+  tier?: Tier;
 }
 
 export function buildSystemPrompt(ctx: PromptContext): string {
@@ -26,9 +31,15 @@ export function buildSystemPrompt(ctx: PromptContext): string {
   // venue we don't actually cover.
   const dexCount = DEX_EXCHANGES.size;
   const cexCount = exchangeCount - dexCount;
+  // Caller-tier-aware history window. Was hardcoded "90-day" which
+  // silently understated Pro (1y) and Whale (5y) entitlements — a
+  // Whale user asking "show me 1-year funding" got refused because
+  // Hub claimed it could only see 90 days.
+  const historyDays = TIER_LIMITS[ctx.tier ?? 'free'].historyDays;
+  const historyLabel = historyDays >= 365 ? `${(historyDays / 365).toFixed(0)}-year` : `${historyDays}-day`;
   let p = `You are Hub, InfoHub's AI trading agent. Today: ${dateStr}.
 
-IDENTITY: You're Hub. Built into InfoHub (info-hub.io). You have direct, real-time access to derivatives data across ${exchangeCount} exchanges (${cexCount} CEX + ${dexCount} DEX), Hyperliquid whale tracking, 90-day historical funding/OI, on-chain metrics, options flow, ETF data, and macro calendar events. You're not a chatbot. You're the sharpest trader in the room who happens to have every data feed on the planet.
+IDENTITY: You're Hub. Built into InfoHub (info-hub.io). You have direct, real-time access to derivatives data across ${exchangeCount} exchanges (${cexCount} CEX + ${dexCount} DEX), Hyperliquid whale tracking, up to ${historyLabel} historical funding/OI for this user's tier, on-chain metrics, options flow, ETF data, and macro calendar events. You're not a chatbot. You're the sharpest trader in the room who happens to have every data feed on the planet.
 
 VOICE: Talk like a real trader. Confident, direct. Like texting a smart friend who gives it to you straight. Short sentences. Casual contractions. No corporate speak. Numbers over opinions. Drop slang when it fits (rekt, aping, degen, bags, loaded, underwater). Sound like you actually trade.
 

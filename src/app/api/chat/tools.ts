@@ -73,13 +73,13 @@ export const CHAT_TOOLS: Tool[] = [
   },
   {
     name: 'get_funding_history',
-    description: 'Historical funding rate data over 1-90 days. Returns avg, min, max, 7d trend. Use for: is current funding rate normal, funding regime changes, mean reversion signals.',
+    description: 'Historical funding rate data. Returns avg, min, max, 7d trend. Use for: is current funding rate normal, funding regime changes, mean reversion signals. The lookback is capped at the user\'s tier history window (Free 90d / Trader 180d / Pro 1y / Whale 5y) — the system prompt above tells you which.',
     input_schema: {
       type: 'object' as const,
       properties: {
         symbol: { type: 'string', description: 'Uppercase symbol e.g. BTC, ETH' },
         exchange: { type: 'string', description: 'Specific exchange e.g. Binance, Bybit. Omit for aggregate.' },
-        days: { type: 'number', description: 'Lookback period 1-90 days. Default: 30' },
+        days: { type: 'number', description: 'Lookback days. Clamped at the user\'s tier history cap. Default: 30' },
       },
       required: ['symbol'],
     },
@@ -116,12 +116,12 @@ export const CHAT_TOOLS: Tool[] = [
   },
   {
     name: 'get_oi_history',
-    description: 'Historical aggregate OI over 1-90 days. Returns current OI, period change %, high/low, trend direction. Use for: OI trend, price-OI divergence, building/declining conviction.',
+    description: 'Historical aggregate OI. Returns current OI, period change %, high/low, trend direction. Use for: OI trend, price-OI divergence, building/declining conviction. Lookback clamped at the user\'s tier history window — see the system prompt for the actual cap.',
     input_schema: {
       type: 'object' as const,
       properties: {
         symbol: { type: 'string', description: 'Uppercase symbol e.g. BTC, ETH' },
-        days: { type: 'number', description: 'Lookback period 1-90 days. Default: 7' },
+        days: { type: 'number', description: 'Lookback days. Clamped at the user\'s tier history cap. Default: 7' },
       },
       required: ['symbol'],
     },

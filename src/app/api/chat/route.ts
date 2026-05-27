@@ -107,13 +107,21 @@ export async function POST(request: NextRequest) {
   const lastText = extractText(lastContent);
 
   // Check if user is admin (bypasses rate limit, gets higher token budget)
-  // Re-verify against DB to prevent stale JWT role exploit
+  // Re-verify against DB to prevent stale JWT role exploit. Also resolve
+  // their tier so chat history/tools can respect the actual entitlement
+  // (Pro/Whale see 1y / 5y instead of the old hardcoded 90-day cap).
   let isAdminUser = false;
+  let userTier: 'free' | 'trader' | 'pro' | 'whale' = 'free';
   try {
     const session = await auth();
     if (session?.user?.id) {
-      const { isAdmin } = await import('@/lib/auth');
-      isAdminUser = await isAdmin(session.user.id);
+      const { isAdmin, getUserTier } = await import('@/lib/auth');
+      const [admin, tier] = await Promise.all([
+        isAdmin(session.user.id),
+        getUserTier(session.user.id),
+      ]);
+      isAdminUser = admin;
+      userTier = tier;
     }
   } catch { /* not logged in or auth error */ }
 
@@ -154,7 +162,13 @@ export async function POST(request: NextRequest) {
     btcPrice,
     btcChange,
     btcOI,
+    tier: userTier,
   });
+
+  // Map tier → historyDays cap once, then thread into tool executor calls
+  // below so getFundingHistory + getOiHistory honour paid-tier entitlement.
+  const { TIER_LIMITS } = await import('@/lib/constants/tiers');
+  const userHistoryDays = TIER_LIMITS[userTier].historyDays;
 
   // Only send last 8 messages to stay within token budget
   const recentMessages: Anthropic.MessageParam[] = body.messages.slice(-8).map((m) => ({
@@ -278,6 +292,7 @@ export async function POST(request: NextRequest) {
           const result = await executeTool(tool.name, tool.input, {
             origin,
             portfolio: body.context?.portfolio,
+            historyDays: userHistoryDays,
           });
           toolResults.push({
             type: 'tool_result',
