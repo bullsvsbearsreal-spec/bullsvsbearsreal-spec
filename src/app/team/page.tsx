@@ -76,17 +76,6 @@ const principles = [
   },
 ];
 
-const milestones = [
-  { date: '2024 Q3', event: 'First funding rate dashboard, single page, no auth.' },
-  { date: '2024 Q4', event: 'Added open interest, liquidations, multi-exchange support.' },
-  { date: '2025 Q1', event: 'Smart money + on-chain perps (Hyperliquid, GMX) integrated.' },
-  { date: '2025 Q3', event: 'Funding arb scanner, leverage dashboard, public API.' },
-  { date: '2026 Q1', event: 'Portfolio sync + alerts across CEX and DEX wallets.' },
-  // Was "KOL feed, Telegram bot v2, browser push, deeper alerts" —
-  // Bot v2 (AI chat) shipped then got rolled back to alerts-only
-  // @InfoHubRadarBot. Updated to reflect what actually still exists.
-  { date: '2026 Q2', event: 'KOL feed, browser push, 4-tier pricing + affiliate program, copy-trader workflow.' },
-];
 
 export default function TeamPage() {
   return (
@@ -286,47 +275,6 @@ export default function TeamPage() {
                 </div>
               </div>
             ))}
-          </div>
-        </section>
-
-        {/* ── Timeline ── */}
-        <section className="mb-16">
-          <div className="text-center mb-8">
-            <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-              The road so far
-            </h2>
-            <p className="text-sm text-neutral-500 mt-1.5">From one funding table to a full data terminal.</p>
-          </div>
-
-          <div className="relative max-w-2xl mx-auto">
-            {/* vertical line */}
-            <div className="absolute left-4 sm:left-[7.5rem] top-2 bottom-2 w-px bg-gradient-to-b from-hub-yellow/40 via-white/[0.08] to-transparent" />
-            <ol className="space-y-4">
-              {milestones.map((m, i) => (
-                <li
-                  key={m.date}
-                  className="relative flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-6 pl-10 sm:pl-0"
-                >
-                  {/* dot */}
-                  <span
-                    className={`absolute left-3 sm:left-[7.25rem] top-1.5 w-2 h-2 rounded-full ring-4 ring-hub-black ${
-                      i === milestones.length - 1
-                        ? 'bg-hub-yellow shadow-[0_0_12px_rgba(255,165,0,0.55)]'
-                        : 'bg-white/30'
-                    }`}
-                  />
-                  <div className="hidden sm:block w-28 text-right text-[11px] font-mono text-neutral-500 uppercase tracking-wider pt-1">
-                    {m.date}
-                  </div>
-                  <div className="flex-1">
-                    <div className="sm:hidden text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-0.5">
-                      {m.date}
-                    </div>
-                    <p className="text-sm text-neutral-300 leading-relaxed">{m.event}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
           </div>
         </section>
 
