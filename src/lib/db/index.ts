@@ -4060,7 +4060,14 @@ export async function listUserTrades(
 ): Promise<UserTradeRow[]> {
   if (!DATABASE_URL) return [];
   const sql = getSQL();
-  const limit = Math.min(Math.max(opts.limit ?? 100, 1), 1000);
+  // Cap raised 1000 → 50000 so the tax/cost-basis FIFO walk can include
+  // the full history of active traders. The `idx_user_trades_user_ts`
+  // index makes the lookup O(50k * log N) under that limit. Paginated
+  // callers (the trades/journal endpoint) bound their own request size
+  // far below this — they pass their own limit. Was 1000 which forced
+  // tax CSV exports to surface a misleading "1000 fills · full export
+  // coming soon" message even for moderately active accounts.
+  const limit = Math.min(Math.max(opts.limit ?? 100, 1), 50_000);
   const offset = Math.max(opts.offset ?? 0, 0);
   const since = opts.sinceMs ? new Date(opts.sinceMs).toISOString() : null;
 

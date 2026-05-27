@@ -24,8 +24,12 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({ error: 'DB unavailable' }, { status: 503, headers: NO_STORE });
   }
 
-  // Pull every fill the user has — limit large for the FIFO walk.
-  const trades = await listUserTrades(session.user.id, { limit: 1000 });
+  // Pull every fill the user has — limit large enough for an active
+  // trader's full history. Cap matches the DB-level ceiling so a user
+  // who somehow has more would see a "truncated" note instead of
+  // silent loss.
+  const FULL_HISTORY_CAP = 50_000;
+  const trades = await listUserTrades(session.user.id, { limit: FULL_HISTORY_CAP });
 
   // Sort ASC for FIFO walk (DB returns DESC).
   const asc = [...trades].sort((a, b) => a.ts.getTime() - b.ts.getTime());
@@ -36,8 +40,8 @@ export async function GET(_request: NextRequest) {
     success: true,
     summary,
     tradeCount: trades.length,
-    note: trades.length >= 1000
-      ? 'Only the most recent 1000 fills are included. Full historical export coming soon.'
+    note: trades.length >= FULL_HISTORY_CAP
+      ? `Only the most recent ${FULL_HISTORY_CAP.toLocaleString()} fills are included. Contact support if you need a deeper export.`
       : null,
     ts: Date.now(),
   }, { headers: NO_STORE });

@@ -56,7 +56,10 @@ export async function GET(_request: NextRequest) {
     return NextResponse.json({ error: 'DB unavailable' }, { status: 503 });
   }
 
-  const trades = await listUserTrades(session.user.id, { limit: 1000 });
+  // Match the FIFO-walk cap on /api/account/tax — CSV reflects the
+  // same dataset as the on-screen summary. Was 1000 which silently
+  // truncated active accounts' tax export.
+  const trades = await listUserTrades(session.user.id, { limit: 50_000 });
   const asc = [...trades].sort((a, b) => a.ts.getTime() - b.ts.getTime());
   const summary = computeCostBasis(asc);
 
