@@ -359,9 +359,9 @@ function WidgetCard({
 
 /* ─── Widget body renderers ───────────────────────────────────────
  *
- * Each renderer fetches its own data lazily. Heavy widgets fall back to
- * a stub for v1 so the framework is shippable — they'll get real
- * implementations as separate, smaller PRs.
+ * Each renderer fetches its own data lazily. All 8 widget types have
+ * real implementations as of May 2026 — the v1 StubWidget placeholder
+ * was removed once every type got wired.
  */
 
 function WidgetBody({ widget }: { widget: Widget }) {
@@ -488,17 +488,6 @@ function OpenInterestWidget({ config }: { config?: Record<string, unknown> }) {
       ) : (
         <div className="text-[11px] text-neutral-500">Loading…</div>
       )}
-    </div>
-  );
-}
-
-/** Reusable stub for the widgets whose real wiring lands in follow-up PRs.
- *  Frame is shipped today so users can experiment with the layout. */
-function StubWidget({ label, hint }: { label: string; hint: string }) {
-  return (
-    <div>
-      <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1">{label}</div>
-      <div className="text-[11px] text-neutral-500 italic leading-relaxed">{hint}</div>
     </div>
   );
 }
