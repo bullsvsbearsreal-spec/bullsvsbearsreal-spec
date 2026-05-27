@@ -5,7 +5,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import PageHero from '@/components/PageHero';
 import { ALL_EXCHANGES, DEX_EXCHANGES } from '@/lib/constants';
-import { FREE_TIER_PER_MINUTE, PRO_TIER_PER_MINUTE } from '@/lib/api/rate-limit';
+import { FREE_TIER_PER_MINUTE, TRADER_TIER_PER_MINUTE, PRO_TIER_PER_MINUTE } from '@/lib/api/rate-limit';
 import { slugify } from '@/lib/slugify';
 import { HelpCircle, ChevronDown, Search, X, Link as LinkIcon } from 'lucide-react';
 
@@ -106,7 +106,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Data & Features',
     q: 'Is there a public API?',
-    a: `Yes — /developers/docs has the full reference. Free tier covers basically everything: tickers, funding, OI, liquidations, arbitrage, spreads, klines, options. Every fee-aware endpoint returns the canonical fee schedule with a versioned identifier so partners can verify the assumption baked into net-PnL calculations. Rate limits are ${FREE_TIER_PER_MINUTE} req/min (free) and ${PRO_TIER_PER_MINUTE} req/min (Pro). OpenAPI 3.1 spec at /api/v1/openapi.`,
+    a: `Yes — /developers/docs has the full reference. Free tier covers basically everything: tickers, funding, OI, liquidations, arbitrage, spreads, klines, options. Every fee-aware endpoint returns the canonical fee schedule with a versioned identifier so partners can verify the assumption baked into net-PnL calculations. Rate limits scale with tier: ${FREE_TIER_PER_MINUTE} req/min (Free), ${TRADER_TIER_PER_MINUTE} (Trader), ${PRO_TIER_PER_MINUTE} (Pro), unlimited (Whale). OpenAPI 3.1 spec at /api/v1/openapi.`,
   },
   {
     category: 'Data & Features',
