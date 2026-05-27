@@ -21,6 +21,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireAdminOrAdvisor } from '@/lib/auth';
 import { initDB, isDBConfigured, getSQL } from '@/lib/db';
+import { recordServerError } from '@/lib/error-capture';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -100,6 +101,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ users: result, count: result.length });
   } catch (e) {
     console.error('Admin users error:', e);
+    recordServerError('/api/admin/users', e);
     return NextResponse.json({ error: 'Failed to fetch users' }, { status: 500 });
   }
 }

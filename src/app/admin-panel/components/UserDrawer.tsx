@@ -16,9 +16,18 @@
  * future requests on next session check.
  */
 
-import { useState, useEffect } from 'react';
-import { X as XIcon, Crown, Shield, ChevronRight, Bell, Wallet, Key, Calendar, Eye, EyeOff, AlertCircle, Clock, CheckCircle2, UserPlus, Send } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { X as XIcon, Crown, Shield, ChevronRight, Bell, Wallet, Key, Calendar, Eye, EyeOff, AlertCircle, Clock, CheckCircle2, UserPlus, Send, MessageSquare, Trash2 } from 'lucide-react';
 import { ConfirmModal, TIER_COLORS, fmtAgo, fmtNumber, SkeletonBlock } from './primitives';
+
+interface UserNote {
+  id: number;
+  body: string;
+  createdAt: string;
+  authorId: string | null;
+  authorEmail: string | null;
+  authorName: string | null;
+}
 
 interface ActivityEvent {
   type: string;
@@ -71,6 +80,9 @@ export function UserDrawer({ user, onClose, onChanged, onToast }: {
   const [pending, setPending] = useState<null | { kind: 'tier'; tier: Tier } | { kind: 'suspend' } | { kind: 'unsuspend' }>(null);
   const [activity, setActivity] = useState<ActivityEvent[] | null>(null);
   const [activityErr, setActivityErr] = useState<string | null>(null);
+  const [notes, setNotes] = useState<UserNote[] | null>(null);
+  const [noteDraft, setNoteDraft] = useState('');
+  const [noteBusy, setNoteBusy] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -96,6 +108,68 @@ export function UserDrawer({ user, onClose, onChanged, onToast }: {
       })
       .catch(e => setActivityErr(e.message ?? 'Network error'));
   }, [user]);
+
+  // Load notes
+  const reloadNotes = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}/notes`);
+      if (!res.ok) { setNotes([]); return; }
+      const d = await res.json();
+      setNotes(Array.isArray(d?.notes) ? d.notes : []);
+    } catch { setNotes([]); }
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    setNotes(null);
+    setNoteDraft('');
+    reloadNotes();
+  }, [user, reloadNotes]);
+
+  const addNote = async () => {
+    if (!user) return;
+    const body = noteDraft.trim();
+    if (body.length < 1) return;
+    setNoteBusy(true);
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}/notes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body }),
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        onToast(j.error || `HTTP ${res.status}`, false);
+        return;
+      }
+      setNoteDraft('');
+      await reloadNotes();
+      onToast('Note added', true);
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : 'Network error', false);
+    } finally {
+      setNoteBusy(false);
+    }
+  };
+
+  const removeNote = async (noteId: number) => {
+    if (!user) return;
+    try {
+      const res = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}/notes?noteId=${noteId}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}));
+        onToast(j.error || `HTTP ${res.status}`, false);
+        return;
+      }
+      await reloadNotes();
+      onToast('Note removed', true);
+    } catch (e) {
+      onToast(e instanceof Error ? e.message : 'Network error', false);
+    }
+  };
 
   if (!user) return null;
 
@@ -274,6 +348,81 @@ export function UserDrawer({ user, onClose, onChanged, onToast }: {
                     </div>
                     <div style={{ fontSize: 10, color: 'var(--fg-muted)', textAlign: 'right', fontFamily: 'var(--font-mono)' }}>
                       {fmtAgo(e.timestamp)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Section>
+
+          {/* Operator notes — shared scratchpad visible to all admins */}
+          <Section title="Operator Notes">
+            <div style={{ display: 'flex', gap: 6, marginBottom: 10 }}>
+              <input
+                value={noteDraft}
+                onChange={e => setNoteDraft(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !noteBusy) { e.preventDefault(); addNote(); } }}
+                placeholder="Add a note (e.g. spam — watching, VIP)…"
+                maxLength={2000}
+                disabled={noteBusy}
+                style={{
+                  flex: 1, minWidth: 0, padding: '7px 10px',
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid var(--hub-border-subtle)',
+                  borderRadius: 6, fontSize: 12, color: '#fff',
+                  fontFamily: 'inherit',
+                }}
+              />
+              <button
+                type="button"
+                onClick={addNote}
+                disabled={noteBusy || noteDraft.trim().length < 1}
+                style={{
+                  padding: '7px 12px', borderRadius: 6,
+                  background: '#fbbf24', color: '#000',
+                  fontSize: 11, fontWeight: 700, border: 0,
+                  cursor: (noteBusy || noteDraft.trim().length < 1) ? 'not-allowed' : 'pointer',
+                  opacity: (noteBusy || noteDraft.trim().length < 1) ? 0.5 : 1,
+                  display: 'inline-flex', alignItems: 'center', gap: 4,
+                }}
+              >
+                <MessageSquare style={{ width: 11, height: 11 }} />
+                Add
+              </button>
+            </div>
+            {notes === null ? (
+              <SkeletonBlock w="100%" h={40} />
+            ) : notes.length === 0 ? (
+              <div style={{ fontSize: 11, color: 'var(--fg-faint)', padding: '4px 0' }}>
+                No notes yet. Visible to every admin.
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 6 }}>
+                {notes.map(n => (
+                  <div key={n.id} style={{
+                    background: 'rgba(255,255,255,0.025)',
+                    border: '1px solid var(--hub-border-subtle)',
+                    borderRadius: 6, padding: '8px 10px',
+                  }}>
+                    <div style={{ fontSize: 12, color: '#fff', whiteSpace: 'pre-wrap', wordBreak: 'break-word', lineHeight: 1.5 }}>
+                      {n.body}
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 6, fontSize: 10, color: 'var(--fg-faint)' }}>
+                      <span style={{ fontFamily: 'var(--font-mono)' }}>
+                        {n.authorEmail || n.authorName || 'unknown'} · {fmtAgo(n.createdAt)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeNote(n.id)}
+                        title="Remove note"
+                        style={{
+                          background: 'transparent', border: 0, color: 'var(--fg-muted)',
+                          cursor: 'pointer', padding: 2,
+                          display: 'inline-flex', alignItems: 'center', gap: 3,
+                        }}
+                      >
+                        <Trash2 style={{ width: 10, height: 10 }} />
+                      </button>
                     </div>
                   </div>
                 ))}

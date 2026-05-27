@@ -1,10 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Cog, Activity, Trash2, Shield, Send, Mail, RefreshCw, Download, Server, ArrowRight } from 'lucide-react';
+import { Cog, Activity, Trash2, Shield, Send, Mail, RefreshCw, Download, Server, ArrowRight, AlertOctagon } from 'lucide-react';
 import Link from 'next/link';
 import { Card, SectionHead, SkeletonBlock, ConfirmModal, fmtAgo } from '../components/primitives';
 import type { AuditEntry } from '../types';
+
+interface ServerError {
+  id: number;
+  route: string;
+  message: string;
+  stack: string | null;
+  timestamp: string;
+}
 
 /**
  * Ops tab — operator controls + system health board + paged audit log.
@@ -52,6 +60,47 @@ export function OpsTab({ onToast }: { onToast: (msg: string, ok: boolean) => voi
     };
     load();
     const id = setInterval(load, 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Server errors — 60s poll. Surfaces 5xx events captured by
+  // lib/error-capture.ts so the operator sees production breaks
+  // without scrolling Sentry / DO logs.
+  const [errors, setErrors] = useState<ServerError[] | null>(null);
+  const [errorSummary, setErrorSummary] = useState<{ total: number; last1m: number; last5m: number } | null>(null);
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/admin/server-errors?minutes=60&limit=30');
+        if (!res.ok) return;
+        const d = await res.json();
+        setErrors(Array.isArray(d.errors) ? d.errors : []);
+        setErrorSummary(d.summary ?? null);
+      } catch {}
+    };
+    load();
+    const id = setInterval(load, 60_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Cron history — 5min poll. Last-24h runs per cron with success/fail
+  // rendered as a tiny ✓✗ sparkline next to each trigger button.
+  const [cronHistory, setCronHistory] = useState<Record<string, { ok: number; total: number; runs: { ok: boolean; timestamp: string }[] }>>({});
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/admin/cron-history?hours=24');
+        if (!res.ok) return;
+        const d = await res.json();
+        const map: Record<string, { ok: number; total: number; runs: { ok: boolean; timestamp: string }[] }> = {};
+        for (const c of (d.crons ?? []) as any[]) {
+          map[c.id] = { ok: c.ok, total: c.total, runs: c.runs ?? [] };
+        }
+        setCronHistory(map);
+      } catch {}
+    };
+    load();
+    const id = setInterval(load, 5 * 60_000);
     return () => clearInterval(id);
   }, []);
 
@@ -198,7 +247,31 @@ export function OpsTab({ onToast }: { onToast: (msg: string, ok: boolean) => voi
                     </div>
                   </div>
                 </div>
-                <span style={{ fontSize: 10, color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)', flexShrink: 0 }}>{c.schedule}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+                  {/* Last 24h sparkline of ✓/✗ runs (audit-log triggered + scheduled) */}
+                  {(() => {
+                    const h = cronHistory[c.id];
+                    if (!h || h.total === 0) return null;
+                    const dots = h.runs.slice(-20);
+                    const pct = Math.round((h.ok / h.total) * 100);
+                    return (
+                      <div title={`${h.ok}/${h.total} ok (24h, ${pct}%)`}
+                           style={{ display: 'inline-flex', gap: 2, alignItems: 'center' }}>
+                        {dots.map((r, i) => (
+                          <span key={i} style={{
+                            width: 4, height: 8, borderRadius: 1,
+                            background: r.ok ? '#34d399' : '#f87171',
+                            opacity: 0.4 + (i / dots.length) * 0.6,
+                          }} />
+                        ))}
+                        <span style={{ fontSize: 9, color: pct >= 95 ? '#34d399' : pct >= 80 ? '#fcd34d' : '#f87171', fontFamily: 'var(--font-mono)', marginLeft: 4 }}>
+                          {pct}%
+                        </span>
+                      </div>
+                    );
+                  })()}
+                  <span style={{ fontSize: 10, color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)' }}>{c.schedule}</span>
+                </div>
               </button>
             );
           })}
@@ -286,6 +359,51 @@ export function OpsTab({ onToast }: { onToast: (msg: string, ok: boolean) => voi
                 </div>
               );
             })}
+          </div>
+        )}
+      </Card>
+
+      {/* Server errors panel */}
+      <SectionHead
+        title="Server Errors · last 60 min"
+        icon={<AlertOctagon style={{ width: 13, height: 13 }} />}
+        right={errorSummary ? (
+          <span style={{ fontSize: 10, color: errorSummary.last5m > 0 ? '#f87171' : 'var(--fg-muted)', fontFamily: 'var(--font-mono)' }}>
+            {errorSummary.total} total · {errorSummary.last5m} in last 5m
+          </span>
+        ) : null}
+      />
+      <Card title="5xx + caught exceptions written by lib/error-capture">
+        {errors === null ? (
+          <SkeletonBlock h={80} />
+        ) : errors.length === 0 ? (
+          <div style={{ fontSize: 12, color: 'var(--fg-faint)', textAlign: 'center', padding: '16px 0' }}>
+            Nothing recorded in the last hour. Healthy.
+          </div>
+        ) : (
+          <div style={{ display: 'grid', gap: 4 }}>
+            {errors.slice(0, 12).map(err => (
+              <div key={err.id} style={{
+                display: 'grid', gridTemplateColumns: '16px 1fr 80px', alignItems: 'start', gap: 8,
+                padding: '6px 10px',
+                background: 'rgba(244, 63, 94, 0.06)',
+                border: '1px solid rgba(244, 63, 94, 0.18)',
+                borderRadius: 6,
+              }}>
+                <AlertOctagon style={{ width: 12, height: 12, color: '#f87171', marginTop: 2 }} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 11, color: '#fff', fontFamily: 'var(--font-mono)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {err.route}
+                  </div>
+                  <div style={{ fontSize: 10.5, color: '#fda4af', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {err.message}
+                  </div>
+                </div>
+                <span style={{ fontSize: 10, color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)', textAlign: 'right' }}>
+                  {fmtAgo(err.timestamp)}
+                </span>
+              </div>
+            ))}
           </div>
         )}
       </Card>

@@ -418,6 +418,21 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_page_views_day ON page_views(day DESC)`;
 
+  // user_notes — operator scratchpad on user records, shared between
+  // all admins. Audit-friendly (every note has an author + timestamp).
+  // Newest first when fetched. ON DELETE CASCADE so account deletion
+  // doesn't orphan notes.
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_notes (
+      id BIGSERIAL PRIMARY KEY,
+      user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      author_user_id TEXT REFERENCES users(id) ON DELETE SET NULL,
+      body TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_user_notes_user ON user_notes(user_id, created_at DESC)`;
+
   // Seed admin accounts
   const adminEmail = process.env.ADMIN_EMAIL || 'ocelotcex1638a@gmail.com';
   await sql`UPDATE users SET role = 'admin' WHERE email = ${adminEmail} AND role != 'admin'`;
@@ -2996,6 +3011,74 @@ export async function getActivationFunnel(): Promise<{
   } catch (e) {
     console.error('DB getActivationFunnel error:', e);
     return { signedUp: 0, verified: 0, alertCreated: 0, connected: 0 };
+  }
+}
+
+/**
+ * List operator notes on a user, newest first.
+ */
+export async function listUserNotes(userId: string, limit = 50): Promise<Array<{
+  id: number; body: string; createdAt: string;
+  authorId: string | null; authorEmail: string | null; authorName: string | null;
+}>> {
+  try {
+    const db = getSQL();
+    const safeLimit = Math.min(Math.max(1, Math.floor(limit)), 200);
+    const rows = await db`
+      SELECT n.id, n.body, n.created_at, n.author_user_id,
+             a.email AS author_email, a.name AS author_name
+        FROM user_notes n
+        LEFT JOIN users a ON a.id = n.author_user_id
+       WHERE n.user_id = ${userId}
+       ORDER BY n.created_at DESC
+       LIMIT ${safeLimit}
+    `;
+    return rows.map((r: any) => ({
+      id: Number(r.id),
+      body: String(r.body),
+      createdAt: r.created_at instanceof Date ? r.created_at.toISOString() : String(r.created_at),
+      authorId: r.author_user_id ?? null,
+      authorEmail: r.author_email ?? null,
+      authorName: r.author_name ?? null,
+    }));
+  } catch (e) {
+    console.error('DB listUserNotes error:', e);
+    return [];
+  }
+}
+
+/**
+ * Add an operator note to a user. Returns the new note id or null on
+ * failure. Body is truncated at 2000 chars defensively.
+ */
+export async function addUserNote(userId: string, authorId: string | null, body: string): Promise<number | null> {
+  try {
+    const db = getSQL();
+    const trimmed = (body ?? '').trim().slice(0, 2000);
+    if (!trimmed) return null;
+    const rows = await db`
+      INSERT INTO user_notes (user_id, author_user_id, body)
+      VALUES (${userId}, ${authorId}, ${trimmed})
+      RETURNING id
+    `;
+    return rows[0]?.id ? Number(rows[0].id) : null;
+  } catch (e) {
+    console.error('DB addUserNote error:', e);
+    return null;
+  }
+}
+
+/**
+ * Delete an operator note. Returns true if a row was removed.
+ */
+export async function deleteUserNote(noteId: number): Promise<boolean> {
+  try {
+    const db = getSQL();
+    const r = await db`DELETE FROM user_notes WHERE id = ${noteId}`;
+    return (r.count ?? 0) > 0;
+  } catch (e) {
+    console.error('DB deleteUserNote error:', e);
+    return false;
   }
 }
 

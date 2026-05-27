@@ -22,6 +22,7 @@
 import { NextResponse } from 'next/server';
 import { requireAdminOrAdvisor } from '@/lib/auth';
 import { initDB, isDBConfigured, getSQL } from '@/lib/db';
+import { recordServerError } from '@/lib/error-capture';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -278,6 +279,7 @@ export async function GET() {
   } catch (e) {
     inflight = null;
     console.error('Admin stats error:', e);
+    recordServerError('/api/admin/stats', e);
     return NextResponse.json({ error: 'Failed to fetch stats' }, { status: 500 });
   }
 }

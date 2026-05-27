@@ -42,6 +42,7 @@ import { FeedbackTab }      from './tabs/Feedback';
 import { RevenueTab }       from './tabs/Revenue';
 import { ApiAnalyticsTab }  from './tabs/ApiAnalytics';
 import { AlertsHealthTab }  from './tabs/AlertsHealth';
+import { CommandPalette }   from './components/CommandPalette';
 import { RedBanner, ToastHost, type ToastMsg, fmtNumber } from './components/primitives';
 import type { StatsResp, AuditEntry, BugReport } from './types';
 
@@ -112,6 +113,7 @@ export default function AdminPanelPage() {
   const [onlineNow, setOnlineNow]       = useState<number | null>(null);
   const [now, setNow] = useState<number>(() => Date.now()); // ticks every second for the countdown
   const [toast, setToast] = useState<ToastMsg | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   // ─── Hash routing ────────────────────────────────────────────────
   // Wait for the session to load before resolving the tab — otherwise
@@ -248,6 +250,13 @@ export default function AdminPanelPage() {
         target.isContentEditable
       );
       if (inEditable) return;
+
+      // Cmd/Ctrl + K → open command palette
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setPaletteOpen(p => !p);
+        return;
+      }
 
       // Cmd/Ctrl + digit → tab jump
       if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey) {
@@ -488,6 +497,10 @@ export default function AdminPanelPage() {
             letterSpacing: '0.06em', textTransform: 'uppercase',
           }}>
             <kbd style={{ fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--hub-border-subtle)', borderRadius: 4, padding: '1px 5px' }}>⌘</kbd>
+            <kbd style={{ fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--hub-border-subtle)', borderRadius: 4, padding: '1px 5px' }}>K</kbd>
+            <span>search</span>
+            <span style={{ margin: '0 4px', color: 'var(--hub-border-subtle)' }}>·</span>
+            <kbd style={{ fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--hub-border-subtle)', borderRadius: 4, padding: '1px 5px' }}>⌘</kbd>
             <kbd style={{ fontFamily: 'var(--font-mono)', background: 'rgba(255,255,255,0.04)', border: '1px solid var(--hub-border-subtle)', borderRadius: 4, padding: '1px 5px' }}>1..{visibleTabs.length}</kbd>
             <span>jump tabs</span>
             <span style={{ margin: '0 4px', color: 'var(--hub-border-subtle)' }}>·</span>
@@ -511,6 +524,16 @@ export default function AdminPanelPage() {
       </main>
       <Footer />
       <ToastHost toast={toast} onClear={() => setToast(null)} />
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        tabs={visibleTabs.map(t => ({ id: t.id, label: t.label }))}
+        goTab={id => {
+          history.replaceState(null, '', `#${id}`);
+          setActive(id as TabId);
+        }}
+      />
     </div>
   );
 }
