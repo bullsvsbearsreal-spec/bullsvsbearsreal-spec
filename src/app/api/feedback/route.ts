@@ -22,6 +22,7 @@ import {
   insertBugReport, listBugReports, updateBugReportStatus,
 } from '@/lib/db';
 import { validateBugReport } from '@/lib/utils/validateBugReport';
+import { pingBugReport } from '@/lib/admin-telegram-ping';
 import { createHash } from 'crypto';
 
 export const runtime = 'nodejs';
@@ -92,6 +93,19 @@ export async function POST(request: NextRequest) {
     if (id == null) {
       return NextResponse.json({ success: false, error: 'Failed to record report' }, { status: 500 });
     }
+
+    // Fire-and-forget Telegram ping to the operator. Wrapped in
+    // .catch() so a Telegram outage never bubbles up as a 500 to the
+    // user submitting feedback — the report is already in the DB at
+    // this point, anything beyond is best-effort.
+    pingBugReport({
+      id: Number(id),
+      severity,
+      message,
+      pageUrl,
+      userEmail,
+    }).catch(e => console.warn('[feedback] admin telegram ping failed:', e));
+
     return NextResponse.json({ success: true, id }, { status: 201 });
   } catch (e) {
     console.error('feedback POST error:', e);

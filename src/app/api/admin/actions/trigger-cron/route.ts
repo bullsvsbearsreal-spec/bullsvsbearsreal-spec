@@ -33,16 +33,23 @@ export const dynamic = 'force-dynamic';
  * own modal at /api/admin/actions/broadcast.
  */
 const ALLOWED_CRONS: Record<string, { description: string; estTimeoutMs: number }> = {
-  'snapshot':            { description: 'Funding + OI + spread snapshot', estTimeoutMs: 30_000 },
-  'ingest-liquidations': { description: 'Pull recent liquidations',       estTimeoutMs: 30_000 },
-  'refresh-etf-flows':   { description: 'BTC + ETH ETF flows from Farside', estTimeoutMs: 30_000 },
-  'refresh-validators':  { description: 'LST + restaking yields',         estTimeoutMs: 30_000 },
-  'warm-smart-money':    { description: 'Top wallets PnL leaderboard',    estTimeoutMs: 60_000 },
-  'whale-trades':        { description: 'Detect new whale DEX swaps',     estTimeoutMs: 30_000 },
-  'social-fetch':        { description: 'KOL Twitter/X cache refresh',    estTimeoutMs: 30_000 },
-  'sync-positions':      { description: 'User connected-exchange sync',   estTimeoutMs: 30_000 },
-  'alerts':              { description: 'Alert evaluation pass',          estTimeoutMs: 30_000 },
-  'watch-hl-wallets':    { description: 'HL wallet watch — diff + Telegram', estTimeoutMs: 60_000 },
+  'snapshot':              { description: 'Funding + OI + spread snapshot',  estTimeoutMs: 30_000 },
+  'ingest-liquidations':   { description: 'Pull recent liquidations',        estTimeoutMs: 30_000 },
+  'refresh-etf-flows':     { description: 'BTC + ETH ETF flows from Farside', estTimeoutMs: 30_000 },
+  'refresh-validators':    { description: 'LST + restaking yields',          estTimeoutMs: 30_000 },
+  'warm-smart-money':      { description: 'Top wallets PnL leaderboard',     estTimeoutMs: 60_000 },
+  'whale-trades':          { description: 'Detect new whale DEX swaps',      estTimeoutMs: 30_000 },
+  'whale-alerts':          { description: 'Whale priority alert sweep',      estTimeoutMs: 30_000 },
+  'social-fetch':          { description: 'KOL Twitter/X cache refresh',     estTimeoutMs: 30_000 },
+  'sync-positions':        { description: 'User connected-exchange sync',    estTimeoutMs: 30_000 },
+  'alerts':                { description: 'Alert evaluation pass',           estTimeoutMs: 30_000 },
+  'check-position-alerts': { description: 'Position-alert checker',          estTimeoutMs: 30_000 },
+  'auto-tweet':            { description: 'Auto-tweet queue flush',          estTimeoutMs: 30_000 },
+  'portfolio-snapshot':    { description: 'Per-user portfolio snapshot',     estTimeoutMs: 60_000 },
+  'aggregate-page-views':  { description: 'Page views rollup + prune (90d)', estTimeoutMs: 30_000 },
+  'watch-hl-wallets':      { description: 'HL wallet watch — diff + Telegram', estTimeoutMs: 60_000 },
+  // INTENTIONALLY OMITTED: 'telegram-daily' — mass broadcast, requires
+  // the explicit confirmation flow at /api/admin/actions/broadcast.
 };
 
 export async function POST(req: NextRequest) {
@@ -52,10 +59,12 @@ export async function POST(req: NextRequest) {
   if (adminErr) return adminErr;
 
   const session = await auth();
-  let body: { name?: string };
+  let body: { name?: string; cron?: string; reason?: string };
   try { body = await req.json(); } catch { body = {}; }
 
-  const name = (body.name ?? '').trim();
+  // Accept either { name } (legacy) or { cron } (new admin dashboard).
+  const name = (body.name ?? body.cron ?? '').trim();
+  const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 200) : '';
   const meta = ALLOWED_CRONS[name];
   if (!meta) {
     return NextResponse.json(
@@ -86,6 +95,8 @@ export async function POST(req: NextRequest) {
 
     await recordAuditEvent(`trigger_cron:${name}`, {
       admin: session?.user?.email ?? 'unknown',
+      actorEmail: session?.user?.email ?? null,
+      reason,
       ok: result?.ok ?? res.ok,
       durationMs,
       result,
@@ -115,6 +126,8 @@ export async function POST(req: NextRequest) {
     const isTimeout = err.name === 'TimeoutError' || err.message?.includes('timeout');
     await recordAuditEvent(`trigger_cron:${name}`, {
       admin: session?.user?.email ?? 'unknown',
+      actorEmail: session?.user?.email ?? null,
+      reason,
       ok: false,
       error: err.message ?? 'unknown',
     }).catch(() => {});

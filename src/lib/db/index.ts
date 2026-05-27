@@ -390,6 +390,34 @@ async function _doInitDB(): Promise<void> {
     )
   `;
 
+  // ─── Admin dashboard plumbing (May 2026) ────────────────────────────
+  // suspended_at — non-null timestamp = the user is suspended. Soft-disable
+  // pattern (no row deletion) so we can unban + restore data, and so the
+  // existing data-deletion paths stay reserved for true GDPR erasure.
+  // last_seen — heartbeat updated by middleware on authenticated requests.
+  // Drives DAU/WAU/MAU + the per-user "active 5 min ago" indicator in the
+  // admin user drawer.
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS suspended_at TIMESTAMPTZ DEFAULT NULL`;
+  await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ DEFAULT NULL`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_users_last_seen ON users(last_seen DESC) WHERE last_seen IS NOT NULL`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_users_suspended ON users(suspended_at) WHERE suspended_at IS NOT NULL`;
+
+  // page_views — aggregated route hits. We don't store one row per hit
+  // (that's millions/day at scale) — instead the client beacon fires
+  // per-route + we upsert a count keyed by (route, day). One row per
+  // route per day. Old rows get pruned by the aggregate-page-views
+  // cron after 90 days.
+  await sql`
+    CREATE TABLE IF NOT EXISTS page_views (
+      route TEXT NOT NULL,
+      day   DATE NOT NULL,
+      count BIGINT NOT NULL DEFAULT 0,
+      uniques BIGINT NOT NULL DEFAULT 0,
+      PRIMARY KEY (route, day)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_page_views_day ON page_views(day DESC)`;
+
   // Seed admin accounts
   const adminEmail = process.env.ADMIN_EMAIL || 'ocelotcex1638a@gmail.com';
   await sql`UPDATE users SET role = 'admin' WHERE email = ${adminEmail} AND role != 'admin'`;
@@ -2771,7 +2799,10 @@ export async function recordAuditEvent(
   }
 }
 
-export async function getAuditLog(limit = 50): Promise<Array<{ id: number; type: string; details: Record<string, unknown> | null; timestamp: string }>> {
+export async function getAuditLog(
+  limit = 50,
+  offset = 0,
+): Promise<Array<{ id: number; type: string; details: Record<string, unknown> | null; timestamp: string }>> {
   try {
     const db = getSQL();
     const rows = await db`
@@ -2780,6 +2811,7 @@ export async function getAuditLog(limit = 50): Promise<Array<{ id: number; type:
       WHERE metric LIKE 'audit_%'
       ORDER BY recorded_at DESC
       LIMIT ${limit}
+      OFFSET ${offset}
     `;
     return rows.map((r: any) => ({
       id: r.id,
@@ -2801,6 +2833,168 @@ export async function flushApiCache(): Promise<number> {
   } catch (e) {
     console.error('DB flushApiCache error:', e);
     return 0;
+  }
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Admin dashboard helpers (May 2026)
+// ────────────────────────────────────────────────────────────────────
+
+/**
+ * Suspend a user — sets suspended_at to NOW(). Idempotent (re-suspending
+ * a suspended user is a no-op). Does NOT delete data — the soft-disable
+ * pattern means we can unban and the user gets their old state back.
+ */
+export async function suspendUser(userId: string): Promise<boolean> {
+  try {
+    const db = getSQL();
+    const r = await db`
+      UPDATE users SET suspended_at = NOW()
+      WHERE id = ${userId} AND suspended_at IS NULL
+    `;
+    return (r.count ?? 0) > 0;
+  } catch (e) {
+    console.error('DB suspendUser error:', e);
+    return false;
+  }
+}
+
+/** Lift a suspension. */
+export async function unsuspendUser(userId: string): Promise<boolean> {
+  try {
+    const db = getSQL();
+    const r = await db`
+      UPDATE users SET suspended_at = NULL
+      WHERE id = ${userId} AND suspended_at IS NOT NULL
+    `;
+    return (r.count ?? 0) > 0;
+  } catch (e) {
+    console.error('DB unsuspendUser error:', e);
+    return false;
+  }
+}
+
+/**
+ * Record a page view — upserts (route, day, count). Called by the
+ * /api/track-page-view beacon. Routes are normalised by the API route
+ * so dynamic segments don't blow up cardinality.
+ */
+export async function recordPageView(route: string, day: string): Promise<void> {
+  try {
+    const db = getSQL();
+    await db`
+      INSERT INTO page_views (route, day, count, uniques)
+      VALUES (${route}, ${day}::date, 1, 1)
+      ON CONFLICT (route, day) DO UPDATE
+      SET count = page_views.count + 1
+    `;
+  } catch (e) {
+    console.error('DB recordPageView error:', e);
+  }
+}
+
+/**
+ * Top pages by view count over the last N days. Used by the Growth tab.
+ */
+export async function getTopPages(days = 7, limit = 10): Promise<{ route: string; views: number; uniques: number }[]> {
+  try {
+    const db = getSQL();
+    const rows = await db`
+      SELECT route, SUM(count)::bigint AS views, SUM(uniques)::bigint AS uniques
+      FROM page_views
+      WHERE day >= (NOW() - (${days} || ' days')::interval)::date
+      GROUP BY route
+      ORDER BY views DESC
+      LIMIT ${limit}
+    `;
+    return rows.map((r: any) => ({
+      route: r.route,
+      views: Number(r.views ?? 0),
+      uniques: Number(r.uniques ?? 0),
+    }));
+  } catch (e) {
+    console.error('DB getTopPages error:', e);
+    return [];
+  }
+}
+
+/**
+ * Prune page_views older than `days`. Called by the daily cron so
+ * the table stays bounded.
+ */
+export async function prunePageViews(days = 90): Promise<number> {
+  try {
+    const db = getSQL();
+    const r = await db`
+      DELETE FROM page_views
+      WHERE day < (NOW() - (${days} || ' days')::interval)::date
+    `;
+    return r.count ?? 0;
+  } catch (e) {
+    console.error('DB prunePageViews error:', e);
+    return 0;
+  }
+}
+
+/**
+ * Activation funnel — counts at each step. Each step is a strict
+ * superset condition over the users table:
+ *   1. Signed up        (every non-suspended row in users)
+ *   2. Email verified   (email_verified IS NOT NULL)
+ *   3. Created an alert (users.alerts jsonb has at least one entry)
+ *   4. Connected (has an exchange key OR watched wallet OR DEX wallet)
+ *
+ * Tables used reflect the actual schema (alerts are in a jsonb column
+ * on users; wallets/keys live in hl_watched_wallets, user_exchange_keys,
+ * user_wallets — same source the stats route reads from).
+ */
+export async function getActivationFunnel(): Promise<{
+  signedUp: number;
+  verified: number;
+  alertCreated: number;
+  connected: number;
+}> {
+  try {
+    const db = getSQL();
+    const [row] = await db`
+      SELECT
+        (SELECT COUNT(*)::int FROM users WHERE suspended_at IS NULL) AS signed_up,
+        (SELECT COUNT(*)::int FROM users WHERE suspended_at IS NULL AND email_verified IS NOT NULL) AS verified,
+        (SELECT COUNT(*)::int FROM users
+           WHERE suspended_at IS NULL
+             AND jsonb_typeof(alerts) = 'array'
+             AND jsonb_array_length(alerts) > 0) AS alert_created,
+        (SELECT COUNT(DISTINCT u.id)::int FROM users u
+           WHERE u.suspended_at IS NULL
+             AND (
+               u.id IN (SELECT user_id FROM user_exchange_keys WHERE user_id IS NOT NULL)
+               OR u.id IN (SELECT user_id FROM hl_watched_wallets WHERE user_id IS NOT NULL)
+               OR u.id IN (SELECT user_id FROM user_wallets WHERE user_id IS NOT NULL)
+             )) AS connected
+    `;
+    return {
+      signedUp:     Number(row?.signed_up     ?? 0),
+      verified:     Number(row?.verified      ?? 0),
+      alertCreated: Number(row?.alert_created ?? 0),
+      connected:    Number(row?.connected     ?? 0),
+    };
+  } catch (e) {
+    console.error('DB getActivationFunnel error:', e);
+    return { signedUp: 0, verified: 0, alertCreated: 0, connected: 0 };
+  }
+}
+
+/**
+ * Touch last_seen on the user record. Best-effort — failures here
+ * just mean we miss a heartbeat, not a real error. Called from the
+ * authenticated request pipeline.
+ */
+export async function touchLastSeen(userId: string): Promise<void> {
+  try {
+    const db = getSQL();
+    await db`UPDATE users SET last_seen = NOW() WHERE id = ${userId}`;
+  } catch (e) {
+    console.error('DB touchLastSeen error:', e);
   }
 }
 

@@ -1,183 +1,246 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+/**
+ * /admin-panel — tabbed operator dashboard.
+ *
+ * Six tabs (hash-routed so a refresh keeps you where you were):
+ *   #overview      · KPIs + retention + activity sparklines + recents
+ *   #users         · Searchable user table + drawer + CSV
+ *   #growth        · Signups + tier mix + activation funnel + top pages
+ *   #notifications · Delivery success + per-channel volume
+ *   #ops           · Cron triggers + cache flush + aggregator board + audit log
+ *   #feedback      · Bug reports inbox
+ *
+ * Advisor role sees a stripped subset (Overview + Growth only) — every
+ * mutating tab is hidden, not just disabled, so the surface area for
+ * accidental writes is zero.
+ *
+ * Polling: a single 2-minute interval refreshes /api/admin/stats and
+ * /api/admin/audit-log behind the scenes. Per-tab data (users list,
+ * aggregator health, feedback inbox) is owned by the tab and refreshes
+ * on its own cadence.
+ *
+ * Red banner: surfaces hot conditions (high-severity open bug reports,
+ * degraded notification delivery, suspended notification queue) at the
+ * top of every tab so the operator never misses a fire.
+ */
+
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import {
-  Shield, Users, Database, Bell, BarChart3, TrendingUp, Zap, Gift,
-  RefreshCw, Send, Activity, Settings,
+  Shield, Users, BarChart3, Bell, Cog, Bug, RefreshCw, Lock,
 } from 'lucide-react';
-import { ToastProvider } from './components/Toast';
-import TabBar, { type AdminTab } from './components/TabBar';
-import StatCardWithSparkline from './components/StatCardWithSparkline';
-import { StatGridSkeleton } from './components/AdminSkeletons';
-import OverviewTab from './components/OverviewTab';
-import PipelineTab from './components/PipelineTab';
-import AlertsTab from './components/AlertsTab';
-import DatabaseTab from './components/DatabaseTab';
-import UsersTab from './components/UsersTab';
-import InvitesTab from './components/InvitesTab';
-import ActionsTab from './components/ActionsTab';
-import AffiliatesTab from './components/AffiliatesTab';
+import { OverviewTab }      from './tabs/Overview';
+import { UsersTab }         from './tabs/Users';
+import { GrowthTab }        from './tabs/Growth';
+import { NotificationsTab } from './tabs/Notifications';
+import { OpsTab }           from './tabs/Ops';
+import { FeedbackTab }      from './tabs/Feedback';
+import { RedBanner, ToastHost, type ToastMsg, fmtNumber } from './components/primitives';
+import type { StatsResp, AuditEntry, BugReport } from './types';
 
-interface SiteStats {
-  totals: {
-    users: number;
-    alertNotifications: number;
-    fundingSnapshots: number;
-    oiSnapshots: number;
-    liquidationSnapshots: number;
-    telegramUsers: number;
-    pushSubscriptions: number;
-  };
-  last24h: {
-    alertNotifications: number;
-    fundingSnapshots: number;
-    liquidationSnapshots: number;
-  };
-  trends?: {
-    alerts: number[];
-    funding: number[];
-    oi: number[];
-    liquidations: number[];
-  };
-  dbSize: string;
+// ────────────────────────────────────────────────────────────────────
+// Tab definitions
+// ────────────────────────────────────────────────────────────────────
+type TabId = 'overview' | 'users' | 'growth' | 'notifications' | 'ops' | 'feedback';
+
+interface TabDef {
+  id: TabId;
+  label: string;
+  icon: React.ReactNode;
+  advisor: boolean;   // visible in advisor mode?
 }
 
-function formatNumber(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
-}
-
-const BASE_TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
-  { id: 'overview', label: 'Overview', icon: <Activity className="w-3.5 h-3.5" /> },
-  { id: 'pipeline', label: 'Pipeline', icon: <BarChart3 className="w-3.5 h-3.5" /> },
-  { id: 'alerts', label: 'Alerts', icon: <Bell className="w-3.5 h-3.5" /> },
-  { id: 'database', label: 'Database', icon: <Database className="w-3.5 h-3.5" /> },
-  { id: 'users', label: 'Users', icon: <Users className="w-3.5 h-3.5" /> },
-  { id: 'invites', label: 'Invites', icon: <Send className="w-3.5 h-3.5" /> },
-  { id: 'affiliates', label: 'Affiliates', icon: <Gift className="w-3.5 h-3.5" /> },
-  { id: 'actions', label: 'Actions', icon: <Settings className="w-3.5 h-3.5" /> },
+const ALL_TABS: TabDef[] = [
+  { id: 'overview',      label: 'Overview',      icon: <Shield    style={{ width: 13, height: 13 }} />, advisor: true  },
+  { id: 'users',         label: 'Users',         icon: <Users     style={{ width: 13, height: 13 }} />, advisor: false },
+  { id: 'growth',        label: 'Growth',        icon: <BarChart3 style={{ width: 13, height: 13 }} />, advisor: true  },
+  { id: 'notifications', label: 'Notifications', icon: <Bell      style={{ width: 13, height: 13 }} />, advisor: false },
+  { id: 'ops',           label: 'Ops',           icon: <Cog       style={{ width: 13, height: 13 }} />, advisor: false },
+  { id: 'feedback',      label: 'Feedback',      icon: <Bug       style={{ width: 13, height: 13 }} />, advisor: false },
 ];
 
-function buildTabs(badges: Record<string, string | undefined>) {
-  return BASE_TABS.map(t => ({ ...t, badge: badges[t.id] }));
+// ────────────────────────────────────────────────────────────────────
+// Health-score helper — combines notification delivery + DB sanity
+// ────────────────────────────────────────────────────────────────────
+function computeHealthScore(stats: StatsResp | null): { label: string; detail: string; tone: string } {
+  if (!stats) return { label: '—', detail: 'Stats loading…', tone: 'cyan' };
+  const n = stats.notifications;
+  const successPct = n && n.total > 0 ? (n.sent / n.total) * 100 : 100;
+  if (successPct < 80) {
+    return { label: 'Issues', detail: `Notif delivery ${successPct.toFixed(0)}%`, tone: 'rose' };
+  }
+  if (successPct < 95) {
+    return { label: 'Degraded', detail: `Notif delivery ${successPct.toFixed(0)}%`, tone: 'amber' };
+  }
+  return { label: 'Healthy', detail: `${stats.dbSize} DB · ${fmtNumber(stats.totals.fundingSnapshots)} snaps`, tone: 'emerald' };
 }
 
+// ────────────────────────────────────────────────────────────────────
+// Page
+// ────────────────────────────────────────────────────────────────────
 export default function AdminPanelPage() {
   const { data: session, status } = useSession();
-  const [stats, setStats] = useState<SiteStats | null>(null);
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<AdminTab>('overview');
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState<Date | null>(null);
-  const [tabKey, setTabKey] = useState(0);
-  const [pipelineIssues, setPipelineIssues] = useState(0);
+  const role = session?.user?.role;
+  const isAdmin   = role === 'admin';
+  const isAdvisor = role === 'advisor';
+  const hasAccess = isAdmin || isAdvisor;
 
-  const userRole = session?.user?.role;
-  const hasAdminAccess = userRole === 'admin' || userRole === 'advisor';
+  // Tabs filtered by role — advisor only sees overview + growth.
+  const visibleTabs = useMemo(
+    () => ALL_TABS.filter(t => isAdmin || t.advisor),
+    [isAdmin],
+  );
 
-  // Fetch pipeline health for badge counts
+  const [active, setActive] = useState<TabId>('overview');
+  const [stats, setStats]   = useState<StatsResp | null>(null);
+  const [audit, setAudit]   = useState<AuditEntry[]>([]);
+  const [openBugCount, setOpenBugCount] = useState<{ high: number; total: number } | null>(null);
+  const [refreshing, setRefreshing]     = useState(false);
+  const [lastRefresh, setLastRefresh]   = useState<Date | null>(null);
+  const [toast, setToast] = useState<ToastMsg | null>(null);
+
+  // ─── Hash routing ────────────────────────────────────────────────
   useEffect(() => {
-    if (!hasAdminAccess) return;
-    let mounted = true;
-    const check = async () => {
-      try {
-        const res = await fetch('/api/funding?assetClass=crypto', { signal: AbortSignal.timeout(15000) });
-        if (!res.ok) return;
-        const json = await res.json();
-        const entries: { exchange: string; updatedAt?: string }[] = json?.data || [];
-        // Count exchanges with stale data (>10 min old)
-        const now = Date.now();
-        const exchanges = new Map<string, number>();
-        for (const e of entries) {
-          const ts = e.updatedAt ? new Date(e.updatedAt).getTime() : 0;
-          const existing = exchanges.get(e.exchange) || 0;
-          if (ts > existing) exchanges.set(e.exchange, ts);
-        }
-        let stale = 0;
-        for (const ts of Array.from(exchanges.values())) {
-          if (ts > 0 && now - ts > 10 * 60 * 1000) stale++;
-        }
-        if (mounted) setPipelineIssues(stale);
-      } catch {}
+    const applyHash = () => {
+      const id = (window.location.hash.replace(/^#/, '') || 'overview') as TabId;
+      if (visibleTabs.some(t => t.id === id)) {
+        setActive(id);
+      } else {
+        // Advisor landed on a hidden tab via stale URL → snap to overview
+        setActive('overview');
+        if (id) history.replaceState(null, '', '#overview');
+      }
     };
-    check();
-    const iv = setInterval(check, 120_000);
-    return () => { mounted = false; clearInterval(iv); };
-  }, [hasAdminAccess]);
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => window.removeEventListener('hashchange', applyHash);
+  }, [visibleTabs]);
 
-  const tabs = buildTabs({
-    pipeline: pipelineIssues > 0 ? String(pipelineIssues) : undefined,
-  });
-
-  // Hash routing
-  useEffect(() => {
-    const readHash = () => {
-      const h = window.location.hash.replace('#', '') as AdminTab;
-      if (BASE_TABS.some((t) => t.id === h)) setActiveTab(h);
-    };
-    readHash();
-    window.addEventListener('hashchange', readHash);
-    return () => window.removeEventListener('hashchange', readHash);
+  const goTab = useCallback((id: TabId) => {
+    history.replaceState(null, '', `#${id}`);
+    setActive(id);
   }, []);
 
-  const handleTabChange = (tab: AdminTab) => {
-    setActiveTab(tab);
-    window.location.hash = tab;
-  };
-
-  // Load stats
-  const loadStats = useCallback(async () => {
-    try {
-      const res = await fetch('/api/admin/stats', { signal: AbortSignal.timeout(15000) });
-      if (res.ok) setStats(await res.json());
-    } catch {}
-    setLastRefresh(new Date());
-  }, []);
-
-  useEffect(() => {
-    if (!hasAdminAccess) return;
-    setStatsLoading(true);
-    loadStats().finally(() => setStatsLoading(false));
-  }, [hasAdminAccess, loadStats]);
-
-  // Auto-refresh stats every 2 min
-  useEffect(() => {
-    if (!hasAdminAccess) return;
-    const interval = setInterval(loadStats, 120_000);
-    return () => clearInterval(interval);
-  }, [hasAdminAccess, loadStats]);
-
-  const handleRefresh = async () => {
+  // ─── Data loader ─────────────────────────────────────────────────
+  const load = useCallback(async () => {
     setRefreshing(true);
-    await loadStats();
-    setTabKey((k) => k + 1);
-    setRefreshing(false);
-  };
+    const tasks: Promise<void>[] = [];
 
+    // Stats
+    tasks.push(
+      fetch('/api/admin/stats')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d && !d.error) setStats(d as StatsResp); })
+        .catch(() => {}),
+    );
+
+    // Audit log tail (10 most recent for Overview)
+    tasks.push(
+      fetch('/api/admin/audit-log?limit=10')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (!d) return;
+          const list: AuditEntry[] =
+            Array.isArray(d.entries) ? d.entries :
+            Array.isArray(d.events)  ? d.events.map((e: any) => ({
+              id: String(e.id),
+              action: e.type,
+              actorEmail: e.details?.admin ?? null,
+              actorName:  e.details?.actorName ?? null,
+              timestamp: e.timestamp,
+              metadata: e.details,
+            })) :
+            Array.isArray(d) ? d : [];
+          setAudit(list.slice(0, 10));
+        })
+        .catch(() => {}),
+    );
+
+    // Bug-report counts (red banner)
+    tasks.push(
+      fetch('/api/feedback?status=open&limit=100')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => {
+          if (!d?.success || !Array.isArray(d.data)) return;
+          const list = d.data as BugReport[];
+          setOpenBugCount({
+            high: list.filter(r => r.severity === 'high').length,
+            total: list.length,
+          });
+        })
+        .catch(() => {}),
+    );
+
+    await Promise.allSettled(tasks);
+    setLastRefresh(new Date());
+    setRefreshing(false);
+  }, []);
+
+  useEffect(() => {
+    if (!hasAccess) return;
+    load();
+    const id = setInterval(load, 120_000); // 2-min auto-refresh
+    return () => clearInterval(id);
+  }, [hasAccess, load]);
+
+  // ─── Red-banner conditions ───────────────────────────────────────
+  const bannerMessages = useMemo(() => {
+    const msgs: string[] = [];
+    if (openBugCount && openBugCount.high > 0) {
+      msgs.push(`${openBugCount.high} high-severity bug report${openBugCount.high === 1 ? '' : 's'} open`);
+    }
+    if (stats?.notifications && stats.notifications.total > 0) {
+      const pct = (stats.notifications.sent / stats.notifications.total) * 100;
+      if (pct < 80) {
+        msgs.push(`Notification delivery degraded · ${pct.toFixed(0)}% success (7d)`);
+      }
+    }
+    return msgs;
+  }, [openBugCount, stats]);
+
+  // ─── Toast helpers ───────────────────────────────────────────────
+  const fireToast = useCallback((msg: string, ok: boolean) => setToast({ msg, ok }), []);
+
+  // ─── Auth gate ───────────────────────────────────────────────────
   if (status === 'loading') {
     return (
       <div className="min-h-screen bg-hub-black">
         <Header />
-        <main className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-hub-yellow/30 border-t-hub-yellow rounded-full animate-spin" />
+        <main style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '80px 0' }}>
+          <div style={{
+            width: 32, height: 32,
+            border: '2px solid rgba(251, 191, 36, 0.3)',
+            borderTopColor: '#fbbf24',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite',
+          }} />
         </main>
         <Footer />
       </div>
     );
   }
-
-  if (!session?.user || !hasAdminAccess) {
+  if (!session?.user || !hasAccess) {
     return (
       <div className="min-h-screen bg-hub-black">
         <Header />
-        <main className="flex flex-col items-center justify-center py-20 text-white">
-          <div className="text-neutral-400 text-sm mb-3">Admin access required</div>
-          <a href="/login?callbackUrl=/admin-panel" className="px-4 py-2 rounded-lg bg-hub-yellow text-black text-sm font-medium hover:brightness-110 transition-all">
-            Log In
+        <main style={{
+          display: 'flex', flexDirection: 'column', alignItems: 'center',
+          padding: '80px 16px', color: '#fff',
+        }}>
+          <Lock style={{ width: 28, height: 28, color: '#fbbf24', marginBottom: 14 }} />
+          <div style={{ color: 'var(--fg-muted)', fontSize: 13, marginBottom: 14 }}>Admin or advisor access required</div>
+          <a
+            href="/login?callbackUrl=/admin-panel"
+            style={{
+              padding: '8px 18px', borderRadius: 8,
+              background: '#fbbf24', color: '#000',
+              fontSize: 13, fontWeight: 600, textDecoration: 'none',
+            }}
+          >
+            Log in
           </a>
         </main>
         <Footer />
@@ -185,116 +248,142 @@ export default function AdminPanelPage() {
     );
   }
 
+  const sysHealth = computeHealthScore(stats);
+
+  // ─── Page shell ──────────────────────────────────────────────────
   return (
-    <ToastProvider>
-      <div className="min-h-screen bg-hub-black">
-        <Header />
-        <main className="text-white">
-          <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-6">
-            {/* Header */}
-            <div className="mb-5 flex items-start justify-between">
-              <div>
-                <h1 className="text-xl font-bold flex items-center gap-2">
-                  <Shield className="w-5 h-5 text-hub-yellow" />
-                  Admin Panel
-                </h1>
-                <p className="text-xs text-neutral-600 mt-0.5">System monitoring and management</p>
-              </div>
-              <div className="flex items-center gap-3">
-                {lastRefresh && (
-                  <span className="text-[10px] text-neutral-600">
-                    {lastRefresh.toLocaleTimeString()}
-                  </span>
+    <div className="min-h-screen bg-hub-black">
+      <Header />
+      <main style={{ color: '#fff' }}>
+        <div style={{ maxWidth: 1400, margin: '0 auto', padding: '20px 24px' }}>
+
+          {/* Mobile guard — dashboard is desktop-only by design */}
+          <div className="md:hidden" style={{
+            background: 'rgba(251, 191, 36, 0.08)',
+            border: '1px solid rgba(251, 191, 36, 0.25)',
+            borderRadius: 8, padding: 16, marginBottom: 16,
+            color: '#fcd34d', fontSize: 13, textAlign: 'center',
+          }}>
+            The admin dashboard is optimised for desktop (1024px+). Many tables and modals will look cramped on this screen.
+          </div>
+
+          {/* Header bar */}
+          <div style={{
+            display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between',
+            gap: 16, marginBottom: 18,
+          }}>
+            <div>
+              <h1 style={{
+                fontSize: 22, fontWeight: 700, letterSpacing: '-0.01em',
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <Shield style={{ width: 18, height: 18, color: '#fbbf24' }} />
+                Admin Dashboard
+                {isAdvisor && (
+                  <span style={{
+                    marginLeft: 6, fontSize: 9, fontWeight: 700,
+                    letterSpacing: '0.12em', textTransform: 'uppercase',
+                    color: '#7dd3fc', background: 'rgba(125, 211, 252, 0.12)',
+                    padding: '3px 8px', borderRadius: 999,
+                    border: '1px solid rgba(125, 211, 252, 0.25)',
+                  }}>Advisor</span>
                 )}
-                <button
-                  onClick={handleRefresh}
-                  disabled={refreshing}
-                  className="text-xs text-neutral-500 hover:text-white flex items-center gap-1 disabled:opacity-50 transition-colors"
-                >
-                  <RefreshCw className={`w-3.5 h-3.5 ${refreshing ? 'animate-spin' : ''}`} />
-                  Refresh
-                </button>
-              </div>
+              </h1>
+              <p style={{ fontSize: 11, color: 'var(--fg-muted)', marginTop: 4 }}>
+                Live operations + product analytics · refresh every 2 min
+              </p>
             </div>
-
-            {/* Stats Grid */}
-            {statsLoading ? (
-              <StatGridSkeleton />
-            ) : stats ? (
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-                <StatCardWithSparkline
-                  icon={<Users className="w-3.5 h-3.5" />}
-                  label="Total Users"
-                  value={stats.totals.users}
-                />
-                <StatCardWithSparkline
-                  icon={<Bell className="w-3.5 h-3.5" />}
-                  label="Alerts Fired"
-                  value={stats.totals.alertNotifications}
-                  sub={`${formatNumber(stats.last24h.alertNotifications)} today`}
-                  trend={stats.trends?.alerts}
-                  trendColor="#f59e0b"
-                />
-                <StatCardWithSparkline
-                  icon={<TrendingUp className="w-3.5 h-3.5" />}
-                  label="Funding Snaps"
-                  value={stats.totals.fundingSnapshots}
-                  sub={`${formatNumber(stats.last24h.fundingSnapshots)} today`}
-                  trend={stats.trends?.funding}
-                  trendColor="#22c55e"
-                />
-                <StatCardWithSparkline
-                  icon={<Zap className="w-3.5 h-3.5" />}
-                  label="Liq Snaps"
-                  value={stats.totals.liquidationSnapshots}
-                  sub={`${formatNumber(stats.last24h.liquidationSnapshots)} today`}
-                  trend={stats.trends?.liquidations}
-                  trendColor="#ef4444"
-                />
-                <StatCardWithSparkline
-                  icon={<BarChart3 className="w-3.5 h-3.5" />}
-                  label="OI Snapshots"
-                  value={stats.totals.oiSnapshots}
-                  trend={stats.trends?.oi}
-                  trendColor="#3b82f6"
-                />
-                <StatCardWithSparkline
-                  icon={<Send className="w-3.5 h-3.5" />}
-                  label="Telegram"
-                  value={stats.totals.telegramUsers}
-                />
-                <StatCardWithSparkline
-                  icon={<Bell className="w-3.5 h-3.5" />}
-                  label="Push Subs"
-                  value={stats.totals.pushSubscriptions}
-                />
-                <StatCardWithSparkline
-                  icon={<Database className="w-3.5 h-3.5" />}
-                  label="DB Size"
-                  value={stats.dbSize}
-                  raw
-                />
-              </div>
-            ) : null}
-
-            {/* Tab Bar */}
-            <TabBar tabs={tabs} activeTab={activeTab} onChange={handleTabChange} />
-
-            {/* Tab Content */}
-            <div className="mt-4" key={tabKey}>
-              {activeTab === 'overview' && <OverviewTab onNavigate={handleTabChange} />}
-              {activeTab === 'pipeline' && <PipelineTab />}
-              {activeTab === 'alerts' && <AlertsTab />}
-              {activeTab === 'database' && <DatabaseTab />}
-              {activeTab === 'users' && <UsersTab userRole={userRole} currentUserId={session.user.id} />}
-              {activeTab === 'invites' && <InvitesTab />}
-              {activeTab === 'affiliates' && <AffiliatesTab />}
-              {activeTab === 'actions' && <ActionsTab userRole={userRole} />}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {lastRefresh && (
+                <span style={{
+                  fontSize: 10, color: 'var(--fg-faint)',
+                  fontFamily: 'var(--font-mono)',
+                }}>
+                  Updated {lastRefresh.toLocaleTimeString()}
+                </span>
+              )}
+              <button
+                type="button"
+                onClick={load}
+                disabled={refreshing}
+                style={{
+                  fontSize: 11, color: 'var(--fg-default)',
+                  background: 'transparent', border: 0, cursor: 'pointer',
+                  display: 'inline-flex', alignItems: 'center', gap: 5,
+                  opacity: refreshing ? 0.5 : 1,
+                }}
+              >
+                <RefreshCw style={{
+                  width: 13, height: 13,
+                  ...(refreshing ? { animation: 'spin 1s linear infinite' } : {}),
+                }} />
+                Refresh
+              </button>
             </div>
           </div>
-        </main>
-        <Footer />
-      </div>
-    </ToastProvider>
+
+          {/* Tabs */}
+          <div style={{
+            display: 'flex', gap: 4, marginBottom: 14,
+            borderBottom: '1px solid var(--hub-border-subtle)',
+          }}>
+            {visibleTabs.map(t => {
+              const isActive = active === t.id;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => goTab(t.id)}
+                  style={{
+                    padding: '10px 14px',
+                    background: 'transparent',
+                    border: 0,
+                    borderBottom: `2px solid ${isActive ? 'var(--hub-accent)' : 'transparent'}`,
+                    color: isActive ? '#fff' : 'var(--fg-muted)',
+                    fontSize: 12, fontWeight: 600,
+                    letterSpacing: '0.02em',
+                    cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: 6,
+                    marginBottom: -1,
+                    transition: 'color 120ms',
+                    position: 'relative',
+                  }}
+                >
+                  {t.icon}
+                  {t.label}
+                  {t.id === 'feedback' && openBugCount && openBugCount.total > 0 && (
+                    <span style={{
+                      marginLeft: 2, padding: '0 6px', minWidth: 18, height: 16,
+                      fontSize: 9, fontWeight: 700,
+                      borderRadius: 999,
+                      background: openBugCount.high > 0 ? '#f43f5e' : 'rgba(255,255,255,0.1)',
+                      color: '#fff',
+                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {openBugCount.total}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Red banner */}
+          <RedBanner messages={bannerMessages} />
+
+          {/* Tab content */}
+          <div style={{ minHeight: 400 }}>
+            {active === 'overview'      && <OverviewTab      stats={stats} audit={audit} sysHealth={sysHealth} />}
+            {active === 'users'         && isAdmin && <UsersTab        onToast={fireToast} />}
+            {active === 'growth'        && <GrowthTab        stats={stats} />}
+            {active === 'notifications' && isAdmin && <NotificationsTab stats={stats} />}
+            {active === 'ops'           && isAdmin && <OpsTab          onToast={fireToast} />}
+            {active === 'feedback'      && isAdmin && <FeedbackTab     onToast={fireToast} />}
+          </div>
+        </div>
+      </main>
+      <Footer />
+      <ToastHost toast={toast} onClear={() => setToast(null)} />
+    </div>
   );
 }

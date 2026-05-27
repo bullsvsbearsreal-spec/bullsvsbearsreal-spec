@@ -6,6 +6,7 @@ import Providers from '@/components/Providers'
 // const ChatWidget = dynamic(() => import('@/components/chat/ChatWidget'), { ssr: false })
 import AlertEngine from '@/components/AlertEngine'
 import ReportBugButton from '@/components/ReportBugButton'
+import PageViewBeacon from '@/components/PageViewBeacon'
 import { ALL_EXCHANGES, DEX_EXCHANGES } from '@/lib/constants'
 import { FREE_TIER_PER_MINUTE, FREE_TIER_PER_DAY } from '@/lib/api/rate-limit'
 import { ConditionalTerminalShell } from '@/components/design-system'
@@ -257,6 +258,10 @@ export default function RootLayout({
           {/* Per-page bug report widget — small floating pill in bottom-right.
               Users can dismiss permanently per-device via localStorage. */}
           <ReportBugButton />
+          {/* Anonymous page-view beacon. Posts the current pathname to
+              /api/track-page-view on every route change — populates the
+              page_views rollup the admin Growth tab reads from. */}
+          <PageViewBeacon />
         </Providers>
       </body>
     </html>

@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
 
   const session = await auth();
 
-  let body: { message?: string; channels?: string[] };
+  let body: { message?: string; channels?: string[]; reason?: string };
   try {
     body = await request.json();
   } catch {
@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
   }
 
   const { message, channels } = body;
+  const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 200) : '';
   if (!message || typeof message !== 'string' || message.length > 500) {
     return NextResponse.json({ error: 'Message required (max 500 chars)' }, { status: 400 });
   }
@@ -86,8 +87,10 @@ export async function POST(request: NextRequest) {
 
   await recordAuditEvent('broadcast', {
     admin: session?.user?.email ?? 'unknown',
+    actorEmail: session?.user?.email ?? null,
     message: message.slice(0, 100),
     channels,
+    reason,
     pushSent: result.push.sent,
     pushFailed: result.push.failed,
     telegramSent: result.telegram.sent,
