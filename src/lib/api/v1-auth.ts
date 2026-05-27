@@ -180,23 +180,27 @@ export async function authenticateV1Request(request: NextRequest): Promise<
   }
 
   // Fire-and-forget log into api_request_log for the developer dashboard.
-  // Sampled to 1 in 5 requests to keep the table size manageable at peak —
-  // we lose some resolution but the aggregations (top endpoints, error
-  // rate, requests/min) are still statistically meaningful at 20%.
-  // Heavy hitters with 100req/s still produce 20 rows/sec which is fine.
+  //
+  // SUCCESS-ONLY by design: we log at the point of successful auth, so
+  // the row reflects "request was authenticated + permitted" not the
+  // ultimate HTTP status. Route handlers can fail downstream — those
+  // 4xx/5xx responses are intentionally NOT captured here (would require
+  // wrapping every v1 route handler). The admin API Log tab surfaces
+  // request volume, top endpoints, and top consumers, which are the
+  // primary use cases and are correct under success-only semantics.
+  //
+  // We log status_code = 200 and duration_ms = NULL — both are honest
+  // placeholders. If we add per-route success logging later, that path
+  // can write the real status + duration.
+  //
+  // Sampled to 1 in 5 requests to keep the table size manageable at peak.
+  // Heavy hitters at 100 req/s still produce 20 rows/sec which is fine.
   if (Math.random() < 0.2) {
     const url = new URL(request.url);
-    // Normalise endpoint — strip query params + any /api/v1 prefix to
-    // keep the aggregation buckets clean.
-    const endpoint = url.pathname;
-    const startedAt = (request as any).__startedAt as number | undefined;
-    const durationMs = startedAt ? Date.now() - startedAt : null;
     void logApiRequestSafe({
       userId: keyData.userId,
       apiKeyId: keyData.keyId,
-      endpoint,
-      statusCode: 200, // logged on success — non-200 paths log themselves
-      durationMs,
+      endpoint: url.pathname,
     });
   }
 
@@ -210,14 +214,12 @@ export async function authenticateV1Request(request: NextRequest): Promise<
 /**
  * Fire-and-forget insert into api_request_log. Lazy-imports lib/db so
  * we don't pay the postgres.js connection cost on requests that never
- * touch the DB.
+ * touch the DB. See semantics in the call site above — success-only.
  */
 async function logApiRequestSafe(row: {
   userId: string;
   apiKeyId: string;
   endpoint: string;
-  statusCode: number;
-  durationMs: number | null;
 }): Promise<void> {
   try {
     const { getSQL, isDBConfigured } = await import('@/lib/db');
@@ -225,7 +227,7 @@ async function logApiRequestSafe(row: {
     const db = getSQL();
     await db`
       INSERT INTO api_request_log (user_id, api_key_id, endpoint, status_code, duration_ms)
-      VALUES (${row.userId}, ${row.apiKeyId}, ${row.endpoint}, ${row.statusCode}, ${row.durationMs})
+      VALUES (${row.userId}, ${row.apiKeyId}, ${row.endpoint}, 200, NULL)
     `;
   } catch (e) {
     // Don't let log failures fail the request — silently swallow.

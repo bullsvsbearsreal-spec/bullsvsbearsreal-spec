@@ -34,18 +34,18 @@ export async function GET() {
     const [keysByTier, totals, topConsumers, rateLimitHits, rateLimitByLimiter, neverUsed] = await Promise.all([
       db`SELECT tier, COUNT(*)::int AS count
            FROM api_keys
-           WHERE revoked_at IS NULL
+           WHERE is_active = true
            GROUP BY tier`.catch(() => []),
       db`SELECT
            COUNT(*)::int AS total_keys,
            COALESCE(SUM(requests_today), 0)::bigint AS requests_today,
            COUNT(*) FILTER (WHERE last_used_at > NOW() - INTERVAL '7 days')::int AS active_7d,
            COUNT(*) FILTER (WHERE last_used_at > NOW() - INTERVAL '24 hours')::int AS active_24h
-         FROM api_keys WHERE revoked_at IS NULL`.catch(() => [{}]),
+         FROM api_keys WHERE is_active = true`.catch(() => [{}]),
       db`SELECT k.id, k.name, k.tier, k.requests_today, k.last_used_at, u.email
          FROM api_keys k
          LEFT JOIN users u ON u.id = k.user_id
-         WHERE k.revoked_at IS NULL AND k.requests_today > 0
+         WHERE k.is_active = true AND k.requests_today > 0
          ORDER BY k.requests_today DESC
          LIMIT 10`.catch(() => []),
       db`SELECT COUNT(*)::int AS count
@@ -59,7 +59,7 @@ export async function GET() {
          LIMIT 10`.catch(() => []),
       db`SELECT COUNT(*)::int AS count
          FROM api_keys
-         WHERE revoked_at IS NULL AND last_used_at IS NULL`.catch(() => [{ count: 0 }]),
+         WHERE is_active = true AND last_used_at IS NULL`.catch(() => [{ count: 0 }]),
     ]);
 
     const tierMap: Record<string, number> = { free: 0, trader: 0, pro: 0, whale: 0 };

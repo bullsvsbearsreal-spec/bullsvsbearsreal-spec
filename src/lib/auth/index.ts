@@ -247,12 +247,15 @@ export async function requireAdminOrAdvisor(): Promise<Response | null> {
     const db = getSQL();
     const rows = await db`SELECT role FROM users WHERE id = ${session.user.id}`;
     const role = rows.length > 0 ? rows[0].role : null;
+    // NOTE: 'support' is intentionally NOT in this set. Support staff
+    // get only the tickets surface via requireSupport — not raw admin
+    // routes like /api/admin/login-activity or /api/admin/api-analytics
+    // that would leak PII or operational data they don't need.
     const ok = role === 'owner'
             || role === 'admin'
             || role === 'advisor'
             || role === 'moderator'
-            || role === 'marketer'
-            || role === 'support';
+            || role === 'marketer';
     if (!ok) {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }

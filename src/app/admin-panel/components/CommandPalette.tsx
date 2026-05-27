@@ -20,7 +20,7 @@
  */
 
 import { useEffect, useRef, useState, useMemo } from 'react';
-import { Search, X as XIcon, Hash, User, Bug, Gift, Send, ArrowRight } from 'lucide-react';
+import { Search, X as XIcon, Hash, User, Bug, Gift, Send, ArrowRight, Megaphone, MessageSquare, Headphones, Trophy } from 'lucide-react';
 
 interface CmdItem {
   id: string;
@@ -118,6 +118,42 @@ export function CommandPalette({
       icon: <Send style={{ width: 13, height: 13, color: '#fcd34d' }} />,
       navigate: () => { window.location.href = '/admin-panel/broadcast'; },
       searchText: 'broadcast composer push telegram',
+    });
+    out.push({
+      id: 'panel:mod',
+      kind: 'subpage',
+      label: 'Mod Panel',
+      sub: 'Surface · /mod-panel · tickets + spam + users + feedback',
+      icon: <MessageSquare style={{ width: 13, height: 13, color: '#7dd3fc' }} />,
+      navigate: () => { window.location.href = '/mod-panel'; },
+      searchText: 'moderator mod panel tickets spam abuse',
+    });
+    out.push({
+      id: 'panel:marketing',
+      kind: 'subpage',
+      label: 'Marketing Panel',
+      sub: 'Surface · /marketing-panel · growth + acquisition + campaigns',
+      icon: <Megaphone style={{ width: 13, height: 13, color: '#c4b5fd' }} />,
+      navigate: () => { window.location.href = '/marketing-panel'; },
+      searchText: 'marketing campaigns acquisition utm growth',
+    });
+    out.push({
+      id: 'panel:support',
+      kind: 'subpage',
+      label: 'Support Panel',
+      sub: 'Surface · /support-panel · tickets only',
+      icon: <Headphones style={{ width: 13, height: 13, color: '#fdba74' }} />,
+      navigate: () => { window.location.href = '/support-panel'; },
+      searchText: 'support customer service tickets',
+    });
+    out.push({
+      id: 'page:leaderboard',
+      kind: 'subpage',
+      label: 'Public Leaderboard',
+      sub: 'Public · /leaderboard · affiliate ranking',
+      icon: <Trophy style={{ width: 13, height: 13, color: '#fbbf24' }} />,
+      navigate: () => { window.location.href = '/leaderboard'; },
+      searchText: 'leaderboard public affiliate referral ranking earned',
     });
 
     // Users — push the user id into sessionStorage and jump to Users tab

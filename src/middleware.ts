@@ -202,12 +202,26 @@ function handleAcquisitionCookie(request: NextRequest): NextResponse | null {
   // there's nothing to record — don't stamp a noise cookie that just
   // says "direct traffic". Leaving the cookie empty lets a later visit
   // with real attribution set it for real.
-  const hostHeader = request.headers.get('host') ?? '';
+  //
+  // Behind DO App Platform's load balancer `host` is the internal
+  // *.ondigitalocean.app subdomain, NOT info-hub.io — so a same-site
+  // navigation's referer never matches `host` and gets misclassified as
+  // external. Walk a list of candidate hosts (forwarded-host, request
+  // host, NEXT_PUBLIC_BASE_URL host) and treat the referer as same-site
+  // if its host matches ANY of them.
+  const knownHosts = new Set<string>();
+  const rawHost = request.headers.get('host');
+  if (rawHost) knownHosts.add(rawHost.toLowerCase());
+  const fwd = request.headers.get('x-forwarded-host');
+  if (fwd) knownHosts.add(fwd.toLowerCase());
+  if (process.env.NEXT_PUBLIC_BASE_URL) {
+    try { knownHosts.add(new URL(process.env.NEXT_PUBLIC_BASE_URL).host.toLowerCase()); } catch { /* ignore */ }
+  }
   let externalReferer = '';
   if (referer) {
     try {
-      const refUrl = new URL(referer);
-      if (refUrl.host !== hostHeader) {
+      const refHost = new URL(referer).host.toLowerCase();
+      if (!knownHosts.has(refHost)) {
         externalReferer = referer.slice(0, ACQ_MAX_VALUE_LEN);
       }
     } catch { /* malformed referer — skip */ }

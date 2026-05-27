@@ -213,9 +213,12 @@ export function ApiUsageTab({ onToast }: { onToast: (msg: string, ok: boolean) =
         </Card>
       </div>
 
-      <div style={{ marginTop: 8, fontSize: 10, color: 'var(--fg-faint)' }}>
+      <div style={{ marginTop: 8, fontSize: 10, color: 'var(--fg-faint)', lineHeight: 1.5 }}>
         Requests are sampled 1-in-5 at the auth layer to keep the log table small.
-        Hit counts shown are the sampled values; total-requests tile is multiplied 5× for an estimate.
+        Hit counts shown are sampled; total-requests tile is multiplied 5× for an estimate.
+        Logging is success-only (request was authenticated + permitted) — 4xx/5xx
+        responses from route handlers are not captured, so error % shows 0 until
+        per-route error logging is wired.
       </div>
     </>
   );

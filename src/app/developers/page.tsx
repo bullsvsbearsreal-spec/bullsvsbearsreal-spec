@@ -381,6 +381,16 @@ const STATS = [
   { value: 30, suffix: 's', label: 'Typical Cache', icon: Clock },
 ];
 
+interface UsageResp {
+  totalRequests: number;
+  errors: number;
+  lastRequestAt: string | null;
+  perEndpoint: { endpoint: string; hits: number }[];
+  perDay: { date: string; hits: number }[];
+  sampled: boolean;
+  sampleRate: number;
+}
+
 export default function DevelopersPage() {
   const { data: session, status } = useSession();
   const [keys, setKeys] = useState<ApiKeyInfo[]>([]);
@@ -389,6 +399,10 @@ export default function DevelopersPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  // Per-user API usage — populated from /api/developer/usage which reads
+  // api_request_log (sampled 1-in-5 at the v1-auth layer). Hits shown
+  // raw (not multiplied) so the user sees what we actually recorded.
+  const [usage, setUsage] = useState<UsageResp | null>(null);
 
   const fetchKeys = useCallback(async () => {
     try {
@@ -398,9 +412,22 @@ export default function DevelopersPage() {
     } catch {}
   }, []);
 
+  const fetchUsage = useCallback(async () => {
+    try {
+      const res = await fetch('/api/developer/usage?window=7d');
+      if (res.ok) {
+        const json = await res.json();
+        if (!json.error) setUsage(json as UsageResp);
+      }
+    } catch {}
+  }, []);
+
   useEffect(() => {
-    if (session?.user) fetchKeys();
-  }, [session, fetchKeys]);
+    if (session?.user) {
+      fetchKeys();
+      fetchUsage();
+    }
+  }, [session, fetchKeys, fetchUsage]);
 
   const createKey = async () => {
     setLoading(true);
@@ -784,6 +811,45 @@ export default function DevelopersPage() {
                 </div>
                 {error && <p role="alert" className="text-red-400 text-xs mt-2">{error}</p>}
               </div>
+
+              {/* 7-day usage panel — quick at-a-glance for the dev:
+                  "did my last hour of debugging actually fire requests?".
+                  Only renders when we have at least one logged request;
+                  brand-new keys with no traffic show nothing instead of
+                  an awkward "0 of 0" empty state. */}
+              {usage && usage.totalRequests > 0 && (
+                <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 mb-3">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="text-base font-semibold">Usage · last 7 days</h2>
+                    <span className="text-[10px] text-gray-600 font-mono">
+                      {usage.totalRequests} req · {usage.errors} err
+                      {usage.sampled && <span className="text-gray-700 ml-1">(sampled 1/5)</span>}
+                    </span>
+                  </div>
+                  {usage.perEndpoint.length > 0 && (
+                    <div className="space-y-1">
+                      {usage.perEndpoint.slice(0, 6).map(e => {
+                        const max = usage.perEndpoint[0]?.hits || 1;
+                        const pct = (e.hits / max) * 100;
+                        return (
+                          <div key={e.endpoint} className="relative">
+                            <div className="absolute inset-0 bg-amber-500/[0.06] rounded" style={{ width: `${pct}%` }} />
+                            <div className="relative flex items-center justify-between px-2 py-1.5 text-xs">
+                              <code className="text-gray-300 font-mono truncate max-w-[70%]">{e.endpoint}</code>
+                              <span className="text-amber-300 font-mono font-semibold">{e.hits}</span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {usage.lastRequestAt && (
+                    <p className="text-[10px] text-gray-600 mt-2">
+                      Last request: {new Date(usage.lastRequestAt).toLocaleString()}
+                    </p>
+                  )}
+                </div>
+              )}
 
               {/* Existing keys */}
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
