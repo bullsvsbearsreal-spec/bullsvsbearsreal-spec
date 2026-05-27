@@ -2,7 +2,7 @@
 
 Crypto derivatives aggregator + public REST API. Real-time funding rates,
 open interest, liquidations, spreads, options, arbitrage, and on-chain
-whale data from 32 exchanges into a single endpoint.
+whale data from 33 exchanges into a single endpoint.
 
 Live at **[info-hub.io](https://info-hub.io)**.
 
@@ -61,7 +61,7 @@ curl -H "Authorization: Bearer ih_..." \
 - `?summary=1` on liquidations for aggregated stats in one query
 - Multi-venue fallback on `/klines` (Binance perp → Bybit → OKX →
   Binance spot)
-- 32 exchange coverage — 18 CEX + 14 DEX (Hyperliquid, dYdX, Aster,
+- 33 exchange coverage — 19 CEX + 14 DEX (Hyperliquid, dYdX, Aster,
   Lighter, GMX, gTrade, Aevo, Backpack, Orderly, Paradex,
   Variational, edgeX, Nado, Extended)
 - `X-RateLimit-*` + `X-Fee-Model-Version` headers on every response
