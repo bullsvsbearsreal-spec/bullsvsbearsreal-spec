@@ -1045,10 +1045,10 @@ const cacheKey = \`fee:\${meta.feeModel.version}\`;`}</CodeBlock>
 
             {/* Funding History */}
             <Section id="funding-history" title="Funding History" method="GET" path="/api/v1/funding/history">
-              <p className="text-gray-400 mb-4">Historical funding rate snapshots from the database. 10-minute resolution, up to 14 days of lookback.</p>
+              <p className="text-gray-400 mb-4">Historical funding rate snapshots from the database. 10-minute resolution. Lookback cap depends on your tier: <strong>Free 90d / Trader 180d / Pro 1y / Whale 5y</strong>.</p>
               <ParamTable params={[
                 ['symbols', 'string', '(required)', 'Comma-separated symbols (max 20)'],
-                ['days', 'number', '7', 'Lookback period (1 to 14)'],
+                ['days', 'number', '7', 'Lookback period (1 to your tier cap)'],
               ]} />
               <CodeBlock title="Response">{`{
   "success": true,
