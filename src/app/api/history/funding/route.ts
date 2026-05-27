@@ -75,12 +75,20 @@ async function fetchBitgetFundingHistory(symbol: string, days: number) {
     .sort((a: any, b: any) => a.t - b.t);
 }
 
+// Hard ceiling on the days param. Matches the Whale-tier historyDays
+// (5y) so paid-tier callers via /api/chat aren't truncated to 90 by
+// this endpoint after the chat layer already applied a per-tier cap.
+// The DB naturally returns less if it has less — no harm in asking
+// for more than exists. Was 90 (Free-tier cap) which silently
+// re-clamped paid users coming through chat.
+const MAX_DAYS = 365 * 5;
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const symbol = searchParams.get('symbol')?.toUpperCase();
   const source = searchParams.get('source') || 'db';
   const exchange = searchParams.get('exchange') || undefined;
-  const days = Math.min(parseInt(searchParams.get('days') || '30') || 30, 90);
+  const days = Math.min(parseInt(searchParams.get('days') || '30') || 30, MAX_DAYS);
 
   if (!symbol || !/^[A-Z0-9]+$/.test(symbol)) {
     return NextResponse.json({ error: 'Missing or invalid symbol parameter' }, { status: 400 });

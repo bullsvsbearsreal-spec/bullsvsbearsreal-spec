@@ -148,7 +148,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ symbol, days: 7, points: [] });
   }
 
-  const days = Math.min(parseInt(searchParams.get('days') || '7') || 7, 90);
+  // Days ceiling matches Whale-tier historyDays (5y). Was 90, which
+  // re-clamped paid users coming through /api/chat after the chat
+  // layer already applied its per-tier cap. DB returns less if it
+  // has less — no harm asking for more than exists.
+  const MAX_DAYS = 365 * 5;
+  const days = Math.min(parseInt(searchParams.get('days') || '7') || 7, MAX_DAYS);
   const points = await getOIHistory(symbol, days);
 
   return NextResponse.json({
