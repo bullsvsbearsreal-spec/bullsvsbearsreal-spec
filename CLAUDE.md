@@ -73,6 +73,35 @@ To add or change a cron, edit `/etc/systemd/system/infohub-cron-<name>.timer`
 plus the shared template `infohub-cron@.service`, then `systemctl daemon-reload`
 and `systemctl enable --now infohub-cron-<name>.timer`.
 
+### Removing a venue from the aggregator
+
+When a venue's WS/HTTP endpoint dies (Drift Apr 2026, etc.), removing it
+from `src/lib/constants/exchanges.ts` is only half the fix. The aggregator
+droplet (`/opt/infohub-aggregator/index.mjs`) holds its OWN venue list —
+the strip's `connected/total · DEGRADED` badge polls
+`prices.info-hub.io/health`, which reflects the droplet's list. So the
+strip stays "1 venue disconnected · DEGRADED" forever until the droplet
+is cleaned up.
+
+To remove a dead venue (operator-side):
+
+```bash
+ssh root@46.101.247.54
+cd /opt/infohub-aggregator
+cp index.mjs index.mjs.bak-$(date +%Y%m%d-%H%M%S)   # back up
+# Find + delete the venue entry (single line, usually 2-3 lines with comment):
+grep -n '<venue-name>' index.mjs
+# Edit out the block (sed or manual). Then validate + restart:
+node --check index.mjs
+systemctl restart infohub-aggregator
+sleep 5
+curl -s https://prices.info-hub.io/health | jq '.health | keys, (to_entries | map(select(.value.connected == false)) | .[].key)'
+# Expected: dead venue gone from keys, no false entries.
+```
+
+After this, the StatusBar `<ThroughputCounter>` shows `N/N venues ·
+STREAMING` instead of `(N-1)/N · DEGRADED` on the next 15s poll.
+
 ---
 
 ## Deploys
