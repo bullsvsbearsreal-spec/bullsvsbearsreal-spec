@@ -147,7 +147,7 @@ const jsonLd = {
         'Options data: max pain, IV smile, put/call ratio',
         'On-chain DEX whale trade feed + Hyperliquid liquidation roulette',
         'Smart money leaderboard ranked by 90-day realized PnL',
-        'Wallet Watch — multi-venue position alerter (HL + gTrade)',
+        'Wallet Alerts — multi-venue position alerter (HL + gTrade)',
         'TradingView chart with 6 terminal info-bands',
         'Multi-asset support: crypto, stocks, forex, commodities',
       ],

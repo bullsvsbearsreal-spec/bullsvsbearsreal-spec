@@ -220,7 +220,7 @@ export const TOOLS_BY_TIER: TierToolList[] = [
       { label: 'Funding Arb', href: '/spread-scanner', hint: 'Long/short pair grader A→D' },
       { label: 'Trade Optimizer', href: '/trade-optimizer', hint: 'Cheapest venue per trade' },
       { label: 'Options', href: '/options', hint: 'Chain · Greeks · IV · max pain' },
-      { label: 'Wallet Watch', href: '/watch', hint: 'HL + gTrade position alerter' },
+      { label: 'Wallet Alerts', href: '/watch', hint: 'HL + gTrade position alerter' },
       { label: 'Smart Money', href: '/smart-money', hint: 'Top trader leaderboard + Consensus mode' },
       { label: 'HL Whales', href: '/hl-whales', hint: 'Top Hyperliquid positions' },
       { label: 'On-Chain', href: '/onchain', hint: 'MVRV · NUPL · network metrics' },
@@ -314,7 +314,7 @@ export const FEATURE_MATRIX: FeatureGroup[] = [
     values: { free: '5', trader: '15', pro: '75', whale: 'Unlimited' },
   },
   {
-    label: 'Wallet Watch (HL + gTrade)',
+    label: 'Wallet Alerts (HL + gTrade)',
     values: { free: '10', trader: '30', pro: '200', whale: 'Unlimited' },
   },
   {
