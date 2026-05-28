@@ -29,6 +29,21 @@ const nextConfig = {
       { source: '/whale-alerts', destination: '/whale-alert', permanent: true },
     ];
   },
+  async rewrites() {
+    // Umami analytics — proxy the tracker + collect endpoint through
+    // info-hub.io so the browser sees same-origin requests. This:
+    //   1. Sidesteps our CSP (script-src 'self' covers info-hub.io but
+    //      not analytics.info-hub.io)
+    //   2. Defeats adblockers that pattern-match on `analytics.*` hosts
+    //      or `/script.js` paths
+    // The `/u/*` namespace is unused by our own routes.
+    const umamiHost = process.env.UMAMI_HOST || process.env.NEXT_PUBLIC_UMAMI_HOST;
+    if (!umamiHost) return [];
+    return [
+      { source: '/u/script.js', destination: `${umamiHost}/script.js` },
+      { source: '/u/api/send',  destination: `${umamiHost}/api/send` },
+    ];
+  },
   async headers() {
     return [
       {

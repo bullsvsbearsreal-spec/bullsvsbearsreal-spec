@@ -243,16 +243,19 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://prices.info-hub.io" />
         {/* Prevent FOUC: apply saved theme before first paint */}
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('infohub-theme');if(t==='light')document.documentElement.dataset.theme=t}catch(e){}` }} />
-        {/* Umami analytics tracker — privacy-friendly, no cookies, no
-            PII. Only renders when the env vars are configured so dev /
-            preview builds don't ping prod. The admin + marketing panels
-            consume the same data via /api/admin/analytics (server-side
-            proxy with the API token). */}
-        {process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID && process.env.NEXT_PUBLIC_UMAMI_HOST && (
+        {/* Umami analytics tracker — privacy-friendly, no cookies, no PII.
+            Loaded via the /u/* same-origin proxy (see next.config.js rewrites)
+            so adblockers can't pattern-match on `analytics.*` hosts and our
+            own CSP `script-src 'self'` allows it. data-host-url tells the
+            tracker to POST events to our proxied /u/api/send path.
+            Only renders when the website-id env var is set so dev / preview
+            builds don't ping prod. */}
+        {process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID && (
           <script
             defer
-            src={`${process.env.NEXT_PUBLIC_UMAMI_HOST}/script.js`}
+            src="/u/script.js"
             data-website-id={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
+            data-host-url="/u"
           />
         )}
       </head>
