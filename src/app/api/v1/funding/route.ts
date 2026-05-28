@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { authenticateV1Request } from '@/lib/api/v1-auth';
 import { getFundingData } from '../../_shared/funding-core';
+import { VALID_ASSET_CLASSES } from '@/lib/validation/schemas';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -27,7 +28,6 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const symbolFilter = searchParams.get('symbols')?.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
   const exchangeFilter = searchParams.get('exchanges')?.split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-  const VALID_ASSET_CLASSES = ['crypto', 'stocks', 'forex', 'commodities', 'all'] as const;
   const rawAssetClass = searchParams.get('assetClass') || 'crypto';
   const assetClass = (VALID_ASSET_CLASSES as readonly string[]).includes(rawAssetClass) ? rawAssetClass as typeof VALID_ASSET_CLASSES[number] : 'crypto';
   const aggregate = searchParams.get('aggregate') === '1' || searchParams.get('aggregate') === 'true';

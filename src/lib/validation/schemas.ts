@@ -10,6 +10,14 @@ import { z } from 'zod/v4';
 /** Valid asset class filter values for the funding route */
 export const AssetClassSchema = z.enum(['crypto', 'stocks', 'forex', 'commodities', 'all']);
 export type AssetClassFilter = z.infer<typeof AssetClassSchema>;
+/** Plain array of asset-class strings, derived from the Zod enum so we
+ *  don't have to maintain two copies. Useful at API boundaries that
+ *  want a readonly string[] for `.includes()` checks without paying for
+ *  a full Zod parse — e.g. v1 endpoints that build query-param defaults
+ *  from `searchParams.get('assetClass')`. Was hardcoded as a local
+ *  literal in 2 different v1 routes; centralising here means a new
+ *  asset class only needs one edit. */
+export const VALID_ASSET_CLASSES = AssetClassSchema.options;
 
 /** Funding route query params: ?assetClass=crypto */
 export const FundingQuerySchema = z.object({

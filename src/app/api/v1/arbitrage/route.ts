@@ -8,7 +8,7 @@ import { authenticateV1Request } from '@/lib/api/v1-auth';
 import { getFundingData } from '../../_shared/funding-core';
 import { getOIData } from '../../_shared/oi-core';
 import { fetchArbHistory } from '@/lib/api/aggregator';
-import type { AssetClassFilter } from '@/lib/validation/schemas';
+import { VALID_ASSET_CLASSES, type AssetClassFilter } from '@/lib/validation/schemas';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -110,7 +110,6 @@ export async function GET(request: NextRequest) {
   const gradeFilter = searchParams.get('grade')?.split(',').map(g => g.trim().toUpperCase()).filter(Boolean);
   const symbolFilter = searchParams.get('symbols')?.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
   const limit = Math.min(500, Math.max(1, parseInt(searchParams.get('limit') || '100', 10) || 100));
-  const VALID_ASSET_CLASSES = ['crypto', 'stocks', 'forex', 'commodities', 'all'] as const;
   const rawAC = searchParams.get('assetClass') || 'crypto';
   const assetClass = (VALID_ASSET_CLASSES as readonly string[]).includes(rawAC) ? rawAC as AssetClassFilter : 'crypto' as AssetClassFilter;
 
