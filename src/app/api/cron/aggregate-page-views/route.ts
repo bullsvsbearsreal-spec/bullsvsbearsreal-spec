@@ -1,19 +1,23 @@
 /**
- * Cron endpoint: prune old page_views rows + re-tighten indexes.
+ * Cron endpoint: prune old page_views + api_request_log rows.
  *
- * Runs daily (suggested 02:00 UTC). page_views keeps 90d of data; older
- * rows are deleted to keep the table bounded. The route also returns a
- * small summary for the cron runner's logs.
+ * Runs daily (suggested 02:00 UTC). page_views keeps 90d; api_request_log
+ * keeps 30d (higher volume — 1-in-5 sampled v1 traffic at ~20 rows/sec
+ * caps the table around 50M rows max). The route returns a small
+ * summary for the cron runner's logs.
+ *
+ * Both prunes share one cron timer so we don't need to add a new
+ * systemd unit on the droplet (touched once, two tables prune together).
  *
  * Security: CRON_SECRET Bearer token (same as every other /api/cron/*).
  */
 import { NextRequest, NextResponse } from 'next/server';
-import { isDBConfigured, prunePageViews, recordAuditEvent, upsertWorkerHeartbeat } from '@/lib/db';
+import { isDBConfigured, prunePageViews, pruneApiRequestLog, recordAuditEvent, upsertWorkerHeartbeat } from '@/lib/db';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   const { verifyCronAuth } = await import('../_auth');
@@ -26,11 +30,11 @@ export async function GET(request: NextRequest) {
 
   const startedAt = Date.now();
   const pruned = await prunePageViews(90);
+  const prunedApiLog = await pruneApiRequestLog(30);
   const elapsedMs = Date.now() - startedAt;
 
-  await recordAuditEvent('cron_aggregate_page_views', { pruned, elapsedMs }).catch(() => {});
-  // Heartbeat so the admin Ops tab can show this cron as healthy.
-  await upsertWorkerHeartbeat('cron:aggregate-page-views', 'ok', { pruned, elapsedMs }).catch(() => {});
+  await recordAuditEvent('cron_aggregate_page_views', { pruned, prunedApiLog, elapsedMs }).catch(() => {});
+  await upsertWorkerHeartbeat('cron:aggregate-page-views', 'ok', { pruned, prunedApiLog, elapsedMs }).catch(() => {});
 
-  return NextResponse.json({ success: true, pruned, elapsedMs });
+  return NextResponse.json({ success: true, pruned, prunedApiLog, elapsedMs });
 }

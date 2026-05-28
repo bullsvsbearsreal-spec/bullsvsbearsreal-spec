@@ -3081,6 +3081,27 @@ export async function prunePageViews(days = 90): Promise<number> {
 }
 
 /**
+ * Prune api_request_log rows older than `days`. Pairs with prunePageViews
+ * on the same daily cron — same shape, different table. The log fills
+ * ~20 rows/sec at peak (1-in-5 sampled v1 traffic) so 30d caps the table
+ * around ~50M rows max, well under any pain threshold.
+ */
+export async function pruneApiRequestLog(days = 30): Promise<number> {
+  try {
+    const db = getSQL();
+    const interval = `${Math.max(1, days)} days`;
+    const r = await db`
+      DELETE FROM api_request_log
+      WHERE created_at < NOW() - ${interval}::interval
+    `;
+    return r.count ?? 0;
+  } catch (e) {
+    console.error('DB pruneApiRequestLog error:', e);
+    return 0;
+  }
+}
+
+/**
  * Activation funnel — counts at each step. Each step is a strict
  * superset condition over the users table:
  *   1. Signed up        (every non-suspended row in users)
