@@ -7,8 +7,13 @@ import Footer from '@/components/Footer';
 import UsdDisplay from '@/components/UsdDisplay';
 import PageHero from '@/components/PageHero';
 import { Ruler, Info, AlertTriangle, CheckCircle2, Target, Copy } from 'lucide-react';
-
-type Side = 'long' | 'short';
+import {
+  computeSizing,
+  computeLiqPreview,
+  computeKelly,
+  riskTierFor,
+  type Side,
+} from './sizing';
 
 const STORAGE_KEY = 'infohub_position_size_prefs_v1';
 
@@ -88,110 +93,28 @@ export default function PositionSizePage() {
   const avgLoss = toNum(avgLossStr);
   const userLeverage = toNum(leverageStr);
 
-  // Liquidation price preview — uses a simplified isolated-margin
-  // formula common across major CEXs. The "real" liq price depends
-  // on the venue's maintenance margin schedule (BTC/USDT tiers etc.)
-  // which we don't model here — these are within ~10% for sub-50x
-  // leverage and become unreliable approaching the maintenance band.
-  //
-  // Formula (long):  liq = entry × (1 - 1/leverage + maintenanceMarginRate)
-  //   where maintenanceMarginRate ≈ 0.005 (0.5%) for major perps
-  // Short flips the sign.
-  const MAINT_MARGIN = 0.005;
-  const liqPreview = useMemo(() => {
-    // Prefer the user's explicit leverage input; fall back to the
-    // result.leverageNeeded computed below if they leave it blank.
-    // (We can't reference `result` here yet — circular — so duplicate
-    // the cheap calc inline.)
-    const stopDistPct = entry > 0 ? Math.abs(entry - stop) / entry : 0;
-    const computedLev = stopDistPct > 0 && account > 0
-      ? ((account * riskPct) / 100 / stopDistPct) / account
-      : 0;
-    const lev = Number.isFinite(userLeverage) && userLeverage > 0 ? userLeverage : computedLev;
-    if (!lev || lev <= 0 || entry <= 0) return null;
-    // Sub-1x leverage means the user's collateral fully covers the
-    // position — there is mathematically no liquidation price (or it's
-    // negative/above the realistic price). Return a sentinel so the UI
-    // can render "No liq risk" instead of a nonsense -$124k value.
-    if (lev < 1) {
-      return { leverageUsed: lev, liq: null, distPct: null, stopToLiqPct: null, noLiqRisk: true as const };
-    }
-    const liq = side === 'long'
-      ? entry * (1 - 1 / lev + MAINT_MARGIN)
-      : entry * (1 + 1 / lev - MAINT_MARGIN);
-    // Distance from entry to liq, %
-    const distPct = Math.abs(liq - entry) / entry;
-    // Distance from stop to liq, % — negative means liq comes FIRST
-    // (i.e. you'd liquidate before your stop fills, which is bad).
-    const stopToLiqPct = side === 'long' ? (stop - liq) / entry : (liq - stop) / entry;
-    return { leverageUsed: lev, liq, distPct: distPct * 100, stopToLiqPct: stopToLiqPct * 100, noLiqRisk: false as const };
-  }, [side, entry, stop, account, riskPct, userLeverage]);
+  // Math lives in ./sizing (pure functions, unit-tested in
+  // __tests__/sizing.test.ts). All edge cases — sub-1x no-liq, zero
+  // stop distance, direction-inversion, Kelly degenerate inputs —
+  // are covered by tests there.
+  const liqPreview = useMemo(
+    () => computeLiqPreview({ side, entry, stop, account, riskPct, userLeverage }),
+    [side, entry, stop, account, riskPct, userLeverage],
+  );
 
   const valid = account > 0 && riskPct > 0 && entry > 0 && stop > 0;
 
-  const result = useMemo(() => {
-    if (!valid) return null;
-    // Risk amount in $
-    const riskUsd = (account * riskPct) / 100;
-    // Distance from entry to stop, in % of entry
-    const stopDistPct = Math.abs(entry - stop) / entry;
-    const stopDistAbs = Math.abs(entry - stop);
+  const result = useMemo(
+    () => valid ? computeSizing({ side, account, riskPct, entry, stop, target }) : null,
+    [valid, side, account, riskPct, entry, stop, target],
+  );
 
-    // Validate side direction
-    const directionValid = side === 'long' ? stop < entry : stop > entry;
+  const kelly = useMemo(
+    () => computeKelly({ winRate, avgWin, avgLoss }),
+    [winRate, avgWin, avgLoss],
+  );
 
-    // Position size (USD notional): riskUsd / stopDistPct
-    // i.e. if my stop is 2% away, I can put 50x the risk amount into the position
-    const notional = stopDistPct > 0 ? riskUsd / stopDistPct : 0;
-    const positionUnits = entry > 0 ? notional / entry : 0;
-    const leverageNeeded = account > 0 ? notional / account : 0;
-
-    // Risk/reward
-    let rrRatio = 0;
-    let targetMove = 0;
-    let targetPnl = 0;
-    if (target > 0) {
-      targetMove = Math.abs(target - entry) / entry;
-      targetPnl = notional * targetMove;
-      rrRatio = stopDistPct > 0 ? targetMove / stopDistPct : 0;
-    }
-
-    // Breakeven fee move (0.05% taker both sides assumption)
-    const feeBreakEvenPct = 0.1;  // 0.05% x 2
-
-    return {
-      riskUsd,
-      stopDistPct: stopDistPct * 100,
-      stopDistAbs,
-      directionValid,
-      notional,
-      positionUnits,
-      leverageNeeded,
-      rrRatio,
-      targetMove: targetMove * 100,
-      targetPnl,
-      feeBreakEvenPct,
-    };
-  }, [valid, side, account, riskPct, entry, stop, target]);
-
-  // Kelly Criterion
-  const kelly = useMemo(() => {
-    if (!Number.isFinite(winRate) || !Number.isFinite(avgWin) || !Number.isFinite(avgLoss)) return null;
-    if (winRate <= 0 || winRate >= 100 || avgWin <= 0 || avgLoss <= 0) return null;
-    const w = winRate / 100;
-    const b = avgWin / avgLoss;
-    // Kelly % = W - ((1-W) / b)
-    const kellyPct = w - (1 - w) / b;
-    // Half Kelly is usually safer
-    const halfKelly = kellyPct / 2;
-    // Expected value per trade (as fraction of bankroll)
-    const ev = w * avgWin - (1 - w) * avgLoss;
-    return { kellyPct: kellyPct * 100, halfKelly: halfKelly * 100, ev };
-  }, [winRate, avgWin, avgLoss]);
-
-  const riskTier = result
-    ? result.leverageNeeded > 20 ? 'extreme' : result.leverageNeeded > 10 ? 'high' : result.leverageNeeded > 3 ? 'moderate' : 'low'
-    : 'low';
+  const riskTier = result ? riskTierFor(result.leverageNeeded) : 'low';
   const riskColor = riskTier === 'extreme' ? 'text-red-400' : riskTier === 'high' ? 'text-orange-400' : riskTier === 'moderate' ? 'text-yellow-400' : 'text-green-400';
 
   return (
