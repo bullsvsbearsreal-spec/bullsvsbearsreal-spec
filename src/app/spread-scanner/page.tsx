@@ -10,7 +10,16 @@ import { useApi } from '@/hooks/useSWRApi';
 import { ArrowUpDown, ArrowLeftRight, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { getCoinIcon } from '@/lib/coinIcons';
 
-const CEX_SET = new Set(['Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','HTX','Phemex','KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit','BitMEX','Gate.io']);
+// Derived from the canonical CEX set in @/lib/constants/exchanges.
+// Was a hand-maintained 18-venue local copy that silently dropped
+// Blofin (added May 2026) — clicking the "CEX only" toggle hid every
+// Blofin row in the scanner result. Same drift pattern as the
+// /spreads picker fixed in commit 590077d4.
+import { ALL_EXCHANGES, DEX_EXCHANGES as DEX_CONSTANT } from '@/lib/constants/exchanges';
+// Set<string> (not the strict ExchangeName union) — the row data comes
+// over the wire as `string`, and Set.has() would otherwise fail type
+// narrowing on every check.
+const CEX_SET: ReadonlySet<string> = new Set(ALL_EXCHANGES.filter(e => !DEX_CONSTANT.has(e)));
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getExchangeReferralUrl } from '@/lib/referralLinks';
 import DataFreshness from '@/components/DataFreshness';
