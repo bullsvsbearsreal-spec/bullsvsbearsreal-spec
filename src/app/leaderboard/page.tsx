@@ -3,6 +3,22 @@ import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { Trophy, ArrowRight, DollarSign, Users, Sparkles } from 'lucide-react';
 import { headers } from 'next/headers';
+import type { Metadata } from 'next';
+
+// Page-specific title/description — previously the page fell through to
+// the site default ("InfoHub | Real-Time Crypto Derivatives Dashboard")
+// which is generic and bad for SEO + share previews. This page is the
+// public affiliate leaderboard; it deserves its own social card title.
+export const metadata: Metadata = {
+  title: 'Affiliate Leaderboard',
+  description: 'Top earning InfoHub affiliates. Public ranking by USDT paid out + pending commission. 20% recurring lifetime on every paid signup.',
+  alternates: { canonical: 'https://info-hub.io/leaderboard' },
+  openGraph: {
+    title: 'Affiliate Leaderboard · InfoHub',
+    description: 'Top earning InfoHub affiliates — 20% recurring lifetime, USDT payouts.',
+    url: 'https://info-hub.io/leaderboard',
+  },
+};
 
 /* ───────────────────────────────────────────────────────────────────────
  * /leaderboard — PUBLIC affiliate referral ranking.
