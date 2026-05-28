@@ -15,6 +15,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { STABLE_SYMBOLS, BTC_PROXIES, ETH_PROXIES } from '@/lib/coin-filters';
+import { computeQualityScore } from './quality';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
@@ -169,48 +170,16 @@ export async function GET(request: NextRequest) {
 
       // Composite quality score (0–100). Pure long-side setup quality —
       // it intentionally penalises breakdowns so the same number means
-      // the same thing across all "kind" filters. The breakdown view
-      // still sorts by its own metric; this score is an at-a-glance
-      // "how stack-able is the long setup". Computed once here so the
-      // UI doesn't have to recompute when rendering different views.
-      let q = 0;
-      // Momentum stack — up to 40 points (24h + 7d + 30d in proportion)
-      const momStack = (c24 > 0 ? 8 : c24 < -5 ? -8 : 0)
-                     + (c7  > 0 ? 12 : c7  < -10 ? -12 : 0)
-                     + (c30 > 0 ? 20 : c30 < -20 ? -20 : 0);
-      q += Math.max(-40, Math.min(40, momStack));
-      // Range position (ATR proxy) — where is price within 24h high/low?
-      // 0 = at low, 1 = at high. Above 0.7 = upper-third = breakout-y.
-      // Up to 25 points for being in upper range, mild penalty for lower.
-      const range = high24 - low24;
-      const rangePos = (price > 0 && range > 0) ? (price - low24) / range : 0.5;
-      const rangePoints = rangePos >= 0.7 ? 25
-                       : rangePos >= 0.5 ? 12
-                       : rangePos >= 0.3 ? 0
-                       : -10;
-      q += rangePoints;
-      // ATH proximity — closer to ATH = stronger structure (up to 25 pts).
-      // athPct is negative (e.g. -3% = 3% below ATH). Linear taper to 0
-      // at -30%. Caps at the 25-point ceiling.
-      const athPoints = athPct >= -2 ? 25
-                     : athPct >= -10 ? 18
-                     : athPct >= -20 ? 10
-                     : athPct >= -30 ? 4
-                     : 0;
-      q += athPoints;
-      // Volume health — proxy: market cap × volume ratio. Real volume
-      // (volume24h relative to market cap) suggests genuine interest.
-      // Pure altcoins with vol/mc > 0.05 get +10.
-      const volMcRatio = (c.market_cap ?? 0) > 0
-        ? (c.total_volume ?? 0) / (c.market_cap ?? 1)
-        : 0;
-      const volPoints = volMcRatio >= 0.1 ? 10
-                     : volMcRatio >= 0.05 ? 5
-                     : volMcRatio >= 0.01 ? 0
-                     : -5;
-      q += volPoints;
-      // Clamp to 0–100 for display.
-      const qualityScore = Math.max(0, Math.min(100, Math.round(q + 50)));
+      // the same thing across all "kind" filters. Formula + 33 unit
+      // tests live in ./quality.ts (extracted for testability — a
+      // tweak to any sub-score silently re-orders the whole page).
+      const { score: qualityScore } = computeQualityScore({
+        c24, c7, c30,
+        price, high24, low24,
+        athPct,
+        marketCap: c.market_cap,
+        volume24h: c.total_volume,
+      });
 
       return {
         rank: c.market_cap_rank ?? 0,
