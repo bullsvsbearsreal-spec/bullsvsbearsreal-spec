@@ -1,0 +1,203 @@
+/**
+ * Symbol catalog for the /chart terminal page. Five asset classes,
+ * each with a curated set of pinned TradingView-compatible symbols.
+ *
+ * Kept separate from page.tsx so:
+ *   1. The catalog can be unit-tested + grown without touching the UI
+ *   2. The symbol picker modal + the watchlist seed both read the same list
+ *   3. Future "search across all assets" features have one source
+ *
+ * To add a symbol: drop a new AssetSymbol into the right tab. The
+ * tvSymbol must be one TradingView recognises (try the symbol on
+ * tradingview.com first; the embed widget uses the same names).
+ */
+
+export type AssetClass = 'crypto' | 'stocks' | 'forex' | 'commodities' | 'indices';
+
+export interface AssetSymbol {
+  /** Display name in the UI: 'BTC', 'AAPL', 'EUR/USD'. */
+  label: string;
+  /** TradingView-compatible symbol: 'BINANCE:BTCUSDT', 'NASDAQ:AAPL'. */
+  tvSymbol: string;
+  /** Optional pair suffix shown next to the symbol: '/USDT', '/USD', ''. */
+  displayPair?: string;
+  /** Crypto-only: icon key for <TokenIconSimple>. Stocks/forex/etc render without an icon. */
+  icon?: string;
+  /** Optional grouping label inside the picker grid. */
+  cat?: string;
+}
+
+export interface AssetTab {
+  id: AssetClass;
+  label: string;
+  pinned: AssetSymbol[];
+}
+
+export const ASSET_TABS: AssetTab[] = [
+  {
+    id: 'crypto',
+    label: 'Crypto',
+    pinned: [
+      { label: 'BTC', tvSymbol: 'BINANCE:BTCUSDT', displayPair: '/USDT-PERP', icon: 'btc', cat: 'Top' },
+      { label: 'ETH', tvSymbol: 'BINANCE:ETHUSDT', displayPair: '/USDT-PERP', icon: 'eth', cat: 'Top' },
+      { label: 'SOL', tvSymbol: 'BINANCE:SOLUSDT', displayPair: '/USDT-PERP', icon: 'sol', cat: 'Top' },
+      { label: 'XRP', tvSymbol: 'BINANCE:XRPUSDT', displayPair: '/USDT-PERP', icon: 'xrp', cat: 'Top' },
+      { label: 'BNB', tvSymbol: 'BINANCE:BNBUSDT', displayPair: '/USDT-PERP', icon: 'bnb', cat: 'Top' },
+      { label: 'DOGE', tvSymbol: 'BINANCE:DOGEUSDT', displayPair: '/USDT-PERP', icon: 'doge', cat: 'Top' },
+      { label: 'ADA', tvSymbol: 'BINANCE:ADAUSDT', displayPair: '/USDT-PERP', icon: 'ada', cat: 'Top' },
+      { label: 'AVAX', tvSymbol: 'BINANCE:AVAXUSDT', displayPair: '/USDT-PERP', icon: 'avax', cat: 'Top' },
+      { label: 'LINK', tvSymbol: 'BINANCE:LINKUSDT', displayPair: '/USDT-PERP', icon: 'link', cat: 'Top' },
+      { label: 'DOT', tvSymbol: 'BINANCE:DOTUSDT', displayPair: '/USDT-PERP', icon: 'dot', cat: 'Top' },
+      { label: 'TRX', tvSymbol: 'BINANCE:TRXUSDT', displayPair: '/USDT-PERP', icon: 'trx', cat: 'Top' },
+      { label: 'TON', tvSymbol: 'BINANCE:TONUSDT', displayPair: '/USDT-PERP', icon: 'ton', cat: 'Top' },
+      { label: 'SHIB', tvSymbol: 'BINANCE:SHIBUSDT', displayPair: '/USDT-PERP', icon: 'shib', cat: 'Top' },
+      { label: 'SUI', tvSymbol: 'BINANCE:SUIUSDT', displayPair: '/USDT-PERP', icon: 'sui', cat: 'Top' },
+      { label: 'NEAR', tvSymbol: 'BINANCE:NEARUSDT', displayPair: '/USDT-PERP', icon: 'near', cat: 'Top' },
+      { label: 'APT', tvSymbol: 'BINANCE:APTUSDT', displayPair: '/USDT-PERP', icon: 'apt', cat: 'Top' },
+      { label: 'LTC', tvSymbol: 'BINANCE:LTCUSDT', displayPair: '/USDT-PERP', icon: 'ltc', cat: 'Top' },
+      { label: 'BCH', tvSymbol: 'BINANCE:BCHUSDT', displayPair: '/USDT-PERP', icon: 'bch', cat: 'Top' },
+      { label: 'HBAR', tvSymbol: 'BINANCE:HBARUSDT', displayPair: '/USDT-PERP', icon: 'hbar', cat: 'Top' },
+      { label: 'OP', tvSymbol: 'BINANCE:OPUSDT', displayPair: '/USDT-PERP', icon: 'op', cat: 'L2' },
+      { label: 'ARB', tvSymbol: 'BINANCE:ARBUSDT', displayPair: '/USDT-PERP', icon: 'arb', cat: 'L2' },
+      { label: 'SEI', tvSymbol: 'BINANCE:SEIUSDT', displayPair: '/USDT-PERP', icon: 'sei', cat: 'L2' },
+      { label: 'TIA', tvSymbol: 'BINANCE:TIAUSDT', displayPair: '/USDT-PERP', icon: 'tia', cat: 'L2' },
+      { label: 'INJ', tvSymbol: 'BINANCE:INJUSDT', displayPair: '/USDT-PERP', icon: 'inj', cat: 'L2' },
+      { label: 'UNI', tvSymbol: 'BINANCE:UNIUSDT', displayPair: '/USDT-PERP', icon: 'uni', cat: 'DeFi' },
+      { label: 'AAVE', tvSymbol: 'BINANCE:AAVEUSDT', displayPair: '/USDT-PERP', icon: 'aave', cat: 'DeFi' },
+      { label: 'MKR', tvSymbol: 'BINANCE:MKRUSDT', displayPair: '/USDT-PERP', icon: 'mkr', cat: 'DeFi' },
+      { label: 'CRV', tvSymbol: 'BINANCE:CRVUSDT', displayPair: '/USDT-PERP', icon: 'crv', cat: 'DeFi' },
+      { label: 'PENDLE', tvSymbol: 'BINANCE:PENDLEUSDT', displayPair: '/USDT-PERP', icon: 'pendle', cat: 'DeFi' },
+      { label: 'ENA', tvSymbol: 'BINANCE:ENAUSDT', displayPair: '/USDT-PERP', icon: 'ena', cat: 'DeFi' },
+      { label: 'JUP', tvSymbol: 'BINANCE:JUPUSDT', displayPair: '/USDT-PERP', icon: 'jup', cat: 'DeFi' },
+      { label: 'RENDER', tvSymbol: 'BINANCE:RENDERUSDT', displayPair: '/USDT-PERP', icon: 'render', cat: 'AI' },
+      { label: 'FET', tvSymbol: 'BINANCE:FETUSDT', displayPair: '/USDT-PERP', icon: 'fet', cat: 'AI' },
+      { label: 'TAO', tvSymbol: 'BINANCE:TAOUSDT', displayPair: '/USDT-PERP', icon: 'tao', cat: 'AI' },
+      { label: 'PEPE', tvSymbol: 'BINANCE:PEPEUSDT', displayPair: '/USDT-PERP', icon: 'pepe', cat: 'Meme' },
+      { label: 'WIF', tvSymbol: 'BINANCE:WIFUSDT', displayPair: '/USDT-PERP', icon: 'wif', cat: 'Meme' },
+      { label: 'BONK', tvSymbol: 'BINANCE:BONKUSDT', displayPair: '/USDT-PERP', icon: 'bonk', cat: 'Meme' },
+      { label: 'FLOKI', tvSymbol: 'BINANCE:FLOKIUSDT', displayPair: '/USDT-PERP', icon: 'floki', cat: 'Meme' },
+      { label: 'HYPE', tvSymbol: 'BINANCE:HYPEUSDT', displayPair: '/USDT-PERP', icon: 'hype', cat: 'Perps' },
+      { label: 'DYDX', tvSymbol: 'BINANCE:DYDXUSDT', displayPair: '/USDT-PERP', icon: 'dydx', cat: 'Perps' },
+    ],
+  },
+  {
+    id: 'stocks',
+    label: 'Stocks',
+    pinned: [
+      { label: 'AAPL', tvSymbol: 'NASDAQ:AAPL', displayPair: '' },
+      { label: 'MSFT', tvSymbol: 'NASDAQ:MSFT', displayPair: '' },
+      { label: 'NVDA', tvSymbol: 'NASDAQ:NVDA', displayPair: '' },
+      { label: 'GOOGL', tvSymbol: 'NASDAQ:GOOGL', displayPair: '' },
+      { label: 'AMZN', tvSymbol: 'NASDAQ:AMZN', displayPair: '' },
+      { label: 'TSLA', tvSymbol: 'NASDAQ:TSLA', displayPair: '' },
+      { label: 'META', tvSymbol: 'NASDAQ:META', displayPair: '' },
+      { label: 'AMD', tvSymbol: 'NASDAQ:AMD', displayPair: '' },
+      { label: 'NFLX', tvSymbol: 'NASDAQ:NFLX', displayPair: '' },
+      { label: 'JPM', tvSymbol: 'NYSE:JPM', displayPair: '' },
+      { label: 'V', tvSymbol: 'NYSE:V', displayPair: '' },
+      { label: 'BA', tvSymbol: 'NYSE:BA', displayPair: '' },
+      { label: 'DIS', tvSymbol: 'NYSE:DIS', displayPair: '' },
+      { label: 'COIN', tvSymbol: 'NASDAQ:COIN', displayPair: '' },
+      { label: 'MSTR', tvSymbol: 'NASDAQ:MSTR', displayPair: '' },
+      { label: 'PLTR', tvSymbol: 'NASDAQ:PLTR', displayPair: '' },
+      { label: 'SMCI', tvSymbol: 'NASDAQ:SMCI', displayPair: '' },
+      { label: 'ARM', tvSymbol: 'NASDAQ:ARM', displayPair: '' },
+    ],
+  },
+  {
+    id: 'forex',
+    label: 'Forex',
+    pinned: [
+      { label: 'EUR/USD', tvSymbol: 'FX:EURUSD', displayPair: '' },
+      { label: 'GBP/USD', tvSymbol: 'FX:GBPUSD', displayPair: '' },
+      { label: 'USD/JPY', tvSymbol: 'FX:USDJPY', displayPair: '' },
+      { label: 'USD/CHF', tvSymbol: 'FX:USDCHF', displayPair: '' },
+      { label: 'AUD/USD', tvSymbol: 'FX:AUDUSD', displayPair: '' },
+      { label: 'USD/CAD', tvSymbol: 'FX:USDCAD', displayPair: '' },
+      { label: 'NZD/USD', tvSymbol: 'FX:NZDUSD', displayPair: '' },
+      { label: 'EUR/GBP', tvSymbol: 'FX:EURGBP', displayPair: '' },
+      { label: 'EUR/JPY', tvSymbol: 'FX:EURJPY', displayPair: '' },
+      { label: 'GBP/JPY', tvSymbol: 'FX:GBPJPY', displayPair: '' },
+      { label: 'EUR/CHF', tvSymbol: 'FX:EURCHF', displayPair: '' },
+      { label: 'AUD/JPY', tvSymbol: 'FX:AUDJPY', displayPair: '' },
+      { label: 'EUR/AUD', tvSymbol: 'FX:EURAUD', displayPair: '' },
+      { label: 'USD/MXN', tvSymbol: 'FX:USDMXN', displayPair: '' },
+      { label: 'USD/TRY', tvSymbol: 'FX:USDTRY', displayPair: '' },
+      { label: 'USD/ZAR', tvSymbol: 'FX:USDZAR', displayPair: '' },
+      { label: 'DXY', tvSymbol: 'TVC:DXY', displayPair: '' },
+    ],
+  },
+  {
+    id: 'commodities',
+    label: 'Commodities',
+    pinned: [
+      { label: 'Gold', tvSymbol: 'TVC:GOLD', displayPair: '' },
+      { label: 'Silver', tvSymbol: 'TVC:SILVER', displayPair: '' },
+      { label: 'Crude Oil', tvSymbol: 'TVC:USOIL', displayPair: '' },
+      { label: 'Brent', tvSymbol: 'TVC:UKOIL', displayPair: '' },
+      { label: 'Natural Gas', tvSymbol: 'PEPPERSTONE:NATGAS', displayPair: '' },
+      { label: 'Copper', tvSymbol: 'PEPPERSTONE:COPPER', displayPair: '' },
+      { label: 'Platinum', tvSymbol: 'TVC:PLATINUM', displayPair: '' },
+      { label: 'Palladium', tvSymbol: 'TVC:PALLADIUM', displayPair: '' },
+      { label: 'Wheat', tvSymbol: 'PEPPERSTONE:WHEAT', displayPair: '' },
+      { label: 'Corn', tvSymbol: 'PEPPERSTONE:CORN', displayPair: '' },
+      { label: 'Soybeans', tvSymbol: 'PEPPERSTONE:SOYBEAN', displayPair: '' },
+      { label: 'Coffee', tvSymbol: 'PEPPERSTONE:COFFEE', displayPair: '' },
+      { label: 'Cocoa', tvSymbol: 'PEPPERSTONE:COCOA', displayPair: '' },
+      { label: 'Sugar', tvSymbol: 'PEPPERSTONE:SUGAR', displayPair: '' },
+      { label: 'Cotton', tvSymbol: 'PEPPERSTONE:COTTON', displayPair: '' },
+    ],
+  },
+  {
+    id: 'indices',
+    label: 'Indices',
+    pinned: [
+      { label: 'S&P 500', tvSymbol: 'FOREXCOM:SPX500', displayPair: '' },
+      { label: 'NASDAQ 100', tvSymbol: 'FOREXCOM:NSXUSD', displayPair: '' },
+      { label: 'Dow Jones', tvSymbol: 'FOREXCOM:DJI', displayPair: '' },
+      { label: 'Russell 2000', tvSymbol: 'FOREXCOM:RUSS2000', displayPair: '' },
+      { label: 'VIX', tvSymbol: 'CAPITALCOM:VIX', displayPair: '' },
+      { label: 'DAX', tvSymbol: 'FOREXCOM:DEU40', displayPair: '' },
+      { label: 'FTSE 100', tvSymbol: 'FOREXCOM:UK100', displayPair: '' },
+      { label: 'CAC 40', tvSymbol: 'FOREXCOM:FRA40', displayPair: '' },
+      { label: 'Nikkei 225', tvSymbol: 'FOREXCOM:JPN225', displayPair: '' },
+      { label: 'Hang Seng', tvSymbol: 'FOREXCOM:HKG33', displayPair: '' },
+      { label: 'Euro Stoxx 50', tvSymbol: 'FOREXCOM:EU50', displayPair: '' },
+      { label: 'ASX 200', tvSymbol: 'FOREXCOM:AUS200', displayPair: '' },
+      { label: 'SPY ETF', tvSymbol: 'AMEX:SPY', displayPair: '' },
+      { label: 'QQQ ETF', tvSymbol: 'NASDAQ:QQQ', displayPair: '' },
+    ],
+  },
+];
+
+export const TIMEFRAMES = [
+  { label: '1m',  value: '1' },
+  { label: '5m',  value: '5' },
+  { label: '15m', value: '15' },
+  { label: '1H',  value: '60' },
+  { label: '4H',  value: '240' },
+  { label: '1D',  value: 'D' },
+  { label: '1W',  value: 'W' },
+] as const;
+export type Timeframe = typeof TIMEFRAMES[number]['value'];
+
+/** Default 8 symbols seeded into the watchlist when a user has none saved. */
+export const WATCHLIST_DEFAULTS = ['BTC', 'ETH', 'SOL', 'HYPE', 'BNB', 'XRP', 'DOGE', 'TRX'];
+
+/** Lookup table — keyed by tvSymbol → AssetSymbol. */
+export function findBySymbol(label: string): AssetSymbol | undefined {
+  for (const tab of ASSET_TABS) {
+    const hit = tab.pinned.find(s => s.label === label);
+    if (hit) return hit;
+  }
+  return undefined;
+}
+
+/** Lookup table — keyed by label → AssetClass. Used to figure out
+ *  which tab a watchlist entry belongs to so we restore the right view. */
+export function assetClassFor(label: string): AssetClass | null {
+  for (const tab of ASSET_TABS) {
+    if (tab.pinned.some(s => s.label === label)) return tab.id;
+  }
+  return null;
+}
