@@ -816,14 +816,32 @@ export default function DevelopersPage() {
                   "did my last hour of debugging actually fire requests?".
                   Only renders when we have at least one logged request;
                   brand-new keys with no traffic show nothing instead of
-                  an awkward "0 of 0" empty state. */}
-              {usage && usage.totalRequests > 0 && (
+                  an awkward "0 of 0" empty state.
+                  Counts are scaled by 1/sampleRate (v1-auth logs 1 in 5)
+                  so the display matches what the user actually sent.
+                  Was: showing the raw sampled count with a "(sampled 1/5)"
+                  hint forced the user to mentally multiply by 5 — a dev
+                  who made 100 requests saw "20 req" and assumed something
+                  was dropping their traffic. Admin panel /api-usage tab
+                  already did this scaling correctly; this brings the
+                  per-user view in line. */}
+              {usage && usage.totalRequests > 0 && (() => {
+                const rate = usage.sampled ? (usage.sampleRate || 0.2) : 1;
+                const scale = (n: number) => Math.round(n / rate);
+                return (
                 <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5 mb-3">
                   <div className="flex items-center justify-between mb-3">
                     <h2 className="text-base font-semibold">Usage · last 7 days</h2>
                     <span className="text-[10px] text-gray-600 font-mono">
-                      {usage.totalRequests} req · {usage.errors} err
-                      {usage.sampled && <span className="text-gray-700 ml-1">(sampled 1/5)</span>}
+                      {usage.sampled ? '~' : ''}{scale(usage.totalRequests).toLocaleString('en-US')} req · {scale(usage.errors).toLocaleString('en-US')} err
+                      {usage.sampled && (
+                        <span
+                          className="text-gray-700 ml-1"
+                          title={`Sampled 1 in ${Math.round(1 / rate)} — display scaled accordingly. Real per-key counts within ±${Math.round((1 / Math.sqrt(usage.totalRequests || 1)) * 100)}% at this volume.`}
+                        >
+                          (est)
+                        </span>
+                      )}
                     </span>
                   </div>
                   {usage.perEndpoint.length > 0 && (
@@ -836,7 +854,7 @@ export default function DevelopersPage() {
                             <div className="absolute inset-0 bg-amber-500/[0.06] rounded" style={{ width: `${pct}%` }} />
                             <div className="relative flex items-center justify-between px-2 py-1.5 text-xs">
                               <code className="text-gray-300 font-mono truncate max-w-[70%]">{e.endpoint}</code>
-                              <span className="text-amber-300 font-mono font-semibold">{e.hits}</span>
+                              <span className="text-amber-300 font-mono font-semibold">{scale(e.hits).toLocaleString('en-US')}</span>
                             </div>
                           </div>
                         );
@@ -849,7 +867,8 @@ export default function DevelopersPage() {
                     </p>
                   )}
                 </div>
-              )}
+                );
+              })()}
 
               {/* Existing keys */}
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
