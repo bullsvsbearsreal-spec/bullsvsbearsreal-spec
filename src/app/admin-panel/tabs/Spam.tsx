@@ -63,10 +63,15 @@ export function SpamTab({ onToast, onOpenUser }: {
       const json = await res.json();
       setData({ clusters: json.clusters ?? [], total: json.total ?? 0 });
     } catch (e) {
+      // Don't leave data=null on failure or the empty-state copy
+      // ("No suspicious clusters detected. Nice and clean.") will
+      // be a lie — the API actually failed, not the inbox being empty.
+      setData(prev => prev ?? { clusters: [], total: 0 });
       onToast(e instanceof Error ? e.message : 'Failed to load spam clusters', false);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    setLoading(false);
-    setRefreshing(false);
   }, [onToast]);
 
   useEffect(() => { load(); }, [load]);

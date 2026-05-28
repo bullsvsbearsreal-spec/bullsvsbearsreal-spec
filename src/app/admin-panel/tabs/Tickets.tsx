@@ -71,6 +71,20 @@ const STATUS_COLOR: Record<Status, string> = {
   wontfix:  '#94a3b8',
 };
 
+// Toast verbs per action. Was `\`Ticket ${action}d\`` which produced
+// "Ticket wontfixd", "Ticket reopend", "Ticket claimd", "Ticket
+// unclaimd", "Ticket priorityd", "Ticket messaged" — i.e. broken on
+// 5 of 7 actions. Operator sees the toast on every action.
+const ACTION_TOAST: Record<string, string> = {
+  claim:    'Ticket claimed',
+  unclaim:  'Ticket unclaimed',
+  resolve:  'Ticket resolved',
+  wontfix:  "Ticket marked won't fix",
+  reopen:   'Ticket reopened',
+  priority: 'Priority updated',
+  message:  'Reply sent',
+};
+
 type FilterId = 'open' | 'mine' | 'all' | 'resolved';
 
 export function TicketsTab({ onToast, viewerId }: { onToast: (msg: string, ok: boolean) => void; viewerId?: string }) {
@@ -100,10 +114,16 @@ export function TicketsTab({ onToast, viewerId }: { onToast: (msg: string, ok: b
       setTickets(json.tickets ?? []);
       setCounts(json.counts ?? {});
     } catch (e) {
+      // Use [] instead of leaving tickets=null so the empty-state copy
+      // ("No tickets match this filter") doesn't mislead operators when
+      // the API actually failed — they got an error toast AND a list,
+      // not just an ambiguous "no results" placeholder.
+      setTickets(prev => prev ?? []);
       onToast(e instanceof Error ? e.message : 'Failed to load tickets', false);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    setLoading(false);
-    setRefreshing(false);
   }, [filter, onToast]);
 
   useEffect(() => { load(); }, [load]);
@@ -117,8 +137,9 @@ export function TicketsTab({ onToast, viewerId }: { onToast: (msg: string, ok: b
       setDetail(json);
     } catch (e) {
       onToast(e instanceof Error ? e.message : 'Failed to load ticket', false);
+    } finally {
+      setDetailLoading(false);
     }
-    setDetailLoading(false);
   }, [onToast]);
 
   useEffect(() => {
@@ -141,12 +162,13 @@ export function TicketsTab({ onToast, viewerId }: { onToast: (msg: string, ok: b
         setBusy(false);
         return;
       }
-      onToast(`Ticket ${action}d`, true);
+      onToast(ACTION_TOAST[action] ?? `Ticket ${action}`, true);
       await Promise.all([load(true), loadDetail(selectedId)]);
     } catch (e) {
       onToast(e instanceof Error ? e.message : 'Network error', false);
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }, [selectedId, load, loadDetail, onToast]);
 
   const sendReply = useCallback(async () => {
@@ -226,7 +248,20 @@ export function TicketsTab({ onToast, viewerId }: { onToast: (msg: string, ok: b
                 return (
                   <li
                     key={t.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-pressed={active}
+                    aria-label={`Open ticket ${t.id}: ${t.subject || '(no subject)'} — ${t.priority} priority, ${t.status}`}
                     onClick={() => setSelectedId(t.id)}
+                    onKeyDown={e => {
+                      // Enter / Space — open detail. Without this, keyboard-only
+                      // operators (typically the support role on small screens)
+                      // can't open a ticket without a mouse.
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedId(t.id);
+                      }
+                    }}
                     style={{
                       padding: '10px 12px',
                       borderTop: '1px solid rgba(255,255,255,0.03)',
