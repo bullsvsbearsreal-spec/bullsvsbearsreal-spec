@@ -106,6 +106,19 @@ export function UserDrawer({ user, viewerRole, onClose, onChanged, onToast }: {
   const [logins, setLogins] = useState<Array<{
     id: number; kind: 'signin' | 'signout'; provider: string | null; timestamp: string;
   }> | null>(null);
+  // Auth recovery — operator tools for users who can't log in / can't
+  // receive emails (Proton/Gmail blocking our sender, etc.).
+  // `recovery` holds the latest result so the URL/code can be shown +
+  // copied via Discord/etc when email delivery is broken.
+  const [recovery, setRecovery] = useState<null | {
+    kind: 'reset' | 'verify' | 'auto-verify';
+    url?: string;
+    code?: string;
+    emailSent: boolean;
+    emailError?: string | null;
+    expiresAt?: string;
+  }>(null);
+  const [recoveryBusy, setRecoveryBusy] = useState<string | null>(null);
   const [notes, setNotes] = useState<UserNote[] | null>(null);
   const [noteDraft, setNoteDraft] = useState('');
   const [noteBusy, setNoteBusy] = useState(false);
@@ -616,6 +629,176 @@ export function UserDrawer({ user, viewerRole, onClose, onChanged, onToast }: {
           </Section>
 
           {/* Suspend / unban */}
+          {/* ─── Auth Recovery ──────────────────────────────────────────
+              For "I can't log in / I don't get the email" cases. Each
+              button hits an admin endpoint that:
+              1. Generates a fresh token/code
+              2. Tries Resend (best-effort)
+              3. RETURNS the URL/code so the operator can deliver via
+                 Discord/Telegram when email is broken (Proton, etc.). */}
+          <Section title="Auth Recovery">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: recovery ? 10 : 0 }}>
+              <button
+                type="button"
+                disabled={!!recoveryBusy}
+                onClick={async () => {
+                  setRecoveryBusy('reset');
+                  setRecovery(null);
+                  try {
+                    const res = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}/send-reset-link`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                    });
+                    const json = await res.json();
+                    if (!res.ok) {
+                      onToast(json.error || `HTTP ${res.status}`, false);
+                    } else {
+                      setRecovery({
+                        kind: 'reset', url: json.resetUrl,
+                        emailSent: json.emailSent, emailError: json.emailError,
+                        expiresAt: json.expiresAt,
+                      });
+                      onToast(json.emailSent ? 'Reset email sent' : 'Token generated (email failed)', json.emailSent);
+                    }
+                  } catch (e) {
+                    onToast(e instanceof Error ? e.message : 'Network error', false);
+                  }
+                  setRecoveryBusy(null);
+                }}
+                style={{
+                  padding: '8px 6px', borderRadius: 6,
+                  background: 'rgba(125, 211, 252, 0.06)',
+                  border: '1px solid rgba(125, 211, 252, 0.25)',
+                  color: '#7dd3fc', fontSize: 10, fontWeight: 700,
+                  cursor: recoveryBusy ? 'not-allowed' : 'pointer',
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                  opacity: recoveryBusy ? 0.6 : 1,
+                }}
+                title="Generate password reset link + email attempt"
+              >
+                {recoveryBusy === 'reset' ? '…' : 'Send reset link'}
+              </button>
+              <button
+                type="button"
+                disabled={!!recoveryBusy}
+                onClick={async () => {
+                  setRecoveryBusy('verify');
+                  setRecovery(null);
+                  try {
+                    const res = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}/send-verification`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({}),
+                    });
+                    const json = await res.json();
+                    if (!res.ok) {
+                      onToast(json.error || `HTTP ${res.status}`, false);
+                    } else {
+                      setRecovery({
+                        kind: 'verify', code: json.code,
+                        emailSent: json.emailSent, emailError: json.emailError,
+                        expiresAt: json.expiresAt,
+                      });
+                      onToast(json.emailSent ? 'Verify code sent' : 'Code generated (email failed)', json.emailSent);
+                    }
+                  } catch (e) {
+                    onToast(e instanceof Error ? e.message : 'Network error', false);
+                  }
+                  setRecoveryBusy(null);
+                }}
+                style={{
+                  padding: '8px 6px', borderRadius: 6,
+                  background: 'rgba(196, 181, 253, 0.06)',
+                  border: '1px solid rgba(196, 181, 253, 0.25)',
+                  color: '#c4b5fd', fontSize: 10, fontWeight: 700,
+                  cursor: recoveryBusy ? 'not-allowed' : 'pointer',
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                  opacity: recoveryBusy ? 0.6 : 1,
+                }}
+                title="Generate a fresh 6-digit verification code + email attempt"
+              >
+                {recoveryBusy === 'verify' ? '…' : 'Send verify code'}
+              </button>
+              <button
+                type="button"
+                disabled={!!recoveryBusy || !!user.emailVerified}
+                onClick={async () => {
+                  if (!confirm(`Mark ${user.email} as verified without an email round-trip?\n\nUse only when identity is confirmed via another channel.`)) return;
+                  setRecoveryBusy('auto');
+                  setRecovery(null);
+                  try {
+                    const res = await fetch(`/api/admin/users/${encodeURIComponent(user.id)}/send-verification`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ autoVerify: true }),
+                    });
+                    const json = await res.json();
+                    if (!res.ok) {
+                      onToast(json.error || `HTTP ${res.status}`, false);
+                    } else {
+                      setRecovery({ kind: 'auto-verify', emailSent: false });
+                      onToast('Email marked verified', true);
+                      onChanged();
+                    }
+                  } catch (e) {
+                    onToast(e instanceof Error ? e.message : 'Network error', false);
+                  }
+                  setRecoveryBusy(null);
+                }}
+                style={{
+                  padding: '8px 6px', borderRadius: 6,
+                  background: user.emailVerified ? 'rgba(255,255,255,0.02)' : 'rgba(52, 211, 153, 0.06)',
+                  border: `1px solid ${user.emailVerified ? 'var(--hub-border-subtle)' : 'rgba(52, 211, 153, 0.3)'}`,
+                  color: user.emailVerified ? 'var(--fg-faint)' : '#86efac',
+                  fontSize: 10, fontWeight: 700,
+                  cursor: recoveryBusy || user.emailVerified ? 'not-allowed' : 'pointer',
+                  textTransform: 'uppercase', letterSpacing: '0.06em',
+                  opacity: recoveryBusy ? 0.6 : 1,
+                }}
+                title={user.emailVerified ? 'Email already verified' : 'Skip the email round-trip — mark email_verified = NOW()'}
+              >
+                {recoveryBusy === 'auto' ? '…' : user.emailVerified ? 'Verified ✓' : 'Auto-verify'}
+              </button>
+            </div>
+
+            {recovery && (
+              <div style={{
+                padding: 10, borderRadius: 8,
+                background: recovery.emailSent ? 'rgba(52, 211, 153, 0.05)' : 'rgba(251, 191, 36, 0.06)',
+                border: `1px solid ${recovery.emailSent ? 'rgba(52, 211, 153, 0.25)' : 'rgba(251, 191, 36, 0.3)'}`,
+                fontSize: 11, color: '#fff',
+              }}>
+                <div style={{
+                  fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+                  color: recovery.emailSent ? '#86efac' : '#fcd34d',
+                  marginBottom: 6,
+                }}>
+                  {recovery.kind === 'auto-verify'
+                    ? 'Email marked verified — they can log in now'
+                    : recovery.emailSent
+                      ? `Email sent — fallback link below in case it doesn't arrive`
+                      : `Email FAILED — paste this manually to the user`}
+                  {recovery.emailError && (
+                    <span style={{ fontWeight: 500, color: '#fda4af', marginLeft: 6, textTransform: 'none', letterSpacing: 0 }}>
+                      ({recovery.emailError})
+                    </span>
+                  )}
+                </div>
+                {recovery.url && (
+                  <CopyableBlock label="Reset URL" value={recovery.url} onToast={onToast} />
+                )}
+                {recovery.code && (
+                  <CopyableBlock label="Verify code" value={recovery.code} onToast={onToast} mono />
+                )}
+                {recovery.expiresAt && (
+                  <div style={{ fontSize: 9, color: 'var(--fg-faint)', marginTop: 6, fontFamily: 'var(--font-mono)' }}>
+                    expires {new Date(recovery.expiresAt).toLocaleString()}
+                  </div>
+                )}
+              </div>
+            )}
+          </Section>
+
           <Section title="Account Status">
             {!isSuspended ? (
               <button
@@ -749,6 +932,54 @@ function Field({ label, value, mono }: { label: string; value: React.ReactNode; 
         wordBreak: 'break-word',
       }}>{value}</span>
     </div>
+  );
+}
+
+/**
+ * One-line copyable block — shows a URL or a code with a Copy button.
+ * Click anywhere on the block copies. The `mono` flag enlarges the
+ * font so 6-digit codes are scannable from across the room.
+ */
+function CopyableBlock({ label, value, mono, onToast }: {
+  label: string; value: string; mono?: boolean;
+  onToast: (msg: string, ok: boolean) => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        try {
+          await navigator.clipboard.writeText(value);
+          onToast(`${label} copied`, true);
+        } catch {
+          onToast('Copy failed', false);
+        }
+      }}
+      style={{
+        width: '100%', textAlign: 'left',
+        padding: '8px 10px',
+        background: 'rgba(0, 0, 0, 0.25)',
+        border: '1px solid rgba(255, 255, 255, 0.05)',
+        borderRadius: 6, cursor: 'pointer',
+        display: 'flex', alignItems: 'center', gap: 8,
+        marginTop: 4,
+      }}
+      title="Click to copy"
+    >
+      <span style={{
+        fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase',
+        color: 'var(--fg-faint)', flexShrink: 0, minWidth: 60,
+      }}>{label}</span>
+      <code style={{
+        flex: 1, minWidth: 0,
+        fontFamily: 'var(--font-mono)',
+        fontSize: mono ? 16 : 10,
+        fontWeight: mono ? 700 : 500,
+        color: mono ? '#f5a623' : '#fff',
+        letterSpacing: mono ? '0.2em' : 'normal',
+        overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+      }}>{value}</code>
+    </button>
   );
 }
 
