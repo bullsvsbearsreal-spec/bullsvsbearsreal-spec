@@ -31,7 +31,9 @@ type Venue = 'Binance' | 'Bybit' | 'OKX' | 'Coinbase';
 type Level = { price: number; size: number };
 
 const VENUES: Venue[] = ['Binance', 'Bybit', 'OKX', 'Coinbase'];
-const MAX_ROWS = 12;
+// Drop from 12 → 10 rows per side. With 220 px column width + smaller
+// bottom row, 12 rows pushed the spread row offscreen.
+const MAX_ROWS = 10;
 
 /** Sensible default ticks per asset price-magnitude. BTC trades in
  *  $0.10 increments on Binance Futures; LINK trades in $0.001. */

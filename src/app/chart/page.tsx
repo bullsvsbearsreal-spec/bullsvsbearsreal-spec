@@ -215,14 +215,15 @@ export default function ChartPage() {
         onToggleFavorite={toggleFavorite}
       />
 
-      {/* Terminal grid — sidebar slimmed 220→200px max, bottom panel
-          collapses to ~40px header-only when bottomCollapsed=true so
-          chart gets the reclaimed ~240px of vertical space. */}
+      {/* Terminal grid — sidebar 160-200, right rail 220-260 (was
+          260-300, took up too much width), bottom 220 expanded or
+          40 collapsed (was 280 — bottom-tab content only fills
+          ~180 px, the rest was dead black space below Top Movers). */}
       <div
         className="flex-1 grid min-h-0"
         style={{
-          gridTemplateColumns: 'minmax(160px, 200px) 1fr minmax(260px, 300px)',
-          gridTemplateRows: `auto 1fr ${bottomCollapsed ? '40px' : '280px'}`,
+          gridTemplateColumns: 'minmax(160px, 200px) 1fr minmax(220px, 260px)',
+          gridTemplateRows: `auto 1fr ${bottomCollapsed ? '40px' : '220px'}`,
           gridTemplateAreas: `
             "sidebar stats  right"
             "sidebar chart  right"
