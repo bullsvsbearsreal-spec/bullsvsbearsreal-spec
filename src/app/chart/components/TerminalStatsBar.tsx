@@ -258,7 +258,13 @@ export function TerminalStatsBar({
         return (
           <div
             key={i}
-            className="flex-1 min-w-[140px] px-3 py-2.5 border-r border-white/[0.06] last:border-r-0"
+            // 160 px min so the longer secondaries ("3/32 negative",
+            // "L 64% · S 36%", "Aggregated · 32 venues") fit without
+            // truncating. Secondary wraps to a second line if the
+            // viewport gets narrow rather than ellipsing — the data
+            // is more useful read fully across two short lines than
+            // half-hidden behind a "…".
+            className="flex-1 min-w-[160px] px-3 py-2.5 border-r border-white/[0.06] last:border-r-0"
           >
             <div className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold mb-1 whitespace-nowrap">
               {c.label}
@@ -274,7 +280,10 @@ export function TerminalStatsBar({
               {isLoading ? <span className="inline-block w-8 h-3 bg-white/[0.04] rounded animate-pulse" /> : c.primary}
             </div>
             {c.secondary && (
-              <div className="text-[10px] text-neutral-500 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+              <div
+                title={c.secondary}
+                className="text-[10px] text-neutral-500 mt-0.5 leading-tight line-clamp-2"
+              >
                 {c.secondary}
               </div>
             )}
