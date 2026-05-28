@@ -33,8 +33,9 @@
  *     page's reads too).
  */
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Header from '@/components/Header';
-import { ASSET_TABS, WATCHLIST_DEFAULTS, findBySymbol, assetClassFor } from './catalog';
+import { ASSET_TABS, findBySymbol, assetClassFor } from './catalog';
 import type { AssetClass, Timeframe } from './catalog';
 import { TerminalControlBar } from './components/TerminalControlBar';
 import { TerminalSidebar } from './components/TerminalSidebar';
@@ -56,6 +57,34 @@ export default function ChartPage() {
   const [chartStyle, setChartStyle] = useState<ChartStyle>('1');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recents, setRecents] = useState<string[]>([]);
+
+  // Read ?symbol= from URL on first mount so deep-links from other
+  // pages (/screener row click, /alerts row click, etc.) land on the
+  // right asset. We also infer the asset class from the symbol's
+  // catalog membership so the watchlist + stats bar configure right.
+  // useSearchParams() inside Suspense boundary — Next.js requirement.
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const raw = searchParams?.get('symbol');
+    if (!raw) return;
+    // Tolerate "BTC", "BTCUSDT", "btc/usd", etc. — canonicalise to label.
+    const cleaned = raw.toUpperCase().replace(/[-_/]/g, '').replace(/USDT?$/, '').replace(/PERP$/, '');
+    // Find a matching catalog entry by label or known suffix forms.
+    const hit = (() => {
+      for (const tab of ASSET_TABS) {
+        const m = tab.pinned.find(s => s.label.toUpperCase().replace(/[-/]/g, '') === cleaned);
+        if (m) return { tab, sym: m };
+      }
+      return null;
+    })();
+    if (hit) {
+      setAssetClass(hit.tab.id);
+      setSymbolLabel(hit.sym.label);
+    }
+    // Run only on mount — subsequent URL changes (via control bar)
+    // shouldn't loop back through this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Hydrate favourites + recents from localStorage
   useEffect(() => {
