@@ -34,7 +34,9 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import Header from '@/components/Header';
+// Header removed — TerminalShell wrapper in app/layout.tsx already
+// provides the global nav, ticker, and pill row. Importing the legacy
+// Header here used to render a second nav stripe.
 import { ASSET_TABS, findBySymbol, assetClassFor } from './catalog';
 import type { AssetClass, Timeframe } from './catalog';
 import { TerminalControlBar } from './components/TerminalControlBar';
@@ -200,8 +202,15 @@ export default function ChartPage() {
   const isFavorited = favorites.includes(symbolLabel);
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col">
-      <Header />
+    // h-full instead of min-h-screen — the TerminalShell wrapper in
+    // app/layout.tsx already gives us the main area (between
+    // LaunchBanner+TerminalHeader+MarketTape+RecentChips on top and
+    // StatusBar on bottom). Using min-h-screen made our page taller
+    // than main, pushing the bottom-tabs row below the visible area.
+    // The Header import at top of this file is the legacy global
+    // header — TerminalShell already renders TerminalHeader, so we
+    // don't add another one here.
+    <div className="h-full bg-black text-white flex flex-col">
       <TerminalControlBar
         assetClass={assetClass}
         symbolLabel={symbolLabel}
