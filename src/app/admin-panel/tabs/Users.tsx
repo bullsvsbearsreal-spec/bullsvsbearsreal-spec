@@ -314,7 +314,10 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
                     color: active ? '#fcd34d' : 'var(--fg-muted)',
                     cursor: 'pointer',
                   }}
-                >{r === 'all' ? 'all-time' : `last ${r}`}</button>
+                  title={r === 'all'
+                    ? 'Show all users'
+                    : `Filter to users who joined in the last ${r}. Note: this is signup-date, not last-active — use the Last seen column to spot activity.`}
+                >{r === 'all' ? 'all-time' : `joined ${r}`}</button>
               );
             })}
           </div>
@@ -575,8 +578,9 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
       <ConfirmModal
         open={bulkConfirm !== null && !bulkBusy}
         title={
-          bulkConfirm?.kind === 'tier' ? `Set ${selected.size} users to ${bulkConfirm.tier.toUpperCase()}?` :
-          bulkConfirm?.kind === 'suspend' ? `Suspend ${selected.size} users?` :
+          bulkConfirm?.kind === 'tier'      ? `Set ${selected.size} users to ${bulkConfirm.tier.toUpperCase()}?` :
+          bulkConfirm?.kind === 'role'      ? `Grant ${bulkConfirm.role.toUpperCase()} role to ${selected.size} users?` :
+          bulkConfirm?.kind === 'suspend'   ? `Suspend ${selected.size} users?` :
           bulkConfirm?.kind === 'unsuspend' ? `Unsuspend ${selected.size} users?` : ''
         }
         description={
@@ -585,11 +589,16 @@ export function UsersTab({ onToast, viewerRole }: { onToast: (msg: string, ok: b
         }
         confirmText={bulkConfirm?.kind === 'suspend' ? 'SUSPEND' : bulkConfirm?.kind === 'unsuspend' ? 'RESTORE' : 'CONFIRM'}
         confirmLabel={
-          bulkConfirm?.kind === 'tier' ? 'Change tier' :
-          bulkConfirm?.kind === 'suspend' ? 'Suspend all' :
+          bulkConfirm?.kind === 'tier'      ? `Change tier → ${bulkConfirm.tier}` :
+          bulkConfirm?.kind === 'role'      ? `Grant ${bulkConfirm.role}` :
+          bulkConfirm?.kind === 'suspend'   ? 'Suspend all' :
           bulkConfirm?.kind === 'unsuspend' ? 'Unsuspend all' : 'Confirm'
         }
-        danger={bulkConfirm?.kind === 'suspend' || (bulkConfirm?.kind === 'tier' && (bulkConfirm.tier === 'whale' || bulkConfirm.tier === 'pro'))}
+        danger={
+          bulkConfirm?.kind === 'suspend' ||
+          (bulkConfirm?.kind === 'tier' && (bulkConfirm.tier === 'whale' || bulkConfirm.tier === 'pro')) ||
+          (bulkConfirm?.kind === 'role' && (bulkConfirm.role === 'admin' || bulkConfirm.role === 'moderator'))
+        }
         onConfirm={fireBulk}
         onCancel={() => setBulkConfirm(null)}
       />

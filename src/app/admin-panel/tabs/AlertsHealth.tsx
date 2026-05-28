@@ -121,10 +121,18 @@ export function AlertsHealthTab() {
             <tbody>
               {data.channels.map(c => (
                 <tr key={c.channel} style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
-                  <td style={{ padding: '8px 0', display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ color: 'var(--fg-muted)' }}>{channelIcon(c.channel)}</span>
-                    <span style={{ color: '#fff', textTransform: 'capitalize' }}>{c.channel}</span>
-                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: freshnessTone(c.lastFire), marginLeft: 4 }} />
+                  {/* `<td>` cannot use display:flex (browsers ignore it in
+                      table-cell flow context — children stack or overflow);
+                      flex must live on an inner wrapper. */}
+                  <td style={{ padding: '8px 0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <span style={{ color: 'var(--fg-muted)' }}>{channelIcon(c.channel)}</span>
+                      <span style={{ color: '#fff', textTransform: 'capitalize' }}>{c.channel}</span>
+                      <span
+                        title={c.lastFire ? `Last fire: ${fmtAgo(c.lastFire)}` : 'Never fired'}
+                        style={{ width: 8, height: 8, borderRadius: '50%', background: freshnessTone(c.lastFire), marginLeft: 4 }}
+                      />
+                    </div>
                   </td>
                   <td style={{ padding: '8px 8px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: '#fff' }}>{fmtNumber(c.sent1h)}</td>
                   <td style={{ padding: '8px 8px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: '#fff' }}>{fmtNumber(c.sent24h)}</td>

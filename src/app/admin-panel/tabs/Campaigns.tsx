@@ -82,7 +82,6 @@ export function CampaignsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         onToast(json.error || `HTTP ${res.status}`, false);
-        setBusy(false);
         return;
       }
       onToast(`Campaign "${slug}" created`, true);
@@ -91,8 +90,9 @@ export function CampaignsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
       await load(true);
     } catch (e) {
       onToast(e instanceof Error ? e.message : 'Network error', false);
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }, [slug, name, targetUrl, budget, load, onToast]);
 
   const archiveToggle = useCallback(async (c: Campaign) => {
@@ -106,15 +106,15 @@ export function CampaignsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
         onToast(json.error || `HTTP ${res.status}`, false);
-        setBusy(false);
         return;
       }
       onToast(`Campaign ${c.archivedAt ? 'restored' : 'archived'}`, true);
       await load(true);
     } catch (e) {
       onToast(e instanceof Error ? e.message : 'Network error', false);
+    } finally {
+      setBusy(false);
     }
-    setBusy(false);
   }, [load, onToast]);
 
   return (

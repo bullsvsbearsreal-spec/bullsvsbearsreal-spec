@@ -18,11 +18,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { TrendingUp, RefreshCw, ExternalLink } from 'lucide-react';
 import { Card, SectionHead, SkeletonBlock, fmtNumber } from '../components/primitives';
 
-type Window = 'all' | '30d' | '7d';
+// Period — NOT named `Window` because that would shadow the DOM
+// `Window` interface inside this file. State variable below is
+// `period` for the same reason: `const window = '7d'` masks the
+// global `window` object inside this component and breaks anyone
+// who later writes `window.location.X` here without noticing.
+type Period = 'all' | '30d' | '7d';
 
 interface SourceRow { source: string; signups: number; paid: number }
 interface AcquisitionResp {
-  window: Window;
+  window: Period;   // API response keeps the `window` key — kept stable
   totals: { signups: number; paid: number };
   bySource:   SourceRow[];
   byCampaign: SourceRow[];
@@ -33,22 +38,26 @@ export function AcquisitionTab({ onToast }: { onToast: (msg: string, ok: boolean
   const [data, setData] = useState<AcquisitionResp | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [window, setWindow] = useState<Window>('all');
+  const [period, setPeriod] = useState<Period>('all');
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setRefreshing(true);
     try {
-      const res = await fetch(`/api/marketing/acquisition?window=${window}`);
+      const res = await fetch(`/api/marketing/acquisition?window=${period}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData(json);
     } catch (e) {
+      // Same defensive pattern as Tickets/Spam: pre-set to empty so the
+      // empty-state copy in child tables doesn't lie about success.
+      setData(prev => prev ?? { window: period, totals: { signups: 0, paid: 0 }, bySource: [], byCampaign: [], byReferer: [] });
       onToast(e instanceof Error ? e.message : 'Failed to load acquisition data', false);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-    setLoading(false);
-    setRefreshing(false);
-  }, [window, onToast]);
+  }, [period, onToast]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -60,12 +69,12 @@ export function AcquisitionTab({ onToast }: { onToast: (msg: string, ok: boolean
         right={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ display: 'flex', gap: 4 }}>
-              {(['all', '30d', '7d'] as Window[]).map(w => {
-                const active = window === w;
+              {(['all', '30d', '7d'] as Period[]).map(w => {
+                const active = period === w;
                 return (
                   <button
                     key={w}
-                    onClick={() => setWindow(w)}
+                    onClick={() => setPeriod(w)}
                     style={{
                       padding: '3px 10px', borderRadius: 999, fontSize: 10, fontWeight: 700,
                       background: active ? 'rgba(196, 181, 253, 0.15)' : 'rgba(255,255,255,0.03)',
