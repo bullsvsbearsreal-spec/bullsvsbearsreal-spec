@@ -28,7 +28,13 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: `Invalid interval. Use: ${VALID_INTERVALS.join(', ')}` }, { status: 400 });
   }
 
-  const pair = `${symbol}USDT`;
+  // Robust input handling: accept BOTH the canonical bare base ("BTC")
+  // AND the Binance-convention pair ("BTCUSDT") — many bot devs pass
+  // the full pair out of muscle memory. Without this guard, "BTCUSDT"
+  // → "BTCUSDTUSDT" → all 4 venues 404 → 504 gateway timeout HTML
+  // response. Stripping a trailing USDT keeps both inputs working.
+  const base = symbol.endsWith('USDT') ? symbol.slice(0, -4) : symbol;
+  const pair = `${base}USDT`;
 
   // Fan out to all 4 venues in parallel and return the first non-empty hit.
   // Previously this was serial with 8s+8s+8s+6s = 30s worst case, which
@@ -44,7 +50,7 @@ export async function GET(request: NextRequest) {
     '1m': '1m', '5m': '5m', '15m': '15m', '1h': '1H', '4h': '4H', '1d': '1D', '1w': '1W',
   };
   const okxInterval = okxIntervalMap[interval] || '1H';
-  const okxInstId = `${symbol}-USDT-SWAP`;
+  const okxInstId = `${base}-USDT-SWAP`;
 
   const TIMEOUT = 6000;
 
