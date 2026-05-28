@@ -24,18 +24,26 @@ export const SYMBOLS: Record<string, string[]> = {
   Indices: ['SPX','QQQ','DIA','IWM'],
 };
 
-export const CEX_EXCHANGES = [
-  'Binance','Bybit','OKX','Bitget','MEXC','Kraken','BingX','HTX','Phemex',
-  'KuCoin','Bitfinex','WhiteBIT','Coinbase','CoinEx','Bitunix','Deribit',
-  // BitMEX, Gate.io removed — CloudFlare-blocked on datacenter IPs
-];
+// Derived from the canonical list at @/lib/constants/exchanges. Was a
+// hand-maintained 28-venue local copy that silently fell out of sync —
+// Blofin (added May 2026), GMX, edgeX, BitMEX, and Gate.io were all
+// missing from the /spreads exchange picker even though
+// /api/klines-multi happily serves their klines. The "BitMEX +
+// Gate.io are CloudFlare-blocked" comment was stale too — the
+// aggregator droplet streams them via WS without trouble; only direct
+// edge HTTP from FRA1 gets CF-blocked.
+//
+// Arrays (not Sets) because the picker / URL-sync code uses
+// .filter / .includes / spread which the canonical Set form doesn't
+// support directly.
+import {
+  ALL_EXCHANGES as CANONICAL_ALL,
+  DEX_EXCHANGES as CANONICAL_DEX,
+} from '@/lib/constants/exchanges';
 
-export const DEX_EXCHANGES = [
-  'Hyperliquid','dYdX','gTrade','Aster','Lighter','Aevo',
-  'Extended','Variational','Nado','Backpack','Orderly','Paradex',
-];
-
-export const ALL_EXCHANGES = [...CEX_EXCHANGES, ...DEX_EXCHANGES];
+export const DEX_EXCHANGES: string[] = CANONICAL_ALL.filter(e => CANONICAL_DEX.has(e));
+export const CEX_EXCHANGES: string[] = CANONICAL_ALL.filter(e => !CANONICAL_DEX.has(e));
+export const ALL_EXCHANGES: string[] = [...CANONICAL_ALL];
 
 export const DEFAULT_SELECTED = ['Binance','Bybit','OKX','Bitget','MEXC','Kraken','Hyperliquid','dYdX'];
 

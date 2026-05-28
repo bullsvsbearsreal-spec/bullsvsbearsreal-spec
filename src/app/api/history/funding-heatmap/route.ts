@@ -29,8 +29,13 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const days = Math.min(parseInt(searchParams.get('days') || '7') || 7, 30);
 
-  // Get top symbols from live funding data
-  const origin = new URL(request.url).origin;
+  // Get top symbols from live funding data. Prefer NEXT_PUBLIC_BASE_URL
+  // because `request.url` resolves to http://localhost:8080 inside the
+  // DO container — fetching localhost from a route handler hits dead
+  // air, so the heatmap was silently falling back to the hardcoded
+  // 'BTC, ETH, SOL, ...' list in production even when /api/funding had
+  // hundreds of symbols available.
+  const origin = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
   let symbols: string[] = [];
   let exchangeCount = 0;
 

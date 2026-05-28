@@ -151,7 +151,15 @@ export async function POST(request: NextRequest) {
     return new Response(JSON.stringify({ error: 'AI service not configured' }), { status: 500 });
   }
 
-  const origin = new URL(request.url).origin;
+  // `request.url`'s origin resolves to http://localhost:8080 inside the
+  // DO App Platform container (the port Heroku buildpack binds to), so
+  // any fetch(`${origin}/api/...`) from a route handler hits dead inner
+  // localhost instead of the public app. Prefer the canonical public
+  // base URL so live BTC context populates the AI system prompt — was
+  // silently returning empty context until now (and the bot would say
+  // "I don't have current market data" in production while working
+  // locally).
+  const origin = process.env.NEXT_PUBLIC_BASE_URL || new URL(request.url).origin;
 
   // Fetch live market context for system prompt (cached 60s to avoid 2 API calls per message)
   const btcContext = await getCachedBTCContext(origin);

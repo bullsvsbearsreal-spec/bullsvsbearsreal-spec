@@ -47,7 +47,12 @@ export async function GET(request: NextRequest) {
   const denied = await requireAdminOrAdvisor();
   if (denied) return denied;
 
-  const origin = request.nextUrl.origin;
+  // `request.nextUrl.origin` resolves to http://localhost:8080 inside
+  // the DO App Platform container — fetches against that hit dead inner
+  // localhost instead of the public app. Prefer the canonical public
+  // base URL so the admin pipeline monitor actually sees live exchange
+  // health / funding / OI data in production. Was silently empty.
+  const origin = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
 
   // Fetch health + live data in parallel. IMPORTANT: each fetch gets
   // its OWN AbortSignal.timeout — sharing a single signal across three
