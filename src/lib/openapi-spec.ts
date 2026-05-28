@@ -10,17 +10,30 @@
  *
  * Served by /api/v1/openapi (JSON) and rendered as docs at /api-docs.
  */
+import { FREE_TIER_PER_MINUTE, TRADER_TIER_PER_MINUTE, PRO_TIER_PER_MINUTE } from '@/lib/api/rate-limit';
+
 export const openApiSpec = {
   openapi: '3.1.0',
   info: {
     title: 'InfoHub Derivatives API',
     version: '1.0.0',
     description: [
-      'Real-time derivatives market data: funding rates, open interest,',
-      'liquidations, options, longshort ratios, whales, and CME basis.',
-      'Authenticate every request with `Authorization: Bearer ih_xxx`',
-      'where `ih_xxx` is your API key from /api/v1/keys.',
-    ].join(' '),
+      'Real-time derivatives market data: funding rates, open interest, liquidations, options, longshort ratios, whales, and CME basis. Authenticate every request with `Authorization: Bearer ih_xxx` where `ih_xxx` is your API key from /api/v1/keys.',
+      '',
+      '## Rate limits',
+      '',
+      'Every successful response includes three rate-limit headers:',
+      '',
+      '- `X-RateLimit-Limit` — per-minute cap for your current tier',
+      '- `X-RateLimit-Remaining` — requests left in the current window',
+      '- `X-RateLimit-Reset` — Unix epoch (seconds) when the window resets',
+      '',
+      `When the cap is hit you get a \`429 Too Many Requests\` with a \`Retry-After\` header (seconds). Tier caps: Free ${FREE_TIER_PER_MINUTE}/min · Trader ${TRADER_TIER_PER_MINUTE}/min · Pro ${PRO_TIER_PER_MINUTE}/min · Whale unlimited. See /pricing.`,
+      '',
+      '## Fee model versioning',
+      '',
+      'Every response (including 401s) also carries `X-Fee-Model-Version` + `X-Fee-Model-Updated-At` so you can cache-bust your fee tables when we revise venue maker/taker fees. Cheap HEAD requests against any endpoint work for version polling without spending a quota.',
+    ].join('\n'),
     contact: {
       name: 'InfoHub Support',
       url: 'https://info-hub.io',
