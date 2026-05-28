@@ -9,6 +9,7 @@ import { Newspaper, ExternalLink, Clock, Search, RefreshCw, X, ChevronLeft, Chev
 import DataFreshness from '@/components/DataFreshness';
 import SoundToggle from '@/components/SoundToggle';
 import { useSound } from '@/hooks/useSound';
+import { looksLikePromo as looksLikePromoFilter } from './promoFilter';
 
 /* ─── Types ──────────────────────────────────────────────────── */
 
@@ -157,35 +158,10 @@ const SENTIMENT_COLORS = {
  * over the prime real estate. Now:
  *   - Examines the top 5 newest articles
  *   - Skips entries that look like promos (exchange source AND title
- *     hits a promo keyword)
+ *     hits a promo keyword — see ./promoFilter for the cardinality-
+ *     control logic + its unit tests)
  *   - Returns the index of the first non-promo, or 0 as fallback
  */
-const PROMO_KEYWORDS = /(predict\s*&?\s*earn|airdrop|bonus|earn\s+up\s+to|launchpad|giveaway|cashback|trading\s+contest|deposit\s+to\s+win|points\s+mall|carnival|festival|trade\s+to\s+earn)/i;
-// Exchange names used as a PREFIX match — the news API exposes per-feed
-// source labels like "Binance Listings", "Binance Latest", "Bybit",
-// "Kraken", etc. Set-equality only caught the shorter "Bybit" / "Kraken"
-// labels and let "Binance Listings" promo posts slip into the featured
-// hero slot. Now any source that STARTS WITH one of these names is
-// treated as an exchange feed.
-const EXCHANGE_SOURCES = [
-  'Bybit', 'Binance', 'OKX', 'Coinbase', 'Kraken', 'KuCoin', 'Bitget',
-  'Bitfinex', 'MEXC', 'Gate.io', 'HTX', 'Bitstamp', 'BingX', 'BitMEX',
-];
-
-function isExchangeSource(source: string): boolean {
-  if (!source) return false;
-  return EXCHANGE_SOURCES.some(name => source === name || source.startsWith(name + ' '));
-}
-
-function looksLikePromo(article: NewsArticle): boolean {
-  // Treat as promo only when BOTH source is an exchange AND the title
-  // matches a promo keyword. A news outlet writing ABOUT a promo (e.g.,
-  // Cointelegraph covering a Bybit campaign) is legitimate news and
-  // shouldn't be skipped.
-  if (!isExchangeSource(article.source)) return false;
-  return PROMO_KEYWORDS.test(article.title);
-}
-
 function pickFeaturedArticleIndex(articles: NewsArticle[]): number {
   if (articles.length === 0) return -1;
   // Look in the top 5 newest for the first non-promo. Past 5 the
@@ -193,7 +169,7 @@ function pickFeaturedArticleIndex(articles: NewsArticle[]): number {
   // real story than a 5-minute-old promo.
   const window = Math.min(5, articles.length);
   for (let i = 0; i < window; i++) {
-    if (!looksLikePromo(articles[i])) return i;
+    if (!looksLikePromoFilter(articles[i])) return i;
   }
   // All 5 look promotional — fall back to the freshest. The page
   // is mostly promos at this hour; nothing better to surface.
