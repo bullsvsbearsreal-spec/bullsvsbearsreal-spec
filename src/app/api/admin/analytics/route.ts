@@ -41,23 +41,67 @@ interface MetricRow { x: string; y: number }
 interface PageviewRow { x: string; y: number }
 
 const UMAMI_HOST = process.env.UMAMI_HOST || process.env.NEXT_PUBLIC_UMAMI_HOST || '';
-const UMAMI_TOKEN = process.env.UMAMI_API_TOKEN || '';
+const UMAMI_TOKEN_SEED = process.env.UMAMI_API_TOKEN || '';
+const UMAMI_USERNAME = process.env.UMAMI_USERNAME || '';
+const UMAMI_PASSWORD = process.env.UMAMI_PASSWORD || '';
 const UMAMI_WEBSITE_ID = process.env.UMAMI_WEBSITE_ID || process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID || '';
+
+// In-memory token cache. Umami's JWT expires (~7d by default) and the
+// open-source build has no persistent API-key surface, so we auto-refresh
+// by logging in with the admin creds when our cached token starts
+// returning 401s. UMAMI_API_TOKEN seeds the cache so we can ship without
+// the username/password env vars set; once they're set, the loop is
+// self-healing forever.
+let cachedToken: string | null = UMAMI_TOKEN_SEED || null;
+let loginInFlight: Promise<string | null> | null = null;
+
+async function loginToUmami(): Promise<string | null> {
+  if (!UMAMI_USERNAME || !UMAMI_PASSWORD || !UMAMI_HOST) return null;
+  // De-dupe parallel login attempts — many in-flight requests should
+  // share one network round-trip.
+  if (loginInFlight) return loginInFlight;
+  loginInFlight = (async () => {
+    try {
+      const res = await fetch(`${UMAMI_HOST}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: UMAMI_USERNAME, password: UMAMI_PASSWORD }),
+      });
+      if (!res.ok) return null;
+      const json = await res.json() as { token?: string };
+      const tok = json.token ?? null;
+      if (tok) cachedToken = tok;
+      return tok;
+    } catch {
+      return null;
+    } finally {
+      loginInFlight = null;
+    }
+  })();
+  return loginInFlight;
+}
 
 async function umamiFetch<T>(path: string, params: Record<string, string | number>): Promise<T | null> {
   const url = new URL(`${UMAMI_HOST}${path}`);
   Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, String(v)));
+  const doFetch = async (token: string | null) => fetch(url.toString(), {
+    headers: token
+      ? { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+      : { 'Content-Type': 'application/json' },
+    // Cache 30s — admin dashboard polling at 60s intervals shares one
+    // fetch per minute. Stale-while-revalidate is fine; the numbers
+    // don't move in seconds.
+    next: { revalidate: 30 },
+  });
+
   try {
-    const res = await fetch(url.toString(), {
-      headers: {
-        Authorization: `Bearer ${UMAMI_TOKEN}`,
-        'Content-Type': 'application/json',
-      },
-      // Cache 30s — admin dashboard polling at 60s intervals shares one
-      // fetch per minute. Stale-while-revalidate is fine; the numbers
-      // don't move in seconds.
-      next: { revalidate: 30 },
-    });
+    let res = await doFetch(cachedToken);
+    // 401/403 → token expired/invalid. Try a fresh login + one retry.
+    if ((res.status === 401 || res.status === 403) && UMAMI_USERNAME && UMAMI_PASSWORD) {
+      cachedToken = null;
+      const fresh = await loginToUmami();
+      if (fresh) res = await doFetch(fresh);
+    }
     if (!res.ok) return null;
     return (await res.json()) as T;
   } catch (e) {
@@ -80,8 +124,11 @@ export async function GET(request: NextRequest) {
 
   // Umami not configured — return a clean "empty" payload the UI
   // recognises so it can show a setup-required state instead of an
-  // error toast. Same shape on success-but-no-data too.
-  if (!UMAMI_HOST || !UMAMI_TOKEN || !UMAMI_WEBSITE_ID) {
+  // error toast. Same shape on success-but-no-data too. We accept
+  // EITHER a seed token (UMAMI_API_TOKEN) OR username+password creds
+  // (which auto-login + cache a fresh token).
+  const hasAuth = !!UMAMI_TOKEN_SEED || (!!UMAMI_USERNAME && !!UMAMI_PASSWORD);
+  if (!UMAMI_HOST || !hasAuth || !UMAMI_WEBSITE_ID) {
     return NextResponse.json({
       configured: false,
       window: '7d',
@@ -92,6 +139,12 @@ export async function GET(request: NextRequest) {
       topReferrers: [],
       topCountries: [],
     });
+  }
+
+  // If we have creds but no seed token, login proactively before the
+  // fan-out so all 6 requests share one warm token.
+  if (!cachedToken && UMAMI_USERNAME && UMAMI_PASSWORD) {
+    await loginToUmami();
   }
 
   const { searchParams } = new URL(request.url);
