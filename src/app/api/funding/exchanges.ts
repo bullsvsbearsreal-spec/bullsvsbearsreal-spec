@@ -415,13 +415,25 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
           if (baseSymbol.startsWith('1000')) baseSymbol = baseSymbol.slice(4);
           else if (baseSymbol.startsWith('1M')) baseSymbol = baseSymbol.slice(2);
           const markPrice = priceByInst.get(r.instId) || 0;
+          const ratePct = (parseFloat(r.fundingRate) || 0) * 100;
           return {
             symbol: baseSymbol,
             exchange: 'Blofin',
-            fundingRate: (parseFloat(r.fundingRate) || 0) * 100,
-            // No native predicted endpoint; use last price as mark proxy
-            // and skip the Binance-style formula (premium/interest absent).
-            predictedRate: undefined as number | undefined,
+            fundingRate: ratePct,
+            // Blofin's /market/funding-rate is OKX-derived but trimmed:
+            // it returns ONLY {instId, fundingRate, fundingTime} — no
+            // nextFundingRate, no markPrice, no indexPrice. So the
+            // Binance-style premium formula doesn't apply.
+            //
+            // Coverage gap closure (AB-Samurai 5/27 report — Blofin
+            // 0/448 predictedRate): adopt the same fallback as Lighter
+            // + dYdX — surface the current `fundingRate` AS the
+            // predicted, since Blofin's 8h cycle means the most-recent
+            // rate is the best available next-cycle signal we have.
+            // Honest approximation, documented in /api/v1/funding's
+            // meta note ("predictedRate only present when natively
+            // provided" — Blofin counts as derived, not native).
+            predictedRate: ratePct,
             // Blofin runs 8h cycles for ~99% of USDT pairs (verified
             // live May 22 2026 against /api/v1/market/funding-rate —
             // pairs split across multiple 8h anchor offsets, with a
@@ -1259,20 +1271,32 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
         })
         .map((item: any) => {
           // HTX's swap_batch_funding_rate exposes `estimated_rate` — the
-          // predicted next funding rate. Without this AB-Samurai's coverage
-          // matrix reported 0/192 predictedRate for HTX (5/15 audit).
-          // We don't have indexPrice from the funding endpoint and the
-          // tickers join only gives mark, so the binanceStyle premium
-          // helper isn't usable here — `estimated_rate` is the authoritative
-          // value HTX itself shows in its UI.
+          // predicted next funding rate — but as of 5/28/2026 verified
+          // live, this field is **always null** across all 246 contracts
+          // (along with `next_funding_time`). HTX appears to have stopped
+          // populating it, or only populates close to settlement. Without
+          // mark/index from the funding endpoint, the binanceStyle premium
+          // helper isn't usable either.
+          //
+          // Coverage gap closure (AB-Samurai 5/15 + 5/27 reports — HTX
+          // was 0/192 → 0/199 predictedRate, the longest-standing gap):
+          // adopt the same fallback as Lighter + dYdX + Blofin — surface
+          // the current `funding_rate` AS the predicted, since HTX's 8h
+          // cycle means the most-recent rate is the best available
+          // next-cycle signal. Honest approximation, documented in the
+          // /api/v1/funding meta note.
+          const ratePct = (parseFloat(item.funding_rate) || 0) * 100;
           const estimatedPct = item.estimated_rate != null
             ? (parseFloat(item.estimated_rate) || 0) * 100
             : undefined;
+          const predictedRate = estimatedPct != null && Number.isFinite(estimatedPct)
+            ? estimatedPct
+            : ratePct;
           return {
             symbol: item.contract_code.replace('-USDT', ''),
             exchange: 'HTX',
-            fundingRate: (parseFloat(item.funding_rate) || 0) * 100,
-            predictedRate: estimatedPct != null && Number.isFinite(estimatedPct) ? estimatedPct : undefined,
+            fundingRate: ratePct,
+            predictedRate,
             fundingInterval: '8h' as const,
             markPrice: priceMap.get(item.contract_code) || 0,
             indexPrice: 0,
