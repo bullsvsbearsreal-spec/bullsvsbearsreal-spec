@@ -132,10 +132,30 @@ export async function authenticateV1Request(request: NextRequest): Promise<
     }
   }
 
-  // Rate limit via Upstash Redis
+  // Rate limit via Upstash Redis.
+  //
+  // CUSTOMER BUG (AB-Samurai, 5/27/2026): valid keys hang indefinitely
+  // while invalid keys return 401 instantly. Root cause: `limiter.limit()`
+  // is a fetch to the Upstash REST API with no client-side timeout. If
+  // Upstash's edge holds the TCP socket open (even when degraded), the
+  // await never resolves and the route hangs until the client gives up.
+  // The catch block below ONLY fires on a thrown error, not a hung
+  // promise — so the in-memory fallback never engaged.
+  //
+  // Fix: race the Redis call with a 2-second timeout. On timeout we
+  // throw into the catch block, which engages the in-memory fallback
+  // (60/min) so the customer's request still gets through. 2s is
+  // generous — healthy Upstash p99 is ~50ms — but covers a degraded
+  // edge node without making real users wait noticeably long.
+  const REDIS_TIMEOUT_MS = 2000;
   const rateLimitHeaders: Record<string, string> = {};
   try {
-    const { allowed, remaining, reset, limit } = await checkRateLimit(keyData.keyId, keyData.tier);
+    const { allowed, remaining, reset, limit } = await Promise.race([
+      checkRateLimit(keyData.keyId, keyData.tier),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Upstash rate-limit check timed out')), REDIS_TIMEOUT_MS),
+      ),
+    ]);
     rateLimitHeaders['X-RateLimit-Limit'] = String(limit);
     rateLimitHeaders['X-RateLimit-Remaining'] = String(remaining);
     rateLimitHeaders['X-RateLimit-Reset'] = String(Math.ceil(reset / 1000));
