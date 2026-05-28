@@ -173,10 +173,13 @@ export default function SupportChat() {
       const json = await res.json().catch(() => ({}));
       if (!res.ok) { setError(json.error || `HTTP ${res.status}`); return; }
       setNewSubject(''); setNewBody('');
-      // Jump straight into the new ticket thread
+      // Jump straight into the new ticket thread. Refresh the list in
+      // the background — don't `await` it (a flaky network call on the
+      // list fetch would otherwise wipe the cached `tickets` to [] and
+      // the user would see an empty list when they navigate back).
+      loadList().catch(() => { /* ignore — thread view doesn't need it */ });
       setActiveId(Number(json.id));
       setView('thread');
-      await loadList();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Network error');
     } finally {

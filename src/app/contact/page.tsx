@@ -47,7 +47,10 @@ export default function ContactPage() {
     setSubmitting(true);
     setError(null);
     try {
-      const res = await fetch('/api/support/tickets', {
+      // /api/support/tickets is the requireSupport-gated operator route —
+      // any customer hitting it gets 403. The customer-scoped endpoint
+      // is /my-tickets (added with the SupportChat widget).
+      const res = await fetch('/api/support/my-tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

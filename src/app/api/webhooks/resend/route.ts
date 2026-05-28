@@ -160,7 +160,7 @@ export async function POST(request: NextRequest) {
     const rows = await db`
       SELECT id FROM support_tickets
        WHERE user_id = ${user.id}
-         AND subject LIKE 'Email delivery failed%' OR subject LIKE 'Email marked as spam%'
+         AND (subject LIKE 'Email delivery failed%' OR subject LIKE 'Email marked as spam%')
          AND status IN ('open', 'claimed')
          AND created_at > NOW() - INTERVAL '24 hours'
        ORDER BY created_at DESC

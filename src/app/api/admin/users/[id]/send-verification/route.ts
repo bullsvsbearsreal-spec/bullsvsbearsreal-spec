@@ -93,6 +93,11 @@ export async function POST(
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 min
 
   try {
+    // Invalidate any outstanding codes for this user — otherwise multiple
+    // 6-digit codes would be simultaneously valid (only 900k possible
+    // combos, so n× admin clicks = n× the guessable surface). Mirrors
+    // send-reset-link/route.ts which does the same for password tokens.
+    await db`DELETE FROM email_verification_codes WHERE user_id = ${user.id}`;
     await db`
       INSERT INTO email_verification_codes (user_id, email, code, expires_at)
       VALUES (${user.id}, ${user.email}, ${code}, ${expiresAt.toISOString()})
