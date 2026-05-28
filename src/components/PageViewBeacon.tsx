@@ -23,7 +23,12 @@
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 
-const SKIP_PREFIXES = ['/admin-panel', '/admin/', '/_next'];
+// /mod-panel, /marketing-panel, /support-panel added alongside the
+// existing /admin-panel skip — these are operator-only surfaces and
+// counting visits to /mod-panel/tickets pollutes the same "top pages"
+// table the operator looks at on /admin-panel#analytics. Same logic
+// the original commit applied to /admin-panel.
+const SKIP_PREFIXES = ['/admin-panel', '/admin/', '/mod-panel', '/marketing-panel', '/support-panel', '/_next'];
 
 export default function PageViewBeacon() {
   const pathname = usePathname();
