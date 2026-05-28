@@ -9,8 +9,16 @@ import {
 
 /**
  * Real-time trade stream via Binance Futures WebSocket.
- * Provides live aggTrades with buy/sell classification and rolling CVD.
+ * Provides live trades with buy/sell classification and rolling CVD.
  * Pure stats math lives in `./computeTradeStats.ts`.
+ *
+ * Stream: `wss://fstream.binance.com/ws/<sym>@trade`
+ *   We previously used `@aggTrade` but Binance Futures stopped
+ *   delivering data on that stream sometime around 2026-05-28
+ *   (verified by browser probe: aggTrade returned 0 frames in 8 s
+ *   while @trade returned 316 trades — both connected fine). The
+ *   `@trade` per-trade stream uses the same field names (p, q, T, m)
+ *   so the parser flips the event-type guard and we're done.
  */
 
 export type { RealtimeTrade, TradeStats };
@@ -26,14 +34,19 @@ export const STATS_WINDOWS: { key: StatsWindow; label: string; ms: number }[] = 
   { key: 'all',  label: 'All',  ms: Infinity },
 ];
 
-interface BinanceAggTrade {
-  e: string;   // event type
+/** Binance Futures `@trade` payload. Same field names as the old
+ *  `@aggTrade` for everything we read (p, q, T, m, s) — only the
+ *  event-type discriminator `e` changes from "aggTrade" to "trade". */
+interface BinanceTrade {
+  e: string;   // event type ("trade")
   E: number;   // event time
   s: string;   // symbol
   p: string;   // price
   q: string;   // quantity
-  m: boolean;  // is market maker (true = seller initiated = SELL)
+  m: boolean;  // is buyer the market maker (true = seller initiated = SELL)
   T: number;   // trade time
+  t?: number;  // trade ID
+  X?: string;  // order type ("MARKET")
 }
 
 const MAX_DISPLAY_TRADES = 200;
@@ -72,7 +85,9 @@ export function useRealtimeTrades(symbol: string) {
     if (!symbol) return; // Skip when not in live mode
 
     const pair = symbol.toUpperCase() + 'USDT';
-    const url = `wss://fstream.binance.com/ws/${pair.toLowerCase()}@aggTrade`;
+    // `@trade` (per-trade) — `@aggTrade` (aggregated) returned 0
+    // frames in production probes 2026-05-28. Same field shape.
+    const url = `wss://fstream.binance.com/ws/${pair.toLowerCase()}@trade`;
 
     // Reset state on symbol change
     allTradesRef.current = [];
@@ -98,8 +113,10 @@ export function useRealtimeTrades(symbol: string) {
 
       ws.onmessage = (event) => {
         try {
-          const msg: BinanceAggTrade = JSON.parse(event.data);
-          if (msg.e !== 'aggTrade') return;
+          const msg: BinanceTrade = JSON.parse(event.data);
+          // Accept either `trade` (current) or `aggTrade` (legacy) so
+          // a future Binance flip-back doesn't need a re-deploy.
+          if (msg.e !== 'trade' && msg.e !== 'aggTrade') return;
 
           const price = parseFloat(msg.p);
           const qty = parseFloat(msg.q);
