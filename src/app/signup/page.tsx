@@ -1,8 +1,8 @@
 'use client';
 
 import { Suspense, useState, useRef, useEffect } from 'react';
-import { signIn } from 'next-auth/react';
-import { useSearchParams } from 'next/navigation';
+import { signIn, useSession } from 'next-auth/react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import SuspendedNotice from '@/components/SuspendedNotice';
@@ -34,6 +34,16 @@ export default function SignupPage() {
 }
 
 function SignupContent() {
+  // Bounce authenticated users to /home — they don't need to sign up
+  // again. Without this, a logged-in user clicking a stale "Sign up"
+  // link (from the footer, email, etc.) sees the empty form and gets
+  // confused. Use replace() so the back button doesn't re-show signup.
+  const { status } = useSession();
+  const router = useRouter();
+  useEffect(() => {
+    if (status === 'authenticated') router.replace('/home');
+  }, [status, router]);
+
   const searchParams = useSearchParams();
   const verifyEmail = searchParams.get('verify');
   const rawCallback = searchParams.get('callbackUrl') || '/';

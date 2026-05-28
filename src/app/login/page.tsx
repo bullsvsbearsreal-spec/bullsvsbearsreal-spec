@@ -1,18 +1,29 @@
 'use client';
 
 import { useState, useRef, useEffect, Suspense } from 'react';
-import { signIn } from 'next-auth/react';
-import { useSearchParams } from 'next/navigation';
+import { signIn, useSession } from 'next-auth/react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Logo from '@/components/Logo';
 import { ALL_EXCHANGES } from '@/lib/constants';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowRight, Shield, Smartphone } from 'lucide-react';
 
 function LoginPageInner() {
+  // Bounce already-authed users away from /login. Without this, a
+  // logged-in user navigating to /login (stale link, manual URL,
+  // header "Sign in" button shown by mistake) sees a confusing login
+  // form for an account they're already signed into. replace() so the
+  // back button doesn't loop them back here.
+  const { status } = useSession();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const rawCallback = searchParams.get('callbackUrl') || '/';
   // Prevent open redirect — only allow relative paths (no protocol-relative // either)
   const callbackUrl = rawCallback.startsWith('/') && !rawCallback.startsWith('//') ? rawCallback : '/';
+
+  useEffect(() => {
+    if (status === 'authenticated') router.replace(callbackUrl);
+  }, [status, router, callbackUrl]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);

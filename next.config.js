@@ -35,6 +35,10 @@ const nextConfig = {
       { source: '/funding-rates', destination: '/funding', permanent: true },
       { source: '/openinterest', destination: '/open-interest', permanent: true },
       { source: '/long-short', destination: '/longshort', permanent: true },
+      // /signals — removed at some point during the refactor. Bookmarks
+      // + external links to /signals 404. The /breakouts page is the
+      // closest spiritual successor (pattern-detection on coins).
+      { source: '/signals', destination: '/breakouts', permanent: true },
     ];
   },
   async rewrites() {
