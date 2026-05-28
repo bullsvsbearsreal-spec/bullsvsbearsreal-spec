@@ -110,7 +110,7 @@ export function TerminalSidebar({
               <li key={label}>
                 <button
                   onClick={() => onSelect(label)}
-                  className={`w-full flex items-center justify-between px-3 py-1.5 text-xs hover:bg-white/[0.04] transition-colors ${isActive ? 'bg-yellow-400/[0.06] border-l-2 border-yellow-400' : ''}`}
+                  className={`w-full flex items-center justify-between px-3 py-1.5 text-xs hover:bg-white/[0.04] transition-colors ${isActive ? 'bg-cyan-400/[0.06] border-l-2 border-cyan-400' : ''}`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <TokenIconSimple symbol={label} size={18} />
@@ -145,7 +145,7 @@ export function TerminalSidebar({
                   onClick={() => onSelect(r)}
                   className={`flex items-center gap-1 text-[10px] pl-1 pr-2 py-0.5 rounded-full transition-colors ${
                     isActive
-                      ? 'bg-yellow-400/10 text-yellow-300 ring-1 ring-yellow-400/30'
+                      ? 'bg-cyan-400/10 text-cyan-300 ring-1 ring-cyan-400/30'
                       : 'bg-white/[0.05] text-neutral-300 hover:bg-white/[0.08]'
                   }`}
                 >
@@ -173,7 +173,7 @@ export function TerminalSidebar({
                   {label}
                 </span>
                 {live && (
-                  <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-yellow-400/10 text-yellow-400 font-bold">
+                  <span className="text-[9px] uppercase tracking-wider px-1.5 py-0.5 rounded bg-cyan-400/10 text-cyan-400 font-bold">
                     LIVE
                   </span>
                 )}

@@ -186,7 +186,7 @@ export function OrderBookPanel({ symbol }: { symbol: string }) {
                 <button
                   key={v}
                   onClick={() => { setVenue(v); setVenueMenuOpen(false); }}
-                  className={`block w-full text-left text-xs px-2 py-1 rounded hover:bg-white/[0.06] ${v === venue ? 'text-yellow-400' : 'text-neutral-300'}`}
+                  className={`block w-full text-left text-xs px-2 py-1 rounded hover:bg-white/[0.06] ${v === venue ? 'text-cyan-400' : 'text-neutral-300'}`}
                 >
                   {v}{v !== 'Binance' && <span className="text-[9px] text-neutral-500 ml-1">(via Binance fallback)</span>}
                 </button>
@@ -197,7 +197,7 @@ export function OrderBookPanel({ symbol }: { symbol: string }) {
                   <button
                     key={t}
                     onClick={() => { setTick(t); setVenueMenuOpen(false); }}
-                    className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${t === tick ? 'bg-yellow-400/10 text-yellow-300' : 'bg-white/[0.04] text-neutral-300 hover:bg-white/[0.08]'}`}
+                    className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${t === tick ? 'bg-cyan-400/10 text-cyan-300' : 'bg-white/[0.04] text-neutral-300 hover:bg-white/[0.08]'}`}
                   >
                     ${t}
                   </button>

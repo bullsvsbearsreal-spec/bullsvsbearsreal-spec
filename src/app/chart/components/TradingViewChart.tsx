@@ -75,31 +75,15 @@ export function TradingViewChart({
       overrides: {
         'paneProperties.backgroundType': 'solid',
         'paneProperties.background': '#000000',
-        // InfoHub-cyan up / red down — cyan #22d3ee (Tailwind cyan-400)
-        // matches the "info / data" feel of the brand. Body, border,
-        // and wick all set in lockstep so the candles read as one solid
-        // shape instead of a hollow outline.
-        'mainSeriesProperties.candleStyle.upColor': '#22d3ee',
+        // Candle palette — kept as the original yellow/red since the
+        // user clarified the chart-UI cyan request was meant for the
+        // UI accents (tabs, buttons, badges), not the candle bodies.
+        'mainSeriesProperties.candleStyle.upColor': '#eab308',
         'mainSeriesProperties.candleStyle.downColor': '#ef4444',
-        'mainSeriesProperties.candleStyle.borderUpColor': '#22d3ee',
+        'mainSeriesProperties.candleStyle.borderUpColor': '#eab308',
         'mainSeriesProperties.candleStyle.borderDownColor': '#ef4444',
-        'mainSeriesProperties.candleStyle.wickUpColor': '#22d3ee',
+        'mainSeriesProperties.candleStyle.wickUpColor': '#eab308',
         'mainSeriesProperties.candleStyle.wickDownColor': '#ef4444',
-        // Bars (style 2) + Heikin (style 8) pick up these same colors
-        // when active — same palette across all chart styles.
-        'mainSeriesProperties.barStyle.upColor': '#22d3ee',
-        'mainSeriesProperties.barStyle.downColor': '#ef4444',
-        'mainSeriesProperties.haStyle.upColor': '#22d3ee',
-        'mainSeriesProperties.haStyle.downColor': '#ef4444',
-        'mainSeriesProperties.haStyle.borderUpColor': '#22d3ee',
-        'mainSeriesProperties.haStyle.borderDownColor': '#ef4444',
-        // Line + area styles use a single color — cyan to match the
-        // up-candle so green/red asymmetry doesn't carry over to flat
-        // representations.
-        'mainSeriesProperties.lineStyle.color': '#22d3ee',
-        'mainSeriesProperties.areaStyle.color1': '#22d3ee',
-        'mainSeriesProperties.areaStyle.color2': '#22d3ee',
-        'mainSeriesProperties.areaStyle.linecolor': '#22d3ee',
       },
     });
 

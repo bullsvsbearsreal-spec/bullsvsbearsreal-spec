@@ -90,7 +90,7 @@ function TabButton({
       onClick={onClick}
       className={`relative flex items-center gap-1.5 text-xs font-semibold transition-colors px-1 py-1 ${
         active
-          ? 'text-yellow-400'
+          ? 'text-cyan-400'
           : 'text-neutral-500 hover:text-white'
       }`}
     >
@@ -99,7 +99,7 @@ function TabButton({
       {active && (
         // Underline scaled to match label width — sits inside tab strip's
         // border-b without doubling it up.
-        <span className="absolute -bottom-[9px] left-0 right-0 h-[2px] bg-yellow-400 rounded-t" />
+        <span className="absolute -bottom-[9px] left-0 right-0 h-[2px] bg-cyan-400 rounded-t" />
       )}
     </button>
   );
@@ -211,7 +211,7 @@ function LiquidationsTab({ symbol }: { symbol: string }) {
               <td className="px-3 py-1.5 text-neutral-300">{r.exchange}</td>
               <td className={`px-3 py-1.5 ${sideColor} uppercase text-[10px] font-bold`}>{r.side}</td>
               <td className="px-3 py-1.5 text-right text-neutral-300">${r.priceUsd.toFixed(2)}</td>
-              <td className={`px-3 py-1.5 text-right ${r.quantityUsd > 100_000 ? 'text-yellow-400' : 'text-neutral-300'}`}>
+              <td className={`px-3 py-1.5 text-right ${r.quantityUsd > 100_000 ? 'text-cyan-400' : 'text-neutral-300'}`}>
                 ${r.quantityUsd.toLocaleString('en-US', { maximumFractionDigits: 0 })}
               </td>
               <td className="px-3 py-1.5 text-right text-neutral-500 text-[10px]">
@@ -242,9 +242,9 @@ function PositionSizerTab({ symbol }: { symbol: string }) {
       <div className="grid grid-cols-2 gap-3">
         <Link
           href={`/position-size?symbol=${symbol}`}
-          className="flex items-center gap-3 p-4 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:border-yellow-400/40 hover:bg-yellow-400/[0.04] transition-colors"
+          className="flex items-center gap-3 p-4 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:border-cyan-400/40 hover:bg-cyan-400/[0.04] transition-colors"
         >
-          <Ruler className="w-6 h-6 text-yellow-400" />
+          <Ruler className="w-6 h-6 text-cyan-400" />
           <div>
             <div className="text-sm font-semibold text-white">Position Sizer</div>
             <div className="text-[11px] text-neutral-500">Risk-based notional + Kelly + liq preview</div>
@@ -252,9 +252,9 @@ function PositionSizerTab({ symbol }: { symbol: string }) {
         </Link>
         <Link
           href={`/liquidation-map?symbol=${symbol}`}
-          className="flex items-center gap-3 p-4 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:border-yellow-400/40 hover:bg-yellow-400/[0.04] transition-colors"
+          className="flex items-center gap-3 p-4 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:border-cyan-400/40 hover:bg-cyan-400/[0.04] transition-colors"
         >
-          <Zap className="w-6 h-6 text-yellow-400" />
+          <Zap className="w-6 h-6 text-cyan-400" />
           <div>
             <div className="text-sm font-semibold text-white">Liquidation Map</div>
             <div className="text-[11px] text-neutral-500">Where the leverage clusters sit</div>
@@ -262,9 +262,9 @@ function PositionSizerTab({ symbol }: { symbol: string }) {
         </Link>
         <Link
           href={`/funding-arb?symbol=${symbol}`}
-          className="flex items-center gap-3 p-4 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:border-yellow-400/40 hover:bg-yellow-400/[0.04] transition-colors"
+          className="flex items-center gap-3 p-4 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:border-cyan-400/40 hover:bg-cyan-400/[0.04] transition-colors"
         >
-          <Percent className="w-6 h-6 text-yellow-400" />
+          <Percent className="w-6 h-6 text-cyan-400" />
           <div>
             <div className="text-sm font-semibold text-white">Funding Arb</div>
             <div className="text-[11px] text-neutral-500">Long/short across venues, harvest the spread</div>
@@ -272,9 +272,9 @@ function PositionSizerTab({ symbol }: { symbol: string }) {
         </Link>
         <Link
           href={`/alerts?symbol=${symbol}`}
-          className="flex items-center gap-3 p-4 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:border-yellow-400/40 hover:bg-yellow-400/[0.04] transition-colors"
+          className="flex items-center gap-3 p-4 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:border-cyan-400/40 hover:bg-cyan-400/[0.04] transition-colors"
         >
-          <TrendingUp className="w-6 h-6 text-yellow-400" />
+          <TrendingUp className="w-6 h-6 text-cyan-400" />
           <div>
             <div className="text-sm font-semibold text-white">Set an Alert</div>
             <div className="text-[11px] text-neutral-500">Price / funding / OI threshold pings</div>

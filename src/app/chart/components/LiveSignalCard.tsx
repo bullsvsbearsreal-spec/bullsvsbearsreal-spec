@@ -78,12 +78,12 @@ export function LiveSignalCard({ symbol }: { symbol: string }) {
   // soft transition, not a jolt. Tracked via key changes on the inner
   // div + CSS opacity transition.
   return (
-    <div className="rounded-lg border border-white/[0.06] bg-gradient-to-br from-yellow-400/[0.04] to-transparent p-3 shadow-sm">
+    <div className="rounded-lg border border-white/[0.06] bg-gradient-to-br from-cyan-400/[0.04] to-transparent p-3 shadow-sm">
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-1.5">
           <span className="relative flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-50" />
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-400" />
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-50" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-cyan-400" />
           </span>
           <span className="text-[9px] uppercase tracking-wider text-neutral-400 font-bold">
             Live Signal
@@ -94,7 +94,7 @@ export function LiveSignalCard({ symbol }: { symbol: string }) {
       <div key={mode} className="text-[11px] text-neutral-200 leading-snug animate-fade-in">
         {mode === 'funding-flip' ? (
           fundingState
-            ? <><span className="text-yellow-300 font-semibold">{symbol}</span> · {fundingState}</>
+            ? <><span className="text-cyan-300 font-semibold">{symbol}</span> · {fundingState}</>
             : <span className="text-neutral-500">Tracking funding state for {symbol}…</span>
         ) : (
           news ? (
