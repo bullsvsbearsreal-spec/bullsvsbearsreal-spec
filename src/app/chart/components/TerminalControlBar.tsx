@@ -260,13 +260,19 @@ function SymbolPickerModal({
   }, [filtered, tab.pinned]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 bg-black/80 backdrop-blur-sm"
+    // Lighter backdrop (60% black) so the chart stays partially visible —
+    // less "modal blocking everything" feel, more "lookup overlay".
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 bg-black/60 backdrop-blur-sm"
          onClick={onClose}>
       <div
-        className="bg-neutral-950 border border-white/[0.08] rounded-xl shadow-2xl w-full max-w-2xl max-h-[70vh] flex flex-col overflow-hidden"
+        // Wider (3xl, 768 px) + denser grid so most users see their
+        // target without scrolling. Each row is compact: icon + label
+        // on one line, no per-row "/USDT-PERP" suffix (implied for
+        // crypto, shown in the header instead).
+        className="bg-neutral-950 border border-white/[0.08] rounded-xl shadow-2xl w-full max-w-3xl max-h-[70vh] flex flex-col overflow-hidden"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2 px-4 py-2.5 border-b border-white/[0.06]">
           <Search className="w-4 h-4 text-neutral-500" />
           <input
             autoFocus
@@ -275,30 +281,27 @@ function SymbolPickerModal({
             placeholder={`Search ${tab.label} symbols…`}
             className="flex-1 bg-transparent text-sm text-white placeholder:text-neutral-500 outline-none"
           />
-          <span className="text-[10px] text-neutral-500">ESC to close</span>
+          <span className="text-[9px] text-neutral-600 uppercase tracking-wider">
+            {assetClass === 'crypto' ? '/USDT-PERP · ESC to close' : 'ESC to close'}
+          </span>
         </div>
-        <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex-1 overflow-y-auto p-2.5">
           {Object.entries(byCat).map(([cat, list]) => (
-            <div key={cat} className="mb-3">
-              <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-1.5 px-1">{cat}</div>
-              <div className="grid grid-cols-4 gap-1.5">
+            <div key={cat} className="mb-2">
+              <div className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold mb-1 px-1">{cat}</div>
+              <div className="grid grid-cols-5 gap-1">
                 {list.map((s) => (
                   <button
                     key={s.label}
                     onClick={() => onPick(s.label)}
-                    className={`flex items-center gap-2 text-left px-2 py-1.5 rounded transition-colors ${
+                    className={`flex items-center gap-1.5 text-left px-2 py-1 rounded transition-colors ${
                       s.label === activeLabel
                         ? 'bg-cyan-400/10 text-cyan-300 border border-cyan-400/30'
                         : 'bg-white/[0.03] text-neutral-300 hover:bg-white/[0.06] border border-transparent'
                     }`}
                   >
-                    <TokenIconSimple symbol={s.label} size={16} />
-                    <span className="flex-1 min-w-0">
-                      <span className="text-xs font-semibold truncate block">{s.label}</span>
-                      {s.displayPair && (
-                        <span className="text-[9px] text-neutral-500 truncate block">{s.displayPair}</span>
-                      )}
-                    </span>
+                    <TokenIconSimple symbol={s.label} size={14} />
+                    <span className="text-xs font-semibold truncate">{s.label}</span>
                   </button>
                 ))}
               </div>
