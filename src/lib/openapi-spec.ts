@@ -431,7 +431,7 @@ export const openApiSpec = {
           { name: 'symbols', in: 'query', schema: { type: 'string' }, description: 'Comma-separated symbol filter (e.g. BTC,ETH)' },
           { name: 'exchanges', in: 'query', schema: { type: 'string' }, description: 'Comma-separated exchange filter (case-insensitive)' },
           { name: 'aggregate', in: 'query', schema: { type: 'integer', enum: [0, 1] }, description: '1 = sum per symbol, one row each; 0 = per-venue (default)' },
-          { name: 'changes', in: 'query', schema: { type: 'integer', enum: [0, 1] }, description: '1 = include {pct1h, pct4h, pct24h} on each row' },
+          { name: 'changes', in: 'query', schema: { type: 'integer', enum: [0, 1] }, description: '1 = attach a `changes: {pct1h, pct4h, pct24h}` object to each row (each pct optional — null when the symbol has fewer than the required snapshots). Per-symbol — same value on every row of that symbol. meta.changesAvailable: true when ≥1 row carries the field.' },
         ],
         responses: { 200: { description: 'OK' } },
       },
