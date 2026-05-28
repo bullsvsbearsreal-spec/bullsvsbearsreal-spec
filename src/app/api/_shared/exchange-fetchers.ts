@@ -126,6 +126,17 @@ export async function fetchAllExchanges<T>(
   return data;
 }
 
+// Hard ceiling on time spent per-fetcher across BOTH attempts. Was
+// effectively unbounded — Binance ticker fetcher alone tries 3-4 URLs
+// at 10s each × 2 retries = 80s worst case if all URLs hang, which
+// causes /api/v1/tickers (and any other route using this helper) to
+// stall for ~80s instead of returning the 31 healthy exchanges'
+// data. AB-Samurai's 5/27 customer report ("API is timing out") was
+// caused by this — one degraded upstream blocked the entire
+// Promise.all. 12s gives slow-but-alive exchanges time to respond
+// while killing genuine hangs decisively.
+const FETCHER_TIMEOUT_MS = 12_000;
+
 // Run all exchange fetchers with health tracking
 // Includes one automatic retry on failure/empty to handle intermittent API blocks
 export async function fetchAllExchangesWithHealth<T>(
@@ -148,44 +159,75 @@ export async function fetchAllExchangesWithHealth<T>(
     }
 
     const start = Date.now();
-    let lastError = '';
 
-    // Try up to 2 attempts (initial + 1 retry)
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        if (attempt > 0) await new Promise(r => setTimeout(r, 500)); // Brief delay before retry
-        const result = await fetcher(fetchFn);
-        if (result.length > 0) {
-          recordSuccess(name);
-          health.push({
-            name,
-            status: 'ok',
-            count: result.length,
-            latencyMs: Date.now() - start,
-          });
-          return result;
+    // Outer race: cap total time per fetcher across both attempts so
+    // one hung upstream can't block the whole Promise.all below.
+    return await Promise.race([
+      (async () => {
+        let lastError = '';
+        // Try up to 2 attempts (initial + 1 retry)
+        for (let attempt = 0; attempt < 2; attempt++) {
+          try {
+            if (attempt > 0) await new Promise(r => setTimeout(r, 500)); // Brief delay before retry
+            const result = await fetcher(fetchFn);
+            if (result.length > 0) {
+              recordSuccess(name);
+              health.push({
+                name,
+                status: 'ok',
+                count: result.length,
+                latencyMs: Date.now() - start,
+              });
+              return result;
+            }
+            // Empty result — retry once in case of transient issue
+            if (attempt === 0) continue;
+            recordFailure(name);
+            health.push({ name, status: 'empty', count: 0, latencyMs: Date.now() - start });
+            return [] as T[];
+          } catch (error) {
+            lastError = error instanceof Error ? error.message : 'Unknown error';
+            if (attempt === 0) continue; // Retry on first failure
+            recordFailure(name);
+            logExchangeError(name, error, { route: 'exchange-fetcher' });
+            health.push({
+              name,
+              status: 'error',
+              count: 0,
+              latencyMs: Date.now() - start,
+              error: 'Exchange fetch failed',
+            });
+            return [] as T[];
+          }
         }
-        // Empty result — retry once in case of transient issue
-        if (attempt === 0) continue;
-        recordFailure(name);
-        health.push({ name, status: 'empty', count: 0, latencyMs: Date.now() - start });
+        // Loop body always returns above; this satisfies TS narrowing only.
+        // Use lastError as the failure breadcrumb if we ever reach here.
+        void lastError;
         return [] as T[];
-      } catch (error) {
-        lastError = error instanceof Error ? error.message : 'Unknown error';
-        if (attempt === 0) continue; // Retry on first failure
-        recordFailure(name);
-        logExchangeError(name, error, { route: 'exchange-fetcher' });
-        health.push({
-          name,
-          status: 'error',
-          count: 0,
-          latencyMs: Date.now() - start,
-          error: 'Exchange fetch failed',
-        });
-        return [] as T[];
-      }
-    }
-    return [] as T[];
+      })(),
+      new Promise<T[]>((_, reject) =>
+        setTimeout(
+          () => reject(new Error(`fetcher-timeout:${FETCHER_TIMEOUT_MS}ms`)),
+          FETCHER_TIMEOUT_MS,
+        ),
+      ),
+    ]).catch(e => {
+      // Race timeout (or any uncaught throw from the inner attempts loop).
+      // Record as a failure so the circuit breaker still ticks, then
+      // return [] so the parallel fan-out can stitch the other 30
+      // exchanges' data without hanging.
+      recordFailure(name);
+      const isTimeout = e instanceof Error && e.message?.startsWith('fetcher-timeout');
+      health.push({
+        name,
+        status: 'error',
+        count: 0,
+        latencyMs: Date.now() - start,
+        error: isTimeout ? `Timed out after ${FETCHER_TIMEOUT_MS}ms` : 'Exchange fetch failed',
+      });
+      if (!isTimeout) logExchangeError(name, e, { route: 'exchange-fetcher' });
+      return [] as T[];
+    });
   });
 
   const results = await Promise.all(promises);
