@@ -44,9 +44,15 @@ function pickDefaultTick(price: number): number {
   return 0.001;
 }
 
+/** Binance Futures partial book depth has two shapes in the wild:
+ *   1. `btcusdt@depth20@100ms` → diff/partial frames using `b` / `a`
+ *   2. Older docs showed snapshot frames with `bids` / `asks`
+ *  We accept both — first observed frame wins. */
 interface DepthMsg {
-  bids: [string, string][];
-  asks: [string, string][];
+  b?: [string, string][];
+  a?: [string, string][];
+  bids?: [string, string][];
+  asks?: [string, string][];
 }
 
 function buildBinanceUrl(symbol: string): string {
@@ -111,11 +117,17 @@ export function OrderBookPanel({ symbol }: { symbol: string }) {
       if (cancelled) return;
       try {
         const msg: DepthMsg = JSON.parse(ev.data);
-        if (!msg.bids || !msg.asks) return;
-        const nextBids: Level[] = msg.bids.map(([p, q]) => ({ price: +p, size: +q })).filter(l => l.size > 0);
-        const nextAsks: Level[] = msg.asks.map(([p, q]) => ({ price: +p, size: +q })).filter(l => l.size > 0);
-        setBids(nextBids);
-        setAsks(nextAsks);
+        // Binance partial-depth frames use `b`/`a`; some snapshots
+        // use `bids`/`asks`. Accept either.
+        const rawBids = msg.b ?? msg.bids;
+        const rawAsks = msg.a ?? msg.asks;
+        if (!rawBids || !rawAsks) return;
+        const nextBids: Level[] = rawBids.map(([p, q]) => ({ price: +p, size: +q })).filter(l => l.size > 0 && Number.isFinite(l.price));
+        const nextAsks: Level[] = rawAsks.map(([p, q]) => ({ price: +p, size: +q })).filter(l => l.size > 0 && Number.isFinite(l.price));
+        if (nextBids.length > 0 || nextAsks.length > 0) {
+          setBids(nextBids);
+          setAsks(nextAsks);
+        }
       } catch { /* swallow malformed frames */ }
     };
 
@@ -222,11 +234,8 @@ export function OrderBookPanel({ symbol }: { symbol: string }) {
 
         {/* Spread row */}
         <div className="px-3 py-1 border-y border-white/[0.06] bg-white/[0.02] text-[10px] flex items-center justify-between">
-          <span className="text-neutral-400">
-            {mid ? <span className="text-white font-mono">${mid.toFixed(2)}</span> : <span className="text-neutral-600">—</span>}
-            {bestBid && bestAsk && (
-              <span className="text-emerald-400 ml-2">▲ +{(((mid! - (bids[0]?.price ?? 0)) / (bids[0]?.price || 1)) * 100).toFixed(2)}% 1h</span>
-            )}
+          <span className="text-white font-mono text-xs">
+            {mid ? `$${mid.toFixed(2)}` : <span className="text-neutral-600">—</span>}
           </span>
           <span className="text-neutral-500">
             spread {spread ? spread.toFixed(2) : '—'}
