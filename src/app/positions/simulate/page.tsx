@@ -74,7 +74,16 @@ const TONE: Record<'critical'|'risky'|'caution'|'ok'|'healthy', string> = {
   healthy:  'border-emerald-400/40 text-emerald-300 bg-emerald-500/10',
 };
 
-const EXCHANGES = ['Hyperliquid', 'GMX', 'gTrade', 'Lighter', 'Binance', 'Bybit', 'OKX', 'Bitget'];
+// CEXes derived from SUPPORTED_EXCHANGES so adding a venue to the
+// portfolio-connections feature auto-unlocks pre-trade simulation
+// for it. Was a hardcoded 4-CEX list that silently dropped MEXC +
+// Blofin (both API-key-connectable) — users couldn't simulate trades
+// on those venues even with valid keys connected.
+//
+// DEX venues stay hardcoded — they each need bespoke address /
+// account discovery logic, so adding one is a deliberate step.
+import { SUPPORTED_EXCHANGES } from '@/lib/portfolio/supported-exchanges';
+const EXCHANGES = ['Hyperliquid', 'GMX', 'gTrade', 'Lighter', ...SUPPORTED_EXCHANGES];
 
 const fmtUsd = (n: number | null | undefined): string => {
   if (n == null || !Number.isFinite(n)) return '—';
