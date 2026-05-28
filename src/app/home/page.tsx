@@ -20,6 +20,7 @@ import { type NewsArticle, formatTimeAgo, fetchCryptoNews } from '@/lib/api/coin
 import { SatPing, StreamBars, Sparkline } from '@/components/design-system';
 import { BtcHalvingCountdown } from '@/components/BtcHalvingCountdown';
 import CompetitorComparison from '@/components/CompetitorComparison';
+import OnboardingChecklist from '@/components/OnboardingChecklist';
 
 // ────────────────────────────────────────────────────────────────────
 // Helpers
@@ -425,6 +426,11 @@ export default function HomePage() {
           itself. Without this, screen readers can't tell users what page
           they're on and Lighthouse / Google flag a structural SEO miss. */}
       <h1 className="sr-only">InfoHub · Live Crypto Derivatives Dashboard</h1>
+
+      {/* Onboarding checklist — self-hides for logged-out, completed, or
+          dismissed users; only paints when there's an incomplete setup
+          step to act on. */}
+      <OnboardingChecklist />
 
       {/* Mobile quick-pill row */}
       <div className="lg:hidden" style={{ marginBottom: 12, display: 'flex', flexWrap: 'wrap', gap: 6 }}>
