@@ -400,8 +400,11 @@ export default function DevelopersPage() {
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   // Per-user API usage — populated from /api/developer/usage which reads
-  // api_request_log (sampled 1-in-5 at the v1-auth layer). Hits shown
-  // raw (not multiplied) so the user sees what we actually recorded.
+  // api_request_log (sampled 1-in-5 at the v1-auth layer). Display
+  // scales by 1/sampleRate (see the panel below) so the user sees the
+  // estimated true count, matching what /admin-panel/api-usage shows.
+  // Was: raw sampled count with a "(sampled 1/5)" hint, which forced
+  // users to mentally multiply by 5.
   const [usage, setUsage] = useState<UsageResp | null>(null);
 
   const fetchKeys = useCallback(async () => {
