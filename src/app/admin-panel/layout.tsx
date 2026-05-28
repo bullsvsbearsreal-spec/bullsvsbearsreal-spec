@@ -15,8 +15,18 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { getSQL, isDBConfigured } from '@/lib/db';
+import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
+
+// Internal operator surface — gated server-side. Don't let search
+// engines index it (the URL leaks "we have an admin panel" + organic
+// hits land on the "Admin access required" redirect, which is a
+// confusing UX for casual searchers).
+export const metadata: Metadata = {
+  title: 'Admin Panel',
+  robots: { index: false, follow: false, noarchive: true, nosnippet: true },
+};
 
 export default async function AdminPanelLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();

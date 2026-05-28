@@ -12,8 +12,15 @@
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { getSQL, isDBConfigured } from '@/lib/db';
+import type { Metadata } from 'next';
 
 export const dynamic = 'force-dynamic';
+
+// Internal support-rep surface — noindex (same logic as admin-panel).
+export const metadata: Metadata = {
+  title: 'Support Panel',
+  robots: { index: false, follow: false, noarchive: true, nosnippet: true },
+};
 
 export default async function SupportPanelLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
