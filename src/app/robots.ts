@@ -51,6 +51,13 @@ export default function robots(): MetadataRoute.Robots {
           '/admin',
           '/admin-panel',
           '/admin/',
+          // Other internal role-gated panels — already have noindex
+          // meta tags via their layout.tsx, but belt-and-suspenders
+          // here so crawlers never even hit them. (Moderator, marketer
+          // and support-rep surfaces — same logic as /admin-panel.)
+          '/mod-panel',
+          '/marketing-panel',
+          '/support-panel',
           // Auth flows
           '/reset-password',
           '/forgot-password',

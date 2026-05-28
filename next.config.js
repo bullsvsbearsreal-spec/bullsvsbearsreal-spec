@@ -48,6 +48,16 @@ const nextConfig = {
       { source: '/settings/notifications', destination: '/profile?tab=notifications', permanent: true },
       { source: '/settings/connections', destination: '/profile?tab=connections', permanent: true },
       { source: '/settings/billing', destination: '/profile?tab=billing', permanent: true },
+      // Plausible API-key landing paths that users hit but don't
+      // exist as actual routes. Discovered while Chrome-browsing —
+      // the developer docs link to /developers but partners often
+      // try /developers/keys, /api-keys, /account/keys directly.
+      { source: '/developers/keys', destination: '/profile?tab=api-keys', permanent: true },
+      { source: '/api-keys', destination: '/profile?tab=api-keys', permanent: true },
+      { source: '/apikeys', destination: '/profile?tab=api-keys', permanent: true },
+      { source: '/api-key', destination: '/profile?tab=api-keys', permanent: true },
+      { source: '/account', destination: '/profile', permanent: true },
+      { source: '/account/keys', destination: '/profile?tab=api-keys', permanent: true },
     ];
   },
   async rewrites() {
