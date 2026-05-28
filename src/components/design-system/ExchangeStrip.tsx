@@ -57,7 +57,15 @@ export default function ExchangeStrip({ compact = false, className }: ExchangeSt
             src={`/exchanges/${name}.png`}
             alt={name}
             width={sz} height={sz}
-            style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+            // `contain` instead of `cover` — several source PNGs
+            // (blofin, bitunix, gate, edgex, backpack, orderly,
+            // paradex, lighter, etc.) have the actual logo centered
+            // in a wide white canvas. With `cover` the small centered
+            // logo got cropped out and the circle appeared empty
+            // white. `contain` shows the logo even if it has padding.
+            // Re-cropping the source PNGs is a follow-up cleanup,
+            // but this lets every venue show some glyph today.
+            style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block' }}
             onError={(e) => { (e.currentTarget as HTMLImageElement).style.visibility = 'hidden'; }}
             unoptimized
           />
