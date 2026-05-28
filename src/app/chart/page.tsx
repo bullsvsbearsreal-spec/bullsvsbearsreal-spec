@@ -38,7 +38,9 @@ import Header from '@/components/Header';
 import { ASSET_TABS, findBySymbol, assetClassFor } from './catalog';
 import type { AssetClass, Timeframe } from './catalog';
 import { TerminalControlBar } from './components/TerminalControlBar';
-import { TerminalSidebar } from './components/TerminalSidebar';
+// TerminalSidebar removed from the layout (user request — that 200 px
+// of crypto-watchlist real estate now belongs to the chart). The
+// component file stays in the tree for potential re-introduction.
 import { TerminalStatsBar } from './components/TerminalStatsBar';
 import { TradingViewChart, type ChartStyle } from './components/TradingViewChart';
 import { OrderBookPanel } from './components/OrderBookPanel';
@@ -215,33 +217,24 @@ export default function ChartPage() {
         onToggleFavorite={toggleFavorite}
       />
 
-      {/* Terminal grid — sidebar 160-200, right rail 220-260 (was
-          260-300, took up too much width), bottom 220 expanded or
-          40 collapsed (was 280 — bottom-tab content only fills
-          ~180 px, the rest was dead black space below Top Movers). */}
+      {/* Terminal grid — sidebar removed (user request: that 200 px
+          of crypto-list real estate now belongs to the chart). Symbol
+          switching still works via the control-bar picker + the
+          star/favorite flow. Tools are reachable via the main nav.
+          Right rail (order book + trade tape) kept; bottom row
+          collapsible. */}
       <div
         className="flex-1 grid min-h-0"
         style={{
-          gridTemplateColumns: 'minmax(160px, 200px) 1fr minmax(220px, 260px)',
+          gridTemplateColumns: '1fr minmax(220px, 260px)',
           gridTemplateRows: `auto 1fr ${bottomCollapsed ? '40px' : '220px'}`,
           gridTemplateAreas: `
-            "sidebar stats  right"
-            "sidebar chart  right"
-            "sidebar bottom right"
+            "stats  right"
+            "chart  right"
+            "bottom right"
           `,
         }}
       >
-        <div style={{ gridArea: 'sidebar' }} className="hidden md:block min-w-0 overflow-hidden">
-          <TerminalSidebar
-            activeSymbol={symbolLabel}
-            assetClass={assetClass}
-            favorites={favorites}
-            tickerLookup={tickerLookup}
-            recents={recents}
-            onSelect={handleSymbolChange}
-          />
-        </div>
-
         <div style={{ gridArea: 'stats' }} className="min-w-0">
           <TerminalStatsBar symbol={symbolLabel} assetClass={assetClass} />
         </div>
