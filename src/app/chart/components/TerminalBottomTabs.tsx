@@ -33,12 +33,18 @@ interface FundingRow {
   fundingIntervalHours?: number;
 }
 
+/** Shape of one row from /api/liquidations. Fields are `price`,
+ *  `value`, `size`, `side`, `timestamp` — NOT priceUsd/quantityUsd.
+ *  Reading the wrong field name produced undefined.toFixed() crashes
+ *  in the Liquidations tab if a user had it selected (stored to
+ *  localStorage on each tab switch, restored on page load). */
 interface LiquidationRow {
-  exchange: string;
-  symbol: string;
+  exchange?: string;
+  symbol?: string;
   side: 'long' | 'short';
-  priceUsd: number;
-  quantityUsd: number;
+  price: number;          // USD price at time of liquidation
+  size: number;           // base-asset quantity
+  value: number;          // USD value = price × size
   timestamp: number;
 }
 
@@ -226,16 +232,24 @@ function LiquidationsTab({ symbol }: { symbol: string }) {
       <tbody>
         {rows.map((r, i) => {
           const sideColor = r.side === 'long' ? 'text-red-400' : 'text-emerald-400';
+          // Defensive nullish-coalesces on every numeric field — a
+          // missing price/value/timestamp can't crash the render
+          // again. The crash was: API returns {price, value, size}
+          // but the interface read {priceUsd, quantityUsd} →
+          // undefined.toFixed() threw.
+          const price = r.price ?? 0;
+          const value = r.value ?? 0;
+          const ts = r.timestamp ?? Date.now();
           return (
-            <tr key={`${r.timestamp}-${i}`} className="border-t border-white/[0.04] hover:bg-white/[0.02]">
-              <td className="px-3 py-1.5 text-neutral-300">{r.exchange}</td>
+            <tr key={`${ts}-${i}`} className="border-t border-white/[0.04] hover:bg-white/[0.02]">
+              <td className="px-3 py-1.5 text-neutral-300">{r.exchange ?? '—'}</td>
               <td className={`px-3 py-1.5 ${sideColor} uppercase text-[10px] font-bold`}>{r.side}</td>
-              <td className="px-3 py-1.5 text-right text-neutral-300">${r.priceUsd.toFixed(2)}</td>
-              <td className={`px-3 py-1.5 text-right ${r.quantityUsd > 100_000 ? 'text-cyan-400' : 'text-neutral-300'}`}>
-                ${r.quantityUsd.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+              <td className="px-3 py-1.5 text-right text-neutral-300">${price.toFixed(2)}</td>
+              <td className={`px-3 py-1.5 text-right ${value > 100_000 ? 'text-cyan-400' : 'text-neutral-300'}`}>
+                ${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}
               </td>
               <td className="px-3 py-1.5 text-right text-neutral-500 text-[10px]">
-                {ageString(Date.now() - r.timestamp)}
+                {ageString(Date.now() - ts)}
               </td>
             </tr>
           );
@@ -375,14 +389,16 @@ function MoverCard({ title, rows, tone }: { title: string; rows: MoverRow[]; ton
                 {r.symbol.slice(0, 1)}
               </span>
               <span className="text-neutral-200 font-semibold">{r.symbol}</span>
-              {r.price > 0 && (
+              {Number.isFinite(r.price) && r.price > 0 && (
                 <span className="text-[10px] text-neutral-500 font-mono">
                   ${r.price < 1 ? r.price.toFixed(4) : r.price.toFixed(0)}
                 </span>
               )}
             </span>
             <span className={`font-mono text-sm font-semibold ${accent}`}>
-              {r.changePct >= 0 ? '+' : ''}{r.changePct.toFixed(2)}%
+              {Number.isFinite(r.changePct)
+                ? `${r.changePct >= 0 ? '+' : ''}${r.changePct.toFixed(2)}%`
+                : '—'}
             </span>
           </li>
         ))}
