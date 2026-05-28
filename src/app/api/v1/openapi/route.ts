@@ -25,6 +25,12 @@ export async function GET() {
     headers: {
       'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400',
       'Access-Control-Allow-Origin': '*',
+      // Expose the X-Fee-Model-* headers to cross-origin JavaScript.
+      // Without this, browser clients caching the spec couldn't read
+      // X-Fee-Model-Version (despite Allow-Origin: *) and would have
+      // to refetch the whole spec body just to detect a fee-table
+      // bump — defeats the cheap-poll pattern the spec advertises.
+      'Access-Control-Expose-Headers': 'X-Fee-Model-Version, X-Fee-Model-Updated-At',
       'X-Fee-Model-Version': FEE_MODEL_VERSION,
       'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
     },

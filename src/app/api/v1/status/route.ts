@@ -97,6 +97,13 @@ export async function GET() {
       // Used by monitoring dashboards + status pages running in the
       // browser without an API key.
       'Access-Control-Allow-Origin': '*',
+      // Without this header, CORS hides custom (non-CORS-safelisted)
+      // response headers from cross-origin JavaScript even with
+      // Allow-Origin: * — so the cheap "poll /status for fee-model
+      // version" pattern the OpenAPI spec advertises silently
+      // returned `undefined` to browser clients. Now exposed so
+      // res.headers.get('X-Fee-Model-Version') works.
+      'Access-Control-Expose-Headers': 'X-Fee-Model-Version, X-Fee-Model-Updated-At',
     },
   });
 }
