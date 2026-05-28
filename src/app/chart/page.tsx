@@ -186,6 +186,7 @@ export default function ChartPage() {
           <TerminalSidebar
             activeSymbol={symbolLabel}
             assetClass={assetClass}
+            favorites={favorites}
             tickerLookup={tickerLookup}
             recents={recents}
             onSelect={handleSymbolChange}

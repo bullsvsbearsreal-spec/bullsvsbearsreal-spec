@@ -17,7 +17,7 @@
  * onSelect callback. The parent owns the symbol state.
  */
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import {
   Percent, Layers, Ruler, BellRing, Flame, TrendingUp,
 } from 'lucide-react';
@@ -46,27 +46,22 @@ const TOOL_LINKS = [
 export function TerminalSidebar({
   activeSymbol,
   assetClass,
+  favorites,
   tickerLookup,
   recents,
   onSelect,
 }: {
   activeSymbol: string;
   assetClass: AssetClass;
+  /** Source of truth: the page-level favorites array. Sidebar used to
+   *  hydrate its own copy from localStorage which meant pinning via
+   *  the control-bar star didn't reflect here until refresh. */
+  favorites: string[];
   /** Map<label, {price, change24h}>. Built once in parent from useTickers. */
   tickerLookup: Map<string, SidebarTickerLite>;
   recents: string[];
   onSelect: (label: string) => void;
 }) {
-  const [favorites, setFavorites] = useState<string[]>([]);
-
-  // Hydrate favourites from localStorage. Effect-only — no SSR mismatch.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('infohub_favorites');
-      const parsed = raw ? JSON.parse(raw) : null;
-      if (Array.isArray(parsed)) setFavorites(parsed.filter((s): s is string => typeof s === 'string'));
-    } catch { /* ignore */ }
-  }, []);
 
   // Watchlist = favourites for THIS asset class first (de-duplicated),
   // then class-specific defaults. Crypto users see BTC/ETH/SOL;

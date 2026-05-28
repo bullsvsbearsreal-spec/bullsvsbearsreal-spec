@@ -159,7 +159,7 @@ export function TerminalControlBar({
             Funding
           </Link>
           <Link
-            href={`/compare?symbols=${symbolLabel},BTC`}
+            href={`/compare?symbols=${symbolLabel},${symbolLabel === 'BTC' ? 'ETH' : 'BTC'}`}
             className="flex items-center gap-1 text-[11px] font-semibold text-neutral-300 hover:text-white px-2 py-1 rounded hover:bg-white/[0.04]"
           >
             <Compass className="w-3.5 h-3.5" />
