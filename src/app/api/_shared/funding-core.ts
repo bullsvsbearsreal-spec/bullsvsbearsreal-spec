@@ -78,7 +78,7 @@ function buildResult(filtered: any[], health: any[], assetClass: AssetClassFilte
       timestamp: Date.now(),
       normalization: {
         basis: 'native',
-        note: 'Rates in native interval percentage — check fundingInterval field (1h/4h/8h) and the more precise fundingIntervalHours when present. 8h: Binance, Bybit, OKX, Bitget, MEXC, BingX, Phemex, KuCoin, Deribit, HTX, Bitfinex, WhiteBIT, CoinEx, Aster, gTrade. 4h: Kraken. 1h: Hyperliquid, dYdX, Aevo, Coinbase, GMX, Extended, Lighter, edgeX. 24h (daily-settle at 00:00 UTC): Blofin (emits the closest bucket "8h" alongside fundingIntervalHours=24). Bitunix/Variational vary per market (fundingIntervalHours set per-row). predictedRate only present when natively provided by the exchange.',
+        note: 'Rates in native interval percentage — check fundingInterval field (1h/4h/8h) and the more precise fundingIntervalHours when present. 8h: Binance, Bybit, OKX, Bitget, Blofin, MEXC, BingX, Phemex, KuCoin, Deribit, HTX, Bitfinex, WhiteBIT, CoinEx, Aster, gTrade, Orderly, Paradex. 4h: Kraken. 1h: Hyperliquid, dYdX, Aevo, Coinbase, GMX, Extended, Lighter, edgeX, Nado, Backpack. Bitunix/Variational vary per market (fundingIntervalHours set per-row). predictedRate only present when natively provided or derived from a documented fallback (see /api/v1/exchanges supportsPredictedRate + predictedRateSource for the per-venue matrix).',
       },
     },
   };
