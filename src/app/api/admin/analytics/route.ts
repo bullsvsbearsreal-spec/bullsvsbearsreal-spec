@@ -54,11 +54,27 @@ const UMAMI_WEBSITE_ID = process.env.UMAMI_WEBSITE_ID || process.env.NEXT_PUBLIC
 // self-healing forever.
 let cachedToken: string | null = UMAMI_TOKEN_SEED || null;
 let loginInFlight: Promise<string | null> | null = null;
+// After a failed login (wrong creds, Umami down, etc), refuse to retry
+// for 60s. Without this, a misconfigured UMAMI_PASSWORD would turn
+// every admin-panel refresh into a 6-shot credential-stuffing burst
+// against our own Umami: each refresh fans out to 6 parallel
+// umamiFetch calls, each 401s, each tries to login. The backoff caps
+// the damage at one login attempt per minute until the operator
+// notices and fixes it.
+let loginFailedUntil = 0;
 
 async function loginToUmami(): Promise<string | null> {
   if (!UMAMI_USERNAME || !UMAMI_PASSWORD || !UMAMI_HOST) return null;
+  if (Date.now() < loginFailedUntil) return null;
   // De-dupe parallel login attempts — many in-flight requests should
-  // share one network round-trip.
+  // share one network round-trip. We deliberately do NOT null
+  // loginInFlight in a `finally`: that would race a second wave of
+  // 401s into starting a brand-new login before the first wave's
+  // callers had awaited the resolved promise, re-introducing the
+  // duplicate-login bug. The 401 handler clears loginInFlight under
+  // the same gate that clears cachedToken, so exactly one fresh
+  // login happens per token-expiry cycle and stragglers reuse the
+  // resolved promise.
   if (loginInFlight) return loginInFlight;
   loginInFlight = (async () => {
     try {
@@ -67,15 +83,22 @@ async function loginToUmami(): Promise<string | null> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: UMAMI_USERNAME, password: UMAMI_PASSWORD }),
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        loginFailedUntil = Date.now() + 60_000;
+        return null;
+      }
       const json = await res.json() as { token?: string };
       const tok = json.token ?? null;
-      if (tok) cachedToken = tok;
+      if (tok) {
+        cachedToken = tok;
+        loginFailedUntil = 0;
+      } else {
+        loginFailedUntil = Date.now() + 60_000;
+      }
       return tok;
     } catch {
+      loginFailedUntil = Date.now() + 60_000;
       return null;
-    } finally {
-      loginInFlight = null;
     }
   })();
   return loginInFlight;
@@ -97,8 +120,17 @@ async function umamiFetch<T>(path: string, params: Record<string, string | numbe
   try {
     let res = await doFetch(cachedToken);
     // 401/403 → token expired/invalid. Try a fresh login + one retry.
+    // Only the first concurrent 401 to discover staleness triggers a
+    // fresh login: it clears cachedToken + loginInFlight under one
+    // gate, the rest find loginInFlight already pointing at the
+    // winner's in-flight (or already-resolved) login and reuse it.
+    // Without the `cachedToken !== null` gate, a parallel 401 could
+    // clobber a fresh token that another worker installed two ms ago.
     if ((res.status === 401 || res.status === 403) && UMAMI_USERNAME && UMAMI_PASSWORD) {
-      cachedToken = null;
+      if (cachedToken !== null) {
+        cachedToken = null;
+        loginInFlight = null;
+      }
       const fresh = await loginToUmami();
       if (fresh) res = await doFetch(fresh);
     }

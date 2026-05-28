@@ -30,18 +30,31 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    // Umami analytics — proxy the tracker + collect endpoint through
-    // info-hub.io so the browser sees same-origin requests. This:
+    // Umami analytics — proxy the tracker through info-hub.io so the
+    // browser sees same-origin requests. This:
     //   1. Sidesteps our CSP (script-src 'self' covers info-hub.io but
     //      not analytics.info-hub.io)
     //   2. Defeats adblockers that pattern-match on `analytics.*` hosts
     //      or `/script.js` paths
-    // The `/u/*` namespace is unused by our own routes.
+    //
+    // The collect endpoint (/u/api/send) is NOT rewritten — it's
+    // handled directly by src/app/u/api/send/route.ts which validates
+    // Origin, rate-limits per IP, and preserves X-Forwarded-For for
+    // Umami's GeoIP. A bare rewrite was an open relay anyone could
+    // spam to pollute our stats with fake page-views.
     const umamiHost = process.env.UMAMI_HOST || process.env.NEXT_PUBLIC_UMAMI_HOST;
-    if (!umamiHost) return [];
+    if (!umamiHost) {
+      // eslint-disable-next-line no-console
+      console.warn(
+        '[next.config] UMAMI_HOST/NEXT_PUBLIC_UMAMI_HOST not set at build time — ' +
+        '/u/script.js rewrite disabled, analytics tracker will 404. If you intend ' +
+        'to ship analytics, set UMAMI_HOST in the DO App Platform env (it must be ' +
+        'available at BUILD time, not just runtime — rewrites are evaluated once).'
+      );
+      return [];
+    }
     return [
       { source: '/u/script.js', destination: `${umamiHost}/script.js` },
-      { source: '/u/api/send',  destination: `${umamiHost}/api/send` },
     ];
   },
   async headers() {
