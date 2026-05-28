@@ -45,7 +45,15 @@ export async function GET(request: NextRequest) {
     if (cached && Date.now() - cached.ts < L1_TTL) {
       raw = cached.data;
     } else {
-      const origin = request.nextUrl.origin;
+      // Prefer NEXT_PUBLIC_BASE_URL over request.nextUrl.origin. Inside
+      // the DO App Platform container, request.nextUrl.origin resolved
+      // to http://localhost:8080 (the bound port), which then bounced
+      // back through middleware in a way that broke this self-fetch.
+      // The env var is set to https://info-hub.io and goes through CF
+      // → DO public path reliably. Customer symptom: /api/v1/longshort
+      // returning 500 in ~2s — caused by the localhost path failing
+      // after middleware processing.
+      const origin = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
       // Internal route expects BTCUSDT format for Binance; append USDT if bare symbol
       const internalSymbol = /USDT$/i.test(symbol) ? symbol : `${symbol}USDT`;
       const res = await fetch(

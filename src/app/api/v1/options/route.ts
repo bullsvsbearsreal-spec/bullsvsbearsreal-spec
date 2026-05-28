@@ -32,7 +32,9 @@ export async function GET(request: NextRequest) {
     if (cached && Date.now() - cached.ts < L1_TTL) {
       raw = cached.data;
     } else {
-      const origin = request.nextUrl.origin;
+      // Prefer NEXT_PUBLIC_BASE_URL — see longshort/route.ts for the
+      // localhost vs public-host story behind this fallback.
+      const origin = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
       const res = await fetch(
         `${origin}/api/options?currency=${currency}`,
         { signal: AbortSignal.timeout(15000), headers: { 'User-Agent': 'InfoHub-v1-internal' } },

@@ -29,7 +29,9 @@ export async function GET(request: NextRequest) {
       return respond(l1Cache.data, wantHistory, auth.headers);
     }
 
-    const origin = request.nextUrl.origin;
+    // Prefer NEXT_PUBLIC_BASE_URL — see longshort/route.ts for the
+    // localhost vs public-host story behind this fallback.
+    const origin = process.env.NEXT_PUBLIC_BASE_URL || request.nextUrl.origin;
     const res = await fetch(`${origin}/api/fear-greed?history=true`, {
       signal: AbortSignal.timeout(10000),
       headers: { 'User-Agent': 'InfoHub-v1-internal' },
