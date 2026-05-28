@@ -161,17 +161,28 @@ const SENTIMENT_COLORS = {
  *   - Returns the index of the first non-promo, or 0 as fallback
  */
 const PROMO_KEYWORDS = /(predict\s*&?\s*earn|airdrop|bonus|earn\s+up\s+to|launchpad|giveaway|cashback|trading\s+contest|deposit\s+to\s+win|points\s+mall|carnival|festival|trade\s+to\s+earn)/i;
-const EXCHANGE_SOURCES = new Set([
+// Exchange names used as a PREFIX match — the news API exposes per-feed
+// source labels like "Binance Listings", "Binance Latest", "Bybit",
+// "Kraken", etc. Set-equality only caught the shorter "Bybit" / "Kraken"
+// labels and let "Binance Listings" promo posts slip into the featured
+// hero slot. Now any source that STARTS WITH one of these names is
+// treated as an exchange feed.
+const EXCHANGE_SOURCES = [
   'Bybit', 'Binance', 'OKX', 'Coinbase', 'Kraken', 'KuCoin', 'Bitget',
   'Bitfinex', 'MEXC', 'Gate.io', 'HTX', 'Bitstamp', 'BingX', 'BitMEX',
-]);
+];
+
+function isExchangeSource(source: string): boolean {
+  if (!source) return false;
+  return EXCHANGE_SOURCES.some(name => source === name || source.startsWith(name + ' '));
+}
 
 function looksLikePromo(article: NewsArticle): boolean {
   // Treat as promo only when BOTH source is an exchange AND the title
   // matches a promo keyword. A news outlet writing ABOUT a promo (e.g.,
   // Cointelegraph covering a Bybit campaign) is legitimate news and
   // shouldn't be skipped.
-  if (!EXCHANGE_SOURCES.has(article.source)) return false;
+  if (!isExchangeSource(article.source)) return false;
   return PROMO_KEYWORDS.test(article.title);
 }
 
