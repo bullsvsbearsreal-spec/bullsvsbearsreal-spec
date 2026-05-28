@@ -12,6 +12,30 @@ const nextConfig = {
   // output: 'standalone',  // disabled — DO App Platform Heroku buildpack runs `next start` directly.
   // Vercel doesn't need standalone output either (it uses its own bundler).
   // Re-enable only if you switch to a Dockerfile-based deploy that runs `node .next/standalone/server.js`.
+
+  // ── Build-time speed wins ──────────────────────────────────────
+  // DO App Platform builds were ~3-5 min. These four flags shave
+  // ~60-90s by skipping work that's redundant with our local /CI
+  // verification (npx tsc --noEmit + npx vitest run before push).
+
+  typescript: {
+    // We typecheck via `npm run typecheck` before every commit + on CI.
+    // Running tsc again during `next build` doubles the work for no
+    // additional safety. If a type error somehow lands on main, the
+    // route-level boundary catches it at runtime + Sentry alerts.
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    // Same as above — `next lint` runs separately. Saves ~30 s of
+    // ESLint walking every file under src/.
+    ignoreDuringBuilds: true,
+  },
+  // Don't emit .map files in production. Each map can be 1-5 MB
+  // and the generation step is CPU-bound. Sentry only needs them
+  // during the source-map upload step (which is itself gated by
+  // SENTRY_AUTH_TOKEN below).
+  productionBrowserSourceMaps: false,
+
   experimental: {
     serverComponentsExternalPackages: ['@napi-rs/canvas'],
   },
@@ -123,6 +147,12 @@ const nextConfig = {
 
 module.exports = withBundleAnalyzer(withSentryConfig(nextConfig, {
   silent: true,
-  disableServerWebpackPlugin: !process.env.NEXT_PUBLIC_SENTRY_DSN,
-  disableClientWebpackPlugin: !process.env.NEXT_PUBLIC_SENTRY_DSN,
+  // Disable Sentry webpack plugins unless BOTH the DSN AND the upload
+  // auth token are set. The plugins do source-map post-processing that
+  // costs ~30-60 s — useless if we can't actually upload the maps
+  // (which needs SENTRY_AUTH_TOKEN). Was: only checked DSN, so any
+  // env with a public DSN spent that build time generating maps for
+  // nobody.
+  disableServerWebpackPlugin: !(process.env.NEXT_PUBLIC_SENTRY_DSN && process.env.SENTRY_AUTH_TOKEN),
+  disableClientWebpackPlugin: !(process.env.NEXT_PUBLIC_SENTRY_DSN && process.env.SENTRY_AUTH_TOKEN),
 }));
