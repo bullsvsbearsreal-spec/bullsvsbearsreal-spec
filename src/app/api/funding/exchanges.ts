@@ -1,5 +1,6 @@
 import { ExchangeFetcherConfig } from '../_shared/exchange-fetchers';
 import { fetchWithTimeout, isCryptoSymbol } from '../_shared/fetch';
+import { fetchEdgeXTickers, edgeXBaseSymbol } from '../_shared/edgex';
 import { normalizeSymbol, GTRADE_GROUP_ASSET_CLASS, type AssetClass } from './normalize';
 
 const PROXY_BASE = process.env.NEXT_PUBLIC_BASE_URL || 'https://info-hub.io';
@@ -1947,90 +1948,53 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
-      const edgeXHeaders = {
-        headers: {
-          'User-Agent': 'InfoHub/1.0 (+https://info-hub.io; data-aggregator)',
-          'Accept': 'application/json',
-        },
-      };
-      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', edgeXHeaders, 10000);
-      if (!metaRes.ok) {
-        // Surface the failure — previously silent, so 0-row edgeX in
-        // production looked indistinguishable from "venue has no
-        // contracts." Logged once per snapshot (every 60s droplet
-        // cadence) — not noisy.
-        // eslint-disable-next-line no-console
-        console.warn(`[funding/edgeX] meta fetch failed: ${metaRes.status} ${metaRes.statusText || ''}`);
-        return [];
-      }
-      const metaData = await metaRes.json();
-      const contracts = metaData?.data?.contractList || [];
-      const active = contracts.filter((c: any) => c.enableTrade && !c.isStock);
-      if (active.length === 0) return [];
-
-      // Limit to first 30 contracts to avoid triggering CloudFlare rate limits
-      // (186 individual calls every 2 min gets IP-blocked)
-      const limited = active.slice(0, 30);
-      const batchSize = 10;
+      // Shared fetcher: single fan-out of 30 parallel /getTicker calls
+      // (fits under FETCHER_TIMEOUT_MS=12s; the old 3-batch sequential
+      // pattern blew the budget — see _shared/edgex.ts for the why).
+      // Skips stock perps via includeStocks=false default.
+      const rows = await fetchEdgeXTickers(fetchFn, 'funding');
       const results: FundingData[] = [];
-      for (let i = 0; i < limited.length; i += batchSize) {
-        const batch = limited.slice(i, i + batchSize);
-        const tickerResults = await Promise.all(
-          batch.map((c: any) =>
-            fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, edgeXHeaders, 6000)
-              .then(async r => {
-                if (!r.ok) return null;
-                return r.json();
-              })
-              .catch(() => null)
-          )
-        );
 
-        for (let j = 0; j < batch.length; j++) {
-          const contract = batch[j];
-          const ticker = tickerResults[j]?.data?.[0] || tickerResults[j]?.data;
-          if (!ticker) continue;
+      for (const { contract, ticker } of rows) {
+        if (!ticker) continue;
+        const symbol = edgeXBaseSymbol(contract.contractName);
+        if (!symbol || !isCryptoSymbol(symbol)) continue;
 
-          const symbol = (contract.contractName || '').replace(/USD.*/, '').toUpperCase();
-          if (!symbol || !isCryptoSymbol(symbol)) continue;
+        const fundingRate = (parseFloat(ticker.fundingRate || '0') || 0) * 100;
+        // edgeX getTicker returns three distinct price fields:
+        //   - markPrice: the venue's mark for PnL / liquidation (Binance-style "mark")
+        //   - oraclePrice: oracle-derived spot reference (acts as the "index")
+        //   - lastPrice: last trade
+        // Previous code conflated markPrice and oraclePrice via fallback
+        // chain, which fed the formula (mark - index)/index = 0 → always
+        // +0.01% predicted. Pick mark and index explicitly now.
+        const markPriceRaw = parseFloat(ticker.markPrice || '0');
+        const oraclePriceRaw = parseFloat(ticker.oraclePrice || '0');
+        const markPrice = markPriceRaw > 0 ? markPriceRaw : oraclePriceRaw;
+        if (!markPrice || markPrice <= 0) continue;
+        // indexPrice precedence: explicit indexPrice field > oraclePrice >
+        // (else give up on predictedRate to avoid the fake-0.01% bug).
+        const indexCandidateRaw = parseFloat(ticker.indexPrice || '0');
+        const indexPrice = indexCandidateRaw > 0
+          ? indexCandidateRaw
+          : (oraclePriceRaw > 0 && oraclePriceRaw !== markPrice ? oraclePriceRaw : 0);
 
-          const fundingRate = (parseFloat(ticker.fundingRate || '0') || 0) * 100;
-          // edgeX getTicker returns three distinct price fields:
-          //   - markPrice: the venue's mark for PnL / liquidation (Binance-style "mark")
-          //   - oraclePrice: oracle-derived spot reference (acts as the "index")
-          //   - lastPrice: last trade
-          // Previous code conflated markPrice and oraclePrice via fallback
-          // chain, which fed the formula (mark - index)/index = 0 → always
-          // +0.01% predicted. Pick mark and index explicitly now.
-          const markPriceRaw = parseFloat(ticker.markPrice || '0');
-          const oraclePriceRaw = parseFloat(ticker.oraclePrice || '0');
-          // Use markPrice when present, fall back to oraclePrice for venues
-          // that only return one of the two (older edgeX deployments).
-          const markPrice = markPriceRaw > 0 ? markPriceRaw : oraclePriceRaw;
-          if (!markPrice || markPrice <= 0) continue;
-          // indexPrice precedence: explicit indexPrice field > oraclePrice >
-          // (else give up on predictedRate to avoid the fake-0.01% bug).
-          const indexCandidateRaw = parseFloat(ticker.indexPrice || '0');
-          const indexPrice = indexCandidateRaw > 0
-            ? indexCandidateRaw
-            : (oraclePriceRaw > 0 && oraclePriceRaw !== markPrice ? oraclePriceRaw : 0);
-          results.push({
-            symbol,
-            exchange: 'edgeX',
-            fundingRate,
-            // Only compute when we have a genuine, distinct index. Same
-            // mark and index gives premium = 0 → 0.01% on every pair,
-            // which was the original bug.
-            predictedRate: indexPrice > 0 && indexPrice !== markPrice
-              ? binanceStylePredictedPercent(markPrice, indexPrice)
-              : undefined,
-            markPrice,
-            indexPrice: indexPrice > 0 ? indexPrice : markPrice,
-            nextFundingTime: (() => { const t = parseInt(ticker.nextFundingTime || '0'); return t > 0 ? (t < 1e12 ? t * 1000 : t) : Date.now() + 3600000; })(),
-            fundingInterval: '1h',
-            type: 'dex',
-          });
-        }
+        results.push({
+          symbol,
+          exchange: 'edgeX',
+          fundingRate,
+          predictedRate: indexPrice > 0 && indexPrice !== markPrice
+            ? binanceStylePredictedPercent(markPrice, indexPrice)
+            : undefined,
+          markPrice,
+          indexPrice: indexPrice > 0 ? indexPrice : markPrice,
+          nextFundingTime: (() => {
+            const t = parseInt(ticker.nextFundingTime || '0');
+            return t > 0 ? (t < 1e12 ? t * 1000 : t) : Date.now() + 3600000;
+          })(),
+          fundingInterval: '1h',
+          type: 'dex',
+        });
       }
       return results;
     },

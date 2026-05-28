@@ -1,5 +1,6 @@
 import { ExchangeFetcherConfig } from '../_shared/exchange-fetchers';
 import { isCryptoSymbol } from '../_shared/fetch';
+import { fetchEdgeXTickers, edgeXBaseSymbol } from '../_shared/edgex';
 import { sanitizePercent } from '@/lib/utils/sanitizePercent';
 
 const PROXY_BASE = process.env.NEXT_PUBLIC_BASE_URL || 'https://info-hub.io';
@@ -901,63 +902,38 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
-      const edgeXHeaders = {
-        headers: {
-          'User-Agent': 'InfoHub/1.0 (+https://info-hub.io; data-aggregator)',
-          'Accept': 'application/json',
-        },
-      };
-      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', edgeXHeaders, 10000);
-      if (!metaRes.ok) {
-        // eslint-disable-next-line no-console
-        console.warn(`[tickers/edgeX] meta fetch failed: ${metaRes.status} ${metaRes.statusText || ''}`);
-        return [];
-      }
-      const metaData = await metaRes.json();
-      const contracts = (metaData?.data?.contractList || []).filter((c: any) => c.enableTrade);
-      if (contracts.length === 0) return [];
-
-      // Limit to first 30 contracts to avoid CF rate-limiting (186 individual calls gets IP-blocked)
-      const limited = contracts.slice(0, 30);
-      const batchSize = 10;
+      // Shared fetcher (see _shared/edgex.ts) — was inline 3-batch
+      // sequential loop with 8s per-call timeout that blew the
+      // FETCHER_TIMEOUT_MS=12s budget under load, producing 0 rows.
+      // Now single fan-out of 30 parallel calls in ~3 s.
+      const rows = await fetchEdgeXTickers(fetchFn, 'tickers', { includeStocks: true });
       const results: TickerData[] = [];
-      for (let i = 0; i < limited.length; i += batchSize) {
-        const batch = limited.slice(i, i + batchSize);
-        const promises = batch.map((c: any) =>
-          fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, edgeXHeaders, 8000)
-            .then(r => r.ok ? r.json() : null)
-            .catch(() => null)
-        );
-        const tickerResults = await Promise.all(promises);
 
-        for (let j = 0; j < batch.length; j++) {
-          const contract = batch[j];
-          const ticker = tickerResults[j]?.data?.[0] || tickerResults[j]?.data;
-          if (!ticker) continue;
+      for (const { contract, ticker } of rows) {
+        if (!ticker) continue;
+        const symbol = edgeXBaseSymbol(contract.contractName);
+        if (!symbol || !isCryptoSymbol(symbol)) continue;
 
-          const symbol = (contract.contractName || '').replace(/USD.*/, '').toUpperCase();
-          if (!symbol || !isCryptoSymbol(symbol)) continue;
+        const lastPrice = parseFloat(ticker.lastPrice || ticker.close || ticker.oraclePrice || '0');
+        if (lastPrice <= 0) continue;
 
-          const lastPrice = parseFloat(ticker.lastPrice || ticker.close || ticker.oraclePrice || '0');
-          if (lastPrice <= 0) continue;
+        const quoteVol = parseFloat(ticker.value || '0') || 0;
+        const baseVol = parseFloat(ticker.size || '0') || 0;
+        // edgeX returns decimal fraction (0.037 = 3.7%) — multiply.
+        const priceChange = (parseFloat(ticker.priceChangePercent || ticker.priceChangePercent24h || '0') || 0) * 100;
 
-          const quoteVol = parseFloat(ticker.value || ticker.volume24h || '0') || 0;
-          const baseVol = parseFloat(ticker.size || '0') || 0;
-          const priceChange = (parseFloat(ticker.priceChangePercent || ticker.priceChangePercent24h || '0') || 0) * 100; // edgeX returns decimal fraction (0.037 = 3.7%)
-
-          results.push({
-            symbol,
-            exchange: 'edgeX',
-            lastPrice,
-            price: lastPrice,
-            priceChangePercent24h: priceChange,
-            changePercent24h: priceChange,
-            high24h: parseFloat(ticker.high || '0') || lastPrice,
-            low24h: parseFloat(ticker.low || '0') || lastPrice,
-            volume24h: baseVol,
-            quoteVolume24h: quoteVol || (baseVol * lastPrice),
-          });
-        }
+        results.push({
+          symbol,
+          exchange: 'edgeX',
+          lastPrice,
+          price: lastPrice,
+          priceChangePercent24h: priceChange,
+          changePercent24h: priceChange,
+          high24h: parseFloat(ticker.high || '0') || lastPrice,
+          low24h: parseFloat(ticker.low || '0') || lastPrice,
+          volume24h: baseVol,
+          quoteVolume24h: quoteVol || (baseVol * lastPrice),
+        });
       }
       return results;
     },

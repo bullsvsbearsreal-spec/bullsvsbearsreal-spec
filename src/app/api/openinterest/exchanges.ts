@@ -1,5 +1,6 @@
 import { ExchangeFetcherConfig } from '../_shared/exchange-fetchers';
 import { isCryptoSymbol } from '../_shared/fetch';
+import { fetchEdgeXTickers, edgeXBaseSymbol } from '../_shared/edgex';
 
 type OIData = {
   symbol: string;
@@ -734,55 +735,28 @@ export const oiFetchers: ExchangeFetcherConfig<OIData>[] = [
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
-      const edgeXHeaders = {
-        headers: {
-          'User-Agent': 'InfoHub/1.0 (+https://info-hub.io; data-aggregator)',
-          'Accept': 'application/json',
-        },
-      };
-      const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', edgeXHeaders, 10000);
-      if (!metaRes.ok) {
-        // eslint-disable-next-line no-console
-        console.warn(`[oi/edgeX] meta fetch failed: ${metaRes.status} ${metaRes.statusText || ''}`);
-        return [];
-      }
-      const metaData = await metaRes.json();
-      const contracts = (metaData?.data?.contractList || []).filter((c: any) => c.enableTrade);
-      if (contracts.length === 0) return [];
-
-      // Limit to first 30 contracts to avoid CF rate-limiting (186 individual calls gets IP-blocked)
-      const limited = contracts.slice(0, 30);
-      const batchSize = 10;
+      // Shared fetcher (see _shared/edgex.ts) — same fix as funding +
+      // tickers: 30 parallel /getTicker calls instead of 3 sequential
+      // batches that blew the 12s FETCHER_TIMEOUT_MS budget.
+      const rows = await fetchEdgeXTickers(fetchFn, 'oi', { includeStocks: true });
       const results: OIData[] = [];
-      for (let i = 0; i < limited.length; i += batchSize) {
-        const batch = limited.slice(i, i + batchSize);
-        const promises = batch.map((c: any) =>
-          fetchFn(`https://pro.edgex.exchange/api/v1/public/quote/getTicker?contractId=${c.contractId}`, edgeXHeaders, 8000)
-            .then(r => r.ok ? r.json() : null)
-            .catch(() => null)
-        );
-        const tickerResults = await Promise.all(promises);
 
-        for (let j = 0; j < batch.length; j++) {
-          const contract = batch[j];
-          const ticker = tickerResults[j]?.data?.[0] || tickerResults[j]?.data;
-          if (!ticker) continue;
+      for (const { contract, ticker } of rows) {
+        if (!ticker) continue;
+        const symbol = edgeXBaseSymbol(contract.contractName);
+        if (!symbol || !isCryptoSymbol(symbol)) continue;
 
-          const symbol = (contract.contractName || '').replace(/USD.*/, '').toUpperCase();
-          if (!symbol || !isCryptoSymbol(symbol)) continue;
+        const price = parseFloat(ticker.oraclePrice || ticker.markPrice || '0');
+        const oiContracts = parseFloat(ticker.openInterest || '0');
+        const oiValue = oiContracts * price;
+        if (oiValue <= 0) continue;
 
-          const price = parseFloat(ticker.oraclePrice || ticker.markPrice || '0');
-          const oiContracts = parseFloat(ticker.openInterest || '0');
-          const oiValue = oiContracts * price;
-          if (oiValue <= 0) continue;
-
-          results.push({
-            symbol,
-            exchange: 'edgeX',
-            openInterest: oiContracts,
-            openInterestValue: oiValue,
-          });
-        }
+        results.push({
+          symbol,
+          exchange: 'edgeX',
+          openInterest: oiContracts,
+          openInterestValue: oiValue,
+        });
       }
       return results;
     },
