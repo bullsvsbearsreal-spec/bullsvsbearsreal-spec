@@ -58,7 +58,11 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // the sitemap, training Google to keep crawling a 308 — same fix
     // as the funding-flips / skew / etc. block above.
     // /wallet-tracker → /watch (consolidated May 2026).
-    { path: '/watch',              priority: 0.7, changeFrequency: 'weekly' as const },
+    // /watch removed from sitemap — page is auth-gated (unauthenticated
+    // visitors see "Sign in to watch wallets") AND robots.ts has it in
+    // Disallow. Sitemap inclusion contradicts both and got flagged by
+    // Search Console. The seo.ts metadata still applies for share cards
+    // when authed users send /watch links to friends.
     { path: '/trader-watch',       priority: 0.6, changeFrequency: 'daily' as const },
     { path: '/breakouts',          priority: 0.7, changeFrequency: 'hourly' as const },
     { path: '/momentum',           priority: 0.7, changeFrequency: 'hourly' as const },
@@ -146,11 +150,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // ─── Account + auth ───────────────────────────────────────────────
     { path: '/login',              priority: 0.4, changeFrequency: 'monthly' as const },
     { path: '/signup',             priority: 0.4, changeFrequency: 'monthly' as const },
-    { path: '/dashboard',          priority: 0.6, changeFrequency: 'daily' as const },
-    { path: '/watchlist',          priority: 0.5, changeFrequency: 'daily' as const },
-    { path: '/alerts',             priority: 0.6, changeFrequency: 'daily' as const },
-    { path: '/portfolio',          priority: 0.5, changeFrequency: 'daily' as const },
-    { path: '/positions',          priority: 0.5, changeFrequency: 'daily' as const },
+    // /dashboard, /watchlist, /alerts, /portfolio, /positions removed —
+    // all five are auth-gated personal surfaces AND in robots.ts
+    // Disallow. Listing them in the sitemap while disallowing them
+    // gets flagged in Google Search Console as a soft conflict, and
+    // any crawl attempt sees a login form (or 401) — never the
+    // signed-in content. Indexable account pages live under their own
+    // public landings (/pricing, /referrals, /developers, etc.).
     { path: '/contact',            priority: 0.4, changeFrequency: 'monthly' as const },
     { path: '/referrals',          priority: 0.4, changeFrequency: 'monthly' as const },
     { path: '/leaderboard',        priority: 0.6, changeFrequency: 'hourly' as const },

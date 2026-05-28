@@ -31,6 +31,11 @@ export default function robots(): MetadataRoute.Robots {
           // specific paths.
           '/api/v1/status',
           '/api/v1/openapi',
+          // /invite is disallowed (personal share page), but the
+          // /invite/leaderboard sub-page is a public top-20 ranking
+          // with social-proof value. More-specific Allow beats the
+          // broader Disallow in Googlebot's interpretation.
+          '/invite/leaderboard',
         ],
         disallow: [
           // Server endpoints — not useful in search results
