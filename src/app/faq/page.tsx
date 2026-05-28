@@ -51,7 +51,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'General',
     q: 'Can I refer friends to InfoHub?',
-    a: 'Yes \u2014 every signed-in user has a personal invite link at /invite. Friends who sign up through your link are counted on your dashboard, and you both lock in the launch perks: Trader, Pro + Whale tier features unlocked free while we onboard early users (see /pricing), plus day-one supporter recognition when paid billing turns on. The link is the same forever, so bookmark /invite and re-use it. (Separate from /referrals, which is exchange affiliate links \u2014 those are for getting fee discounts when signing up to Bybit, MEXC, Hyperliquid, etc.)',
+    a: 'Yes \u2014 two layers. (1) /invite is your personal invite link for free InfoHub access; friends who sign up through it are counted on your dashboard and you both lock in launch perks (Trader, Pro + Whale tier features free while we onboard early users \u2014 see /pricing). The link is the same forever, so bookmark /invite and re-use it. (2) /referrals is the paid InfoHub Affiliate Program: 20% recurring lifetime commission on every referred subscription, USDT payouts on Solana/Arbitrum/Base ($25 min), 90-day attribution cookie, and the referred friend gets 10% off forever. The exchange affiliate links you see embedded in spreads / funding / scanner pages (Bybit, MEXC, Hyperliquid, etc.) are separate \u2014 they\'re fee-discount perks for trading on the venues, not part of the InfoHub program.',
   },
   {
     category: 'General',
