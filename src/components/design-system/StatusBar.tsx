@@ -6,6 +6,7 @@ import SatPing from './SatPing';
 import LatencyGauge from './LatencyGauge';
 import ExchangeStrip from './ExchangeStrip';
 import ThroughputCounter from './ThroughputCounter';
+import SupportChat from '@/components/SupportChat';
 import { useAggregatorHealth } from '@/hooks/useAggregatorHealth';
 
 interface StatusBarProps { version?: string; className?: string; }
@@ -136,6 +137,11 @@ export default function StatusBar({ version = 'v2.0', className }: StatusBarProp
         <SatPing size={10} color="var(--hub-accent)" />
         InfoHub <span style={{ color: 'var(--hub-accent-light)', fontWeight: 800 }}>{version}</span>
       </Link>
+
+      {/* Support chat — sits next to the InfoHub badge so it's findable
+          from every page. The component handles its own logged-out state
+          + side panel; we just render the trigger button here. */}
+      <SupportChat />
 
       <style jsx>{`
         .status-bar-version:hover {
