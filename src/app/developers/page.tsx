@@ -13,7 +13,7 @@ import {
   ChevronRight, Database, Wifi, ChevronDown, Hash, Scale, Webhook,
 } from 'lucide-react';
 import { ALL_EXCHANGES } from '@/lib/constants';
-import { PRO_TIER_PER_MINUTE, TRADER_TIER_PER_MINUTE, FREE_TIER_PER_MINUTE, FREE_TIER_PER_DAY } from '@/lib/api/rate-limit';
+import { PRO_TIER_PER_MINUTE, TRADER_TIER_PER_MINUTE, FREE_TIER_PER_MINUTE, FREE_TIER_PER_DAY, MAX_API_KEYS_PER_USER } from '@/lib/api/rate-limit';
 import { copyToClipboard } from '@/lib/copyToClipboard';
 
 interface ApiKeyInfo {
@@ -875,7 +875,7 @@ export default function DevelopersPage() {
 
               {/* Existing keys */}
               <div className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-5">
-                <h2 className="text-base font-semibold mb-3">Your Keys ({keys.length}/5)</h2>
+                <h2 className="text-base font-semibold mb-3">Your Keys ({keys.length}/{MAX_API_KEYS_PER_USER})</h2>
                 {keys.length === 0 ? (
                   <p className="text-gray-600 text-sm">No API keys yet.</p>
                 ) : (

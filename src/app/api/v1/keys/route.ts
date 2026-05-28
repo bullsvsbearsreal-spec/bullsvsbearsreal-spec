@@ -1,12 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { createApiKey, listApiKeys, countUserApiKeys, initDB } from '@/lib/db';
+import { MAX_API_KEYS_PER_USER } from '@/lib/api/rate-limit';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
-
-const MAX_KEYS_PER_USER = 5;
 
 /**
  * GET /api/v1/keys — List user's API keys (requires session auth)
@@ -42,9 +41,9 @@ export async function POST(request: NextRequest) {
 
     // Check key limit
     const count = await countUserApiKeys(session.user.id);
-    if (count >= MAX_KEYS_PER_USER) {
+    if (count >= MAX_API_KEYS_PER_USER) {
       return NextResponse.json(
-        { success: false, error: `Maximum ${MAX_KEYS_PER_USER} API keys allowed. Revoke an existing key first.` },
+        { success: false, error: `Maximum ${MAX_API_KEYS_PER_USER} API keys allowed. Revoke an existing key first.` },
         { status: 400 },
       );
     }

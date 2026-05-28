@@ -33,6 +33,19 @@ export const PRO_TIER_PER_MINUTE = 600;
 export const FREE_TIER_PER_DAY = 5_000;
 export const TRADER_TIER_PER_DAY = 25_000;
 
+/**
+ * Per-user cap on number of active API keys. Exported so the
+ * /developers UI ("Your Keys (N/5)" counter) and the server-side
+ * enforcement at /api/v1/keys POST both read the same source — was
+ * hardcoded as `/5` in the UI and `MAX_KEYS_PER_USER = 5` in the
+ * route, drift would silently let a user create a 6th key while
+ * the UI still capped at 5.
+ *
+ * Bump cautiously — every key gets its own Upstash rate-limit
+ * bucket and an api_keys row.
+ */
+export const MAX_API_KEYS_PER_USER = 5;
+
 /** Free tier: 100 req / 1 minute */
 export const freeTierLimiter = new Ratelimit({
   redis,
