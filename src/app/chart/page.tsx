@@ -57,6 +57,20 @@ export default function ChartPage() {
   const [chartStyle, setChartStyle] = useState<ChartStyle>('1');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recents, setRecents] = useState<string[]>([]);
+  // Bottom-tabs collapse: hide table area for more chart real estate.
+  // Persisted in localStorage so a returning user gets their preferred
+  // density on next visit.
+  const [bottomCollapsed, setBottomCollapsed] = useState<boolean>(false);
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('infohub_chart_bottom_collapsed_v1');
+      if (v === '1') setBottomCollapsed(true);
+    } catch { /* ignore */ }
+  }, []);
+  const handleBottomCollapse = (c: boolean) => {
+    setBottomCollapsed(c);
+    try { localStorage.setItem('infohub_chart_bottom_collapsed_v1', c ? '1' : '0'); } catch { /* ignore */ }
+  };
 
   // Read ?symbol= from URL on first mount so deep-links from other
   // pages (/screener row click, /alerts row click, etc.) land on the
@@ -201,12 +215,14 @@ export default function ChartPage() {
         onToggleFavorite={toggleFavorite}
       />
 
-      {/* Terminal grid */}
+      {/* Terminal grid — sidebar slimmed 220→200px max, bottom panel
+          collapses to ~40px header-only when bottomCollapsed=true so
+          chart gets the reclaimed ~240px of vertical space. */}
       <div
         className="flex-1 grid min-h-0"
         style={{
-          gridTemplateColumns: 'minmax(180px, 220px) 1fr minmax(260px, 300px)',
-          gridTemplateRows: 'auto 1fr 280px',
+          gridTemplateColumns: 'minmax(160px, 200px) 1fr minmax(260px, 300px)',
+          gridTemplateRows: `auto 1fr ${bottomCollapsed ? '40px' : '280px'}`,
           gridTemplateAreas: `
             "sidebar stats  right"
             "sidebar chart  right"
@@ -262,7 +278,11 @@ export default function ChartPage() {
         </div>
 
         <div style={{ gridArea: 'bottom' }} className="min-w-0 min-h-0 overflow-hidden">
-          <TerminalBottomTabs symbol={symbolLabel} />
+          <TerminalBottomTabs
+            symbol={symbolLabel}
+            collapsed={bottomCollapsed}
+            onCollapseChange={handleBottomCollapse}
+          />
         </div>
       </div>
     </div>

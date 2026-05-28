@@ -13,12 +13,13 @@
  */
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Percent, Zap, Ruler, TrendingUp } from 'lucide-react';
+import { Percent, Zap, Ruler, TrendingUp, ChevronUp, ChevronDown } from 'lucide-react';
 import { useFundingRates, useTickers } from '@/hooks/useSWRApi';
 
 type TabKey = 'funding' | 'liquidations' | 'position-sizer' | 'top-movers';
 
 const STORAGE_KEY = 'infohub_chart_bottom_tab_v1';
+const COLLAPSE_KEY = 'infohub_chart_bottom_collapsed_v1';
 
 interface FundingRow {
   symbol?: string;
@@ -41,7 +42,15 @@ interface LiquidationRow {
   timestamp: number;
 }
 
-export function TerminalBottomTabs({ symbol }: { symbol: string }) {
+export function TerminalBottomTabs({
+  symbol,
+  collapsed,
+  onCollapseChange,
+}: {
+  symbol: string;
+  collapsed: boolean;
+  onCollapseChange: (c: boolean) => void;
+}) {
   const [tab, setTab] = useState<TabKey>('funding');
 
   // Hydrate the remembered tab. Default = funding for first-time users.
@@ -61,18 +70,29 @@ export function TerminalBottomTabs({ symbol }: { symbol: string }) {
 
   return (
     <div className="flex flex-col h-full bg-black border-t border-white/[0.06]">
-      <div className="flex items-center gap-4 px-3 py-2 border-b border-white/[0.06]">
-        <TabButton active={tab === 'funding'} onClick={() => setTab('funding')} icon={Percent} label="Funding" />
-        <TabButton active={tab === 'liquidations'} onClick={() => setTab('liquidations')} icon={Zap} label="Liquidations" />
-        <TabButton active={tab === 'position-sizer'} onClick={() => setTab('position-sizer')} icon={Ruler} label="Position Sizer" />
-        <TabButton active={tab === 'top-movers'} onClick={() => setTab('top-movers')} icon={TrendingUp} label="Top Movers" />
+      <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
+        <div className="flex items-center gap-4">
+          <TabButton active={tab === 'funding'} onClick={() => { setTab('funding'); onCollapseChange(false); }} icon={Percent} label="Funding" />
+          <TabButton active={tab === 'liquidations'} onClick={() => { setTab('liquidations'); onCollapseChange(false); }} icon={Zap} label="Liquidations" />
+          <TabButton active={tab === 'position-sizer'} onClick={() => { setTab('position-sizer'); onCollapseChange(false); }} icon={Ruler} label="Position Sizer" />
+          <TabButton active={tab === 'top-movers'} onClick={() => { setTab('top-movers'); onCollapseChange(false); }} icon={TrendingUp} label="Top Movers" />
+        </div>
+        <button
+          onClick={() => onCollapseChange(!collapsed)}
+          className="p-1 rounded text-neutral-500 hover:text-white hover:bg-white/[0.04] transition-colors"
+          title={collapsed ? 'Expand panel' : 'Collapse for more chart space'}
+        >
+          {collapsed ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+        </button>
       </div>
-      <div className="flex-1 min-h-0 overflow-y-auto">
-        {tab === 'funding' && <FundingTab symbol={symbol} />}
-        {tab === 'liquidations' && <LiquidationsTab symbol={symbol} />}
-        {tab === 'position-sizer' && <PositionSizerTab symbol={symbol} />}
-        {tab === 'top-movers' && <TopMoversTab />}
-      </div>
+      {!collapsed && (
+        <div className="flex-1 min-h-0 overflow-y-auto">
+          {tab === 'funding' && <FundingTab symbol={symbol} />}
+          {tab === 'liquidations' && <LiquidationsTab symbol={symbol} />}
+          {tab === 'position-sizer' && <PositionSizerTab symbol={symbol} />}
+          {tab === 'top-movers' && <TopMoversTab />}
+        </div>
+      )}
     </div>
   );
 }

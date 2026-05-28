@@ -258,34 +258,29 @@ export function TerminalStatsBar({
         return (
           <div
             key={i}
-            // 160 px min so the longer secondaries ("3/32 negative",
-            // "L 64% · S 36%", "Aggregated · 32 venues") fit without
-            // truncating. Secondary wraps to a second line if the
-            // viewport gets narrow rather than ellipsing — the data
-            // is more useful read fully across two short lines than
-            // half-hidden behind a "…".
-            className="flex-1 min-w-[160px] px-3 py-2.5 border-r border-white/[0.06] last:border-r-0"
+            // Compact cells — label inline with value to save vertical
+            // space (was stacked). Secondary text only shows on hover
+            // via title attr. Saves ~20 px of stats-bar height which
+            // goes straight to the chart cell below.
+            className="flex items-baseline gap-2 min-w-[160px] px-3 py-1.5 border-r border-white/[0.06] last:border-r-0"
+            title={c.secondary || ''}
           >
-            <div className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold mb-1 whitespace-nowrap">
+            <span className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold whitespace-nowrap">
               {c.label}
-            </div>
-            <div className={`text-sm font-mono font-bold whitespace-nowrap ${
+            </span>
+            <span className={`text-sm font-mono font-bold whitespace-nowrap ${
               isLoading
                 ? 'text-neutral-600'
                 : c.tone === 'pos' ? 'text-emerald-400'
                 : c.tone === 'neg' ? 'text-red-400'
                 : 'text-white'
             }`}>
-              {/* Subtle pulse on the dash so it reads as 'loading' not 'no data' */}
               {isLoading ? <span className="inline-block w-8 h-3 bg-white/[0.04] rounded animate-pulse" /> : c.primary}
-            </div>
+            </span>
             {c.secondary && (
-              <div
-                title={c.secondary}
-                className="text-[10px] text-neutral-500 mt-0.5 leading-tight line-clamp-2"
-              >
+              <span className="text-[10px] text-neutral-600 truncate hidden xl:inline">
                 {c.secondary}
-              </div>
+              </span>
             )}
           </div>
         );
