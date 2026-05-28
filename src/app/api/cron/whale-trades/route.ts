@@ -50,6 +50,14 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ ok: false, error: 'Failed to load wallets' }, { status: 500 });
   }
   if (allWallets.length === 0) {
+    // Even on the "no wallets tracked" success path, heartbeat so the
+    // cron stays visible in /admin-panel#ops. Previously this early
+    // return skipped the heartbeat entirely, which made the cron
+    // disappear from the Ops board the moment everyone unsubscribed
+    // (or in fresh DBs before anyone signed up to track wallets).
+    await upsertWorkerHeartbeat('cron:whale-trades', 'ok', {
+      checked: 0, trades: 0, notifications: 0, reason: 'no-wallets-tracked',
+    }).catch(() => {});
     return NextResponse.json({ ok: true, checked: 0, trades: 0, notifications: 0 });
   }
 

@@ -458,10 +458,19 @@ export default function AdminPanelPage() {
             </div>
           </div>
 
-          {/* Tabs */}
+          {/* Tabs — 11 of them at full width. Horizontal scroll handles
+              <1500px viewports so "Feedback" doesn't get clipped at
+              the right edge and "API Log" doesn't wrap to 2 lines.
+              Each button is flex-shrink:0 + whiteSpace:nowrap so its
+              natural size is preserved as the row scrolls. Padding
+              tightened from 14 → 12 horizontally to fit one more tab
+              on narrow desktops without changing the visual weight. */}
           <div style={{
             display: 'flex', gap: 4, marginBottom: 14,
             borderBottom: '1px solid var(--hub-border-subtle)',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            scrollbarWidth: 'thin',
           }}>
             {visibleTabs.map(t => {
               const isActive = active === t.id;
@@ -471,7 +480,7 @@ export default function AdminPanelPage() {
                   type="button"
                   onClick={() => goTab(t.id)}
                   style={{
-                    padding: '10px 14px',
+                    padding: '10px 12px',
                     background: 'transparent',
                     border: 0,
                     borderBottom: `2px solid ${isActive ? 'var(--hub-accent)' : 'transparent'}`,
@@ -483,6 +492,8 @@ export default function AdminPanelPage() {
                     marginBottom: -1,
                     transition: 'color 120ms',
                     position: 'relative',
+                    whiteSpace: 'nowrap',
+                    flexShrink: 0,
                   }}
                 >
                   {t.icon}

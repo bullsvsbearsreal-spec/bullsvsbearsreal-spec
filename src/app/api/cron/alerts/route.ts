@@ -255,6 +255,17 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('[alert-cron] error:', error);
+    // Failure-path heartbeat: previously the catch returned without
+    // touching upsertWorkerHeartbeat, so a single thrown exception
+    // would silently disappear the cron from /admin-panel#ops
+    // (no Ops row → looks like the systemd timer is dead). Heartbeat
+    // 'degraded' with the error message so operators see *something*
+    // and the cron stays visible even when broken.
+    const heartbeatKey = priorityOnly ? 'cron:whale-alerts' : 'cron:alerts';
+    await upsertWorkerHeartbeat(heartbeatKey, 'degraded', {
+      error: error instanceof Error ? error.message : String(error),
+      mode: priorityOnly ? 'priority' : 'standard',
+    }).catch(() => {});
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 },

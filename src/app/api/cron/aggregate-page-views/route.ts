@@ -29,12 +29,27 @@ export async function GET(request: NextRequest) {
   }
 
   const startedAt = Date.now();
-  const pruned = await prunePageViews(90);
-  const prunedApiLog = await pruneApiRequestLog(30);
-  const elapsedMs = Date.now() - startedAt;
-
-  await recordAuditEvent('cron_aggregate_page_views', { pruned, prunedApiLog, elapsedMs }).catch(() => {});
-  await upsertWorkerHeartbeat('cron:aggregate-page-views', 'ok', { pruned, prunedApiLog, elapsedMs }).catch(() => {});
-
-  return NextResponse.json({ success: true, pruned, prunedApiLog, elapsedMs });
+  // Wrap the prunes so a throw doesn't silently disappear the cron from
+  // /admin-panel#ops. Previously: an unhandled throw from prunePageViews
+  // or pruneApiRequestLog would bypass the heartbeat call below, so the
+  // cron would look dead in the Ops board even though it was firing
+  // daily on the droplet.
+  try {
+    const pruned = await prunePageViews(90);
+    const prunedApiLog = await pruneApiRequestLog(30);
+    const elapsedMs = Date.now() - startedAt;
+    await recordAuditEvent('cron_aggregate_page_views', { pruned, prunedApiLog, elapsedMs }).catch(() => {});
+    await upsertWorkerHeartbeat('cron:aggregate-page-views', 'ok', { pruned, prunedApiLog, elapsedMs }).catch(() => {});
+    return NextResponse.json({ success: true, pruned, prunedApiLog, elapsedMs });
+  } catch (e) {
+    console.error('[cron:aggregate-page-views] error:', e);
+    await upsertWorkerHeartbeat('cron:aggregate-page-views', 'degraded', {
+      error: e instanceof Error ? e.message.slice(0, 200) : String(e),
+      elapsedMs: Date.now() - startedAt,
+    }).catch(() => {});
+    return NextResponse.json(
+      { error: e instanceof Error ? e.message : 'unknown' },
+      { status: 500 },
+    );
+  }
 }
