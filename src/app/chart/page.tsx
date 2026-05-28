@@ -185,6 +185,7 @@ export default function ChartPage() {
         <div style={{ gridArea: 'sidebar' }} className="hidden md:block min-w-0 overflow-hidden">
           <TerminalSidebar
             activeSymbol={symbolLabel}
+            assetClass={assetClass}
             tickerLookup={tickerLookup}
             recents={recents}
             onSelect={handleSymbolChange}

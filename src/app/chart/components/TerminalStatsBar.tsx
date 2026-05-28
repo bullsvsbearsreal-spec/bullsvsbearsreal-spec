@@ -116,9 +116,17 @@ export function TerminalStatsBar({
   }, [symbol, assetClass]);
 
   // ── Compute per-cell values ───────────────────────────────────────
-  const symbolRows = (tickers.data ?? []).filter(
-    (r: { symbol?: string }) => (r.symbol ?? '').toUpperCase() === symbol.toUpperCase(),
-  );
+  // /api/tickers is crypto-only — looking up "AAPL" there returns
+  // a tokenized stock from some crypto venue ($6M vol vs real $10B),
+  // not the actual NASDAQ price. So we only consult tickers when the
+  // active asset class is crypto. Non-crypto rows show "—" until we
+  // wire a real stocks/forex price source.
+  const isCrypto = assetClass === 'crypto';
+  const symbolRows = isCrypto
+    ? (tickers.data ?? []).filter(
+        (r: { symbol?: string }) => (r.symbol ?? '').toUpperCase() === symbol.toUpperCase(),
+      )
+    : [];
   const markPrice = symbolRows.length > 0
     ? medianOf(symbolRows.map((r: { lastPrice?: number; price?: number }) => r.lastPrice ?? r.price ?? 0).filter(p => p > 0))
     : 0;
@@ -180,18 +188,22 @@ export function TerminalStatsBar({
 
   cells.push({
     label: 'Mark',
-    primary: formatPrice(markPrice || 0),
-    secondary: `Aggregated · ${symbolRows.length} venues`,
+    primary: isCrypto && markPrice > 0 ? formatPrice(markPrice) : (isCrypto ? '—' : 'See chart'),
+    secondary: isCrypto
+      ? `Aggregated · ${symbolRows.length} venues`
+      : 'TradingView price · live on chart',
   });
 
-  cells.push({
-    label: '24h Volume',
-    primary: formatUsd(vol24h),
-    secondary: assetClass === 'crypto' ? 'Futures' : '',
-    tone: change24h > 0 ? 'pos' : change24h < 0 ? 'neg' : 'neutral',
-  });
+  if (isCrypto) {
+    cells.push({
+      label: '24h Volume',
+      primary: formatUsd(vol24h),
+      secondary: 'Futures',
+      tone: change24h > 0 ? 'pos' : change24h < 0 ? 'neg' : 'neutral',
+    });
+  }
 
-  if (assetClass === 'crypto') {
+  if (isCrypto) {
     cells.push({
       label: 'Open Interest',
       primary: formatUsd(totalOI),
@@ -224,14 +236,9 @@ export function TerminalStatsBar({
       primary: fundingCountdown,
       secondary: '8h schedule',
     });
-  } else {
-    // Non-crypto: simpler strip
-    cells.push({
-      label: '24h Change',
-      primary: formatPct(change24h),
-      tone: change24h > 0 ? 'pos' : change24h < 0 ? 'neg' : 'neutral',
-    });
   }
+  // Non-crypto: just Mark cell. Live price + 24h change come from
+  // the TradingView chart itself (OHLC bar at top of the chart).
 
   return (
     <div className="flex bg-black border-b border-white/[0.06] overflow-x-auto">

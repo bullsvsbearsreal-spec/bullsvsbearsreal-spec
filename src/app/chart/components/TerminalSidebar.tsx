@@ -22,7 +22,8 @@ import {
   Percent, Layers, Ruler, BellRing, Flame, TrendingUp,
 } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
-import { WATCHLIST_DEFAULTS, findBySymbol, ASSET_TABS } from '../catalog';
+import { WATCHLIST_DEFAULTS_BY_CLASS, findBySymbol, ASSET_TABS } from '../catalog';
+import type { AssetClass } from '../catalog';
 import { LiveSignalCard } from './LiveSignalCard';
 
 interface SidebarTickerLite {
@@ -44,11 +45,13 @@ const TOOL_LINKS = [
 
 export function TerminalSidebar({
   activeSymbol,
+  assetClass,
   tickerLookup,
   recents,
   onSelect,
 }: {
   activeSymbol: string;
+  assetClass: AssetClass;
   /** Map<label, {price, change24h}>. Built once in parent from useTickers. */
   tickerLookup: Map<string, SidebarTickerLite>;
   recents: string[];
@@ -65,25 +68,29 @@ export function TerminalSidebar({
     } catch { /* ignore */ }
   }, []);
 
-  // Watchlist = favourites first (de-duplicated), then defaults to fill
-  // out the visible slate when the user has none / few saved.
+  // Watchlist = favourites for THIS asset class first (de-duplicated),
+  // then class-specific defaults. Crypto users see BTC/ETH/SOL;
+  // stocks users see AAPL/MSFT/NVDA — no more crypto symbols
+  // dangling on the Stocks tab.
   const watchlist = useMemo(() => {
     const out: string[] = [];
     const seen = new Set<string>();
+    const tab = ASSET_TABS.find(t => t.id === assetClass);
+    const validLabels = new Set(tab?.pinned.map(s => s.label) ?? []);
     for (const f of favorites) {
-      if (!seen.has(f) && findBySymbol(f)) {
+      if (!seen.has(f) && validLabels.has(f)) {
         out.push(f);
         seen.add(f);
       }
     }
-    for (const d of WATCHLIST_DEFAULTS) {
+    for (const d of WATCHLIST_DEFAULTS_BY_CLASS[assetClass]) {
       if (!seen.has(d)) {
         out.push(d);
         seen.add(d);
       }
     }
     return out.slice(0, 8);
-  }, [favorites]);
+  }, [favorites, assetClass]);
 
   return (
     <aside className="flex flex-col h-full bg-black border-r border-white/[0.06] overflow-y-auto">

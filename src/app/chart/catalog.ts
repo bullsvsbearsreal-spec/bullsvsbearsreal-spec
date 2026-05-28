@@ -181,8 +181,19 @@ export const TIMEFRAMES = [
 ] as const;
 export type Timeframe = typeof TIMEFRAMES[number]['value'];
 
-/** Default 8 symbols seeded into the watchlist when a user has none saved. */
-export const WATCHLIST_DEFAULTS = ['BTC', 'ETH', 'SOL', 'HYPE', 'BNB', 'XRP', 'DOGE', 'TRX'];
+/** Default symbols seeded into the watchlist when a user has none
+ *  saved. Keyed by asset class so a user on the Stocks tab sees
+ *  AAPL/MSFT/NVDA rather than BTC/ETH/SOL. */
+export const WATCHLIST_DEFAULTS_BY_CLASS: Record<AssetClass, string[]> = {
+  crypto:      ['BTC', 'ETH', 'SOL', 'HYPE', 'BNB', 'XRP', 'DOGE', 'TRX'],
+  stocks:      ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA', 'META', 'COIN'],
+  forex:       ['EUR/USD', 'GBP/USD', 'USD/JPY', 'USD/CHF', 'AUD/USD', 'USD/CAD', 'NZD/USD', 'DXY'],
+  commodities: ['Gold', 'Silver', 'Crude Oil', 'Brent', 'Natural Gas', 'Copper', 'Platinum', 'Wheat'],
+  indices:     ['S&P 500', 'NASDAQ 100', 'Dow Jones', 'VIX', 'DAX', 'FTSE 100', 'Nikkei 225', 'SPY ETF'],
+};
+
+/** Back-compat re-export used by code that hasn't been updated yet. */
+export const WATCHLIST_DEFAULTS = WATCHLIST_DEFAULTS_BY_CLASS.crypto;
 
 /** Lookup table — keyed by tvSymbol → AssetSymbol. */
 export function findBySymbol(label: string): AssetSymbol | undefined {
