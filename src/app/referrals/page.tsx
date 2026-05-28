@@ -2,6 +2,7 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import Link from 'next/link';
 import { ExternalLink, Gift, Users, Send, ArrowRight, Trophy, DollarSign, Zap, Wallet, Sparkles } from 'lucide-react';
+import { auth } from '@/lib/auth';
 
 /* ───────────────────────────────────────────────────────────────────────
  * /referrals — public affiliate program landing.
@@ -133,7 +134,12 @@ const EXCHANGE_REFERRALS: ExchangeReferral[] = [
 
 /* ── Page ───────────────────────────────────────────────────────────── */
 
-export default function ReferralsPage() {
+export default async function ReferralsPage() {
+  // Session-aware CTA — hide "Sign up first" for users who already have
+  // an account (it makes no sense to tell a signed-in user to sign up).
+  // Server-rendered so there's no flash of the wrong button on hydration.
+  const session = await auth();
+  const isAuthed = !!session?.user;
   return (
     <div className="min-h-screen bg-hub-black">
       <Header />
@@ -190,12 +196,14 @@ export default function ReferralsPage() {
                 <Trophy className="w-3.5 h-3.5" />
                 Leaderboard
               </Link>
-              <Link
-                href="/signup"
-                className="group inline-flex items-center gap-2 text-xs font-semibold px-3.5 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-neutral-300 hover:bg-white/[0.08] hover:text-white transition-colors"
-              >
-                Sign up first
-              </Link>
+              {!isAuthed && (
+                <Link
+                  href="/signup"
+                  className="group inline-flex items-center gap-2 text-xs font-semibold px-3.5 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-neutral-300 hover:bg-white/[0.08] hover:text-white transition-colors"
+                >
+                  Sign up first
+                </Link>
+              )}
             </div>
 
             {/* ─── Program terms grid ─── */}

@@ -27,6 +27,14 @@ const nextConfig = {
     return [
       { source: '/sentiment', destination: '/fear-greed', permanent: true },
       { source: '/whale-alerts', destination: '/whale-alert', permanent: true },
+      // Likely-typo paths — the sidebar label is "Funding Rates" but
+      // the route is /funding. Users who type the label verbatim into
+      // the URL bar (or follow stale external links) get a 404
+      // instead of the page they wanted. Same for "open interest" →
+      // /open-interest variants.
+      { source: '/funding-rates', destination: '/funding', permanent: true },
+      { source: '/openinterest', destination: '/open-interest', permanent: true },
+      { source: '/long-short', destination: '/longshort', permanent: true },
     ];
   },
   async rewrites() {
