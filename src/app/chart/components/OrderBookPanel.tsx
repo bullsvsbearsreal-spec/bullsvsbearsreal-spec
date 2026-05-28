@@ -222,10 +222,10 @@ export function OrderBookPanel({ symbol }: { symbol: string }) {
             const widthPct = (l.size / maxAskSize) * 100;
             const sum = groupedAsks.slice(0, groupedAsks.length - i).reduce((acc, lv) => acc + lv.size, 0);
             return (
-              <div key={`a-${l.price}`} className="relative flex items-center justify-between px-3 py-[2px] text-[11px] font-mono">
+              <div key={`a-${l.price}`} className="relative flex items-center justify-between px-3 py-[2px] text-[11px] font-mono hover:bg-white/[0.03] cursor-default">
                 <div className="absolute inset-y-0 right-0 bg-red-500/10" style={{ width: `${widthPct}%` }} />
                 <span className="text-neutral-400 z-10">{l.size.toFixed(3)}</span>
-                <span className="text-red-400 z-10">{l.price.toFixed(2)}</span>
+                <span className="text-red-400 z-10 font-semibold">{l.price.toFixed(2)}</span>
                 <span className="text-neutral-500 z-10 text-[10px]">{sum.toFixed(2)}</span>
               </div>
             );
@@ -249,10 +249,10 @@ export function OrderBookPanel({ symbol }: { symbol: string }) {
             const widthPct = (l.size / maxBidSize) * 100;
             const sum = groupedBids.slice(0, i + 1).reduce((acc, lv) => acc + lv.size, 0);
             return (
-              <div key={`b-${l.price}`} className="relative flex items-center justify-between px-3 py-[2px] text-[11px] font-mono">
+              <div key={`b-${l.price}`} className="relative flex items-center justify-between px-3 py-[2px] text-[11px] font-mono hover:bg-white/[0.03] cursor-default">
                 <div className="absolute inset-y-0 right-0 bg-emerald-500/10" style={{ width: `${widthPct}%` }} />
                 <span className="text-neutral-400 z-10">{l.size.toFixed(3)}</span>
-                <span className="text-emerald-400 z-10">{l.price.toFixed(2)}</span>
+                <span className="text-emerald-400 z-10 font-semibold">{l.price.toFixed(2)}</span>
                 <span className="text-neutral-500 z-10 text-[10px]">{sum.toFixed(2)}</span>
               </div>
             );

@@ -66,19 +66,24 @@ export function TerminalControlBar({
   return (
     <div className="bg-black border-b border-white/[0.06] relative">
       <div className="flex items-center gap-3 px-3 py-2 overflow-x-auto">
-        {/* Asset class tabs */}
-        <div className="flex items-center gap-3 shrink-0">
+        {/* Asset class tabs — active gets a yellow underline pill so the
+            selection is unambiguous (was just text-color which read like
+            a hover state) */}
+        <div className="flex items-center gap-1 shrink-0">
           {ASSET_TABS.map(tab => (
             <button
               key={tab.id}
               onClick={() => onAssetClassChange(tab.id)}
-              className={`text-xs font-semibold uppercase tracking-wider transition-colors ${
+              className={`relative text-xs font-semibold uppercase tracking-wider transition-colors px-2 py-1 rounded ${
                 tab.id === assetClass
-                  ? 'text-yellow-400'
-                  : 'text-neutral-500 hover:text-white'
+                  ? 'text-yellow-400 bg-yellow-400/[0.08]'
+                  : 'text-neutral-500 hover:text-white hover:bg-white/[0.04]'
               }`}
             >
               {tab.label}
+              {tab.id === assetClass && (
+                <span className="absolute left-1/2 -translate-x-1/2 -bottom-[7px] h-[2px] w-6 bg-yellow-400 rounded-full" />
+              )}
             </button>
           ))}
         </div>
@@ -141,29 +146,31 @@ export function TerminalControlBar({
         </div>
 
         {/* Chart type — candles / line / area. Drives TradingView's
-            `style` prop. TV reloads the chart on change. */}
-        <div className="flex items-center gap-1 shrink-0 border-l border-white/[0.08] pl-2">
-          <button
-            onClick={() => onChartStyleChange('1')}
-            title="Candles"
-            className={`p-1.5 rounded ${chartStyle === '1' ? 'text-yellow-400 bg-white/[0.04]' : 'text-neutral-500 hover:text-white'}`}
-          >
-            <BarChart2 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => onChartStyleChange('3')}
-            title="Line"
-            className={`p-1.5 rounded ${chartStyle === '3' ? 'text-yellow-400 bg-white/[0.04]' : 'text-neutral-500 hover:text-white'}`}
-          >
-            <LineChart className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => onChartStyleChange('9')}
-            title="Area"
-            className={`p-1.5 rounded ${chartStyle === '9' ? 'text-yellow-400 bg-white/[0.04]' : 'text-neutral-500 hover:text-white'}`}
-          >
-            <AreaChart className="w-3.5 h-3.5" />
-          </button>
+            `style` prop. Active gets a yellow-tinted background + ring
+            for stronger contrast against the dark surface (the prior
+            yellow-text-only state read like a hover effect). */}
+        <div className="flex items-center gap-0.5 shrink-0 border-l border-white/[0.08] pl-2">
+          {([
+            ['1', 'Candles', BarChart2],
+            ['3', 'Line', LineChart],
+            ['9', 'Area', AreaChart],
+          ] as const).map(([style, label, Icon]) => {
+            const active = chartStyle === style;
+            return (
+              <button
+                key={style}
+                onClick={() => onChartStyleChange(style)}
+                title={label}
+                className={`p-1.5 rounded-md transition-colors ${
+                  active
+                    ? 'text-yellow-400 bg-yellow-400/[0.12] ring-1 ring-yellow-400/30'
+                    : 'text-neutral-500 hover:text-white hover:bg-white/[0.04]'
+                }`}
+              >
+                <Icon className="w-3.5 h-3.5" />
+              </button>
+            );
+          })}
         </div>
 
         {/* Actions */}

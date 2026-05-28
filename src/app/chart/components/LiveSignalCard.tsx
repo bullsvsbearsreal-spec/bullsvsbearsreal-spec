@@ -74,28 +74,35 @@ export function LiveSignalCard({ symbol }: { symbol: string }) {
     ? `funding ${avgRate >= 0 ? '+' : ''}${avgRate.toFixed(4)}% · ${negativeCount}/${venueCount} venues negative`
     : null;
 
+  // Subtle 350ms cross-fade between modes so the rotation reads as a
+  // soft transition, not a jolt. Tracked via key changes on the inner
+  // div + CSS opacity transition.
   return (
-    <div className="rounded-lg border border-yellow-400/20 bg-yellow-400/[0.04] p-3">
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <AlertCircle className="w-3 h-3 text-yellow-400" />
-        <span className="text-[9px] uppercase tracking-wider text-yellow-400 font-bold">
-          Live Signal
-        </span>
-      </div>
-      {mode === 'funding-flip' ? (
-        <div className="text-[11px] text-neutral-200 leading-snug">
-          {fundingState
-            ? `${symbol}: ${fundingState}`
-            : `Tracking funding state for ${symbol}…`}
+    <div className="rounded-lg border border-white/[0.06] bg-gradient-to-br from-yellow-400/[0.04] to-transparent p-3 shadow-sm">
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-1.5">
+          <span className="relative flex h-2 w-2">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-50" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-400" />
+          </span>
+          <span className="text-[9px] uppercase tracking-wider text-neutral-400 font-bold">
+            Live Signal
+          </span>
         </div>
-      ) : (
-        <div className="text-[11px] text-neutral-200 leading-snug">
-          {news ? (
+        <AlertCircle className="w-3 h-3 text-neutral-600" />
+      </div>
+      <div key={mode} className="text-[11px] text-neutral-200 leading-snug animate-fade-in">
+        {mode === 'funding-flip' ? (
+          fundingState
+            ? <><span className="text-yellow-300 font-semibold">{symbol}</span> · {fundingState}</>
+            : <span className="text-neutral-500">Tracking funding state for {symbol}…</span>
+        ) : (
+          news ? (
             <>
-              <div className="text-neutral-300 line-clamp-2 mb-1">{news.title}</div>
+              <div className="text-neutral-200 line-clamp-2 mb-1">{news.title}</div>
               <div className="text-[9px] text-neutral-500 uppercase tracking-wider">
                 {news.source}
-                {fundingState && <span className="ml-2 normal-case text-neutral-400">{fundingState}</span>}
+                {fundingState && <span className="ml-2 normal-case text-neutral-400">· {fundingState}</span>}
               </div>
             </>
           ) : (
@@ -103,9 +110,9 @@ export function LiveSignalCard({ symbol }: { symbol: string }) {
               <div className="text-neutral-400">No fresh headlines for {symbol}.</div>
               {fundingState && <div className="text-[10px] text-neutral-500 mt-1">{fundingState}</div>}
             </>
-          )}
-        </div>
-      )}
+          )
+        )}
+      </div>
     </div>
   );
 }

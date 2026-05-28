@@ -242,28 +242,34 @@ export function TerminalStatsBar({
 
   return (
     <div className="flex bg-black border-b border-white/[0.06] overflow-x-auto">
-      {cells.map((c, i) => (
-        <div
-          key={i}
-          className="flex-1 min-w-[140px] px-3 py-2.5 border-r border-white/[0.06] last:border-r-0"
-        >
-          <div className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold mb-1 whitespace-nowrap">
-            {c.label}
-          </div>
-          <div className={`text-sm font-mono font-bold whitespace-nowrap ${
-            c.tone === 'pos' ? 'text-emerald-400' :
-            c.tone === 'neg' ? 'text-red-400' :
-            'text-white'
-          }`}>
-            {c.primary}
-          </div>
-          {c.secondary && (
-            <div className="text-[10px] text-neutral-500 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
-              {c.secondary}
+      {cells.map((c, i) => {
+        const isLoading = c.primary === '—';
+        return (
+          <div
+            key={i}
+            className="flex-1 min-w-[140px] px-3 py-2.5 border-r border-white/[0.06] last:border-r-0"
+          >
+            <div className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold mb-1 whitespace-nowrap">
+              {c.label}
             </div>
-          )}
-        </div>
-      ))}
+            <div className={`text-sm font-mono font-bold whitespace-nowrap ${
+              isLoading
+                ? 'text-neutral-600'
+                : c.tone === 'pos' ? 'text-emerald-400'
+                : c.tone === 'neg' ? 'text-red-400'
+                : 'text-white'
+            }`}>
+              {/* Subtle pulse on the dash so it reads as 'loading' not 'no data' */}
+              {isLoading ? <span className="inline-block w-8 h-3 bg-white/[0.04] rounded animate-pulse" /> : c.primary}
+            </div>
+            {c.secondary && (
+              <div className="text-[10px] text-neutral-500 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+                {c.secondary}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

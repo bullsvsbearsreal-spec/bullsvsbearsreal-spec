@@ -131,20 +131,29 @@ export function TerminalSidebar({
         </ul>
       </div>
 
-      {/* RECENT */}
+      {/* RECENT — chips show an icon for crypto/forex/etc. for instant
+          recognition. Falls back to text-only for symbols not in catalog. */}
       {recents.length > 0 && (
         <div className="border-b border-white/[0.06] px-3 py-2">
           <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-2">Recent</div>
           <div className="flex flex-wrap gap-1">
-            {recents.map(r => (
-              <button
-                key={r}
-                onClick={() => onSelect(r)}
-                className={`text-[10px] px-2 py-0.5 rounded ${r === activeSymbol ? 'bg-yellow-400/10 text-yellow-300' : 'bg-white/[0.05] text-neutral-300 hover:bg-white/[0.08]'}`}
-              >
-                {r}
-              </button>
-            ))}
+            {recents.map(r => {
+              const isActive = r === activeSymbol;
+              return (
+                <button
+                  key={r}
+                  onClick={() => onSelect(r)}
+                  className={`flex items-center gap-1 text-[10px] pl-1 pr-2 py-0.5 rounded-full transition-colors ${
+                    isActive
+                      ? 'bg-yellow-400/10 text-yellow-300 ring-1 ring-yellow-400/30'
+                      : 'bg-white/[0.05] text-neutral-300 hover:bg-white/[0.08]'
+                  }`}
+                >
+                  <TokenIconSimple symbol={r} size={12} />
+                  <span>{r}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       )}
