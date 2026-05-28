@@ -84,6 +84,7 @@ export function shouldSkip(path: string): boolean {
   if (path.startsWith('/api/admin/')) return true;   // auth-protected
   if (path.startsWith('/api/cron/')) return true;    // internal cron
   if (path === '/api/telegram/webhook') return true; // telegram bot webhook
+  if (path.startsWith('/api/webhooks/')) return true; // third-party webhooks (Resend, etc.) — auth via signed payload
   return false;
 }
 
