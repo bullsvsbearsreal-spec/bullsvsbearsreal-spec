@@ -243,6 +243,18 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://prices.info-hub.io" />
         {/* Prevent FOUC: apply saved theme before first paint */}
         <script dangerouslySetInnerHTML={{ __html: `try{var t=localStorage.getItem('infohub-theme');if(t==='light')document.documentElement.dataset.theme=t}catch(e){}` }} />
+        {/* Umami analytics tracker — privacy-friendly, no cookies, no
+            PII. Only renders when the env vars are configured so dev /
+            preview builds don't ping prod. The admin + marketing panels
+            consume the same data via /api/admin/analytics (server-side
+            proxy with the API token). */}
+        {process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID && process.env.NEXT_PUBLIC_UMAMI_HOST && (
+          <script
+            defer
+            src={`${process.env.NEXT_PUBLIC_UMAMI_HOST}/script.js`}
+            data-website-id={process.env.NEXT_PUBLIC_UMAMI_WEBSITE_ID}
+          />
+        )}
       </head>
       <body className={`${inter.variable} ${jetbrains.variable} font-sans bg-hub-black min-h-screen antialiased`} style={{ color: 'var(--fg-default)' }}>
         <script

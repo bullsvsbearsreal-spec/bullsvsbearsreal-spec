@@ -19,19 +19,21 @@ import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
-import { Shield, BarChart3, DollarSign, RefreshCw, Lock, Megaphone, Gift, Send, TrendingUp } from 'lucide-react';
+import { Shield, BarChart3, DollarSign, RefreshCw, Lock, Megaphone, Gift, Send, TrendingUp, Activity } from 'lucide-react';
 import { GrowthTab }      from '../admin-panel/tabs/Growth';
 import { RevenueTab }     from '../admin-panel/tabs/Revenue';
 import { AcquisitionTab } from '../admin-panel/tabs/Acquisition';
 import { CampaignsTab }   from '../admin-panel/tabs/Campaigns';
+import { AnalyticsTab }   from '../admin-panel/tabs/Analytics';
 import { ToastHost, type ToastMsg } from '../admin-panel/components/primitives';
 import type { StatsResp } from '../admin-panel/types';
 
-type TabId = 'growth' | 'acquisition' | 'campaigns' | 'revenue';
+type TabId = 'growth' | 'analytics' | 'acquisition' | 'campaigns' | 'revenue';
 
 interface TabDef { id: TabId; label: string; icon: React.ReactNode }
 const TABS: TabDef[] = [
   { id: 'growth',      label: 'Growth',      icon: <BarChart3  style={{ width: 13, height: 13 }} /> },
+  { id: 'analytics',   label: 'Analytics',   icon: <Activity   style={{ width: 13, height: 13 }} /> },
   { id: 'acquisition', label: 'Acquisition', icon: <TrendingUp style={{ width: 13, height: 13 }} /> },
   { id: 'campaigns',   label: 'Campaigns',   icon: <Megaphone  style={{ width: 13, height: 13 }} /> },
   { id: 'revenue',     label: 'Revenue',     icon: <DollarSign style={{ width: 13, height: 13 }} /> },
@@ -242,6 +244,7 @@ export default function MarketingPanelPage() {
               extend requireAdminOrAdvisor → requireDashboardRead. */}
           <div style={{ minHeight: 400 }}>
             {active === 'growth'      && <GrowthTab      stats={stats} />}
+            {active === 'analytics'   && <AnalyticsTab   onToast={fireToast} />}
             {active === 'acquisition' && <AcquisitionTab onToast={fireToast} />}
             {active === 'campaigns'   && <CampaignsTab   onToast={fireToast} />}
             {active === 'revenue'     && <RevenueTab />}
