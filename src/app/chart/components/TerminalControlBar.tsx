@@ -18,6 +18,7 @@ import {
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { ASSET_TABS, TIMEFRAMES, findBySymbol } from '../catalog';
 import type { AssetClass, Timeframe } from '../catalog';
+import type { ChartStyle } from './TradingViewChart';
 
 const BINANCE_REF = process.env.NEXT_PUBLIC_BINANCE_REF;
 
@@ -25,23 +26,27 @@ export function TerminalControlBar({
   assetClass,
   symbolLabel,
   interval,
+  chartStyle,
   livePrice,
   livePriceChange24h,
   isFavorited,
   onAssetClassChange,
   onSymbolChange,
   onIntervalChange,
+  onChartStyleChange,
   onToggleFavorite,
 }: {
   assetClass: AssetClass;
   symbolLabel: string;
   interval: Timeframe;
+  chartStyle: ChartStyle;
   livePrice: number | null;
   livePriceChange24h: number | null;
   isFavorited: boolean;
   onAssetClassChange: (c: AssetClass) => void;
   onSymbolChange: (label: string) => void;
   onIntervalChange: (t: Timeframe) => void;
+  onChartStyleChange: (s: ChartStyle) => void;
   onToggleFavorite: () => void;
 }) {
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -135,11 +140,30 @@ export function TerminalControlBar({
           ))}
         </div>
 
-        {/* Chart type — cosmetic icons; TradingView's own controls handle the rest */}
+        {/* Chart type — candles / line / area. Drives TradingView's
+            `style` prop. TV reloads the chart on change. */}
         <div className="flex items-center gap-1 shrink-0 border-l border-white/[0.08] pl-2">
-          <button className="p-1.5 rounded text-yellow-400 bg-white/[0.04]"><BarChart2 className="w-3.5 h-3.5" /></button>
-          <button className="p-1.5 rounded text-neutral-500 hover:text-white"><LineChart className="w-3.5 h-3.5" /></button>
-          <button className="p-1.5 rounded text-neutral-500 hover:text-white"><AreaChart className="w-3.5 h-3.5" /></button>
+          <button
+            onClick={() => onChartStyleChange('1')}
+            title="Candles"
+            className={`p-1.5 rounded ${chartStyle === '1' ? 'text-yellow-400 bg-white/[0.04]' : 'text-neutral-500 hover:text-white'}`}
+          >
+            <BarChart2 className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => onChartStyleChange('3')}
+            title="Line"
+            className={`p-1.5 rounded ${chartStyle === '3' ? 'text-yellow-400 bg-white/[0.04]' : 'text-neutral-500 hover:text-white'}`}
+          >
+            <LineChart className="w-3.5 h-3.5" />
+          </button>
+          <button
+            onClick={() => onChartStyleChange('9')}
+            title="Area"
+            className={`p-1.5 rounded ${chartStyle === '9' ? 'text-yellow-400 bg-white/[0.04]' : 'text-neutral-500 hover:text-white'}`}
+          >
+            <AreaChart className="w-3.5 h-3.5" />
+          </button>
         </div>
 
         {/* Actions */}

@@ -39,7 +39,7 @@ import type { AssetClass, Timeframe } from './catalog';
 import { TerminalControlBar } from './components/TerminalControlBar';
 import { TerminalSidebar } from './components/TerminalSidebar';
 import { TerminalStatsBar } from './components/TerminalStatsBar';
-import { TradingViewChart } from './components/TradingViewChart';
+import { TradingViewChart, type ChartStyle } from './components/TradingViewChart';
 import { OrderBookPanel } from './components/OrderBookPanel';
 import { TradeTapePanel } from './components/TradeTapePanel';
 import { TerminalBottomTabs } from './components/TerminalBottomTabs';
@@ -53,6 +53,7 @@ export default function ChartPage() {
   const [symbolLabel, setSymbolLabel] = useState<string>('BTC');
   // Avoid shadowing window.setInterval — renamed to setChartInterval.
   const [chartInterval, setChartInterval] = useState<Timeframe>('15');
+  const [chartStyle, setChartStyle] = useState<ChartStyle>('1');
   const [favorites, setFavorites] = useState<string[]>([]);
   const [recents, setRecents] = useState<string[]>([]);
 
@@ -160,12 +161,14 @@ export default function ChartPage() {
         assetClass={assetClass}
         symbolLabel={symbolLabel}
         interval={chartInterval}
+        chartStyle={chartStyle}
         livePrice={livePrice}
         livePriceChange24h={livePriceChange24h}
         isFavorited={isFavorited}
         onAssetClassChange={handleAssetClassChange}
         onSymbolChange={handleSymbolChange}
         onIntervalChange={setChartInterval}
+        onChartStyleChange={setChartStyle}
         onToggleFavorite={toggleFavorite}
       />
 
@@ -198,7 +201,7 @@ export default function ChartPage() {
         </div>
 
         <div style={{ gridArea: 'chart' }} className="min-w-0 min-h-0 overflow-hidden bg-black border-r border-white/[0.06]">
-          <TradingViewChart tvSymbol={tvSymbol} interval={chartInterval} />
+          <TradingViewChart tvSymbol={tvSymbol} interval={chartInterval} chartStyle={chartStyle} />
         </div>
 
         <div style={{ gridArea: 'right' }} className="hidden xl:flex flex-col min-w-0 min-h-0 overflow-hidden">

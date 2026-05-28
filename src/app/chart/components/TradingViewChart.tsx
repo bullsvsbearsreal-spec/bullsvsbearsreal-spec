@@ -17,13 +17,19 @@
  */
 import { useEffect, useRef, useState } from 'react';
 
+/** TradingView chart-style codes from their widget docs:
+ *   '1' candles, '2' bars, '3' line, '8' heikin ashi, '9' area. */
+export type ChartStyle = '1' | '2' | '3' | '8' | '9';
+
 export function TradingViewChart({
   tvSymbol,
   interval,
+  chartStyle = '1',
   compareSymbol,
 }: {
   tvSymbol: string;
   interval: string;
+  chartStyle?: ChartStyle;
   compareSymbol?: string | null;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -49,7 +55,7 @@ export function TradingViewChart({
       interval,
       timezone: 'Etc/UTC',
       theme: 'dark',
-      style: '1',           // 1 = candles
+      style: chartStyle,    // 1 candles · 2 bars · 3 line · 8 heikin · 9 area
       locale: 'en',
       backgroundColor: 'rgba(0, 0, 0, 1)',
       gridColor: 'rgba(255, 255, 255, 0.03)',
@@ -99,7 +105,7 @@ export function TradingViewChart({
     return () => {
       if (container) container.innerHTML = '';
     };
-  }, [tvSymbol, interval, compareSymbol]);
+  }, [tvSymbol, interval, chartStyle, compareSymbol]);
 
   return (
     <div className="w-full h-full relative bg-black">
