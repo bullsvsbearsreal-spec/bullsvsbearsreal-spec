@@ -204,9 +204,26 @@ function FunnelChart({ steps }: { steps: FunnelStep[] }) {
                 <span style={{ color: i === 0 ? 'var(--fg-faint)' : 'var(--fg-muted)' }}>
                   {i === 0 ? '100%' : `${fmtPct(s.pctOfTop)} of top`}
                 </span>
-                {i > 0 && <span style={{ color: s.pctOfPrev > 70 ? 'var(--pump-mild)' : s.pctOfPrev > 40 ? '#fbbf24' : 'var(--rekt-mild)' }}>
-                  → {fmtPct(s.pctOfPrev)}
-                </span>}
+                {/* pctOfPrev only makes sense when this step is a strict
+                    subset of the previous one. Our funnel steps are
+                    independent dimensions (you can connect a wallet
+                    without first creating an alert), so when a later
+                    step has MORE users than the previous one, the
+                    "drop-off %" reads as e.g. "→ 300%" which is
+                    mathematically right but UX-confusing. Hide when
+                    above 100% and explain via tooltip; show normally
+                    when ≤100%. */}
+                {i > 0 && s.pctOfPrev <= 100 && (
+                  <span style={{ color: s.pctOfPrev > 70 ? 'var(--pump-mild)' : s.pctOfPrev > 40 ? '#fbbf24' : 'var(--rekt-mild)' }}>
+                    → {fmtPct(s.pctOfPrev)}
+                  </span>
+                )}
+                {i > 0 && s.pctOfPrev > 100 && (
+                  <span
+                    style={{ color: 'var(--fg-faint)', cursor: 'help' }}
+                    title={`${fmtPct(s.pctOfPrev)} — this step isn't a strict subset of the previous one (users can complete it without first completing step ${i}), so a drop-off % isn't meaningful here.`}
+                  >→ —</span>
+                )}
               </span>
             </div>
             <div style={{ height: 8, background: 'rgba(255,255,255,0.04)', borderRadius: 4, overflow: 'hidden' }}>
