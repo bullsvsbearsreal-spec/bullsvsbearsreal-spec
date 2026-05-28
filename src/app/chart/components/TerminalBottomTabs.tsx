@@ -266,7 +266,7 @@ function PositionSizerTab({ symbol }: { symbol: string }) {
           </div>
         </Link>
         <Link
-          href={`/alerts/new?symbol=${symbol}`}
+          href={`/alerts?symbol=${symbol}`}
           className="flex items-center gap-3 p-4 rounded-lg border border-white/[0.08] bg-white/[0.02] hover:border-yellow-400/40 hover:bg-yellow-400/[0.04] transition-colors"
         >
           <TrendingUp className="w-6 h-6 text-yellow-400" />

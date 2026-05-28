@@ -200,12 +200,31 @@ export default function ChartPage() {
         </div>
 
         <div style={{ gridArea: 'right' }} className="hidden xl:flex flex-col min-w-0 min-h-0 overflow-hidden">
-          <div className="flex-1 min-h-0 border-b border-white/[0.06]">
-            <OrderBookPanel symbol={symbolLabel} />
-          </div>
-          <div className="flex-1 min-h-0">
-            <TradeTapePanel symbol={symbolLabel} />
-          </div>
+          {assetClass === 'crypto' ? (
+            <>
+              <div className="flex-1 min-h-0 border-b border-white/[0.06]">
+                <OrderBookPanel symbol={symbolLabel} />
+              </div>
+              <div className="flex-1 min-h-0">
+                <TradeTapePanel symbol={symbolLabel} />
+              </div>
+            </>
+          ) : (
+            // OrderBook + TradeTape both rely on Binance Futures WS,
+            // which only carries crypto perps. For stocks/forex/etc.
+            // we'd need separate venue WS feeds — out of scope for v1.
+            <div className="flex items-center justify-center h-full p-6 text-center">
+              <div>
+                <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-2">
+                  Order Book · Trades
+                </div>
+                <div className="text-xs text-neutral-400 leading-relaxed">
+                  Live depth + tape available for crypto perps only.<br />
+                  Switch to a crypto symbol to see live data.
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div style={{ gridArea: 'bottom' }} className="min-w-0 min-h-0 overflow-hidden">

@@ -19,7 +19,7 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Percent, Layers, Ruler, BellRing, Crosshair, Flame,
+  Percent, Layers, Ruler, BellRing, Flame, TrendingUp,
 } from 'lucide-react';
 import { TokenIconSimple } from '@/components/TokenIcon';
 import { WATCHLIST_DEFAULTS, findBySymbol, ASSET_TABS } from '../catalog';
@@ -36,8 +36,10 @@ const TOOL_LINKS = [
   { href: '/funding-arb', label: 'Funding Arb', icon: Percent, live: false },
   { href: '/spread-scanner', label: 'Spread Scanner', icon: Layers, live: false },
   { href: '/position-size', label: 'Position Sizer', icon: Ruler, live: false },
-  { href: '/whale-alerts', label: 'Whale Alerts', icon: BellRing, live: false },
-  { href: '/signals', label: 'Signals', icon: Crosshair, live: false },
+  // /alerts is the alert manager (create + list). /alerts/new is 404.
+  { href: '/alerts', label: 'Alerts', icon: BellRing, live: false },
+  // /signals 308-redirects to /breakouts (the setup scanner).
+  { href: '/breakouts', label: 'Breakouts', icon: TrendingUp, live: false },
 ];
 
 export function TerminalSidebar({
@@ -89,13 +91,12 @@ export function TerminalSidebar({
       <div className="border-b border-white/[0.06]">
         <div className="flex items-center justify-between px-3 py-2">
           <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold">Watchlist</span>
-          <button
-            onClick={() => onSelect('__add__')}
-            className="text-neutral-500 hover:text-yellow-400"
-            title="Star a symbol in the top bar to pin"
+          <span
+            className="text-[9px] text-neutral-600 uppercase tracking-wider"
+            title="Click the star next to the symbol in the top bar to pin/unpin"
           >
-            +
-          </button>
+            tap ☆ to pin
+          </span>
         </div>
         <ul>
           {watchlist.map(label => {
