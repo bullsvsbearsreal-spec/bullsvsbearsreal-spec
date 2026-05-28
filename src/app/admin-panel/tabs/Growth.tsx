@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { TrendingUp, Filter, BarChart3, ArrowRight, MousePointer } from 'lucide-react';
+import { TrendingUp, Filter, BarChart3, ArrowRight, MousePointer, Activity, Users as UsersIcon } from 'lucide-react';
 import { Card, SectionHead, SkeletonBlock, fmtNumber, fmtPct, TIER_COLORS } from '../components/primitives';
 import type { StatsResp, FunnelStep, TopPage } from '../types';
 
@@ -59,6 +59,27 @@ export function GrowthTab({ stats }: { stats: StatsResp | null }) {
         <Card title="Email Verification">
           {!stats?.users?.verified ? <SkeletonBlock w="100%" h={64} /> : (
             <VerifiedMix v={stats.users.verified} />
+          )}
+        </Card>
+      </div>
+
+      {/* Engagement & Retention — DAU/WAU/MAU + Sean Ellis stickiness
+          + cohort retention. Data was already on stats.users.active +
+          stats.retention but had no UI surface. Ben asked for this
+          metric specifically; surfacing it inline keeps the marketer
+          flow on one page. */}
+      <SectionHead title="Engagement & Retention" icon={<Activity style={{ width: 13, height: 13 }} />} />
+      <div style={{ marginBottom: 18 }}>
+        <Card title="Active users · stickiness · cohort retention">
+          {!stats?.users?.active ? (
+            <SkeletonBlock w="100%" h={100} />
+          ) : (
+            <EngagementBlock
+              dau={stats.users.active.dau}
+              wau={stats.users.active.wau}
+              mau={stats.users.active.mau}
+              retention={stats.retention}
+            />
           )}
         </Card>
       </div>
@@ -198,6 +219,140 @@ function FunnelChart({ steps }: { steps: FunnelStep[] }) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Engagement & Retention — DAU/WAU/MAU + Sean Ellis stickiness +
+// cohort retention. All data comes from the existing /api/admin/stats
+// payload (users.active + retention) — no new endpoint needed; the
+// numbers were just not being rendered anywhere.
+// ────────────────────────────────────────────────────────────────────
+type RetentionCell = { pct: number; total: number } | null | undefined;
+function EngagementBlock({ dau, wau, mau, retention }: {
+  dau: number;
+  wau: number;
+  mau: number;
+  retention?: { d1: RetentionCell; d7: RetentionCell; d30: RetentionCell } | null;
+}) {
+  // Stickiness = DAU/WAU. Sean Ellis's product-engagement quality
+  // metric — share of weekly actives who returned today.
+  //   >30%  = exceptional
+  //   20-30% = solid
+  //   10-20% = typical for finance/crypto dashboards (users dip in
+  //            once or twice a week to check, not daily traders)
+  //   <10%  = at-risk, casual base
+  const stickiness = wau > 0 ? Math.round((dau / wau) * 1000) / 10 : 0;
+  const stickColor =
+    stickiness >= 30 ? 'var(--pump-mild)' :
+    stickiness >= 20 ? '#86efac' :
+    stickiness >= 10 ? '#fcd34d' : 'var(--rekt-mild)';
+
+  return (
+    <div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: retention ? 16 : 0 }}>
+        <ActiveTile label="DAU" sub="last 24h" value={fmtNumber(dau)} color="#7dd3fc" />
+        <ActiveTile label="WAU" sub="last 7d"  value={fmtNumber(wau)} color="#c4b5fd" />
+        <ActiveTile label="MAU" sub="last 30d" value={fmtNumber(mau)} color="#fdba74" />
+        <ActiveTile
+          label="Stickiness"
+          sub="DAU ÷ WAU"
+          value={`${stickiness}%`}
+          color={stickColor}
+          hint="Share of weekly actives who returned today (Sean Ellis stickiness). >25% is solid for B2B SaaS; 10-20% is typical for finance dashboards where users dip in once or twice a week. <10% indicates a mostly-casual base."
+        />
+      </div>
+
+      {retention && (
+        <>
+          <div style={{
+            fontSize: 9, fontWeight: 700, color: 'var(--fg-faint)',
+            textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: 6,
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}>
+            <UsersIcon style={{ width: 10, height: 10 }} />
+            Cohort retention · % of signups returning after N days
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+            <RetentionMini label="D1"  data={retention.d1}  good={40} ok={20}
+                           hint="Of users signed up 1-30 days ago, the share that returned on/after day 1." />
+            <RetentionMini label="D7"  data={retention.d7}  good={25} ok={10}
+                           hint="Of users signed up 7-37 days ago, the share that returned on/after day 7." />
+            <RetentionMini label="D30" data={retention.d30} good={15} ok={5}
+                           hint="Of users signed up 30-60 days ago, the share that returned on/after day 30." />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ActiveTile({ label, sub, value, color, hint }: {
+  label: string; sub: string; value: string; color: string; hint?: string;
+}) {
+  return (
+    <div
+      title={hint}
+      style={{
+        padding: '10px 12px',
+        background: 'rgba(255,255,255,0.02)',
+        border: '1px solid var(--hub-border-subtle)',
+        borderRadius: 8,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 2 }}>
+        <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          {label}
+        </span>
+        <span style={{ fontSize: 9, color: 'var(--fg-faint)', fontFamily: 'var(--font-mono)' }}>
+          {sub}
+        </span>
+      </div>
+      <div style={{ fontSize: 20, fontWeight: 800, color, fontFamily: 'var(--font-mono)' }}>
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function RetentionMini({ label, data, good, ok, hint }: {
+  label: string;
+  data: RetentionCell;
+  good: number;
+  ok: number;
+  hint: string;
+}) {
+  const pct  = data?.pct ?? 0;
+  const tot  = data?.total ?? 0;
+  const hasData = tot > 0;
+  const color =
+    !hasData     ? 'var(--fg-faint)' :
+    pct >= good  ? 'var(--pump-mild)' :
+    pct >= ok    ? '#fcd34d' : 'var(--rekt-mild)';
+  return (
+    <div
+      title={hasData ? `${hint}\n\nCohort size: ${tot} users` : `${hint}\n\nCohort window has no data yet (need 30+ days of signups for D30 to populate).`}
+      style={{
+        padding: '8px 10px',
+        background: 'rgba(255,255,255,0.02)',
+        border: '1px solid var(--hub-border-subtle)',
+        borderRadius: 6,
+        display: 'flex', alignItems: 'center', gap: 10,
+      }}
+    >
+      <span style={{ fontSize: 10, fontWeight: 800, color: 'var(--fg-muted)', fontFamily: 'var(--font-mono)' }}>
+        {label}
+      </span>
+      <div style={{ flex: 1, height: 4, background: 'rgba(255,255,255,0.04)', borderRadius: 2, overflow: 'hidden' }}>
+        <div style={{ width: `${Math.min(100, pct)}%`, height: '100%', background: color, transition: 'width 400ms ease-out' }} />
+      </div>
+      <span style={{ fontSize: 12, fontWeight: 700, color, fontFamily: 'var(--font-mono)', minWidth: 50, textAlign: 'right' }}>
+        {hasData ? `${pct.toFixed(0)}%` : '—'}
+      </span>
+      <span style={{ fontSize: 9, color: 'var(--fg-faint)', fontFamily: 'var(--font-mono)', minWidth: 38, textAlign: 'right' }}>
+        n={fmtNumber(tot)}
+      </span>
     </div>
   );
 }
