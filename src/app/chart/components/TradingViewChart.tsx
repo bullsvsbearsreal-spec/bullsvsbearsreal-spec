@@ -53,15 +53,15 @@ export function TradingViewChart({
       locale: 'en',
       backgroundColor: 'rgba(0, 0, 0, 1)',
       gridColor: 'rgba(255, 255, 255, 0.03)',
-      hide_top_toolbar: true,   // we have our own
+      hide_top_toolbar: true,    // we have our own
       hide_legend: false,
-      hide_side_toolbar: false, // drawing tools — keep
+      hide_side_toolbar: false,  // drawing tools — keep
       allow_symbol_change: false, // we drive symbol from our picker
-      save_image: true,
+      save_image: false,
       calendar: false,
       hide_volume: false,
       support_host: 'https://www.tradingview.com',
-      withdateranges: true,
+      withdateranges: false,     // bottom date-range toolbar was eating ~30px
       details: false,
       hotlist: false,
       show_popup_button: false,

@@ -15,6 +15,7 @@ import {
   Star, ChevronDown, Map, Percent, Compass, Zap,
   BarChart2, LineChart, AreaChart, Search,
 } from 'lucide-react';
+import { TokenIconSimple } from '@/components/TokenIcon';
 import { ASSET_TABS, TIMEFRAMES, findBySymbol } from '../catalog';
 import type { AssetClass, Timeframe } from '../catalog';
 
@@ -84,9 +85,7 @@ export function TerminalControlBar({
           onClick={() => setPickerOpen(true)}
           className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.08] transition-colors shrink-0"
         >
-          <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-yellow-400 text-black text-[10px] font-bold">
-            {symbolLabel.slice(0, 1)}
-          </span>
+          <TokenIconSimple symbol={symbolLabel} size={22} />
           <span className="text-sm font-bold text-white">{symbolLabel}</span>
           {sym?.displayPair && (
             <span className="text-xs text-neutral-400">{sym.displayPair}</span>

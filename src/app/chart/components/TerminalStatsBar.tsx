@@ -79,7 +79,9 @@ export function TerminalStatsBar({
     return () => clearInterval(id);
   }, []);
 
-  // 24h liquidations for the active symbol
+  // 24h liquidations for the active symbol. /api/liquidations
+  // returns a raw `data` array of liquidation events (no summary
+  // mode on the server), so we compute the totals client-side.
   useEffect(() => {
     if (assetClass !== 'crypto' || !symbol) {
       setLiq24h(null);
@@ -94,10 +96,17 @@ export function TerminalStatsBar({
         if (!r.ok) return;
         const j = await r.json();
         if (cancelled) return;
-        const total = j?.summary?.totalVolumeUsd ?? j?.totalVolumeUsd ?? 0;
-        const long = j?.summary?.longVolumeUsd ?? j?.longVolumeUsd ?? 0;
-        const short = j?.summary?.shortVolumeUsd ?? j?.shortVolumeUsd ?? 0;
-        setLiq24h(total);
+        const rows: Array<{ side?: string; value?: number }> = Array.isArray(j?.data)
+          ? j.data
+          : Array.isArray(j) ? j : [];
+        let long = 0;
+        let short = 0;
+        for (const ev of rows) {
+          const v = ev.value ?? 0;
+          if (ev.side === 'long') long += v;
+          else if (ev.side === 'short') short += v;
+        }
+        setLiq24h(long + short);
         setLiqDir({ long, short });
       } catch { /* ignore */ }
     };
@@ -150,10 +159,21 @@ export function TerminalStatsBar({
     0,
   );
 
-  // L/S ratio cell — useLongShort returns {longShortRatio} or {ratio} depending on shape
-  const lsRow = (ls.data ?? null) as { longShortRatio?: number; ratio?: number; longAccount?: number; shortAccount?: number } | null;
-  const lsRatio = lsRow?.longShortRatio ?? lsRow?.ratio ?? null;
-  const lsLong = lsRow?.longAccount ?? null;
+  // L/S ratio cell — /api/longshort actually returns
+  // `{longRatio, shortRatio}` (both as percentages 0-100, summing to
+  // ~100). The "ratio" column callers want is long/short, so compute.
+  const lsRow = (ls.data ?? null) as {
+    longRatio?: number; shortRatio?: number;
+    // Backwards-compat fields we still tolerate:
+    longShortRatio?: number; ratio?: number; longAccount?: number; shortAccount?: number;
+  } | null;
+  const lsRatio = lsRow
+    ? (lsRow.longShortRatio ?? lsRow.ratio
+        ?? (lsRow.longRatio && lsRow.shortRatio && lsRow.shortRatio > 0
+              ? lsRow.longRatio / lsRow.shortRatio
+              : null))
+    : null;
+  const lsLongPct = lsRow?.longRatio ?? (lsRow?.longAccount ? lsRow.longAccount * 100 : null);
 
   // ── Build cell list per asset class ───────────────────────────────
   const cells: Cell[] = [];
@@ -195,8 +215,8 @@ export function TerminalStatsBar({
     cells.push({
       label: 'L/S Ratio',
       primary: lsRatio !== null ? lsRatio.toFixed(2) : '—',
-      secondary: lsLong !== null
-        ? `Crowdedness · ${(lsLong * 100).toFixed(1)} long`
+      secondary: lsLongPct !== null
+        ? `${lsLongPct.toFixed(1)}% long · Binance`
         : 'Binance · 1h',
     });
     cells.push({
@@ -214,16 +234,16 @@ export function TerminalStatsBar({
   }
 
   return (
-    <div className="grid bg-black border-b border-white/[0.06]" style={{
-      gridTemplateColumns: `repeat(${cells.length}, minmax(0, 1fr))`,
-    }}>
+    <div className="flex bg-black border-b border-white/[0.06] overflow-x-auto">
       {cells.map((c, i) => (
         <div
           key={i}
-          className="px-4 py-3 border-r border-white/[0.06] last:border-r-0 min-w-0"
+          className="flex-1 min-w-[140px] px-3 py-2.5 border-r border-white/[0.06] last:border-r-0"
         >
-          <div className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold mb-1">{c.label}</div>
-          <div className={`text-base font-mono font-bold truncate ${
+          <div className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold mb-1 whitespace-nowrap">
+            {c.label}
+          </div>
+          <div className={`text-sm font-mono font-bold whitespace-nowrap ${
             c.tone === 'pos' ? 'text-emerald-400' :
             c.tone === 'neg' ? 'text-red-400' :
             'text-white'
@@ -231,7 +251,9 @@ export function TerminalStatsBar({
             {c.primary}
           </div>
           {c.secondary && (
-            <div className="text-[10px] text-neutral-500 truncate mt-0.5">{c.secondary}</div>
+            <div className="text-[10px] text-neutral-500 mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis">
+              {c.secondary}
+            </div>
           )}
         </div>
       ))}

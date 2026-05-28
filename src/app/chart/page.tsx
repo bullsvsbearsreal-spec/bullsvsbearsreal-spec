@@ -195,7 +195,7 @@ export default function ChartPage() {
           <TerminalStatsBar symbol={symbolLabel} assetClass={assetClass} />
         </div>
 
-        <div style={{ gridArea: 'chart' }} className="min-w-0 min-h-[360px] bg-black border-r border-white/[0.06]">
+        <div style={{ gridArea: 'chart' }} className="min-w-0 min-h-0 overflow-hidden bg-black border-r border-white/[0.06]">
           <TradingViewChart tvSymbol={tvSymbol} interval={chartInterval} />
         </div>
 

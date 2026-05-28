@@ -19,8 +19,9 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  Activity, Percent, Layers, Ruler, BellRing, Crosshair, Flame,
+  Percent, Layers, Ruler, BellRing, Crosshair, Flame,
 } from 'lucide-react';
+import { TokenIconSimple } from '@/components/TokenIcon';
 import { WATCHLIST_DEFAULTS, findBySymbol, ASSET_TABS } from '../catalog';
 import { LiveSignalCard } from './LiveSignalCard';
 
@@ -98,7 +99,6 @@ export function TerminalSidebar({
         </div>
         <ul>
           {watchlist.map(label => {
-            const sym = findBySymbol(label);
             const t = tickerLookup.get(label);
             const isActive = label === activeSymbol;
             const change = t?.change24h ?? 0;
@@ -110,9 +110,7 @@ export function TerminalSidebar({
                   className={`w-full flex items-center justify-between px-3 py-1.5 text-xs hover:bg-white/[0.04] transition-colors ${isActive ? 'bg-yellow-400/[0.06] border-l-2 border-yellow-400' : ''}`}
                 >
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[9px] font-bold ${isActive ? 'bg-yellow-400 text-black' : 'bg-white/[0.06] text-neutral-300'}`}>
-                      {sym?.icon ? sym.label.slice(0, 1) : label.slice(0, 1)}
-                    </span>
+                    <TokenIconSimple symbol={label} size={18} />
                     <span className={isActive ? 'text-white font-semibold' : 'text-neutral-300'}>{label}</span>
                   </div>
                   <div className="flex items-center gap-2 font-mono">

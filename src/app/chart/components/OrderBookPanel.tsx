@@ -151,7 +151,7 @@ export function OrderBookPanel({ symbol }: { symbol: string }) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
+      <div className="relative flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
         <div className="flex items-center gap-2">
           <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">Order Book</span>
           <button
@@ -161,8 +161,14 @@ export function OrderBookPanel({ symbol }: { symbol: string }) {
             {venue} · ${tick}
             <ChevronDown className="w-3 h-3" />
           </button>
-          {venueMenuOpen && (
-            <div className="absolute mt-32 ml-12 z-30 bg-neutral-900 border border-white/[0.08] rounded-md shadow-xl p-2 min-w-[140px]">
+        </div>
+        <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+        {/* Dropdown anchored to the header itself, not floating off-screen. */}
+        {venueMenuOpen && (
+          <>
+            {/* Click-out catcher */}
+            <div className="fixed inset-0 z-30" onClick={() => setVenueMenuOpen(false)} />
+            <div className="absolute left-2 top-full mt-1 z-40 bg-neutral-900 border border-white/[0.08] rounded-md shadow-xl p-2 min-w-[180px]">
               <div className="text-[9px] uppercase tracking-wider text-neutral-500 mb-1 px-1">Venue</div>
               {VENUES.map(v => (
                 <button
@@ -170,7 +176,7 @@ export function OrderBookPanel({ symbol }: { symbol: string }) {
                   onClick={() => { setVenue(v); setVenueMenuOpen(false); }}
                   className={`block w-full text-left text-xs px-2 py-1 rounded hover:bg-white/[0.06] ${v === venue ? 'text-yellow-400' : 'text-neutral-300'}`}
                 >
-                  {v}{v !== 'Binance' && <span className="text-[9px] text-neutral-500 ml-1">(falls back to Binance)</span>}
+                  {v}{v !== 'Binance' && <span className="text-[9px] text-neutral-500 ml-1">(via Binance fallback)</span>}
                 </button>
               ))}
               <div className="text-[9px] uppercase tracking-wider text-neutral-500 mt-2 mb-1 px-1">Tick</div>
@@ -186,9 +192,8 @@ export function OrderBookPanel({ symbol }: { symbol: string }) {
                 ))}
               </div>
             </div>
-          )}
-        </div>
-        <span className={`w-1.5 h-1.5 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+          </>
+        )}
       </div>
 
       {/* Column header */}
