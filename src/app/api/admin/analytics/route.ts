@@ -239,14 +239,46 @@ export async function GET(request: NextRequest) {
     .map(([ts, v]) => ({ ts, pageviews: v.pageviews, visitors: v.visitors }))
     .sort((a, b) => a.ts.localeCompare(b.ts));
 
+  // Umami inconsistency observed in production (2026-05-28): /stats
+  // returns all zeros while /pageviews returns the right counts. To
+  // avoid showing operators a misleading "0 Pageviews" tile when
+  // there are actually 40+ pageviews today, derive headline pageviews
+  // + visitors from the timeseries when /stats came back empty. The
+  // diagnostic console.warn logs the raw /stats response so we can
+  // pinpoint the upstream cause next time someone reads the logs.
+  const tsTotalPv = tsArr.reduce((s, t) => s + t.pageviews, 0);
+  const tsTotalVi = tsArr.reduce((s, t) => s + t.visitors, 0);
+  const statsTotalPv = stats?.pageviews?.value ?? 0;
+  if (tsTotalPv > 0 && statsTotalPv === 0) {
+    console.warn(
+      `[umami] /stats returned 0 pageviews for ${UMAMI_WEBSITE_ID} window=${win} ` +
+      `while /pageviews shows ${tsTotalPv}. Raw /stats response: ${JSON.stringify(stats)}`
+    );
+  }
+  const pvOut = statsTotalPv || tsTotalPv;
+  const viOut = (stats?.visitors?.value ?? 0) || tsTotalVi;
+
+  // Likewise log empty top-pages when there should be data so we can
+  // pinpoint whether it's the metrics?type=url query that's busted
+  // or the URL tracking itself.
+  if (tsTotalPv > 0 && (pages ?? []).length === 0) {
+    console.warn(
+      `[umami] /metrics?type=url returned empty for ${UMAMI_WEBSITE_ID} window=${win} ` +
+      `despite ${tsTotalPv} pageviews. Raw: ${JSON.stringify(pages)}`
+    );
+  }
+
   return NextResponse.json({
     configured: true,
     window: win,
     activeNow: Number(activeNow) || 0,
     stats: {
-      pageviews:   stats?.pageviews?.value ?? 0,
-      visitors:    stats?.visitors?.value ?? 0,
-      visits:      sv,
+      pageviews:   pvOut,
+      visitors:    viOut,
+      // visits ≈ visitors when most users have one session; falling
+      // back to viOut keeps the tile from showing 0 when the data
+      // clearly says otherwise.
+      visits:      sv || viOut,
       bouncesPct:  sv > 0 ? Math.round((sb / sv) * 1000) / 10 : 0,
       avgVisitSec: sv > 0 ? Math.round(st / sv) : 0,
     },
