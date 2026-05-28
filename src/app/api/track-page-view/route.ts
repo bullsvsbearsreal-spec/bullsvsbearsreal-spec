@@ -47,18 +47,20 @@ function normalize(raw: string): string | null {
   // params (e.g. /coin/bitcoin vs /coin/ethereum, /funding/BTC vs
   // /funding/ETH) escape the segment-level address/long-id detection
   // and blow up page_views cardinality — every popular coin / symbol
-  // becomes its own row, drowning the top-pages query and bloating
-  // the table. Order matters: /bounce/share/[address] must match
-  // BEFORE the broader /bounce/[address] pattern.
+  // becomes its own row.
+  //
+  // /bounce/[address] and /bounce/share/[address] are NOT in this
+  // list — they only use 0x-shaped segments, which the segment-level
+  // normalizer above already collapses to `[address]`. Adding a
+  // /bounce/[^/]+ catchall here would eat the real fixed sub-pages
+  // /bounce/leaderboard, /bounce/check, /bounce/claim (sidebar links).
   return norm
     .replace(/^\/symbol\/[^/]+$/,        '/symbol/[symbol]')
     .replace(/^\/trader\/[^/]+$/,        '/trader/[address]')
     .replace(/^\/wallet\/[^/]+$/,        '/wallet/[address]')
     .replace(/^\/u\/[^/]+$/,             '/u/[id]')
     .replace(/^\/coin\/[^/]+$/,          '/coin/[id]')
-    .replace(/^\/funding\/[^/]+$/,       '/funding/[symbol]')
-    .replace(/^\/bounce\/share\/[^/]+$/, '/bounce/share/[address]')
-    .replace(/^\/bounce\/[^/]+$/,        '/bounce/[address]');
+    .replace(/^\/funding\/[^/]+$/,       '/funding/[symbol]');
 }
 
 export async function POST(request: NextRequest) {
