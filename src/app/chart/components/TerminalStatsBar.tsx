@@ -258,29 +258,32 @@ export function TerminalStatsBar({
         return (
           <div
             key={i}
-            // Compact cells — label inline with value to save vertical
-            // space (was stacked). Secondary text only shows on hover
-            // via title attr. Saves ~20 px of stats-bar height which
-            // goes straight to the chart cell below.
-            className="flex items-baseline gap-2 min-w-[160px] px-3 py-1.5 border-r border-white/[0.06] last:border-r-0"
+            // Stacked compact: label+value on top line, secondary
+            // below — was inline (all three on one line) which
+            // squeezed "64.6% long" → "64.6…" and "8h schedule" →
+            // "8…". Tight py-1 keeps the cell at ~46 px instead of
+            // the previous 66 px (still wins ~20 px vs original).
+            className="flex flex-col min-w-[150px] px-3 py-1 border-r border-white/[0.06] last:border-r-0"
             title={c.secondary || ''}
           >
-            <span className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold whitespace-nowrap">
-              {c.label}
-            </span>
-            <span className={`text-sm font-mono font-bold whitespace-nowrap ${
-              isLoading
-                ? 'text-neutral-600'
-                : c.tone === 'pos' ? 'text-emerald-400'
-                : c.tone === 'neg' ? 'text-red-400'
-                : 'text-white'
-            }`}>
-              {isLoading ? <span className="inline-block w-8 h-3 bg-white/[0.04] rounded animate-pulse" /> : c.primary}
-            </span>
-            {c.secondary && (
-              <span className="text-[10px] text-neutral-600 truncate hidden xl:inline">
-                {c.secondary}
+            <div className="flex items-baseline gap-1.5">
+              <span className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold whitespace-nowrap">
+                {c.label}
               </span>
+              <span className={`text-sm font-mono font-bold whitespace-nowrap ${
+                isLoading
+                  ? 'text-neutral-600'
+                  : c.tone === 'pos' ? 'text-emerald-400'
+                  : c.tone === 'neg' ? 'text-red-400'
+                  : 'text-white'
+              }`}>
+                {isLoading ? <span className="inline-block w-8 h-3 bg-white/[0.04] rounded animate-pulse" /> : c.primary}
+              </span>
+            </div>
+            {c.secondary && (
+              <div className="text-[10px] text-neutral-600 leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
+                {c.secondary}
+              </div>
             )}
           </div>
         );
