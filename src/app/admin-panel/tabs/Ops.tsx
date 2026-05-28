@@ -117,7 +117,16 @@ export function OpsTab({ onToast }: { onToast: (msg: string, ok: boolean) => voi
         for (const w of (d.workers ?? []) as WorkerStatus[]) {
           // Strip "cron:" prefix so the map keys match our button ids.
           const id = w.worker.startsWith('cron:') ? w.worker.slice(5) : w.worker;
-          map[id] = w;
+          // The workers table can contain stale orphan rows from an old
+          // naming convention (e.g. `ingest-liquidations` rotted from
+          // April while `cron:ingest-liquidations` heartbeats every
+          // minute). When two entries collapse to the same id, keep the
+          // freshest beat — otherwise the orphan can shadow the live
+          // cron and make a healthy job look 37 days dead in the UI.
+          const existing = map[id];
+          if (!existing || new Date(w.lastBeat).getTime() > new Date(existing.lastBeat).getTime()) {
+            map[id] = w;
+          }
         }
         setWorkers(map);
       } catch {}
