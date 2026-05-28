@@ -24,7 +24,7 @@ App Platform. The site has two faces:
 | --- | --- |
 | Web (Next.js 14, App Router) | DigitalOcean App Platform · FRA1 · 2 GB |
 | Price aggregator (WS) | DigitalOcean droplet `infohub-aggregator` (FRA1) |
-| Crons (13 jobs) | Same droplet, systemd timers |
+| Crons (16 endpoints — see `CLAUDE.md` for the systemd timer schedule) | Same droplet, systemd timers |
 | DB | Postgres (DigitalOcean managed) |
 | Cache / queues | Upstash Redis |
 | Auth | NextAuth v5 + Postgres adapter |
