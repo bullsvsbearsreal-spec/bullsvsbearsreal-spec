@@ -19,49 +19,11 @@
  */
 import { NextRequest, NextResponse } from 'next/server';
 import { initDB, isDBConfigured, recordPageView } from '@/lib/db';
+import { normalizePageRoute } from '@/lib/utils/normalizePageRoute';
 
 export const runtime = 'nodejs';
 export const preferredRegion = 'bom1';
 export const dynamic = 'force-dynamic';
-
-function normalize(raw: string): string | null {
-  if (typeof raw !== 'string' || !raw.startsWith('/')) return null;
-  // Strip query + hash
-  const path = raw.split('?')[0].split('#')[0];
-  if (path.length > 200) return null;
-  // Drop API + internal Next paths
-  if (path.startsWith('/api/') || path.startsWith('/_next/')) return null;
-
-  // Normalise dynamic segments
-  const segs = path.split('/').map(s => {
-    if (!s) return s;
-    if (/^0x[a-fA-F0-9]{6,}$/.test(s)) return '[address]';
-    if (/^[a-zA-Z0-9]{20,}$/.test(s))  return '[id]';      // long ids
-    if (/^[0-9]+$/.test(s) && s.length >= 4) return '[id]';  // numeric ids
-    return s;
-  });
-
-  const norm = segs.join('/');
-  // Catch known dynamic routes by parent path so /symbol/BTC, /symbol/eth
-  // both collapse to /symbol/[symbol]. Without this, dictionary-word
-  // params (e.g. /coin/bitcoin vs /coin/ethereum, /funding/BTC vs
-  // /funding/ETH) escape the segment-level address/long-id detection
-  // and blow up page_views cardinality — every popular coin / symbol
-  // becomes its own row.
-  //
-  // /bounce/[address] and /bounce/share/[address] are NOT in this
-  // list — they only use 0x-shaped segments, which the segment-level
-  // normalizer above already collapses to `[address]`. Adding a
-  // /bounce/[^/]+ catchall here would eat the real fixed sub-pages
-  // /bounce/leaderboard, /bounce/check, /bounce/claim (sidebar links).
-  return norm
-    .replace(/^\/symbol\/[^/]+$/,        '/symbol/[symbol]')
-    .replace(/^\/trader\/[^/]+$/,        '/trader/[address]')
-    .replace(/^\/wallet\/[^/]+$/,        '/wallet/[address]')
-    .replace(/^\/u\/[^/]+$/,             '/u/[id]')
-    .replace(/^\/coin\/[^/]+$/,          '/coin/[id]')
-    .replace(/^\/funding\/[^/]+$/,       '/funding/[symbol]');
-}
 
 export async function POST(request: NextRequest) {
   if (!isDBConfigured()) {
@@ -76,7 +38,7 @@ export async function POST(request: NextRequest) {
     return new NextResponse(null, { status: 204 });
   }
 
-  const route = normalize(body?.route);
+  const route = normalizePageRoute(body?.route);
   if (!route) {
     return new NextResponse(null, { status: 204 });
   }
