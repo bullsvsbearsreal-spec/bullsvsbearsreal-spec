@@ -331,6 +331,15 @@ export const PAGE_META: Record<string, PageMeta> = {
     description: 'Live status of every InfoHub data endpoint, measured from your browser. Green = healthy, amber = degraded, red = error or timeout. Re-checks every 60s.',
     noIndex: true, // admin-gated at runtime (5daf10c6) — keep out of search
   },
+  // Public unauthenticated status page (shipped in task #131). Was
+  // missing from PAGE_META / sitemap / robots — search results
+  // for "infohub status" landed on the SaaS-y /api/v1/status JSON
+  // instead of the actual status page. Now indexed with proper
+  // share-card metadata (Stripe / GitHub / Vercel all do this).
+  '/status': {
+    title: 'System Status',
+    description: 'Live health of the InfoHub data pipeline — aggregator venues connected, API responsiveness, alert engine per-channel freshness. Refreshes every 30 seconds. No auth required.',
+  },
   '/changelog': {
     title: 'Changelog',
     description: 'What we have shipped recently. New features, fixes, and improvements to the InfoHub data terminal — admin-only release notes.',

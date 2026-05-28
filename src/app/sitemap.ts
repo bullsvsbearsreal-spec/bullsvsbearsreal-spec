@@ -150,6 +150,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     // ─── Account + auth ───────────────────────────────────────────────
     { path: '/login',              priority: 0.4, changeFrequency: 'monthly' as const },
     { path: '/signup',             priority: 0.4, changeFrequency: 'monthly' as const },
+    // Public system status page — unauthenticated, polls /api/status
+    // every 30s. Indexed so "infohub status" searches land on the
+    // real page instead of the JSON endpoint.
+    { path: '/status',             priority: 0.5, changeFrequency: 'hourly' as const },
     // /dashboard, /watchlist, /alerts, /portfolio, /positions removed —
     // all five are auth-gated personal surfaces AND in robots.ts
     // Disallow. Listing them in the sitemap while disallowing them
