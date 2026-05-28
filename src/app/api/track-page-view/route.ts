@@ -43,12 +43,22 @@ function normalize(raw: string): string | null {
 
   const norm = segs.join('/');
   // Catch known dynamic routes by parent path so /symbol/BTC, /symbol/eth
-  // both collapse to /symbol/[symbol]
+  // both collapse to /symbol/[symbol]. Without this, dictionary-word
+  // params (e.g. /coin/bitcoin vs /coin/ethereum, /funding/BTC vs
+  // /funding/ETH) escape the segment-level address/long-id detection
+  // and blow up page_views cardinality — every popular coin / symbol
+  // becomes its own row, drowning the top-pages query and bloating
+  // the table. Order matters: /bounce/share/[address] must match
+  // BEFORE the broader /bounce/[address] pattern.
   return norm
-    .replace(/^\/symbol\/[^/]+$/,  '/symbol/[symbol]')
-    .replace(/^\/trader\/[^/]+$/,  '/trader/[address]')
-    .replace(/^\/wallet\/[^/]+$/,  '/wallet/[address]')
-    .replace(/^\/u\/[^/]+$/,       '/u/[id]');
+    .replace(/^\/symbol\/[^/]+$/,        '/symbol/[symbol]')
+    .replace(/^\/trader\/[^/]+$/,        '/trader/[address]')
+    .replace(/^\/wallet\/[^/]+$/,        '/wallet/[address]')
+    .replace(/^\/u\/[^/]+$/,             '/u/[id]')
+    .replace(/^\/coin\/[^/]+$/,          '/coin/[id]')
+    .replace(/^\/funding\/[^/]+$/,       '/funding/[symbol]')
+    .replace(/^\/bounce\/share\/[^/]+$/, '/bounce/share/[address]')
+    .replace(/^\/bounce\/[^/]+$/,        '/bounce/[address]');
 }
 
 export async function POST(request: NextRequest) {
