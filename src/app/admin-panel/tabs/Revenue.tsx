@@ -8,8 +8,8 @@
  * Once NowPayments wires up actual webhook events these flip to real.
  */
 
-import { useEffect, useState } from 'react';
-import { DollarSign, TrendingUp, Gift, Users, Calendar, AlertTriangle } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { DollarSign, TrendingUp, Gift, Calendar, AlertTriangle, RefreshCw } from 'lucide-react';
 import { Card, SectionHead, SkeletonBlock, fmtNumber, TIER_COLORS } from '../components/primitives';
 
 interface RevenueResp {
@@ -59,13 +59,24 @@ function fmtAgo(iso: string): string {
 export function RevenueTab() {
   const [data, setData] = useState<RevenueResp | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useEffect(() => {
+  // Matches the load/refresh pattern from AlertsHealth + Acquisition +
+  // Tickets — previously Revenue had no refresh button, so once the
+  // operator landed on the tab the numbers froze until they navigated
+  // away and back. Now Cmd+R on the tab (debounced by `refreshing`)
+  // refreshes in place.
+  const load = useCallback(() => {
+    setRefreshing(true);
+    setError(null);
     fetch('/api/admin/revenue')
       .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
       .then(d => { if (d?.error) setError(d.error); else setData(d); })
-      .catch(e => setError(e.message ?? 'Network error'));
+      .catch(e => setError(e.message ?? 'Network error'))
+      .finally(() => setRefreshing(false));
   }, []);
+
+  useEffect(() => { load(); }, [load]);
 
   return (
     <>
@@ -94,7 +105,22 @@ export function RevenueTab() {
       )}
 
       {/* Hero MRR/ARR */}
-      <SectionHead title="Projected Revenue (paid tiers × monthly price)" icon={<DollarSign style={{ width: 13, height: 13 }} />} />
+      <SectionHead
+        title="Projected Revenue (paid tiers × monthly price)"
+        icon={<DollarSign style={{ width: 13, height: 13 }} />}
+        right={
+          <button
+            type="button"
+            onClick={load}
+            disabled={refreshing}
+            title="Refresh revenue numbers"
+            style={{ fontSize: 10, color: 'var(--fg-muted)', background: 'transparent', border: 0, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 4 }}
+          >
+            <RefreshCw style={{ width: 11, height: 11, ...(refreshing ? { animation: 'spin 1s linear infinite' } : {}) }} />
+            refresh
+          </button>
+        }
+      />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, marginBottom: 18 }}>
         <KpiTile label="Projected MRR"        value={data ? fmtUsd(data.projected.mrrUsd) : null}        accent="#34d399" />
         <KpiTile label="Projected ARR"        value={data ? fmtUsd(data.projected.arrUsd) : null}        accent="#7dd3fc" />
