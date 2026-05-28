@@ -280,20 +280,25 @@ function SymbolPickerModal({
         <div className="flex-1 overflow-y-auto p-3">
           {Object.entries(byCat).map(([cat, list]) => (
             <div key={cat} className="mb-3">
-              <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-1 px-1">{cat}</div>
+              <div className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold mb-1.5 px-1">{cat}</div>
               <div className="grid grid-cols-4 gap-1.5">
                 {list.map((s) => (
                   <button
                     key={s.label}
                     onClick={() => onPick(s.label)}
-                    className={`text-left px-2 py-1.5 rounded text-xs transition-colors ${
+                    className={`flex items-center gap-2 text-left px-2 py-1.5 rounded transition-colors ${
                       s.label === activeLabel
                         ? 'bg-yellow-400/10 text-yellow-300 border border-yellow-400/30'
-                        : 'bg-white/[0.03] text-neutral-300 hover:bg-white/[0.06]'
+                        : 'bg-white/[0.03] text-neutral-300 hover:bg-white/[0.06] border border-transparent'
                     }`}
                   >
-                    <span className="font-semibold">{s.label}</span>
-                    {s.displayPair && <span className="text-[9px] text-neutral-500 ml-1">{s.displayPair}</span>}
+                    <TokenIconSimple symbol={s.label} size={16} />
+                    <span className="flex-1 min-w-0">
+                      <span className="text-xs font-semibold truncate block">{s.label}</span>
+                      {s.displayPair && (
+                        <span className="text-[9px] text-neutral-500 truncate block">{s.displayPair}</span>
+                      )}
+                    </span>
                   </button>
                 ))}
               </div>

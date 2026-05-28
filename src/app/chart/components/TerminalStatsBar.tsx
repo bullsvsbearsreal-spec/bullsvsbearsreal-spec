@@ -190,7 +190,7 @@ export function TerminalStatsBar({
     label: 'Mark',
     primary: isCrypto && markPrice > 0 ? formatPrice(markPrice) : (isCrypto ? '—' : 'See chart'),
     secondary: isCrypto
-      ? `Aggregated · ${symbolRows.length} venues`
+      ? `Aggregated · ${symbolRows.length} ${symbolRows.length === 1 ? 'venue' : 'venues'}`
       : 'TradingView price · live on chart',
   });
 
@@ -207,28 +207,39 @@ export function TerminalStatsBar({
     cells.push({
       label: 'Open Interest',
       primary: formatUsd(totalOI),
-      secondary: oiRows.length > 0 ? `${oiRows.length} venues` : 'No data',
+      secondary: oiRows.length > 0
+        ? `${oiRows.length} ${oiRows.length === 1 ? 'venue' : 'venues'}`
+        : 'Loading…',
     });
     cells.push({
       label: 'Avg Funding',
       primary: formatPct(fundingAvg, 4),
       secondary: fundingRows.length > 0
-        ? `${fundingNegativeCount} venues negative`
-        : 'No data',
+        ? `${fundingNegativeCount}/${fundingRows.length} negative`
+        : 'Loading…',
       tone: fundingAvg > 0 ? 'pos' : fundingAvg < 0 ? 'neg' : 'neutral',
     });
     cells.push({
       label: '24h Liquid.',
       primary: liq24h !== null ? formatUsd(liq24h) : '—',
-      secondary: liq24h !== null
-        ? `${formatUsd(liqDir.long)} long · ${formatUsd(liqDir.short)} short`
+      // Long/short numbers are big enough that the full "$12.44M long
+      // · $3.66M short" overflows even the 140px min cell. Switch to a
+      // tight ratio that fits any viewport: "L 78% · S 22%".
+      secondary: liq24h !== null && liq24h > 0
+        ? (() => {
+            const longPct = (liqDir.long / liq24h) * 100;
+            const shortPct = (liqDir.short / liq24h) * 100;
+            return `L ${longPct.toFixed(0)}% · S ${shortPct.toFixed(0)}%`;
+          })()
         : 'Loading…',
     });
     cells.push({
       label: 'L/S Ratio',
       primary: lsRatio !== null ? lsRatio.toFixed(2) : '—',
+      // Drop "· Binance" — implied (it's the only L/S source we wire);
+      // keeping it made the cell truncate to "64.6% lo…" at 140px width.
       secondary: lsLongPct !== null
-        ? `${lsLongPct.toFixed(1)}% long · Binance`
+        ? `${lsLongPct.toFixed(1)}% long`
         : 'Binance · 1h',
     });
     cells.push({
