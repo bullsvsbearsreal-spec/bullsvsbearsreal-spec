@@ -111,7 +111,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Data & Features',
     q: 'How do I track my portfolio?',
-    a: 'The Portfolio page lets you add positions and track their P&L. Everything is stored locally in your browser by default. If you create an account, your watchlist and preferences can sync across devices.',
+    a: 'Two paths. (1) /positions is the cross-venue tracker — connect read-only CEX API keys (Binance, Bybit, OKX, Bitget, MEXC, Blofin) or DEX wallet addresses (Hyperliquid, GMX, gTrade, Lighter, etc.) at /account/connections, and /positions shows every open position in one place with live mark price, P&L, funding cost-of-carry, liquidation distance, and health score. AES-256-GCM encrypted at rest. (2) /portfolio is the manual-entry alternative — add positions by hand, P&L tracked in your browser; useful for hypothetical / paper trades or venues we don\'t yet integrate.',
   },
 
   /* ── Trading Concepts ── */
@@ -123,7 +123,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Trading Concepts',
     q: 'How are funding rates normalized?',
-    a: 'All funding rates are converted to an 8-hour basis for comparison. Exchanges that settle hourly (like Hyperliquid or Aevo) have their rates multiplied accordingly, so you can compare rates across exchanges without doing the math yourself.',
+    a: 'All rates are converted to an 8-hour basis for cross-venue comparison. Venues settle on different cadences: 1h (Hyperliquid, dYdX, Aevo, Coinbase, GMX, Extended, Lighter, edgeX), 4h (Kraken), 8h (most CEX — Binance / Bybit / OKX / Bitget / MEXC / BingX / Phemex / KuCoin / Deribit / HTX / Bitfinex / WhiteBIT / CoinEx / Aster / gTrade), and 24h (Blofin, settles daily at 00:00 UTC). Bitunix and Variational vary per market — those carry their actual fundingIntervalHours in the API. Each row also includes its native fundingInterval so you can see the unconverted source rate if you need it.',
   },
   {
     category: 'Trading Concepts',
