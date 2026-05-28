@@ -10,8 +10,9 @@
  * Sections:
  *   - Active right now (live counter)
  *   - 5-tile summary strip (pageviews, visitors, visits, bounce%, avg dur)
- *   - Time-series bars (pageviews + unique visitors over the window)
+ *   - Time-series bars (pageviews) with 3-tick x-axis labels
  *   - Top pages · Top referrers · Top countries (side-by-side tables)
+ *   - "Open Umami ↗" deep-link for drilling into specific pages/dates
  *
  * When Umami isn't configured yet (env vars unset), the endpoint
  * returns `configured: false` and we paint a friendly setup-required
@@ -22,7 +23,12 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Activity, RefreshCw, ExternalLink, Globe, MapPin } from 'lucide-react';
 import { Card, SectionHead, SkeletonBlock, fmtNumber } from '../components/primitives';
 
-type Window = '24h' | '7d' | '30d';
+// Period — NOT named `Window` because that would shadow the DOM
+// `Window` interface inside this file. Same reason the state below is
+// `period`, not `window`: a `const window = '7d'` masks the global
+// `window` object inside this component and breaks anyone who later
+// tries `window.localStorage.X` or `window.open(...)` without noticing.
+type Period = '24h' | '7d' | '30d';
 
 interface MetricRow { count: number }
 interface PageRow extends MetricRow { url: string }
@@ -32,7 +38,7 @@ interface TsRow { ts: string; pageviews: number; visitors: number }
 
 interface AnalyticsResp {
   configured: boolean;
-  window: Window;
+  window: Period;   // API response still uses the key `window` — kept stable
   activeNow: number;
   stats: { pageviews: number; visitors: number; visits: number; bouncesPct: number; avgVisitSec: number };
   timeseries: TsRow[];
@@ -40,6 +46,12 @@ interface AnalyticsResp {
   topReferrers: RefRow[];
   topCountries: GeoRow[];
 }
+
+// Public Umami host — used for the "Open Umami ↗" deep-link in the
+// section head and setup-required state. Falls back to nothing if env
+// not set, in which case we just omit the link rather than render a
+// broken anchor.
+const UMAMI_PUBLIC_HOST = process.env.NEXT_PUBLIC_UMAMI_HOST || '';
 
 function fmtDuration(sec: number): string {
   if (!sec || sec <= 0) return '0s';
@@ -51,17 +63,31 @@ function fmtDuration(sec: number): string {
   return `${h}h ${m % 60}m`;
 }
 
+// Compact x-axis tick label for the time-series bars. Umami buckets
+// arrive as 'YYYY-MM-DD HH:MM:SS' strings (UTC). Format depends on
+// window length so 30 abbreviated day names don't squeeze together:
+//   24h → "14:00"
+//    7d → "Mon"
+//   30d → "12 May"
+function fmtTick(ts: string, period: Period): string {
+  const d = new Date(ts.replace(' ', 'T') + 'Z');
+  if (Number.isNaN(d.getTime())) return ts.slice(5, 10);
+  if (period === '24h') return `${String(d.getUTCHours()).padStart(2, '0')}:00`;
+  if (period === '7d')  return d.toLocaleDateString('en-US', { weekday: 'short', timeZone: 'UTC' });
+  return `${d.getUTCDate()} ${d.toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })}`;
+}
+
 export function AnalyticsTab({ onToast }: { onToast: (msg: string, ok: boolean) => void }) {
   const [data, setData] = useState<AnalyticsResp | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [window, setWindow] = useState<Window>('7d');
+  const [period, setPeriod] = useState<Period>('7d');
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setRefreshing(true);
     try {
-      const res = await fetch(`/api/admin/analytics?window=${window}`);
+      const res = await fetch(`/api/admin/analytics?window=${period}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData(json);
@@ -70,7 +96,7 @@ export function AnalyticsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
     }
     setLoading(false);
     setRefreshing(false);
-  }, [window, onToast]);
+  }, [period, onToast]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -84,6 +110,16 @@ export function AnalyticsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
   const maxPv = useMemo(() => {
     if (!data?.timeseries.length) return 1;
     return Math.max(1, ...data.timeseries.map(t => t.pageviews));
+  }, [data]);
+
+  // 3 evenly-spaced x-axis ticks: start, middle, end. Cheap visual
+  // anchor so users can read "Mon · Wed · Fri" without having to
+  // hover every bar to see the date. All bars still render with a
+  // hover-tooltip; this just labels three of them inline.
+  const tickIndices = useMemo(() => {
+    if (!data || data.timeseries.length < 2) return new Set<number>();
+    const last = data.timeseries.length - 1;
+    return new Set([0, Math.floor(last / 2), last]);
   }, [data]);
 
   // Setup-required state
@@ -101,6 +137,18 @@ export function AnalyticsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
               env vars on DO App Platform. The tracker script in <code>app/layout.tsx</code> auto-loads once
               the public vars are set; the API proxy fans out to Umami once the server-side ones are set.
             </div>
+            {UMAMI_PUBLIC_HOST && (
+              <div style={{ marginTop: 12 }}>
+                <a
+                  href={UMAMI_PUBLIC_HOST}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 11, color: '#7dd3fc', textDecoration: 'none' }}
+                >
+                  Open Umami admin <ExternalLink style={{ width: 11, height: 11 }} />
+                </a>
+              </div>
+            )}
           </div>
         </Card>
       </>
@@ -115,12 +163,12 @@ export function AnalyticsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
         right={
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{ display: 'flex', gap: 4 }}>
-              {(['24h', '7d', '30d'] as Window[]).map(w => {
-                const active = window === w;
+              {(['24h', '7d', '30d'] as Period[]).map(p => {
+                const active = period === p;
                 return (
                   <button
-                    key={w}
-                    onClick={() => setWindow(w)}
+                    key={p}
+                    onClick={() => setPeriod(p)}
                     style={{
                       padding: '3px 10px', borderRadius: 999, fontSize: 10, fontWeight: 700,
                       background: active ? 'rgba(125, 211, 252, 0.15)' : 'rgba(255,255,255,0.03)',
@@ -128,7 +176,7 @@ export function AnalyticsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
                       color: active ? '#7dd3fc' : 'var(--fg-muted)',
                       cursor: 'pointer', textTransform: 'uppercase', letterSpacing: '0.06em',
                     }}
-                  >{w}</button>
+                  >{p}</button>
                 );
               })}
             </div>
@@ -139,6 +187,17 @@ export function AnalyticsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
             >
               <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
             </button>
+            {UMAMI_PUBLIC_HOST && (
+              <a
+                href={UMAMI_PUBLIC_HOST}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Drill into the full Umami dashboard"
+                style={{ background: 'transparent', color: 'var(--fg-muted)', fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 4, textDecoration: 'none' }}
+              >
+                <ExternalLink style={{ width: 12, height: 12 }} /> Umami
+              </a>
+            )}
           </div>
         }
       />
@@ -171,7 +230,12 @@ export function AnalyticsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
         ) : (
           <>
             <Tile label="Pageviews"  value={fmtNumber(data.stats.pageviews)} color="#7dd3fc" />
-            <Tile label="Visitors"   value={fmtNumber(data.stats.visitors)}  color="#c4b5fd" />
+            <Tile
+              label="Visitors"
+              value={fmtNumber(data.stats.visitors)}
+              color="#c4b5fd"
+              hint="All browsers, signed-in or anonymous"
+            />
             <Tile label="Visits"     value={fmtNumber(data.stats.visits)}    color="#fcd34d" />
             <Tile
               label="Bounce rate"
@@ -183,8 +247,8 @@ export function AnalyticsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
         )}
       </div>
 
-      {/* Time-series — pageview bars */}
-      <Card title={`Pageviews · last ${window === '24h' ? '24h' : window === '30d' ? '30d' : '7d'}`}>
+      {/* Time-series — pageview bars + 3-tick x-axis */}
+      <Card title={`Pageviews · last ${period}`}>
         {loading || !data ? (
           <SkeletonBlock w="100%" h={120} />
         ) : data.timeseries.length === 0 ? (
@@ -192,25 +256,44 @@ export function AnalyticsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
             No traffic recorded in this window yet.
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 120, padding: '0 4px' }}>
-            {data.timeseries.map(t => {
-              const h = (t.pageviews / maxPv) * 100;
-              return (
-                <div
+          <>
+            <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 120, padding: '0 4px' }}>
+              {data.timeseries.map(t => {
+                const h = (t.pageviews / maxPv) * 100;
+                return (
+                  <div
+                    key={t.ts}
+                    title={`${t.ts}\n${t.pageviews} pageviews · ${t.visitors} visitors`}
+                    style={{
+                      flex: 1,
+                      height: `${Math.max(2, h)}%`,
+                      background: 'linear-gradient(180deg, rgba(125, 211, 252, 0.75) 0%, rgba(125, 211, 252, 0.3) 100%)',
+                      borderRadius: '2px 2px 0 0',
+                      minWidth: 4,
+                      transition: 'height 200ms',
+                    }}
+                  />
+                );
+              })}
+            </div>
+            {/* 3-tick x-axis — start / middle / end. All ticks render
+                in the flex row so spacing matches the bars exactly,
+                but only the 3 anchor ticks are visible. */}
+            <div style={{ display: 'flex', padding: '4px 4px 0', fontSize: 9, color: 'var(--fg-faint)', fontFamily: 'var(--font-mono)' }}>
+              {data.timeseries.map((t, i) => (
+                <span
                   key={t.ts}
-                  title={`${t.ts}\n${t.pageviews} pageviews · ${t.visitors} visitors`}
                   style={{
+                    visibility: tickIndices.has(i) ? 'visible' : 'hidden',
                     flex: 1,
-                    height: `${Math.max(2, h)}%`,
-                    background: 'linear-gradient(180deg, rgba(125, 211, 252, 0.75) 0%, rgba(125, 211, 252, 0.3) 100%)',
-                    borderRadius: '2px 2px 0 0',
-                    minWidth: 4,
-                    transition: 'height 200ms',
+                    textAlign: i === 0 ? 'left' : i === data.timeseries.length - 1 ? 'right' : 'center',
                   }}
-                />
-              );
-            })}
-          </div>
+                >
+                  {fmtTick(t.ts, period)}
+                </span>
+              ))}
+            </div>
+          </>
         )}
       </Card>
 
@@ -241,14 +324,17 @@ export function AnalyticsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
   );
 }
 
-function Tile({ label, value, color }: { label: string; value: string; color: string }) {
+function Tile({ label, value, color, hint }: { label: string; value: string; color: string; hint?: string }) {
   return (
-    <div style={{
-      padding: '12px 14px',
-      background: 'var(--hub-darker)',
-      border: '1px solid var(--hub-border-subtle)',
-      borderRadius: 10,
-    }}>
+    <div
+      title={hint}
+      style={{
+        padding: '12px 14px',
+        background: 'var(--hub-darker)',
+        border: '1px solid var(--hub-border-subtle)',
+        borderRadius: 10,
+      }}
+    >
       <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
         {label}
       </div>
@@ -296,11 +382,14 @@ function MetricList({ title, icon, rows, loading, mono, emptyText }: {
                   width: `${barPct}%`, borderRadius: 4, pointerEvents: 'none',
                 }} />
                 <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 6, padding: '5px 8px' }}>
-                  <span style={{
-                    fontSize: 11, color: '#fff', flex: 1,
-                    fontFamily: mono ? 'var(--font-mono)' : 'inherit',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>
+                  <span
+                    title={r.label}
+                    style={{
+                      fontSize: 11, color: '#fff', flex: 1,
+                      fontFamily: mono ? 'var(--font-mono)' : 'inherit',
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                    }}
+                  >
                     {r.label}
                   </span>
                   <span style={{ fontSize: 11, color: '#fff', fontFamily: 'var(--font-mono)', fontWeight: 600 }}>

@@ -104,7 +104,15 @@ export default function MarketingPanelPage() {
           goTab(TABS[digit - 1].id);
         }
       }
-      if (e.key === 'r' || e.key === 'R') { e.preventDefault(); load(); }
+      // Gate explicitly on no modifier keys — without this, Ctrl+R /
+      // Cmd+R triggers the panel refresh AND blocks the browser-refresh
+      // shortcut users actually want. (admin-panel does the same gate
+      // via an early-return; we don't have one because the digit branch
+      // above needs the modifier keys.)
+      if ((e.key === 'r' || e.key === 'R') && !e.ctrlKey && !e.metaKey && !e.shiftKey && !e.altKey) {
+        e.preventDefault();
+        load();
+      }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
