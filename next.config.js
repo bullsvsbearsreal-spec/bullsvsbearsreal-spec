@@ -39,6 +39,15 @@ const nextConfig = {
       // + external links to /signals 404. The /breakouts page is the
       // closest spiritual successor (pattern-detection on coins).
       { source: '/signals', destination: '/breakouts', permanent: true },
+      // /settings/* sub-routes that were consolidated into /profile —
+      // the API Keys / Notifications / Connections tabs all live under
+      // /profile now. Users following old links or external docs hit
+      // the consolidated profile page instead of a 404.
+      { source: '/settings/api-keys', destination: '/profile?tab=api-keys', permanent: true },
+      { source: '/settings/profile', destination: '/profile', permanent: true },
+      { source: '/settings/notifications', destination: '/profile?tab=notifications', permanent: true },
+      { source: '/settings/connections', destination: '/profile?tab=connections', permanent: true },
+      { source: '/settings/billing', destination: '/profile?tab=billing', permanent: true },
     ];
   },
   async rewrites() {

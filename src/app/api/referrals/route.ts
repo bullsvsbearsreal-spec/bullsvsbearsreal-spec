@@ -81,7 +81,12 @@ export async function GET() {
       terms: {
         commissionPct: 20,
         recurring: 'lifetime',
-        cookieDays: 60,
+        // 90-day cookie — matches middleware.ts REFERRAL_COOKIE_MAX_AGE_SEC
+        // (90 * 24 * 3600). Was reported as 60 here, creating a mismatch
+        // between what /settings/referrals showed users ("60-day cookie")
+        // and what the actual cookie did (90 days). Bumped to 90 in
+        // task #73 but this display literal was missed.
+        cookieDays: 90,
         minPayoutUsd: 25,
         referredDiscountPct: 10,
         referredDiscountDuration: 'lifetime',
