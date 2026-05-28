@@ -1924,14 +1924,45 @@ export const fundingFetchers: ExchangeFetcherConfig<FundingData>[] = [
     },
   },
 
-  // edgeX — proxied via PROXIED_DOMAINS in fetchWithTimeout. Hourly funding settlement.
+  // edgeX — direct fetch from FRA1 (NOT proxied; the old "proxied via
+  // PROXIED_DOMAINS" comment was stale — edgeX is omitted from that set
+  // because the CF Worker proxy itself fails the edgeX CF challenge).
+  //
+  // Hourly funding settlement.
+  //
+  // **UA strategy:** edgeX's Cloudflare WAF blocks two extremes:
+  //   1. Browser-like UAs (Mozilla/Chrome) → bot detection fingerprint
+  //   2. Empty UA → still triggers WAF after edgeX tightened rules
+  //      sometime between commit a714fc40 (5/14) and 5/27 production
+  //      verification (0 rows on /api/funding for edgeX). Production-
+  //      visible symptom: silent — the fetcher returns [] with no log.
+  //
+  // The middle-ground "honest server identifier" works for most data-only
+  // CF customers (Cloudflare's bot-management docs say programmatic
+  // clients SHOULD identify themselves with a unique UA + contact URL —
+  // they whitelist these). If this still 403s in prod, the operator
+  // can either (a) request CF whitelisting via edgeX support, or (b)
+  // pull edgeX data from the aggregator droplet (prices.info-hub.io)
+  // which already has it via WS.
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
-      // edgeX CF bot detection triggers on browser-like User-Agent — strip it
-      const edgeXHeaders = { headers: { 'User-Agent': '', 'Accept': 'application/json' } };
+      const edgeXHeaders = {
+        headers: {
+          'User-Agent': 'InfoHub/1.0 (+https://info-hub.io; data-aggregator)',
+          'Accept': 'application/json',
+        },
+      };
       const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', edgeXHeaders, 10000);
-      if (!metaRes.ok) return [];
+      if (!metaRes.ok) {
+        // Surface the failure — previously silent, so 0-row edgeX in
+        // production looked indistinguishable from "venue has no
+        // contracts." Logged once per snapshot (every 60s droplet
+        // cadence) — not noisy.
+        // eslint-disable-next-line no-console
+        console.warn(`[funding/edgeX] meta fetch failed: ${metaRes.status} ${metaRes.statusText || ''}`);
+        return [];
+      }
       const metaData = await metaRes.json();
       const contracts = metaData?.data?.contractList || [];
       const active = contracts.filter((c: any) => c.enableTrade && !c.isStock);

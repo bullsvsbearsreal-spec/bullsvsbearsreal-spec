@@ -893,13 +893,26 @@ export const tickerFetchers: ExchangeFetcherConfig<TickerData>[] = [
     },
   },
 
-  // edgeX — proxied via PROXIED_DOMAINS in fetchWithTimeout. CF bot detection triggers on browser-like UA — strip it.
+  // edgeX — direct fetch from FRA1 (NOT proxied; the old "proxied via
+  // PROXIED_DOMAINS" comment was stale — edgeX is omitted from that set
+  // because the CF Worker proxy itself fails the edgeX CF challenge).
+  // Honest server-identifier UA strategy (was empty UA — see funding/
+  // exchanges.ts header for the full reasoning).
   {
     name: 'edgeX',
     fetcher: async (fetchFn) => {
-      const edgeXHeaders = { headers: { 'User-Agent': '', 'Accept': 'application/json' } };
+      const edgeXHeaders = {
+        headers: {
+          'User-Agent': 'InfoHub/1.0 (+https://info-hub.io; data-aggregator)',
+          'Accept': 'application/json',
+        },
+      };
       const metaRes = await fetchFn('https://pro.edgex.exchange/api/v1/public/meta/getMetaData', edgeXHeaders, 10000);
-      if (!metaRes.ok) return [];
+      if (!metaRes.ok) {
+        // eslint-disable-next-line no-console
+        console.warn(`[tickers/edgeX] meta fetch failed: ${metaRes.status} ${metaRes.statusText || ''}`);
+        return [];
+      }
       const metaData = await metaRes.json();
       const contracts = (metaData?.data?.contractList || []).filter((c: any) => c.enableTrade);
       if (contracts.length === 0) return [];
