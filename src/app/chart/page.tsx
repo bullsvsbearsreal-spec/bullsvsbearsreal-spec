@@ -207,7 +207,14 @@ export default function ChartPage() {
     return map;
   }, [tickerData]);
 
-  const activeTicker = tickerLookup.get(symbolLabel);
+  // Only source the header price from /api/tickers for crypto — that
+  // endpoint is crypto-only, and looking up e.g. "AAPL" there returns
+  // a tokenized-stock perp from some crypto venue (close for AAPL,
+  // wrong/missing for most stocks). For non-crypto the TradingView
+  // chart header is the price of record, so we show nothing here and
+  // let the control bar omit the price block. Mirrors the stats bar's
+  // "See chart" treatment.
+  const activeTicker = assetClass === 'crypto' ? tickerLookup.get(symbolLabel) : undefined;
   const livePrice = activeTicker?.price ?? null;
   const livePriceChange24h = activeTicker?.change24h ?? null;
 
@@ -224,7 +231,7 @@ export default function ChartPage() {
     // The Header import at top of this file is the legacy global
     // header — TerminalShell already renders TerminalHeader, so we
     // don't add another one here.
-    <div className="h-full bg-black text-white flex flex-col">
+    <div className="h-full text-white flex flex-col" style={{ background: 'radial-gradient(ellipse 120% 80% at 50% -10%, #11151f 0%, #0b0d12 60%)' }}>
       <TerminalControlBar
         assetClass={assetClass}
         symbolLabel={symbolLabel}
@@ -275,15 +282,18 @@ export default function ChartPage() {
           <TerminalStatsBar symbol={symbolLabel} assetClass={assetClass} />
         </div>
 
-        <div style={{ gridArea: 'chart' }} className="min-w-0 min-h-0 overflow-hidden bg-black border-r border-white/[0.06]">
+        <div style={{ gridArea: 'chart' }} className="min-w-0 min-h-0 overflow-hidden bg-[#0a0c11] border-r border-white/[0.06] relative">
+          {/* Faint cyan top-edge accent line — gives the chart panel a
+              subtle "active surface" framing without a heavy border. */}
+          <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent z-10 pointer-events-none" />
           <TradingViewChart tvSymbol={tvSymbol} interval={chartInterval} chartStyle={chartStyle} />
         </div>
 
         {showRightRail && (
-        <div style={{ gridArea: 'right' }} className="flex flex-col min-w-0 min-h-0 overflow-hidden">
+        <div style={{ gridArea: 'right' }} className="flex flex-col min-w-0 min-h-0 overflow-hidden bg-[#0c0e14]">
           {assetClass === 'crypto' ? (
             <>
-              <div className="flex-1 min-h-0 border-b border-white/[0.06]">
+              <div className="flex-1 min-h-0 border-b border-white/[0.08]">
                 <OrderBookPanel symbol={symbolLabel} />
               </div>
               <div className="flex-1 min-h-0">

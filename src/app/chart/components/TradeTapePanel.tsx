@@ -40,7 +40,10 @@ export function TradeTapePanel({ symbol }: { symbol: string }) {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
+      <div
+        className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]"
+        style={{ background: 'linear-gradient(180deg, #10131a 0%, #0c0e13 100%)' }}
+      >
         <div className="flex items-center gap-2">
           <span className="text-[10px] uppercase tracking-wider text-neutral-400 font-bold">
             Trade Tape

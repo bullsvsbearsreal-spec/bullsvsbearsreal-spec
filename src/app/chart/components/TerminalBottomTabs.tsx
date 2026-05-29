@@ -75,8 +75,11 @@ export function TerminalBottomTabs({
   }, [tab]);
 
   return (
-    <div className="flex flex-col h-full bg-black border-t border-white/[0.06]">
-      <div className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]">
+    <div className="flex flex-col h-full bg-[#0a0c11] border-t border-white/[0.08]">
+      <div
+        className="flex items-center justify-between px-3 py-2 border-b border-white/[0.06]"
+        style={{ background: 'linear-gradient(180deg, #10131a 0%, #0c0e13 100%)' }}
+      >
         <div className="flex items-center gap-4">
           <TabButton active={tab === 'funding'} onClick={() => { setTab('funding'); onCollapseChange(false); }} icon={Percent} label="Funding" />
           <TabButton active={tab === 'liquidations'} onClick={() => { setTab('liquidations'); onCollapseChange(false); }} icon={Zap} label="Liquidations" />
@@ -150,7 +153,7 @@ function FundingTab({ symbol }: { symbol: string }) {
 
   return (
     <table className="w-full text-xs font-mono tabular-nums">
-      <thead className="sticky top-0 bg-black z-10">
+      <thead className="sticky top-0 bg-[#0c0e13] z-10">
         <tr className="text-[10px] uppercase tracking-wider text-neutral-500">
           <th className="text-left px-3 py-2 font-bold">Venue</th>
           <th className="text-right px-3 py-2 font-bold">Funding</th>
@@ -227,7 +230,7 @@ function LiquidationsTab({ symbol }: { symbol: string }) {
 
   return (
     <table className="w-full text-xs font-mono tabular-nums">
-      <thead className="sticky top-0 bg-black z-10">
+      <thead className="sticky top-0 bg-[#0c0e13] z-10">
         <tr className="text-[10px] uppercase tracking-wider text-neutral-500">
           <th className="text-left px-3 py-2 font-bold">Venue</th>
           <th className="text-left px-3 py-2 font-bold">Side</th>

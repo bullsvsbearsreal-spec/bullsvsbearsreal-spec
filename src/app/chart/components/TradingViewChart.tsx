@@ -111,10 +111,10 @@ export function TradingViewChart({
   }, [tvSymbol, interval, chartStyle, compareSymbol]);
 
   return (
-    <div className="w-full h-full relative bg-black">
+    <div className="w-full h-full relative bg-[#0a0c11]">
       <div ref={containerRef} className="w-full h-full" />
       {loading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black pointer-events-none">
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-[#0a0c11] pointer-events-none">
           {/* Animated candle silhouette skeleton — reads as "a chart
               is coming" rather than a bare spinner / text. Bars pulse
               with a staggered delay for a subtle wave. */}

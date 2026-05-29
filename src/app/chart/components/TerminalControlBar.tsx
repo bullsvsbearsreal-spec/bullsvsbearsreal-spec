@@ -64,8 +64,14 @@ export function TerminalControlBar({
   }, [symbolLabel]);
 
   return (
-    <div className="bg-black border-b border-white/[0.06] relative">
-      <div className="flex items-center gap-3 px-3 py-2 overflow-x-auto">
+    <div
+      className="border-b border-white/[0.08] relative z-20"
+      style={{
+        background: 'linear-gradient(180deg, #12161f 0%, #0d1016 100%)',
+        boxShadow: '0 1px 0 rgba(255,255,255,0.03) inset, 0 4px 16px -8px rgba(0,0,0,0.6)',
+      }}
+    >
+      <div className="flex items-center gap-3 px-3 py-2.5 overflow-x-auto">
         {/* Asset class tabs — active gets a yellow underline pill so the
             selection is unambiguous (was just text-color which read like
             a hover state) */}
@@ -113,25 +119,38 @@ export function TerminalControlBar({
         </button>
 
         {/* Price + 24h change — tabular-nums so the digits don't jiggle
-            on every tick. Tone-glow on gain/loss for an at-a-glance read. */}
+            on every tick. Tone-glow on gain/loss for an at-a-glance read.
+            Non-crypto has no reliable price source here (tickers API is
+            crypto-only), so we point at the chart instead of showing a
+            bare "—" or a tokenized-stock price. */}
         <div className="flex items-baseline gap-2 shrink-0">
-          <span
-            className={`text-xl font-bold font-mono tabular-nums transition-colors ${priceTone}`}
-            style={
-              livePriceChange24h !== null && livePriceChange24h !== 0
-                ? { textShadow: `0 0 12px ${livePriceChange24h > 0 ? 'rgba(52,211,153,0.25)' : 'rgba(248,113,113,0.25)'}` }
-                : undefined
-            }
-          >
-            {livePrice !== null ? `$${livePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
-          </span>
-          {livePriceChange24h !== null && (
+          {livePrice !== null ? (
             <>
-              <span className={`text-xs font-mono tabular-nums ${priceTone}`}>
-                {livePriceChange24h >= 0 ? '+' : ''}{livePriceChange24h.toFixed(2)}%
+              <span
+                className={`text-xl font-bold font-mono tabular-nums transition-colors ${priceTone}`}
+                style={
+                  livePriceChange24h !== null && livePriceChange24h !== 0
+                    ? { textShadow: `0 0 12px ${livePriceChange24h > 0 ? 'rgba(52,211,153,0.25)' : 'rgba(248,113,113,0.25)'}` }
+                    : undefined
+                }
+              >
+                ${livePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
-              <span className="text-[10px] text-neutral-500 uppercase">24h</span>
+              {livePriceChange24h !== null && (
+                <>
+                  <span className={`text-xs font-mono tabular-nums ${priceTone}`}>
+                    {livePriceChange24h >= 0 ? '+' : ''}{livePriceChange24h.toFixed(2)}%
+                  </span>
+                  <span className="text-[10px] text-neutral-500 uppercase">24h</span>
+                </>
+              )}
             </>
+          ) : assetClass === 'crypto' ? (
+            // Crypto but no price yet — loading skeleton (pulse).
+            <span className="inline-block w-24 h-5 bg-white/[0.04] rounded animate-pulse" />
+          ) : (
+            // Non-crypto — price lives on the TradingView chart below.
+            <span className="text-sm text-neutral-500 font-medium">Live price on chart ↓</span>
           )}
         </div>
 
