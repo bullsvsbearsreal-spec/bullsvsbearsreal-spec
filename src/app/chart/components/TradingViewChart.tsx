@@ -91,7 +91,6 @@ export function TradingViewChart({
       },
     });
 
-    script.onload = () => setTimeout(() => setLoading(false), 600);
     script.onerror = () => setLoading(false);
 
     const widgetContainer = document.createElement('div');
@@ -109,7 +108,30 @@ export function TradingViewChart({
     containerRef.current.appendChild(widgetContainer);
 
     const container = containerRef.current;
+
+    // Hide the skeleton when the chart IFRAME loads, not when the embed
+    // <script> loads. The script's onload fires near-instantly (often from
+    // cache) — ~20s before TradingView fetches data and paints candles —
+    // which left a bare-black "looks broken" gap that pushed users to hammer
+    // reload (and rapid reloads trip TV's throttle → genuinely blank). Poll
+    // for the injected iframe, hide ~1.2s after it loads, and hard-cap at
+    // 15s so the skeleton can never spin forever.
+    let iframePoll: ReturnType<typeof setInterval> | null = null;
+    let settleTimer: ReturnType<typeof setTimeout> | null = null;
+    const hardCap = setTimeout(() => setLoading(false), 15_000);
+    iframePoll = setInterval(() => {
+      const iframe = container?.querySelector('iframe');
+      if (!iframe) return;
+      if (iframePoll) { clearInterval(iframePoll); iframePoll = null; }
+      iframe.addEventListener('load', () => {
+        settleTimer = setTimeout(() => setLoading(false), 1200);
+      });
+    }, 150);
+
     return () => {
+      if (iframePoll) clearInterval(iframePoll);
+      if (settleTimer) clearTimeout(settleTimer);
+      clearTimeout(hardCap);
       if (container) container.innerHTML = '';
     };
   }, [tvSymbol, interval, chartStyle, compareSymbol, hideSideToolbar]);
