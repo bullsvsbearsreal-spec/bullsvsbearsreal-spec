@@ -343,13 +343,17 @@ function TopMoversTab() {
   const { data } = useTickers();
   const movers = useMemo(() => {
     if (!data) return { gainers: [], losers: [] } as { gainers: MoverRow[]; losers: MoverRow[] };
-    type T = { symbol?: string; lastPrice?: number; price?: number; priceChangePercent24h?: number; changePercent24h?: number };
+    type T = { symbol?: string; lastPrice?: number; price?: number; priceChangePercent24h?: number; changePercent24h?: number; assetClass?: string };
     // Aggregate per symbol (avg change across venues) since the same
     // symbol appears multiple times (one row per venue).
     const bySymbol = new Map<string, { totalChange: number; count: number; price: number }>();
     for (const r of data as T[]) {
       const sym = (r.symbol ?? '').toUpperCase();
       if (!sym) continue;
+      // Crypto-only board — drop tokenized equities / FX / metals that the
+      // tickers feed carries (assetClass stamped server-side; treat a
+      // missing tag as crypto so this degrades safely on stale payloads).
+      if (r.assetClass && r.assetClass !== 'crypto') continue;
       const change = r.priceChangePercent24h ?? r.changePercent24h ?? 0;
       const price = r.lastPrice ?? r.price ?? 0;
       const cur = bySymbol.get(sym) ?? { totalChange: 0, count: 0, price };

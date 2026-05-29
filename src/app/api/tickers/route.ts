@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { fetchWithTimeout, normalizeSymbol } from '../_shared/fetch';
 import { fetchAllExchangesWithHealth } from '../_shared/exchange-fetchers';
 import { dedupedFetch } from '../_shared/inflight';
+import { classifyAssetClass } from '@/lib/api/asset-class';
 import { tickerFetchers } from './exchanges';
 
 export const runtime = 'nodejs';
@@ -52,6 +53,10 @@ export async function GET(request: Request) {
     data.forEach((entry: any) => {
       entry.symbol = normalizeSymbol(entry.symbol);
       entry.fetchedAt = now - (exLatency.get(entry.exchange) || 0);
+      // Tag asset class so crypto-only consumers (e.g. the chart's Top
+      // Movers) can drop tokenized equities / FX / metals that ride along
+      // in the perp feed. Classify on the normalized symbol.
+      entry.assetClass = classifyAssetClass(entry.symbol);
     });
 
     // Calculate total volume across ALL exchanges before client-side dedup.
