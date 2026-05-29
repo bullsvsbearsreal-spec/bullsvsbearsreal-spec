@@ -149,14 +149,14 @@ function FundingTab({ symbol }: { symbol: string }) {
   }
 
   return (
-    <table className="w-full text-xs font-mono">
-      <thead>
+    <table className="w-full text-xs font-mono tabular-nums">
+      <thead className="sticky top-0 bg-black z-10">
         <tr className="text-[10px] uppercase tracking-wider text-neutral-500">
-          <th className="text-left px-3 py-2">Venue</th>
-          <th className="text-right px-3 py-2">Funding</th>
-          <th className="text-right px-3 py-2">Premium</th>
-          <th className="text-right px-3 py-2">Mark</th>
-          <th className="text-right px-3 py-2">Next</th>
+          <th className="text-left px-3 py-2 font-bold">Venue</th>
+          <th className="text-right px-3 py-2 font-bold">Funding</th>
+          <th className="text-right px-3 py-2 font-bold">Premium</th>
+          <th className="text-right px-3 py-2 font-bold">Mark</th>
+          <th className="text-right px-3 py-2 font-bold">Next</th>
         </tr>
       </thead>
       <tbody>
@@ -170,10 +170,13 @@ function FundingTab({ symbol }: { symbol: string }) {
           const nextStr = next !== null
             ? `${String(Math.floor(next / 3_600_000)).padStart(2, '0')}:${String(Math.floor((next % 3_600_000) / 60_000)).padStart(2, '0')}:${String(Math.floor((next % 60_000) / 1_000)).padStart(2, '0')}`
             : '—';
+          // Zebra rows for readability — odd rows get a 1.5% white
+          // overlay. Hover state still applies on top.
+          const zebra = i % 2 === 1 ? 'bg-white/[0.015]' : '';
           return (
-            <tr key={`${r.exchange}-${i}`} className="border-t border-white/[0.04] hover:bg-white/[0.02]">
-              <td className="px-3 py-1.5 text-neutral-200">{r.exchange}</td>
-              <td className={`px-3 py-1.5 text-right ${tone}`}>{rate >= 0 ? '+' : ''}{rate.toFixed(4)}%</td>
+            <tr key={`${r.exchange}-${i}`} className={`border-t border-white/[0.03] hover:bg-white/[0.04] transition-colors ${zebra}`}>
+              <td className="px-3 py-1.5 text-neutral-200 font-semibold">{r.exchange}</td>
+              <td className={`px-3 py-1.5 text-right font-semibold ${tone}`}>{rate >= 0 ? '+' : ''}{rate.toFixed(4)}%</td>
               <td className="px-3 py-1.5 text-right text-neutral-400">
                 {premiumPct !== null ? `${premiumPct >= 0 ? '+' : ''}${premiumPct.toFixed(3)}%` : '—'}
               </td>
@@ -223,14 +226,14 @@ function LiquidationsTab({ symbol }: { symbol: string }) {
   }
 
   return (
-    <table className="w-full text-xs font-mono">
-      <thead>
+    <table className="w-full text-xs font-mono tabular-nums">
+      <thead className="sticky top-0 bg-black z-10">
         <tr className="text-[10px] uppercase tracking-wider text-neutral-500">
-          <th className="text-left px-3 py-2">Venue</th>
-          <th className="text-left px-3 py-2">Side</th>
-          <th className="text-right px-3 py-2">Price</th>
-          <th className="text-right px-3 py-2">Value (USD)</th>
-          <th className="text-right px-3 py-2">Time</th>
+          <th className="text-left px-3 py-2 font-bold">Venue</th>
+          <th className="text-left px-3 py-2 font-bold">Side</th>
+          <th className="text-right px-3 py-2 font-bold">Price</th>
+          <th className="text-right px-3 py-2 font-bold">Value (USD)</th>
+          <th className="text-right px-3 py-2 font-bold">Time</th>
         </tr>
       </thead>
       <tbody>
@@ -244,12 +247,14 @@ function LiquidationsTab({ symbol }: { symbol: string }) {
           const price = r.price ?? 0;
           const value = r.value ?? 0;
           const ts = r.timestamp ?? Date.now();
+          const zebra = i % 2 === 1 ? 'bg-white/[0.015]' : '';
+          const isBig = value > 100_000;
           return (
-            <tr key={`${ts}-${i}`} className="border-t border-white/[0.04] hover:bg-white/[0.02]">
+            <tr key={`${ts}-${i}`} className={`border-t border-white/[0.03] hover:bg-white/[0.04] transition-colors ${zebra}`}>
               <td className="px-3 py-1.5 text-neutral-300">{r.exchange ?? '—'}</td>
               <td className={`px-3 py-1.5 ${sideColor} uppercase text-[10px] font-bold`}>{r.side}</td>
               <td className="px-3 py-1.5 text-right text-neutral-300">${price.toFixed(2)}</td>
-              <td className={`px-3 py-1.5 text-right ${value > 100_000 ? 'text-cyan-400' : 'text-neutral-300'}`}>
+              <td className={`px-3 py-1.5 text-right ${isBig ? 'text-cyan-400 font-semibold' : 'text-neutral-300'}`}>
                 ${value.toLocaleString('en-US', { maximumFractionDigits: 0 })}
               </td>
               <td className="px-3 py-1.5 text-right text-neutral-500 text-[10px]">

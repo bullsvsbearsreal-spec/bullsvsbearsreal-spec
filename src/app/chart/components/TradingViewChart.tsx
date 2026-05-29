@@ -114,9 +114,21 @@ export function TradingViewChart({
     <div className="w-full h-full relative bg-black">
       <div ref={containerRef} className="w-full h-full" />
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black pointer-events-none">
-          <div className="text-xs text-neutral-500 font-mono uppercase tracking-wider">
-            Loading chart...
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-black pointer-events-none">
+          {/* Animated candle silhouette skeleton — reads as "a chart
+              is coming" rather than a bare spinner / text. Bars pulse
+              with a staggered delay for a subtle wave. */}
+          <div className="flex items-end gap-1 h-16">
+            {[0.5, 0.8, 0.4, 0.9, 0.6, 1, 0.7, 0.5, 0.85].map((h, i) => (
+              <div
+                key={i}
+                className="w-2 bg-cyan-400/20 rounded-sm animate-pulse"
+                style={{ height: `${h * 100}%`, animationDelay: `${i * 80}ms` }}
+              />
+            ))}
+          </div>
+          <div className="text-[10px] text-neutral-600 font-mono uppercase tracking-wider">
+            Loading chart…
           </div>
         </div>
       )}
