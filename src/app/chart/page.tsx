@@ -64,6 +64,20 @@ export default function ChartPage() {
   // Bottom-tabs collapse: hide table area for more chart real estate.
   // Persisted in localStorage so a returning user gets their preferred
   // density on next visit.
+  // Track the xl breakpoint (1280px) so the grid drops the right-rail
+  // COLUMN entirely below xl — not just hides the rail's contents.
+  // Without this the empty minmax(220,260) track left dead space on
+  // the right at narrow widths (the rail div was `hidden` but its
+  // grid column persisted).
+  const [showRightRail, setShowRightRail] = useState<boolean>(true);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1280px)');
+    const sync = () => setShowRightRail(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
   const [bottomCollapsed, setBottomCollapsed] = useState<boolean>(false);
   useEffect(() => {
     try {
@@ -234,15 +248,28 @@ export default function ChartPage() {
           collapsible. */}
       <div
         className="flex-1 grid min-h-0"
-        style={{
-          gridTemplateColumns: '1fr minmax(220px, 260px)',
-          gridTemplateRows: `auto 1fr ${bottomCollapsed ? '40px' : '220px'}`,
-          gridTemplateAreas: `
-            "stats  right"
-            "chart  right"
-            "bottom right"
-          `,
-        }}
+        style={
+          showRightRail
+            ? {
+                gridTemplateColumns: '1fr minmax(220px, 260px)',
+                gridTemplateRows: `auto 1fr ${bottomCollapsed ? '40px' : '220px'}`,
+                gridTemplateAreas: `
+                  "stats  right"
+                  "chart  right"
+                  "bottom right"
+                `,
+              }
+            : {
+                // < xl: single column, no reserved right-rail track.
+                gridTemplateColumns: '1fr',
+                gridTemplateRows: `auto 1fr ${bottomCollapsed ? '40px' : '220px'}`,
+                gridTemplateAreas: `
+                  "stats"
+                  "chart"
+                  "bottom"
+                `,
+              }
+        }
       >
         <div style={{ gridArea: 'stats' }} className="min-w-0">
           <TerminalStatsBar symbol={symbolLabel} assetClass={assetClass} />
@@ -252,7 +279,8 @@ export default function ChartPage() {
           <TradingViewChart tvSymbol={tvSymbol} interval={chartInterval} chartStyle={chartStyle} />
         </div>
 
-        <div style={{ gridArea: 'right' }} className="hidden xl:flex flex-col min-w-0 min-h-0 overflow-hidden">
+        {showRightRail && (
+        <div style={{ gridArea: 'right' }} className="flex flex-col min-w-0 min-h-0 overflow-hidden">
           {assetClass === 'crypto' ? (
             <>
               <div className="flex-1 min-h-0 border-b border-white/[0.06]">
@@ -279,6 +307,7 @@ export default function ChartPage() {
             </div>
           )}
         </div>
+        )}
 
         <div style={{ gridArea: 'bottom' }} className="min-w-0 min-h-0 overflow-hidden">
           <TerminalBottomTabs
