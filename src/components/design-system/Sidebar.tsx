@@ -373,8 +373,11 @@ export default function Sidebar({ sections = DEFAULT_SECTIONS, className }: Side
                 style={{
                   display: 'inline-block', width: 1.5, height: h,
                   background: online > 0 ? 'var(--pump-mild)' : 'var(--fg-faint)', borderRadius: 1,
-                  animation: online > 0 ? `sidebar-bar ${1.2 + i * 0.1}s ease-in-out infinite` : 'none',
-                  animationDelay: `${i * 0.08}s`,
+                  // Delay folded into the shorthand (name duration timing
+                  // delay iteration) — mixing the `animation` shorthand with a
+                  // separate `animationDelay` longhand makes React warn about
+                  // conflicting style props on rerender.
+                  animation: online > 0 ? `sidebar-bar ${1.2 + i * 0.1}s ease-in-out ${i * 0.08}s infinite` : 'none',
                   opacity: 0.7,
                 }}
               />
