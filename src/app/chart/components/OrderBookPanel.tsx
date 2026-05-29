@@ -234,14 +234,16 @@ export function OrderBookPanel({ symbol }: { symbol: string }) {
           })}
         </div>
 
-        {/* Spread row */}
-        <div className="px-3 py-1 border-y border-white/[0.06] bg-white/[0.02] text-[10px] flex items-center justify-between">
-          <span className="text-white font-mono text-xs">
+        {/* Spread row — slightly taller + subtle gradient to clearly
+            separate the bid/ask halves, sets the visual rhythm for
+            the eye to find the mid price quickly. */}
+        <div className="px-3 py-1.5 border-y border-white/[0.08] bg-gradient-to-r from-emerald-500/[0.03] via-white/[0.04] to-red-500/[0.03] text-[10px] flex items-center justify-between">
+          <span className="text-white font-mono tabular-nums text-xs font-semibold">
             {mid ? `$${mid.toFixed(2)}` : <span className="text-neutral-600">—</span>}
           </span>
-          <span className="text-neutral-500">
+          <span className="text-neutral-500 tabular-nums">
             spread {spread ? spread.toFixed(2) : '—'}
-            {spreadPct !== null && <span className="ml-1">· {spreadPct.toFixed(3)}%</span>}
+            {spreadPct !== null && <span className="ml-1 text-neutral-600">· {spreadPct.toFixed(3)}%</span>}
           </span>
         </div>
 

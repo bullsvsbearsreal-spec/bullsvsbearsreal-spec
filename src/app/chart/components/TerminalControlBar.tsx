@@ -90,35 +90,44 @@ export function TerminalControlBar({
 
         <div className="w-px h-5 bg-white/[0.08] shrink-0" />
 
-        {/* Symbol selector */}
+        {/* Symbol selector — subtle border + chevron rotation on hover
+            for "this is clickable" affordance */}
         <button
           onClick={() => setPickerOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.08] transition-colors shrink-0"
+          className="group flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-cyan-400/30 transition-all shrink-0"
         >
           <TokenIconSimple symbol={symbolLabel} size={22} />
           <span className="text-sm font-bold text-white">{symbolLabel}</span>
           {sym?.displayPair && (
             <span className="text-xs text-neutral-400">{sym.displayPair}</span>
           )}
-          <ChevronDown className="w-3.5 h-3.5 text-neutral-500" />
+          <ChevronDown className="w-3.5 h-3.5 text-neutral-500 group-hover:text-cyan-400 transition-colors" />
         </button>
 
         <button
           onClick={onToggleFavorite}
-          className="text-neutral-500 hover:text-cyan-400 shrink-0"
+          className="text-neutral-500 hover:text-cyan-400 shrink-0 transition-colors"
           title={isFavorited ? 'Remove from watchlist' : 'Add to watchlist'}
         >
-          <Star className={`w-4 h-4 ${isFavorited ? 'text-cyan-400 fill-cyan-400' : ''}`} />
+          <Star className={`w-4 h-4 transition-all ${isFavorited ? 'text-cyan-400 fill-cyan-400 drop-shadow-[0_0_4px_rgba(34,211,238,0.5)]' : ''}`} />
         </button>
 
-        {/* Price + 24h change */}
+        {/* Price + 24h change — tabular-nums so the digits don't jiggle
+            on every tick. Tone-glow on gain/loss for an at-a-glance read. */}
         <div className="flex items-baseline gap-2 shrink-0">
-          <span className={`text-xl font-bold font-mono ${priceTone}`}>
+          <span
+            className={`text-xl font-bold font-mono tabular-nums transition-colors ${priceTone}`}
+            style={
+              livePriceChange24h !== null && livePriceChange24h !== 0
+                ? { textShadow: `0 0 12px ${livePriceChange24h > 0 ? 'rgba(52,211,153,0.25)' : 'rgba(248,113,113,0.25)'}` }
+                : undefined
+            }
+          >
             {livePrice !== null ? `$${livePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—'}
           </span>
           {livePriceChange24h !== null && (
             <>
-              <span className={`text-xs font-mono ${priceTone}`}>
+              <span className={`text-xs font-mono tabular-nums ${priceTone}`}>
                 {livePriceChange24h >= 0 ? '+' : ''}{livePriceChange24h.toFixed(2)}%
               </span>
               <span className="text-[10px] text-neutral-500 uppercase">24h</span>
@@ -173,34 +182,39 @@ export function TerminalControlBar({
           })}
         </div>
 
-        {/* Actions */}
-        <div className="flex items-center gap-2 shrink-0 border-l border-white/[0.08] pl-3">
+        {/* Actions — secondary links as ghost buttons (icon-prominent on
+            narrow viewports, full text on wide), Trade button as primary
+            CTA with subtle glow so the eye lands on it first. */}
+        <div className="flex items-center gap-1 shrink-0 border-l border-white/[0.08] pl-3">
           <Link
             href={`/liquidation-map?symbol=${symbolLabel}`}
-            className="flex items-center gap-1 text-[11px] font-semibold text-neutral-300 hover:text-white px-2 py-1 rounded hover:bg-white/[0.04]"
+            title="Liq Map"
+            className="flex items-center gap-1 text-[11px] font-semibold text-neutral-400 hover:text-white px-2 py-1 rounded hover:bg-white/[0.04] transition-colors"
           >
             <Map className="w-3.5 h-3.5" />
-            Liq Map
+            <span className="hidden 2xl:inline">Liq Map</span>
           </Link>
           <Link
             href={`/funding?symbol=${symbolLabel}`}
-            className="flex items-center gap-1 text-[11px] font-semibold text-neutral-300 hover:text-white px-2 py-1 rounded hover:bg-white/[0.04]"
+            title="Funding"
+            className="flex items-center gap-1 text-[11px] font-semibold text-neutral-400 hover:text-white px-2 py-1 rounded hover:bg-white/[0.04] transition-colors"
           >
             <Percent className="w-3.5 h-3.5" />
-            Funding
+            <span className="hidden 2xl:inline">Funding</span>
           </Link>
           <Link
             href={`/compare?symbols=${symbolLabel},${symbolLabel === 'BTC' ? 'ETH' : 'BTC'}`}
-            className="flex items-center gap-1 text-[11px] font-semibold text-neutral-300 hover:text-white px-2 py-1 rounded hover:bg-white/[0.04]"
+            title="Compare"
+            className="flex items-center gap-1 text-[11px] font-semibold text-neutral-400 hover:text-white px-2 py-1 rounded hover:bg-white/[0.04] transition-colors"
           >
             <Compass className="w-3.5 h-3.5" />
-            Compare
+            <span className="hidden 2xl:inline">Compare</span>
           </Link>
           <a
             href={tradeUrl}
             target="_blank"
             rel="noopener noreferrer nofollow"
-            className="flex items-center gap-1 text-[11px] font-bold text-black bg-cyan-400 hover:bg-cyan-300 px-3 py-1.5 rounded transition-colors"
+            className="flex items-center gap-1.5 text-[11px] font-bold text-black bg-cyan-400 hover:bg-cyan-300 px-3 py-1.5 rounded-md transition-all ml-1 shadow-[0_0_12px_rgba(34,211,238,0.25)] hover:shadow-[0_0_16px_rgba(34,211,238,0.4)]"
           >
             <Zap className="w-3.5 h-3.5" />
             Trade

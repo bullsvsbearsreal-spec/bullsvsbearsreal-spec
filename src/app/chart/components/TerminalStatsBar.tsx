@@ -252,25 +252,20 @@ export function TerminalStatsBar({
   // the TradingView chart itself (OHLC bar at top of the chart).
 
   return (
-    <div className="flex bg-black border-b border-white/[0.06] overflow-x-auto">
+    <div className="flex bg-gradient-to-b from-black to-neutral-950 border-b border-white/[0.08] overflow-x-auto">
       {cells.map((c, i) => {
         const isLoading = c.primary === '—';
         return (
           <div
             key={i}
-            // Stacked compact: label+value on top line, secondary
-            // below — was inline (all three on one line) which
-            // squeezed "64.6% long" → "64.6…" and "8h schedule" →
-            // "8…". Tight py-1 keeps the cell at ~46 px instead of
-            // the previous 66 px (still wins ~20 px vs original).
-            className="flex flex-col min-w-[150px] px-3 py-1 border-r border-white/[0.06] last:border-r-0"
+            className="group flex flex-col min-w-[150px] px-3 py-1 border-r border-white/[0.04] last:border-r-0 hover:bg-white/[0.015] transition-colors"
             title={c.secondary || ''}
           >
             <div className="flex items-baseline gap-1.5">
               <span className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold whitespace-nowrap">
                 {c.label}
               </span>
-              <span className={`text-sm font-mono font-bold whitespace-nowrap ${
+              <span className={`text-sm font-mono tabular-nums font-bold whitespace-nowrap transition-colors ${
                 isLoading
                   ? 'text-neutral-600'
                   : c.tone === 'pos' ? 'text-emerald-400'
@@ -281,7 +276,7 @@ export function TerminalStatsBar({
               </span>
             </div>
             {c.secondary && (
-              <div className="text-[10px] text-neutral-600 leading-tight whitespace-nowrap overflow-hidden text-ellipsis">
+              <div className="text-[10px] text-neutral-600 leading-tight whitespace-nowrap overflow-hidden text-ellipsis tabular-nums">
                 {c.secondary}
               </div>
             )}

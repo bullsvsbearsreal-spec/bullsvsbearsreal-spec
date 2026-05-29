@@ -114,18 +114,22 @@ function TabButton({
   return (
     <button
       onClick={onClick}
-      className={`relative flex items-center gap-1.5 text-xs font-semibold transition-colors px-1 py-1 ${
+      className={`relative flex items-center gap-1.5 text-xs font-semibold transition-all px-1 py-1 ${
         active
           ? 'text-cyan-400'
           : 'text-neutral-500 hover:text-white'
       }`}
     >
-      <Icon className="w-3.5 h-3.5" />
+      <Icon
+        className={`w-3.5 h-3.5 transition-all ${
+          active ? 'drop-shadow-[0_0_4px_rgba(34,211,238,0.4)]' : ''
+        }`}
+      />
       {label}
       {active && (
-        // Underline scaled to match label width — sits inside tab strip's
-        // border-b without doubling it up.
-        <span className="absolute -bottom-[9px] left-0 right-0 h-[2px] bg-cyan-400 rounded-t" />
+        // Underline scaled to match label width — sits inside the tab
+        // strip's border-b. Subtle inner glow via box-shadow.
+        <span className="absolute -bottom-[9px] left-0 right-0 h-[2px] bg-cyan-400 rounded-t shadow-[0_0_6px_rgba(34,211,238,0.5)]" />
       )}
     </button>
   );
