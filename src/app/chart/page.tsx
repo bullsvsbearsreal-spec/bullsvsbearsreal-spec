@@ -231,7 +231,7 @@ export default function ChartPage() {
     // The Header import at top of this file is the legacy global
     // header — TerminalShell already renders TerminalHeader, so we
     // don't add another one here.
-    <div className="h-full text-white flex flex-col" style={{ background: 'radial-gradient(ellipse 120% 80% at 50% -10%, #11151f 0%, #0b0d12 60%)' }}>
+    <div className="chart-terminal-root h-full text-white flex flex-col" style={{ background: 'radial-gradient(ellipse 120% 80% at 50% -10%, #11151f 0%, #0b0d12 60%)' }}>
       <TerminalControlBar
         assetClass={assetClass}
         symbolLabel={symbolLabel}

@@ -1676,6 +1676,12 @@ option { background: #171717; color: #fff; }
 /* Chat widget clearance — prevent floating widget from hiding last table row */
 main { padding-bottom: 56px; }
 @media (max-width: 640px) { main { padding-bottom: 48px; } }
+/* …but the /chart terminal is a fixed, full-bleed, non-scrolling layout
+   (h-full grid that fills the viewport, StatusBar pinned below). The
+   chat-clearance padding just leaves a dead band between the bottom-tabs
+   panel and the StatusBar there, so zero it out when main wraps the
+   chart root. :has() is well-supported in all current browsers. */
+main:has(> .chart-terminal-root) { padding-bottom: 0; }
 
 /* Hide the 232 px primary sidebar on mobile / small tablet — it was eating
    ≈43% of the viewport at 540 px, leaving the main content cramped. The
