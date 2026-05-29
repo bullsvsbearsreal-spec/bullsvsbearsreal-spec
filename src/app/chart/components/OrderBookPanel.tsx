@@ -97,46 +97,68 @@ export function OrderBookPanel({ symbol }: { symbol: string }) {
     setAsks([]);
     setConnected(false);
 
-    if (wsRef.current) {
-      try { wsRef.current.close(); } catch { /* noop */ }
-      wsRef.current = null;
+    if (!symbol) {
+      if (wsRef.current) {
+        try { wsRef.current.close(); } catch { /* noop */ }
+        wsRef.current = null;
+      }
+      return;
     }
-
-    if (!symbol) return;
 
     // Binance is the v1 implementation; Bybit/OKX/Coinbase use Binance
     // as fallback for now (separate WS protocols, follow-up work).
     const url = buildBinanceUrl(symbol);
 
     let cancelled = false;
-    const ws = new WebSocket(url);
-    wsRef.current = ws;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-    ws.onopen = () => { if (!cancelled) setConnected(true); };
-    ws.onclose = () => { if (!cancelled) setConnected(false); };
-    ws.onerror = () => { if (!cancelled) setConnected(false); };
-    ws.onmessage = (ev) => {
+    // Reconnect on drop. Binance force-closes futures WS every 24h and
+    // transient network blips happen — without this the book went
+    // stale forever (only a symbol change re-opened it). Mirrors the
+    // 3s-retry pattern in useRealtimeTrades.
+    const connect = () => {
       if (cancelled) return;
-      try {
-        const msg: DepthMsg = JSON.parse(ev.data);
-        // Binance partial-depth frames use `b`/`a`; some snapshots
-        // use `bids`/`asks`. Accept either.
-        const rawBids = msg.b ?? msg.bids;
-        const rawAsks = msg.a ?? msg.asks;
-        if (!rawBids || !rawAsks) return;
-        const nextBids: Level[] = rawBids.map(([p, q]) => ({ price: +p, size: +q })).filter(l => l.size > 0 && Number.isFinite(l.price));
-        const nextAsks: Level[] = rawAsks.map(([p, q]) => ({ price: +p, size: +q })).filter(l => l.size > 0 && Number.isFinite(l.price));
-        if (nextBids.length > 0 || nextAsks.length > 0) {
-          setBids(nextBids);
-          setAsks(nextAsks);
-        }
-      } catch { /* swallow malformed frames */ }
+      const ws = new WebSocket(url);
+      wsRef.current = ws;
+
+      ws.onopen = () => { if (!cancelled) setConnected(true); };
+      ws.onclose = () => {
+        if (cancelled) return;
+        setConnected(false);
+        reconnectTimer = setTimeout(connect, 3000);
+      };
+      ws.onerror = () => { try { ws.close(); } catch { /* noop */ } };
+      ws.onmessage = (ev) => {
+        if (cancelled) return;
+        try {
+          const msg: DepthMsg = JSON.parse(ev.data);
+          // Binance partial-depth frames use `b`/`a`; some snapshots
+          // use `bids`/`asks`. Accept either.
+          const rawBids = msg.b ?? msg.bids;
+          const rawAsks = msg.a ?? msg.asks;
+          if (!rawBids || !rawAsks) return;
+          const nextBids: Level[] = rawBids.map(([p, q]) => ({ price: +p, size: +q })).filter(l => l.size > 0 && Number.isFinite(l.price));
+          const nextAsks: Level[] = rawAsks.map(([p, q]) => ({ price: +p, size: +q })).filter(l => l.size > 0 && Number.isFinite(l.price));
+          if (nextBids.length > 0 || nextAsks.length > 0) {
+            setBids(nextBids);
+            setAsks(nextAsks);
+          }
+        } catch { /* swallow malformed frames */ }
+      };
     };
+
+    connect();
 
     return () => {
       cancelled = true;
-      try { ws.close(); } catch { /* noop */ }
-      wsRef.current = null;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (wsRef.current) {
+        // Null onclose first so the teardown close doesn't schedule a
+        // reconnect for a component that's unmounting / changing symbol.
+        wsRef.current.onclose = null;
+        try { wsRef.current.close(); } catch { /* noop */ }
+        wsRef.current = null;
+      }
     };
   }, [symbol, venue]);
 
