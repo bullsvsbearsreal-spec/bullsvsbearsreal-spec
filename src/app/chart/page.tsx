@@ -78,6 +78,18 @@ export default function ChartPage() {
     return () => mq.removeEventListener('change', sync);
   }, []);
 
+  // On phones the TradingView side toolbar (drawing tools) eats ~40px off an
+  // already-narrow chart — hide it below md (767px), the same breakpoint where
+  // the primary sidebar collapses. Desktop keeps the drawing tools.
+  const [compactChart, setCompactChart] = useState<boolean>(false);
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const sync = () => setCompactChart(mq.matches);
+    sync();
+    mq.addEventListener('change', sync);
+    return () => mq.removeEventListener('change', sync);
+  }, []);
+
   const [bottomCollapsed, setBottomCollapsed] = useState<boolean>(false);
   useEffect(() => {
     try {
@@ -286,7 +298,7 @@ export default function ChartPage() {
           {/* Faint cyan top-edge accent line — gives the chart panel a
               subtle "active surface" framing without a heavy border. */}
           <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent z-10 pointer-events-none" />
-          <TradingViewChart tvSymbol={tvSymbol} interval={chartInterval} chartStyle={chartStyle} />
+          <TradingViewChart tvSymbol={tvSymbol} interval={chartInterval} chartStyle={chartStyle} hideSideToolbar={compactChart} />
         </div>
 
         {showRightRail && (

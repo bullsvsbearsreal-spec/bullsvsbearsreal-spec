@@ -26,11 +26,15 @@ export function TradingViewChart({
   interval,
   chartStyle = '1',
   compareSymbol,
+  hideSideToolbar = false,
 }: {
   tvSymbol: string;
   interval: string;
   chartStyle?: ChartStyle;
   compareSymbol?: string | null;
+  /** Hide TV's left drawing-tools toolbar — set on phones where it
+   *  cramps the candles. Defaults to false (desktop keeps the tools). */
+  hideSideToolbar?: boolean;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [loading, setLoading] = useState(true);
@@ -61,7 +65,7 @@ export function TradingViewChart({
       gridColor: 'rgba(255, 255, 255, 0.03)',
       hide_top_toolbar: true,    // we have our own
       hide_legend: false,
-      hide_side_toolbar: false,  // drawing tools — keep
+      hide_side_toolbar: hideSideToolbar,  // drawing tools — kept on desktop, hidden on phones
       allow_symbol_change: false, // we drive symbol from our picker
       save_image: false,
       calendar: false,
@@ -108,7 +112,7 @@ export function TradingViewChart({
     return () => {
       if (container) container.innerHTML = '';
     };
-  }, [tvSymbol, interval, chartStyle, compareSymbol]);
+  }, [tvSymbol, interval, chartStyle, compareSymbol, hideSideToolbar]);
 
   return (
     <div className="w-full h-full relative bg-[#0a0c11]">
