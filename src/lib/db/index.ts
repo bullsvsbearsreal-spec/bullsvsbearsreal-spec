@@ -240,6 +240,23 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_evc_user ON email_verification_codes(user_id, used)`;
 
+  // NextAuth verification_tokens — backs passwordless magic-link sign-in
+  // (the Resend provider's createVerificationToken / useVerificationToken
+  // in lib/auth/adapter.ts). Composite (identifier, token) PK is the
+  // Auth.js contract. The adapter has always referenced this table but it
+  // was never created because no email provider was wired; magic-link
+  // stays inert until AUTH_RESEND_KEY is set, but the table must exist
+  // before that flips on.
+  await sql`
+    CREATE TABLE IF NOT EXISTS verification_tokens (
+      identifier TEXT NOT NULL,
+      token TEXT NOT NULL,
+      expires TIMESTAMPTZ NOT NULL,
+      PRIMARY KEY (identifier, token)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_verification_tokens_expires ON verification_tokens(expires)`;
+
   // 2FA login codes (one-time codes sent via email during login)
   await sql`
     CREATE TABLE IF NOT EXISTS twofa_login_codes (

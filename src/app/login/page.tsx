@@ -8,6 +8,12 @@ import Logo from '@/components/Logo';
 import { ALL_EXCHANGES } from '@/lib/constants';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ArrowRight, Shield, Smartphone } from 'lucide-react';
 
+// Magic-link UI is gated on a build-time public flag so it stays hidden
+// until the operator enables the Resend provider (AUTH_RESEND_KEY) AND has
+// tested the email→click→session flow. NEXT_PUBLIC_* is inlined at build,
+// so when unset this whole branch is dead code.
+const MAGIC_LINK_ENABLED = process.env.NEXT_PUBLIC_MAGIC_LINK_ENABLED === '1';
+
 function LoginPageInner() {
   // Bounce already-authed users away from /login. Without this, a
   // logged-in user navigating to /login (stale link, manual URL,
@@ -29,6 +35,7 @@ function LoginPageInner() {
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [magicSent, setMagicSent] = useState(false);
 
   // 2FA step
   const [step, setStep] = useState<'credentials' | '2fa' | 'unverified'>('credentials');
@@ -115,6 +122,23 @@ function LoginPageInner() {
       }
     } catch {
       setError('Network error — could not reach the server. Check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // Passwordless: email a one-time sign-in link via the Resend provider.
+  // redirect:false so we render our own "check your inbox" confirmation
+  // instead of NextAuth's default verify-request page.
+  async function handleMagicLink() {
+    if (!email) { setError('Enter your email first, then request a link.'); return; }
+    setError('');
+    setLoading(true);
+    try {
+      await signIn('resend', { email, redirect: false, callbackUrl });
+      setMagicSent(true);
+    } catch {
+      setError('Could not send the sign-in link. Try again.');
     } finally {
       setLoading(false);
     }
@@ -355,6 +379,32 @@ function LoginPageInner() {
                   )}
                 </button>
               </form>
+
+              {MAGIC_LINK_ENABLED && (
+                <div className="mt-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="flex-1 h-px bg-white/[0.08]" />
+                    <span className="text-[10px] uppercase tracking-wider text-neutral-600">or</span>
+                    <div className="flex-1 h-px bg-white/[0.08]" />
+                  </div>
+                  {magicSent ? (
+                    <div className="flex items-center gap-2.5 text-emerald-400 text-sm bg-emerald-500/10 border border-emerald-500/20 rounded-xl px-4 py-3">
+                      <Mail size={16} className="flex-shrink-0" />
+                      Sign-in link sent — check your inbox.
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleMagicLink}
+                      disabled={loading}
+                      className="w-full h-12 rounded-xl bg-white/[0.04] border border-white/[0.1] hover:bg-white/[0.07] text-sm text-neutral-200 font-medium disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Mail size={15} />
+                      Email me a sign-in link
+                    </button>
+                  )}
+                </div>
+              )}
             </>
           )}
 

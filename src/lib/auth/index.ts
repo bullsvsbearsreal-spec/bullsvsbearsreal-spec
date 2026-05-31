@@ -9,6 +9,7 @@ import Credentials from 'next-auth/providers/credentials';
 import Google from 'next-auth/providers/google';
 import Discord from 'next-auth/providers/discord';
 import Twitter from 'next-auth/providers/twitter';
+import Resend from 'next-auth/providers/resend';
 import bcrypt from 'bcryptjs';
 import { PostgresAdapter, getSQL } from './adapter';
 
@@ -91,6 +92,23 @@ if (process.env.AUTH_TWITTER_ID && process.env.AUTH_TWITTER_SECRET) {
   providers.push(Twitter({
     clientId: process.env.AUTH_TWITTER_ID,
     clientSecret: process.env.AUTH_TWITTER_SECRET,
+  }));
+}
+
+// Passwordless magic-link sign-in via Resend. Gated on AUTH_RESEND_KEY — a
+// DISTINCT var from RESEND_API_KEY (which is already set for transactional
+// email) — so this stays fully inert until the operator explicitly opts in
+// AFTER testing the email→click→session flow on a preview. The custom
+// adapter already backs it: verification_tokens table (db/index.ts) +
+// createUser/updateUser map `emailVerified`, and getUserByEmail links a
+// magic-link to an existing password account. Email providers work with
+// JWT sessions in Auth.js v5. Security note: magic-link bypasses the
+// Credentials 2FA gate (email possession is itself the factor) — the same
+// trust model as the existing password-reset flow.
+if (process.env.AUTH_RESEND_KEY) {
+  providers.push(Resend({
+    apiKey: process.env.AUTH_RESEND_KEY,
+    from: process.env.AUTH_EMAIL_FROM || 'InfoHub <noreply@info-hub.io>',
   }));
 }
 
