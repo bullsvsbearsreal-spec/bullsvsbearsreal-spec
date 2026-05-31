@@ -17,7 +17,7 @@ describe('shouldSkip — middleware bucket bypass list', () => {
   it('returns true for any /api/cron/* path (internal cron)', () => {
     expect(shouldSkip('/api/cron/snapshot')).toBe(true);
     expect(shouldSkip('/api/cron/whale-trades')).toBe(true);
-    expect(shouldSkip('/api/cron/auto-tweet')).toBe(true);
+    expect(shouldSkip('/api/cron/alerts')).toBe(true);
   });
 
   it('returns true for /api/telegram/webhook', () => {

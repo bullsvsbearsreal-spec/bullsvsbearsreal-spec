@@ -44,7 +44,6 @@ const ALLOWED_CRONS: Record<string, { description: string; estTimeoutMs: number 
   'sync-positions':        { description: 'User connected-exchange sync',    estTimeoutMs: 30_000 },
   'alerts':                { description: 'Alert evaluation pass',           estTimeoutMs: 30_000 },
   'check-position-alerts': { description: 'Position-alert checker',          estTimeoutMs: 30_000 },
-  'auto-tweet':            { description: 'Auto-tweet queue flush',          estTimeoutMs: 30_000 },
   'portfolio-snapshot':    { description: 'Per-user portfolio snapshot',     estTimeoutMs: 60_000 },
   'aggregate-page-views':  { description: 'Page views rollup + prune (90d)', estTimeoutMs: 30_000 },
   'watch-hl-wallets':      { description: 'HL wallet watch — diff + Telegram', estTimeoutMs: 60_000 },

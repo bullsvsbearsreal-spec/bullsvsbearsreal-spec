@@ -194,7 +194,6 @@ export function OpsTab({ onToast }: { onToast: (msg: string, ok: boolean) => voi
     { id: 'whale-trades',          label: 'Whale trades',           schedule: 'every 2 min' },
     { id: 'alerts',                label: 'Standard alerts',        schedule: 'every 5 min' },
     { id: 'check-position-alerts', label: 'Position alerts',        schedule: 'every 5 min' },
-    { id: 'auto-tweet',            label: 'Auto-tweet',             schedule: 'every 5 min' },
     { id: 'social-fetch',          label: 'KOL feed',               schedule: 'every 15 min' },
     { id: 'refresh-etf-flows',     label: 'ETF flows refresh',      schedule: 'every 30 min' },
     { id: 'refresh-validators',    label: 'Validator refresh',      schedule: 'every 30 min' },

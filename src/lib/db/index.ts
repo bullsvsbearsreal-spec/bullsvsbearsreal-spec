@@ -981,32 +981,9 @@ async function _doInitDB(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_bug_reports_status_created ON bug_reports(status, created_at DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_bug_reports_user ON bug_reports(user_id, created_at DESC)`;
 
-  // ── Auto-tweet event log (May 2026) ──
-  // The auto-tweet cron stores every event it detected here. UNIQUE
-  // constraint on event_id is the dedup primitive — if the same event
-  // is detected on two consecutive ticks, the second INSERT fails
-  // silently and we never double-tweet. `posted_at` is null for
-  // dry-run rows (no creds / AUTO_TWEET_DRY_RUN=true) so the admin
-  // panel can render those distinctly as "queued, would-be-posted".
-  await sql`
-    CREATE TABLE IF NOT EXISTS auto_tweets (
-      id          SERIAL PRIMARY KEY,
-      event_id    TEXT UNIQUE NOT NULL,
-      event_kind  TEXT NOT NULL,
-      symbol      TEXT,
-      venue       TEXT,
-      value       REAL,
-      tweet_text  TEXT NOT NULL,
-      posted_at   TIMESTAMPTZ,
-      twitter_id  TEXT,
-      dry_run     BOOLEAN NOT NULL DEFAULT TRUE,
-      error       TEXT,
-      metadata    JSONB,
-      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )
-  `;
-  await sql`CREATE INDEX IF NOT EXISTS idx_auto_tweets_kind_created ON auto_tweets(event_kind, created_at DESC)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_auto_tweets_created ON auto_tweets(created_at DESC)`;
+  // NOTE: the `auto_tweets` table + its schema were removed 2026-05 when the
+  // auto-tweet feature was deleted. Any pre-existing prod table is empty
+  // (the cron never ran on a live timer) + harmless; drop it manually if desired.
 }
 
 // ─── API Cache (L2 — survives Edge cold starts) ────────────────────────────

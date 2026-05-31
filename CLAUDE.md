@@ -11,7 +11,7 @@ making infra-shaped changes.
 | --- | --- | --- |
 | Web (Next.js 14, App Router) | DigitalOcean App Platform · FRA1 · 2 GB | Auto-deploys on push to `main` |
 | Price aggregator (WS) | DigitalOcean droplet `infohub-aggregator` (FRA1, `46.101.247.54`) | systemd unit `infohub-aggregator.service` running `/opt/infohub-aggregator/index.mjs` |
-| Crons (16 endpoints — 15 systemd timers + `watch-hl-wallets` piggyback) | Same droplet, systemd timers | All hit `https://info-hub.io/api/cron/<name>` with `Authorization: Bearer $CRON_SECRET` |
+| Crons (15 endpoints — 14 systemd timers + `watch-hl-wallets` piggyback) | Same droplet, systemd timers | All hit `https://info-hub.io/api/cron/<name>` with `Authorization: Bearer $CRON_SECRET` |
 | DNS | Cloudflare (gray cloud / DNS-only) → CNAME flatten → `infohub-web-hg4id.ondigitalocean.app` | Cloudflare proxy is gray for now — DO's CDN already fronts the app via `*.ondigitalocean.app` |
 | SSL | Let's Encrypt via DO App Platform | Auto-renewed |
 | Domain registrar | Njalla | DNS delegated to Cloudflare |
@@ -39,11 +39,11 @@ ssh root@46.101.247.54
 systemctl status infohub-aggregator
 journalctl -u infohub-aggregator -n 200 -f
 
-# Crons (15 timers, all hit info-hub.io/api/cron/*).
+# Crons (14 timers, all hit info-hub.io/api/cron/*).
 # Note: /api/cron/watch-hl-wallets does NOT have its own timer —
 # it piggybacks on the snapshot cron's tail-call (see "Wallet
 # Watch" section below). One cron handles both jobs every 60s.
-# 16 endpoints total under src/app/api/cron/ — list ls'd against
+# 15 endpoints total under src/app/api/cron/ — list ls'd against
 # this table catches anyone adding a new endpoint without wiring
 # the systemd timer.
 systemctl list-timers --all 'infohub-cron-*'
@@ -53,7 +53,7 @@ journalctl -u 'infohub-cron@*' --since '10 minutes ago' --output=cat | grep 'HTT
 cat /etc/infohub-cron.env   # mode 600, contains only CRON_SECRET=...
 ```
 
-The 15 cron timers and their schedules:
+The 14 cron timers and their schedules:
 
 | Endpoint | Schedule |
 | --- | --- |
@@ -64,7 +64,6 @@ The 15 cron timers and their schedules:
 | `/api/cron/whale-trades` | every 2 min |
 | `/api/cron/alerts` | every 5 min |
 | `/api/cron/check-position-alerts` | every 5 min |
-| `/api/cron/auto-tweet` | every 5 min |
 | `/api/cron/social-fetch` | every 15 min |
 | `/api/cron/refresh-etf-flows` | every 30 min |
 | `/api/cron/refresh-validators` | every 30 min |
@@ -348,7 +347,7 @@ sibling. Some patterns worth knowing:
   CRON_SECRET) are tested by setting `process.env.X` *before* the
   `await import(...)` inside the test.
 - **fetch mocks** use `vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response(...))`
-  rather than installing `msw` — see `lib/auto-tweet/__tests__/twitter.test.ts`.
+  rather than installing `msw`.
 
 The full suite runs in ~10s. Pre-deploy verification:
 `npx vitest run` and `npx tsc --noEmit`.
