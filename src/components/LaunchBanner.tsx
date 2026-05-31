@@ -62,13 +62,13 @@ export default function LaunchBanner() {
   return (
     <div
       role="banner"
-      className="relative w-full border-b border-amber-400/20 bg-gradient-to-r from-amber-500/[0.08] via-emerald-500/[0.06] to-amber-500/[0.08]"
+      className="relative w-full border-b border-amber-400/30 bg-gradient-to-r from-amber-500/[0.14] via-orange-500/[0.10] to-amber-500/[0.14] shadow-[0_1px_24px_-10px_rgba(255,170,0,0.55)]"
     >
       <div className="max-w-[1400px] mx-auto px-3 sm:px-4 py-2 flex items-center justify-between gap-3">
         <div className="flex-1 min-w-0 flex items-center gap-2 text-[11px] sm:text-xs">
-          <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0" aria-hidden />
+          <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0 animate-pulse" aria-hidden />
           <p className="text-neutral-200 truncate">
-            <span className="font-semibold text-amber-300">Free during launch</span>
+            <span className="font-extrabold uppercase tracking-wide text-amber-200 [text-shadow:0_0_14px_rgba(255,193,7,0.6)]">Free during launch</span>
             <span className="text-neutral-400">
               {' · '}Trader, Pro + Whale tiers unlocked for everyone while we onboard early users.
             </span>
