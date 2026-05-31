@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHash } from 'crypto';
 import { validateApiKey } from '@/lib/db';
 import { checkRateLimit } from '@/lib/api/rate-limit';
-import { createRateLimiter } from '@/lib/auth/rate-limit';
+import { createRateLimiter, getClientIP } from '@/lib/auth/rate-limit';
 import { FEE_MODEL_VERSION, FEE_MODEL_UPDATED_AT } from '@/lib/constants/exchanges';
 
 /**
@@ -34,6 +34,29 @@ const FEE_MODEL_HEADERS = {
   'X-Fee-Model-Version': FEE_MODEL_VERSION,
   'X-Fee-Model-Updated-At': FEE_MODEL_UPDATED_AT,
 };
+
+/**
+ * Salt for hashing client IPs in api_request_log's ip_hash column. Reuses
+ * an existing server secret (AUTH_SECRET is always set in prod for v5) so
+ * the hash is process-stable — giving accurate distinct-source counts in
+ * the admin panel — without introducing a new env var. We NEVER store the
+ * raw IP, only sha256(ip + salt) truncated. Admin-only, pseudonymous.
+ */
+const IP_HASH_SALT =
+  process.env.AUTH_SECRET ||
+  process.env.NEXTAUTH_SECRET ||
+  process.env.CRON_SECRET ||
+  'ih-anon-ip-salt-v1';
+
+/**
+ * Pseudonymise a client IP for the unauthenticated-traffic log. Returns
+ * null for unknown IPs (nothing useful to record). Truncated to 128 bits
+ * — ample to distinguish sources, cheaper to store. Exported for tests.
+ */
+export function hashIpForLog(ip: string | null | undefined): string | null {
+  if (!ip || ip === 'unknown') return null;
+  return createHash('sha256').update(ip + IP_HASH_SALT).digest('hex').slice(0, 32);
+}
 
 interface V1AuthResult {
   userId: string;
@@ -91,6 +114,7 @@ export async function authenticateV1Request(request: NextRequest): Promise<
     noKeyRes.headers.set('WWW-Authenticate', 'Bearer realm="InfoHub API"');
     noKeyRes.headers.set('X-Fee-Model-Version', FEE_MODEL_VERSION);
     noKeyRes.headers.set('X-Fee-Model-Updated-At', FEE_MODEL_UPDATED_AT);
+    logAnonRequest(request, 401); // unauthenticated consumer — surfaced in admin panel
     return { ok: false, response: noKeyRes };
   }
 
@@ -104,6 +128,7 @@ export async function authenticateV1Request(request: NextRequest): Promise<
     try {
       const result = await validateApiKey(rawKey);
       if (!result) {
+        logAnonRequest(request, 401); // bad/revoked key — also "unauthenticated" for analytics
         return {
           ok: false,
           response: NextResponse.json(
@@ -237,20 +262,49 @@ export async function authenticateV1Request(request: NextRequest): Promise<
  * touch the DB. See semantics in the call site above — success-only.
  */
 async function logApiRequestSafe(row: {
-  userId: string;
-  apiKeyId: string;
+  userId: string | null;
+  apiKeyId: string | null;
   endpoint: string;
+  statusCode?: number;
+  ipHash?: string | null;
 }): Promise<void> {
   try {
     const { getSQL, isDBConfigured } = await import('@/lib/db');
     if (!isDBConfigured()) return;
     const db = getSQL();
     await db`
-      INSERT INTO api_request_log (user_id, api_key_id, endpoint, status_code, duration_ms)
-      VALUES (${row.userId}, ${row.apiKeyId}, ${row.endpoint}, 200, NULL)
+      INSERT INTO api_request_log (user_id, api_key_id, endpoint, status_code, duration_ms, ip_hash)
+      VALUES (${row.userId}, ${row.apiKeyId}, ${row.endpoint}, ${row.statusCode ?? 200}, NULL, ${row.ipHash ?? null})
     `;
   } catch (e) {
     // Don't let log failures fail the request — silently swallow.
     console.warn('api_request_log insert failed:', e instanceof Error ? e.message : e);
+  }
+}
+
+/**
+ * Fire-and-forget log of an UNAUTHENTICATED v1 request (no key / invalid
+ * key → 401). user_id + api_key_id are NULL; the only identifier is the
+ * salted IP hash. Surfaces "people hitting the API without a valid key"
+ * in the admin panel — a developer-conversion signal AND an abuse signal
+ * that was previously invisible (the success-only log above never saw it).
+ *
+ * Sampled 1-in-5 (matches the success path) so a keyless bot flood can't
+ * bloat the table; the keyless path is also IP-rate-limited upstream and
+ * the daily prune cron caps retention regardless.
+ */
+function logAnonRequest(request: NextRequest, statusCode: number): void {
+  if (Math.random() >= 0.2) return;
+  try {
+    const url = new URL(request.url);
+    void logApiRequestSafe({
+      userId: null,
+      apiKeyId: null,
+      endpoint: url.pathname,
+      statusCode,
+      ipHash: hashIpForLog(getClientIP(request)),
+    });
+  } catch {
+    // never let logging affect the response
   }
 }

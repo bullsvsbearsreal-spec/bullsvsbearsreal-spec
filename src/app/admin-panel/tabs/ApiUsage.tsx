@@ -14,7 +14,7 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { Activity, RefreshCw } from 'lucide-react';
+import { Activity, RefreshCw, KeyRound } from 'lucide-react';
 import { Card, SectionHead, SkeletonBlock, fmtNumber, fmtAgo } from '../components/primitives';
 
 type Window = '24h' | '7d' | '30d';
@@ -29,6 +29,8 @@ interface Summary {
 
 interface EndpointRow { endpoint: string; hits: number; errors: number; errorPct: number; p50Ms: number | null }
 interface UserRow { userId: string; email: string | null; billingTier: string | null; hits: number; errors: number; errorPct: number; lastHit: string | null }
+interface AnonEndpointRow { endpoint: string; hits: number; sources: number }
+interface AnonBlock { totalRequests: number; distinctSources: number; topEndpoints: AnonEndpointRow[] }
 
 interface UsageResp {
   window: Window;
@@ -37,6 +39,7 @@ interface UsageResp {
   summary: Summary | null;
   topEndpoints: EndpointRow[];
   topUsers: UserRow[];
+  anonymous: AnonBlock | null;
 }
 
 export function ApiUsageTab({ onToast }: { onToast: (msg: string, ok: boolean) => void }) {
@@ -213,12 +216,68 @@ export function ApiUsageTab({ onToast }: { onToast: (msg: string, ok: boolean) =
         </Card>
       </div>
 
+      {/* Unauthenticated traffic — hit /api/v1 without a valid key (401).
+          Prospective developers probing before signup, or bots. */}
+      {data?.anonymous && (data.anonymous.totalRequests > 0 || data.anonymous.topEndpoints.length > 0) && (
+        <div style={{ marginTop: 16 }}>
+          <SectionHead
+            title="Unauthenticated traffic · no API key"
+            icon={<KeyRound style={{ width: 13, height: 13 }} />}
+          />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <Tile
+              label="Anon requests · 401"
+              value={`${scaleHint}${fmtNumber(scale(data.anonymous.totalRequests))}`}
+              sub={data.sampled ? `${fmtNumber(data.anonymous.totalRequests)} sampled` : null}
+              color="#fca5a5"
+            />
+            <Tile
+              label="Distinct sources"
+              value={fmtNumber(data.anonymous.distinctSources)}
+              sub="by hashed IP"
+              color="#fcd34d"
+            />
+          </div>
+          <Card title="Top endpoints hit without a key">
+            {data.anonymous.topEndpoints.length === 0 ? (
+              <div style={{ color: 'var(--fg-faint)', fontSize: 11, padding: '8px 0' }}>No unauthenticated traffic in this window.</div>
+            ) : (
+              <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ fontSize: 9, color: 'var(--fg-faint)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    <th style={{ textAlign: 'left', padding: '4px 6px' }}>Endpoint</th>
+                    <th style={{ textAlign: 'right', padding: '4px 6px' }}>Hits</th>
+                    <th style={{ textAlign: 'right', padding: '4px 6px' }}>Sources</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.anonymous.topEndpoints.map(r => (
+                    <tr key={r.endpoint} style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
+                      <td style={{ padding: '5px 6px', fontFamily: 'var(--font-mono)', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 360 }}>
+                        {r.endpoint}
+                      </td>
+                      <td style={{ padding: '5px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: '#fff' }}>
+                        {fmtNumber(r.hits)}
+                      </td>
+                      <td style={{ padding: '5px 6px', textAlign: 'right', fontFamily: 'var(--font-mono)', color: 'var(--fg-muted)' }}>
+                        {fmtNumber(r.sources)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </Card>
+        </div>
+      )}
+
       <div style={{ marginTop: 8, fontSize: 10, color: 'var(--fg-faint)', lineHeight: 1.5 }}>
         Requests are sampled 1-in-5 at the auth layer to keep the log table small.
-        Hit counts shown are sampled; total-requests tile is multiplied 5× for an estimate.
-        Logging is success-only (request was authenticated + permitted) — 4xx/5xx
-        responses from route handlers are not captured, so error % shows 0 until
-        per-route error logging is wired.
+        Hit counts shown are sampled; total tiles are multiplied 5× for an estimate.
+        Authenticated logging is success-only (request was authenticated + permitted),
+        so its error % shows 0 until per-route error logging is wired. Unauthenticated
+        401s (no / bad key) ARE captured separately above — IPs stored only as salted
+        hashes, never raw.
       </div>
     </>
   );
