@@ -291,11 +291,13 @@ export async function GET(request: NextRequest) {
     // bypassing the ON CONFLICT dedup). This inflated totals to $917M vs Coinglass's $141M.
     // Removed 2026-03-18 to fix the overcount. See ingest-liquidations for the sole insertion path.
 
-    // Prune on full runs only (every 10 min)
-    // Keep 2 days so the 24h OI delta query (which looks back ~24h10m) has headroom.
-    // Previously keepDays=1 deleted snapshots right at the 24h boundary, causing
-    // the oi_24h CTE in getOIDeltas to always find zero rows → "No data".
-    const pruned = isFullRun ? await pruneOldData(2) : { funding: 0, oi: 0, liquidations: 0 };
+    // Prune on full runs only (every 10 min). Keep 30 days so the funding/OI
+    // "over time" charts (1H…30D ranges) have real history — keepDays=2 left
+    // only ~2-3 days, so the 7D/30D views showed almost nothing (the reported
+    // "selected 30D but got 3d" bug). 30d still gives the 24h OI-delta query
+    // (~24h10m lookback) plenty of headroom. Storage tradeoff accepted:
+    // funding_snapshots is per-minute × venues × symbols (the heavy table).
+    const pruned = isFullRun ? await pruneOldData(30) : { funding: 0, oi: 0, liquidations: 0 };
 
     // Record DB size for admin monitoring (~1 in 6 runs, roughly hourly)
     if (Math.random() < 0.17) {
