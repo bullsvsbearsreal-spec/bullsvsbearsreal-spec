@@ -10,11 +10,19 @@ interface RateWindow {
   start: number;
 }
 
-const authBuckets = new Map<string, RateWindow>();   // strict: 5 req / 15 min
+const authBuckets = new Map<string, RateWindow>();   // strict: 10 req / 10 min
 const apiBuckets  = new Map<string, RateWindow>();   // moderate: 120 req / 1 min
 
-const AUTH_LIMIT   = 5;
-const AUTH_WINDOW   = 15 * 60 * 1000; // 15 min
+// 10 write-auth actions / 10 min per IP. Was 5/15min, which locked out
+// legit users: a password reset (forgot-password POST + reset-password
+// POST) plus a couple of mistyped-password login retries hit 5 fast, then
+// the user sat in a 15-min penalty box (real report: a new user couldn't
+// log in right after resetting). 10/10min keeps brute-force/credential-
+// stuffing a non-threat (60/hr/IP, on top of the 8+char strong-password
+// policy and forgot-password's own per-IP limiter) while giving real
+// users room to recover — and a tripped limit now clears in ≤10 min.
+const AUTH_LIMIT   = 10;
+const AUTH_WINDOW   = 10 * 60 * 1000; // 10 min
 const API_LIMIT    = 120;
 const API_WINDOW    = 60 * 1000;       // 1 min
 

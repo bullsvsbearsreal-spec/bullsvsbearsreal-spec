@@ -104,9 +104,18 @@ function ResetPasswordForm() {
   return (
     <>
       {error && (
-        <div className="flex items-center gap-2.5 text-red-400 text-sm bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 mb-5">
-          <AlertCircle size={16} className="flex-shrink-0" />
-          {error}
+        <div className="bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3 mb-5">
+          <div className="flex items-center gap-2.5 text-red-400 text-sm">
+            <AlertCircle size={16} className="flex-shrink-0" />
+            {error}
+          </div>
+          {/* One-click recovery — reset links are single-use and a newer
+              request invalidates older ones, so a dead/old link is common
+              when several reset emails were sent. Don't make the user
+              hunt for the forgot-password page. */}
+          <Link href="/forgot-password" className="mt-2.5 inline-flex items-center gap-1.5 text-sm font-medium text-hub-yellow hover:underline">
+            Request a fresh link <ArrowRight size={13} />
+          </Link>
         </div>
       )}
 
