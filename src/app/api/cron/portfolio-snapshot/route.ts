@@ -47,6 +47,11 @@ export async function GET(request: NextRequest) {
     // Fetch current prices
     const tickerJson = await fetchJSON<{ data: any[] }>(`${origin}/api/tickers`);
     if (!tickerJson?.data) {
+      // Heartbeat even on this early return — otherwise a ticker-feed blip at
+      // run time leaves the cron with no Ops row → looks dead (the same gap
+      // the success + catch paths below already guard against). 'ok' + skip
+      // reason, visible in the Ops drawer.
+      await upsertWorkerHeartbeat('cron:portfolio-snapshot', 'ok', { skipped: 'no ticker data' }).catch(() => {});
       return NextResponse.json({ ok: true, skipped: 'no ticker data' });
     }
 
