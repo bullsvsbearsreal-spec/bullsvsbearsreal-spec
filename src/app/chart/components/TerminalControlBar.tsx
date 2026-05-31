@@ -292,6 +292,14 @@ function SymbolPickerModal({
     return out;
   }, [filtered, tab.pinned]);
 
+  // Crypto-only: let users chart ANY Binance perp by exact ticker, even one
+  // not curated above. page.tsx resolves an unknown label to
+  // BINANCE:<LABEL>USDT, so onPick(cleanQuery) just works. Hidden when the
+  // query already matches a pinned coin (avoids a redundant row).
+  const cleanQuery = query.trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+  const hasExact = tab.pinned.some(s => s.label.toUpperCase().replace(/[^A-Z0-9]/g, '') === cleanQuery);
+  const showChartAny = assetClass === 'crypto' && cleanQuery.length >= 2 && !hasExact;
+
   return (
     // Lighter backdrop (60% black) so the chart stays partially visible —
     // less "modal blocking everything" feel, more "lookup overlay".
@@ -319,6 +327,16 @@ function SymbolPickerModal({
           </span>
         </div>
         <div className="flex-1 overflow-y-auto p-2.5">
+          {showChartAny && (
+            <button
+              onClick={() => onPick(cleanQuery)}
+              className="w-full flex items-center gap-2 text-left px-3 py-2 mb-2.5 rounded-lg bg-cyan-400/10 text-cyan-300 border border-cyan-400/30 hover:bg-cyan-400/[0.16] transition-colors"
+            >
+              <Search className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="text-xs font-semibold">Chart {cleanQuery}<span className="text-cyan-400/60">/USDT-PERP</span></span>
+              <span className="ml-auto text-[9px] uppercase tracking-wider text-cyan-400/50">any Binance perp →</span>
+            </button>
+          )}
           {Object.entries(byCat).map(([cat, list]) => (
             <div key={cat} className="mb-2">
               <div className="text-[9px] uppercase tracking-wider text-neutral-500 font-bold mb-1 px-1">{cat}</div>
@@ -340,7 +358,7 @@ function SymbolPickerModal({
               </div>
             </div>
           ))}
-          {filtered.length === 0 && (
+          {filtered.length === 0 && !showChartAny && (
             <div className="text-center py-8 text-sm text-neutral-500">
               No symbols match &ldquo;{query}&rdquo;
             </div>
