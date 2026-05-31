@@ -6,12 +6,15 @@
  *   summary      — total requests, unique users, error rate, p50/p95 latency
  *   topEndpoints — N most-called endpoints with count + error rate
  *   topUsers     — N busiest API users
- *   anonymous    — UNauthenticated traffic (no/invalid key → 401): total
- *                  request count, distinct sources (by salted IP hash),
- *                  and top endpoints. A developer-conversion + abuse signal.
+ *   rejectedKeys — requests with a format-valid Bearer token that FAILED
+ *                  validation (revoked key still in use, or key-guessing):
+ *                  count, distinct sources (salted IP hash), top endpoints.
+ *                  A security / ops signal. NOTE: keyless (no-header)
+ *                  requests are short-circuited at the Edge middleware and
+ *                  never logged here — this is NOT a no-key/anon capture.
  *
- * Authenticated metrics are scoped to user_id IS NOT NULL; anonymous rows
- * are tallied separately so they don't skew the authenticated error rate.
+ * Authenticated metrics are scoped to user_id IS NOT NULL; rejected-key
+ * rows are tallied separately so they don't skew the authenticated error rate.
  *
  * Sampled 1-in-5 in v1-auth, so multiply by ~5 to estimate true volume.
  *
@@ -37,7 +40,7 @@ export async function GET(request: NextRequest) {
   const denied = await requireAdmin();
   if (denied) return denied;
   if (!isDBConfigured()) {
-    return NextResponse.json({ summary: null, topEndpoints: [], topUsers: [], anonymous: null });
+    return NextResponse.json({ summary: null, topEndpoints: [], topUsers: [], rejectedKeys: null });
   }
 
   const { searchParams } = new URL(request.url);
@@ -91,8 +94,9 @@ export async function GET(request: NextRequest) {
         ORDER BY hits DESC
         LIMIT 25
       `,
-      // Unauthenticated traffic — requests that hit /api/v1 with no key or
-      // a bad/revoked key (401). distinct_sources counts salted IP hashes.
+      // Rejected keys — format-valid Bearer tokens that failed validation
+      // (401). No-key requests are short-circuited at the Edge and never
+      // logged here. distinct_sources counts salted IP hashes.
       db`
         SELECT
           COUNT(*)::int                  AS total_requests,
@@ -135,7 +139,7 @@ export async function GET(request: NextRequest) {
         errorPct: r.hits > 0 ? Math.round((r.errors / r.hits) * 1000) / 10 : 0,
         lastHit: r.last_hit,
       })),
-      anonymous: {
+      rejectedKeys: {
         totalRequests: (anonSummary as any[])[0]?.total_requests ?? 0,
         distinctSources: (anonSummary as any[])[0]?.distinct_sources ?? 0,
         topEndpoints: (anonEndpoints as any[]).map(r => ({

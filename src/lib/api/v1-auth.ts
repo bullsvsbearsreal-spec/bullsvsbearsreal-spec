@@ -114,7 +114,11 @@ export async function authenticateV1Request(request: NextRequest): Promise<
     noKeyRes.headers.set('WWW-Authenticate', 'Bearer realm="InfoHub API"');
     noKeyRes.headers.set('X-Fee-Model-Version', FEE_MODEL_VERSION);
     noKeyRes.headers.set('X-Fee-Model-Updated-At', FEE_MODEL_UPDATED_AT);
-    logAnonRequest(request, 401); // unauthenticated consumer — surfaced in admin panel
+    // Deliberately NOT logged: the Edge middleware (handleV1Route) short-
+    // circuits keyless /api/v1 requests with an identical 401 BEFORE this
+    // Node handler runs, so this branch is only a defense-in-depth fallback
+    // and almost never executes. Logging here would be inconsistent +
+    // misleading. Capturing true no-key volume needs Edge-side counting.
     return { ok: false, response: noKeyRes };
   }
 
@@ -128,7 +132,7 @@ export async function authenticateV1Request(request: NextRequest): Promise<
     try {
       const result = await validateApiKey(rawKey);
       if (!result) {
-        logAnonRequest(request, 401); // bad/revoked key — also "unauthenticated" for analytics
+        logRejectedKey(request, 401); // format-valid but rejected key → "rejected keys" admin signal
         return {
           ok: false,
           response: NextResponse.json(
@@ -282,19 +286,37 @@ async function logApiRequestSafe(row: {
   }
 }
 
+// Process-wide cap on rejected-key log inserts. The invalid-key path is
+// NOT rate-limited before it (the per-key limiter runs only AFTER a key
+// validates), so a key-guessing flood could otherwise spray inserts. This
+// bounds writes to ANON_LOG_MAX_PER_MIN process-wide regardless of request
+// rate; the daily prune cron handles retention on top.
+const ANON_LOG_MAX_PER_MIN = 120;
+let anonLogWindowStart = 0;
+let anonLogCount = 0;
+function anonLogBudgetOk(): boolean {
+  const now = Date.now();
+  if (now - anonLogWindowStart > 60_000) { anonLogWindowStart = now; anonLogCount = 0; }
+  if (anonLogCount >= ANON_LOG_MAX_PER_MIN) return false;
+  anonLogCount++;
+  return true;
+}
+
 /**
- * Fire-and-forget log of an UNAUTHENTICATED v1 request (no key / invalid
- * key → 401). user_id + api_key_id are NULL; the only identifier is the
- * salted IP hash. Surfaces "people hitting the API without a valid key"
- * in the admin panel — a developer-conversion signal AND an abuse signal
- * that was previously invisible (the success-only log above never saw it).
+ * Fire-and-forget log of a REJECTED-KEY v1 request: the caller sent a
+ * format-valid `Bearer ih_...` token that FAILED validation (a revoked key
+ * still in use, or key-guessing). user_id + api_key_id are NULL; the only
+ * identifier is a salted IP hash. Surfaces in the admin "Rejected keys"
+ * panel as a security / ops signal.
  *
- * Sampled 1-in-5 (matches the success path) so a keyless bot flood can't
- * bloat the table; the keyless path is also IP-rate-limited upstream and
- * the daily prune cron caps retention regardless.
+ * This is NOT a general "anonymous traffic" capture: keyless (no-header)
+ * requests are short-circuited by the Edge middleware before the Node
+ * handler runs, so they never reach here — capturing those needs Edge-side
+ * counting. Sampled 1-in-5 AND globally capped (this path isn't rate-limited).
  */
-function logAnonRequest(request: NextRequest, statusCode: number): void {
+function logRejectedKey(request: NextRequest, statusCode: number): void {
   if (Math.random() >= 0.2) return;
+  if (!anonLogBudgetOk()) return;
   try {
     const url = new URL(request.url);
     void logApiRequestSafe({

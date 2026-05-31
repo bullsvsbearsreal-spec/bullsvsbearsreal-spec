@@ -29,8 +29,8 @@ interface Summary {
 
 interface EndpointRow { endpoint: string; hits: number; errors: number; errorPct: number; p50Ms: number | null }
 interface UserRow { userId: string; email: string | null; billingTier: string | null; hits: number; errors: number; errorPct: number; lastHit: string | null }
-interface AnonEndpointRow { endpoint: string; hits: number; sources: number }
-interface AnonBlock { totalRequests: number; distinctSources: number; topEndpoints: AnonEndpointRow[] }
+interface RejectedEndpointRow { endpoint: string; hits: number; sources: number }
+interface RejectedKeysBlock { totalRequests: number; distinctSources: number; topEndpoints: RejectedEndpointRow[] }
 
 interface UsageResp {
   window: Window;
@@ -39,7 +39,7 @@ interface UsageResp {
   summary: Summary | null;
   topEndpoints: EndpointRow[];
   topUsers: UserRow[];
-  anonymous: AnonBlock | null;
+  rejectedKeys: RejectedKeysBlock | null;
 }
 
 export function ApiUsageTab({ onToast }: { onToast: (msg: string, ok: boolean) => void }) {
@@ -216,31 +216,33 @@ export function ApiUsageTab({ onToast }: { onToast: (msg: string, ok: boolean) =
         </Card>
       </div>
 
-      {/* Unauthenticated traffic — hit /api/v1 without a valid key (401).
-          Prospective developers probing before signup, or bots. */}
-      {data?.anonymous && (data.anonymous.totalRequests > 0 || data.anonymous.topEndpoints.length > 0) && (
+      {/* Rejected API keys — format-valid Bearer tokens that FAILED
+          validation (revoked key still in use, or key-guessing). Keyless
+          (no-header) requests are short-circuited at the Edge middleware
+          and are NOT shown here. */}
+      {data?.rejectedKeys && (data.rejectedKeys.totalRequests > 0 || data.rejectedKeys.topEndpoints.length > 0) && (
         <div style={{ marginTop: 16 }}>
           <SectionHead
-            title="Unauthenticated traffic · no API key"
+            title="Rejected API keys · invalid or revoked"
             icon={<KeyRound style={{ width: 13, height: 13 }} />}
           />
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <Tile
-              label="Anon requests · 401"
-              value={`${scaleHint}${fmtNumber(scale(data.anonymous.totalRequests))}`}
-              sub={data.sampled ? `${fmtNumber(data.anonymous.totalRequests)} sampled` : null}
+              label="Rejected · 401"
+              value={`${scaleHint}${fmtNumber(scale(data.rejectedKeys.totalRequests))}`}
+              sub={data.sampled ? `${fmtNumber(data.rejectedKeys.totalRequests)} sampled` : null}
               color="#fca5a5"
             />
             <Tile
               label="Distinct sources"
-              value={fmtNumber(data.anonymous.distinctSources)}
+              value={fmtNumber(data.rejectedKeys.distinctSources)}
               sub="by hashed IP"
               color="#fcd34d"
             />
           </div>
-          <Card title="Top endpoints hit without a key">
-            {data.anonymous.topEndpoints.length === 0 ? (
-              <div style={{ color: 'var(--fg-faint)', fontSize: 11, padding: '8px 0' }}>No unauthenticated traffic in this window.</div>
+          <Card title="Top endpoints with rejected keys">
+            {data.rejectedKeys.topEndpoints.length === 0 ? (
+              <div style={{ color: 'var(--fg-faint)', fontSize: 11, padding: '8px 0' }}>No rejected keys in this window.</div>
             ) : (
               <table style={{ width: '100%', fontSize: 11, borderCollapse: 'collapse' }}>
                 <thead>
@@ -251,7 +253,7 @@ export function ApiUsageTab({ onToast }: { onToast: (msg: string, ok: boolean) =
                   </tr>
                 </thead>
                 <tbody>
-                  {data.anonymous.topEndpoints.map(r => (
+                  {data.rejectedKeys.topEndpoints.map(r => (
                     <tr key={r.endpoint} style={{ borderTop: '1px solid rgba(255,255,255,0.03)' }}>
                       <td style={{ padding: '5px 6px', fontFamily: 'var(--font-mono)', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 360 }}>
                         {r.endpoint}
@@ -275,9 +277,10 @@ export function ApiUsageTab({ onToast }: { onToast: (msg: string, ok: boolean) =
         Requests are sampled 1-in-5 at the auth layer to keep the log table small.
         Hit counts shown are sampled; total tiles are multiplied 5× for an estimate.
         Authenticated logging is success-only (request was authenticated + permitted),
-        so its error % shows 0 until per-route error logging is wired. Unauthenticated
-        401s (no / bad key) ARE captured separately above — IPs stored only as salted
-        hashes, never raw.
+        so its error % shows 0 until per-route error logging is wired. The rejected-keys
+        panel captures only format-valid tokens that failed validation — keyless requests
+        are short-circuited at the Edge and aren&apos;t counted. IPs are stored only as
+        salted hashes, never raw.
       </div>
     </>
   );
