@@ -9,9 +9,9 @@
    and blue-light fatigue versus #000000 + #ffffff. */
 :root {
   /* ── 60% Dominant: Dark backgrounds (soft blue-gray, not pure black) ── */
-  --hub-black: #0b0d12;            /* page body — easier on rods than #000 */
-  --hub-dark: #10131a;              /* primary surface (navbar, footer) */
-  --hub-darker: #161923;            /* card backgrounds */
+  --hub-black: #080c18;            /* page body — deep navy (brand: blue base + orange glow) */
+  --hub-dark: #0e1424;              /* primary surface (navbar, footer) */
+  --hub-darker: #141b30;            /* card backgrounds */
 
   /* ── 30% Secondary: Supporting surfaces & text ── */
   --hub-secondary: #1c2030;         /* elevated surfaces, tooltips, dropdowns */
@@ -316,7 +316,7 @@ body {
      radial vignette so the center of the page reads slightly warmer than
      the edges — reduces halation at night and during long sessions. */
   background:
-    radial-gradient(1200px 700px at 50% -10%, rgba(255, 165, 0, 0.015), transparent 60%),
+    radial-gradient(1300px 760px at 50% -8%, rgba(255, 140, 0, 0.05), transparent 62%),
     var(--hub-black);
   color: var(--fg-default);
   font-family: var(--font-sans), system-ui, sans-serif;
