@@ -78,12 +78,23 @@ export async function GET(request: NextRequest) {
     // Fetch market data
     const marketData = await fetchMarketDataServer(origin);
     if (marketData.size === 0) {
+      // Heartbeat even on this no-op return — otherwise the cron records
+      // nothing and shows as perpetually "unknown"/grey in /admin-panel#ops
+      // (same class of bug the catch-path comment below describes). 'ok' +
+      // skip reason so operators see "ran, nothing to do" not "looks dead".
+      const hbKey = priorityOnly ? 'cron:whale-alerts' : 'cron:alerts';
+      await upsertWorkerHeartbeat(hbKey, 'ok', { skipped: 'no market data', mode: priorityOnly ? 'priority' : 'standard' }).catch(() => {});
       return NextResponse.json({ ok: true, skipped: 'no market data', priorityOnly });
     }
 
     // Get users with alerts
     const users = await getAllUsersWithAlerts();
     if (users.length === 0) {
+      // Same heartbeat-on-early-return fix: with few/no alerts configured
+      // (common at launch) this path fires every run, so without a heartbeat
+      // cron:alerts + cron:whale-alerts looked dead in Ops despite running fine.
+      const hbKey = priorityOnly ? 'cron:whale-alerts' : 'cron:alerts';
+      await upsertWorkerHeartbeat(hbKey, 'ok', { users: 0, skipped: 'no users with alerts', mode: priorityOnly ? 'priority' : 'standard' }).catch(() => {});
       return NextResponse.json({ ok: true, alerts: 0, users: 0, skipped: 'no users with alerts', priorityOnly });
     }
 
