@@ -43,13 +43,16 @@ export default function Logo({ variant = 'full', size = 'md', className = '', an
         Info
       </span>
       <span
-        className="font-black tracking-tight text-black rounded-[4px] ml-[1px]"
+        className="font-black tracking-tight ml-[1px]"
         style={{
           fontSize: d.text,
           lineHeight: 1,
-          background: 'linear-gradient(135deg, #FFB800, #FF8C00, #E06600)',
-          padding: `${d.badge.py}px ${d.badge.px}px`,
-          borderRadius: d.badge.rx,
+          // Glowing orange "Hub" text to match the circuit-board logo
+          // (replaces the older black-on-orange pill). Solid color (not a
+          // bg-clip gradient) so it never renders invisible if a browser
+          // lacks background-clip support — this wordmark ships site-wide.
+          color: '#FF9500',
+          textShadow: '0 0 16px rgba(255, 140, 0, 0.45)',
         }}
       >
         Hub

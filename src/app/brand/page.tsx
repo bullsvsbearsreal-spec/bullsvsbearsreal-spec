@@ -11,16 +11,16 @@ import { copyToClipboard } from '@/lib/copyToClipboard';
 const brandColors = {
   primary: [
     { name: 'Yellow', hex: '#FFDF00', rgb: '255, 223, 0' },
-    { name: 'Gold', hex: '#FFD000', rgb: '255, 208, 0' },
-    { name: 'Amber', hex: '#FFAA00', rgb: '255, 170, 0' },
-    { name: 'Orange', hex: '#FF9500', rgb: '255, 149, 0' },
-    { name: 'Deep Orange', hex: '#FF7700', rgb: '255, 119, 0' },
+    { name: 'Gold', hex: '#FFD700', rgb: '255, 215, 0' },
+    { name: 'Amber', hex: '#FFA500', rgb: '255, 165, 0' },
+    { name: 'Orange', hex: '#FF8C00', rgb: '255, 140, 0' },
+    { name: 'Deep Orange', hex: '#FF6B00', rgb: '255, 107, 0' },
   ],
   dark: [
-    { name: 'Black', hex: '#0D0D0D', rgb: '13, 13, 13' },
-    { name: 'Dark', hex: '#1A1A1A', rgb: '26, 26, 26' },
-    { name: 'Gray Dark', hex: '#2A2A2A', rgb: '42, 42, 42' },
-    { name: 'Gray', hex: '#3A3A3A', rgb: '58, 58, 58' },
+    { name: 'Navy Black', hex: '#080C18', rgb: '8, 12, 24' },
+    { name: 'Navy Dark', hex: '#0E1424', rgb: '14, 20, 36' },
+    { name: 'Navy', hex: '#141B30', rgb: '20, 27, 48' },
+    { name: 'Navy Light', hex: '#1E2740', rgb: '30, 39, 64' },
   ],
   semantic: [
     { name: 'Success', hex: '#22C55E', rgb: '34, 197, 94' },
@@ -278,13 +278,13 @@ export default function BrandPage() {
             <div className="bg-white/[0.04] border border-white/[0.06] rounded-xl p-6">
               <div
                 className="h-24 rounded-xl mb-4"
-                style={{ background: 'linear-gradient(135deg, #FFDF00 0%, #FFD000 25%, #FFAA00 50%, #FF9500 75%, #FF7700 100%)' }}
+                style={{ background: 'linear-gradient(135deg, #FFDF00 0%, #FFD700 25%, #FFA500 50%, #FF8C00 75%, #FF6B00 100%)' }}
               />
               <div className="flex items-center justify-between">
                 <code className="text-neutral-600 text-sm font-mono">
-                  linear-gradient(135deg, #FFDF00, #FFAA00, #FF7700)
+                  linear-gradient(135deg, #FFDF00, #FFA500, #FF6B00)
                 </code>
-                <CopyButton text="linear-gradient(135deg, #FFDF00 0%, #FFD000 25%, #FFAA00 50%, #FF9500 75%, #FF7700 100%)" />
+                <CopyButton text="linear-gradient(135deg, #FFDF00 0%, #FFD700 25%, #FFA500 50%, #FF8C00 75%, #FF6B00 100%)" />
               </div>
             </div>
           </div>
@@ -297,9 +297,9 @@ export default function BrandPage() {
             </div>
           </div>
 
-          {/* Dark Colors */}
+          {/* Navy (background) Colors */}
           <div className="mb-8">
-            <h3 className="text-white font-semibold mb-4">Dark</h3>
+            <h3 className="text-white font-semibold mb-4">Navy</h3>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {brandColors.dark.map((c) => <ColorSwatch key={c.hex} {...c} />)}
             </div>
