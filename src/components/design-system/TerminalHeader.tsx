@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
+import { LayoutDashboard, Wallet, Star, User as UserIcon, Settings as SettingsIcon, LogOut } from 'lucide-react';
 import BrandMark from './BrandMark';
 
 // Popular pre-indexed symbols for the search palette — all open in /chart.
@@ -584,26 +585,33 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
                 )}
               </div>
               {[
-                { href: '/dashboard', label: 'Dashboard' },
-                { href: '/portfolio', label: 'Portfolio' },
-                { href: '/watchlist', label: 'Symbol Watchlist' },
-                { href: '/profile',   label: 'Profile' },
-                { href: '/settings',  label: 'Settings' },
+                { href: '/dashboard', label: 'Dashboard',       Icon: LayoutDashboard, hint: 'Overview' },
+                { href: '/portfolio', label: 'Portfolio',        Icon: Wallet,          hint: 'Holdings + P&L' },
+                { href: '/watchlist', label: 'Symbol Watchlist', Icon: Star,            hint: 'Pinned coins' },
+                { href: '/profile',   label: 'Profile',          Icon: UserIcon,        hint: 'Trader profile' },
+                { href: '/settings',  label: 'Settings',         Icon: SettingsIcon,    hint: 'Account + API' },
               ].map(it => (
                 <Link
                   key={it.href}
                   href={it.href}
                   onClick={() => setUserMenuOpen(false)}
-                  style={{ display: 'block', padding: '7px 10px', borderRadius: 6, color: 'var(--fg-default)', fontSize: 12, textDecoration: 'none' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 6, color: 'var(--fg-default)', fontSize: 12, textDecoration: 'none', transition: 'background 0.12s ease' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                 >
-                  {it.label}
+                  <it.Icon size={15} strokeWidth={1.75} style={{ color: 'var(--fg-subtle)', flexShrink: 0 }} />
+                  <span style={{ flex: 1, minWidth: 0 }}>{it.label}</span>
+                  <span style={{ fontSize: 10, color: 'var(--fg-subtle)', opacity: 0.5, whiteSpace: 'nowrap' }}>{it.hint}</span>
                 </Link>
               ))}
               <div style={{ borderTop: '1px solid var(--hub-border-subtle)', marginTop: 4, paddingTop: 4 }}>
                 <button
                   onClick={() => signOut({ callbackUrl: '/' })}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 10px', borderRadius: 6, color: 'var(--rekt-mild)', fontSize: 12, background: 'transparent', border: 'none', cursor: 'pointer' }}
+                  style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', textAlign: 'left', padding: '8px 10px', borderRadius: 6, color: 'var(--rekt-mild)', fontSize: 12, background: 'transparent', border: 'none', cursor: 'pointer', transition: 'background 0.12s ease' }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248,113,113,0.08)'; }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
                 >
+                  <LogOut size={15} strokeWidth={1.75} style={{ flexShrink: 0 }} />
                   Sign out
                 </button>
               </div>
