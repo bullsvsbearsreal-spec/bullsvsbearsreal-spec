@@ -450,12 +450,18 @@ export default function HomePage() {
         ))}
       </div>
 
-      {/* ── Stat row ── */}
+      {/* ── Stat row ── (gold "featured" halo — first thing visitors see,
+          drawn in the logo's orange/gold per brand feedback) */}
       <section style={{ marginBottom: 14 }}>
         <div style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
           gap: 8,
+          padding: 10,
+          borderRadius: 12,
+          border: '1px solid rgba(255,215,0,0.16)',
+          background: 'radial-gradient(130% 150% at 50% 0%, rgba(255,165,0,0.07), transparent 72%)',
+          boxShadow: '0 0 36px -14px rgba(255,170,0,0.30)',
         }}>
           <StatTile
             label="24h Volume"
