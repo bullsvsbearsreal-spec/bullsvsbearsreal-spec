@@ -70,9 +70,10 @@ const API_KEY_CACHE_TTL = 60 * 1000; // 1 min (shorter to limit revocation windo
 const API_KEY_CACHE_MAX = 1000; // cap to prevent unbounded growth
 let lastCacheCleanup = 0;
 
-/** Clear all cached API keys — call after key revocation to prevent stale auth. */
+/** Clear all cached API keys (positive + negative) — call after key revocation to prevent stale auth. */
 export function clearApiKeyCache(): void {
   apiKeyCache.clear();
+  negativeKeyCache.clear();
 }
 
 /** Evict expired entries periodically (at most once per minute). */
@@ -83,6 +84,90 @@ function evictStaleKeys(): void {
   apiKeyCache.forEach((v, k) => {
     if (now - v.cachedAt > API_KEY_CACHE_TTL) apiKeyCache.delete(k);
   });
+}
+
+// ---------------------------------------------------------------------------
+// DoS hardening for the pre-validation path (rejected / rotating fake keys)
+// ---------------------------------------------------------------------------
+// A format-valid `Bearer ih_...` token that isn't in apiKeyCache forces a
+// validateApiKey() DB lookup. The middleware deliberately skips /api/v1
+// rate-limiting, and the per-key limiter further down only runs AFTER a key
+// validates — so without a guard here, rotating fake keys = one DB lookup
+// per request, unbounded. Two cheap, PURELY IN-MEMORY guards (zero DB calls,
+// per-instance — a cheap abuse guard doesn't need cross-instance state, and
+// the deploy is single-instance) bound that load. Note: createRateLimiter is
+// DB-backed (SELECT+INSERT per call), so it is deliberately NOT used here.
+
+// 1) Negative cache — a key hash rejected by the DB is remembered briefly so
+//    the SAME bad key retried in a loop doesn't re-query. Short TTL is safe:
+//    keys never transition invalid→valid (a freshly-created key was never
+//    queried-as-invalid, so it can't be falsely cached bad).
+const NEG_CACHE_TTL = 60 * 1000;
+const NEG_CACHE_MAX = 5000;
+const negativeKeyCache = new Map<string, number>(); // key hash -> insertedAt (ms)
+
+/** True if this key hash was rejected within the negative-cache TTL. Exported for tests. */
+export function negativeKeyCacheHas(hash: string): boolean {
+  const ts = negativeKeyCache.get(hash);
+  if (ts === undefined) return false;
+  if (Date.now() - ts > NEG_CACHE_TTL) { negativeKeyCache.delete(hash); return false; }
+  return true;
+}
+
+/** Remember a rejected key hash (bounded; evicts oldest at cap). Exported for tests. */
+export function negativeKeyCacheSet(hash: string): void {
+  if (negativeKeyCache.size >= NEG_CACHE_MAX) {
+    const first = negativeKeyCache.keys().next().value;
+    if (first !== undefined) negativeKeyCache.delete(first);
+    else negativeKeyCache.clear();
+  }
+  negativeKeyCache.set(hash, Date.now());
+}
+
+// 2) Per-IP throttle on UNCACHED validations. Legit keys cache after the
+//    first hit, so a real consumer spends ~1 slot per TTL — only a flood of
+//    distinct (uncached) keys from one IP burns through the budget.
+export const PREAUTH_MAX_PER_MIN = 120;
+const PREAUTH_WINDOW_MS = 60 * 1000;
+const PREAUTH_MAX_KEYS = 50_000; // memory bound under a many-IP flood
+const preAuthIpHits = new Map<string, { count: number; resetAt: number }>();
+let preAuthLastCleanup = 0;
+
+/**
+ * True if `ip` may perform another uncached key validation this window,
+ * false once it has exceeded PREAUTH_MAX_PER_MIN. Purely in-memory (no DB).
+ * Exported for tests.
+ */
+export function preAuthIpAllowed(ip: string): boolean {
+  const now = Date.now();
+  if (now - preAuthLastCleanup > 60_000) {
+    preAuthLastCleanup = now;
+    preAuthIpHits.forEach((v, k) => { if (now > v.resetAt) preAuthIpHits.delete(k); });
+  }
+  // Hard memory bound: a many-IP flood could grow this faster than cleanup;
+  // resetting gives an attacker at most one fresh window (volumetric DDoS is
+  // infra's job, not this guard's).
+  if (preAuthIpHits.size >= PREAUTH_MAX_KEYS) preAuthIpHits.clear();
+
+  const e = preAuthIpHits.get(ip);
+  if (!e || now > e.resetAt) {
+    preAuthIpHits.set(ip, { count: 1, resetAt: now + PREAUTH_WINDOW_MS });
+    return true;
+  }
+  if (e.count >= PREAUTH_MAX_PER_MIN) return false;
+  e.count++;
+  return true;
+}
+
+/** Shared 401 body for missing/rejected keys. */
+function invalidKeyResponse(): { ok: false; response: NextResponse } {
+  return {
+    ok: false,
+    response: NextResponse.json(
+      { success: false, error: 'Invalid or revoked API key' },
+      { status: 401, headers: { ...FEE_MODEL_HEADERS } },
+    ),
+  };
 }
 
 /**
@@ -129,17 +214,31 @@ export async function authenticateV1Request(request: NextRequest): Promise<
   // Check in-memory cache first
   let keyData = apiKeyCache.get(cacheKey);
   if (!keyData || Date.now() - keyData.cachedAt > API_KEY_CACHE_TTL) {
+    // Known-bad key retried in a loop → reject from the negative cache with
+    // no DB hit. Still logged (sampled + capped) so the rejected-keys signal
+    // stays accurate.
+    if (negativeKeyCacheHas(cacheKey)) {
+      logRejectedKey(request, 401);
+      return invalidKeyResponse();
+    }
+    // Bound uncached validations per IP — the only rate limit on the
+    // pre-validation path (middleware skips /api/v1; the per-key limiter
+    // below runs only after a key validates). In-memory, zero DB calls.
+    if (!preAuthIpAllowed(getClientIP(request))) {
+      return {
+        ok: false,
+        response: NextResponse.json(
+          { success: false, error: 'Too many authentication attempts. Slow down and use a valid API key.' },
+          { status: 429, headers: { 'Retry-After': '60', ...FEE_MODEL_HEADERS } },
+        ),
+      };
+    }
     try {
       const result = await validateApiKey(rawKey);
       if (!result) {
+        negativeKeyCacheSet(cacheKey); // remember so a retry loop skips the DB
         logRejectedKey(request, 401); // format-valid but rejected key → "rejected keys" admin signal
-        return {
-          ok: false,
-          response: NextResponse.json(
-            { success: false, error: 'Invalid or revoked API key' },
-            { status: 401, headers: { ...FEE_MODEL_HEADERS } },
-          ),
-        };
+        return invalidKeyResponse();
       }
       keyData = { ...result, cachedAt: Date.now() };
       // Enforce max cache size — evict oldest entry if at cap
