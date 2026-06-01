@@ -1,9 +1,6 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import ReferralBanner from '@/components/ReferralBanner';
 import { useApi } from '@/hooks/useSWRApi';
 import PageHero from '@/components/PageHero';
 import {
@@ -419,7 +416,7 @@ export default function EconomicCalendarPage() {
           accent="hub-yellow"
           description={
             <>Major economic events that move crypto and TradFi — CPI prints,
-              FOMC, NFP, central-bank decisions. Times in your local zone, severity
+              FOMC, NFP, central-bank decisions. Times shown in ET, severity
               bands flag the high-impact prints so you can scan ahead.</>
           }
           className="mb-4"
