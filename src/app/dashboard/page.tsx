@@ -396,7 +396,7 @@ function RealDashboardPage() {
                 <Avatar name={userName} src={userImage} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-baseline gap-2 flex-wrap">
-                    <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">
+                    <h1 className="text-2xl sm:text-3xl font-bold text-white">
                       Welcome back, {userName}
                     </h1>
                     <PlanBadge name={planName} tone={planTone} icon={isAdmin ? ShieldCheck : Sparkles} />
