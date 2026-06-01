@@ -186,7 +186,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
   '/pricing': {
     title: 'Pricing · Free, Trader, Pro, Whale',
-    description: 'Pricing for InfoHub — Free forever with the full data terminal, Trader ($12/mo) for active retail with every venue real-time, Pro ($29/mo) for daily traders with API archive + tax export + custom dashboards + setup scanner, Whale ($59/mo) for funds + desks with sub-second alerts and unlimited everything. Free during launch.',
+    description: 'Pricing for InfoHub — Free forever with the full data terminal, Trader ($15/mo) for active retail with every venue real-time, Pro ($49/mo) for daily traders with API archive + tax export + custom dashboards + setup scanner, Whale ($99/mo) for funds + desks with sub-second alerts and unlimited everything. Free during launch.',
   },
   '/brand': {
     title: 'Brand Assets',

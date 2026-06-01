@@ -4,11 +4,11 @@
  * `api_keys.tier`.
  *
  * 4-tier ladder (May 2026 reshape):
- *   Free   $0   — Demand-gen + SEO entry point. Data terminal, 5 alerts.
- *   Trader $12  — Active retail. All venues + power dashboards + 15 alerts.
- *   Pro    $29  — "I trade for a living". + API archive, tax export,
+ *   Free   $0   — Demand-gen + SEO entry point. Data terminal, 3 alerts.
+ *   Trader $15  — Active retail. All venues + power dashboards + 15 alerts.
+ *   Pro    $49  — "I trade for a living". + API archive, tax export,
  *                  custom dashboards, setup scanner.
- *   Whale  $59  — Funds + desks. + Sub-second alerts, unlimited everything.
+ *   Whale  $99  — Funds + desks. + Sub-second alerts, unlimited everything.
  *
  * Today: Pro + Trader + Whale are "FREE DURING LAUNCH" — the prices
  * are visible on /pricing for transparency but no charges happen yet.
@@ -61,10 +61,10 @@ export const TIER_LIMITS: Record<Tier, TierLimits> = {
   free: {
     apiPerMinute: FREE_TIER_PER_MINUTE,    // 100
     apiPerDay: FREE_TIER_PER_DAY,           // 5,000
-    maxAlerts: 5,
-    maxWatchedWallets: 10,
-    historyDays: 90,
-    archiveDays: 90,
+    maxAlerts: 3,
+    maxWatchedWallets: 5,
+    historyDays: 30,
+    archiveDays: 30,
   },
   trader: {
     apiPerMinute: TRADER_TIER_PER_MINUTE,  // 200
@@ -95,17 +95,17 @@ export const TIER_LIMITS: Record<Tier, TierLimits> = {
 /** Monthly USD prices. Annual is derived (12 - 2 months = ~17% off). */
 export const TIER_PRICE_MONTHLY: Record<Tier, number> = {
   free: 0,
-  trader: 12,
-  pro: 29,
-  whale: 59,
+  trader: 15,
+  pro: 49,
+  whale: 99,
 };
 
 /** Annual prices in USD — 10 months for the price of 12 (~17% off). */
 export const TIER_PRICE_ANNUAL: Record<Tier, number> = {
   free: 0,
-  trader: TIER_PRICE_MONTHLY.trader * 10,  // $120/yr
-  pro: TIER_PRICE_MONTHLY.pro * 10,        // $290/yr
-  whale: TIER_PRICE_MONTHLY.whale * 10,    // $590/yr
+  trader: TIER_PRICE_MONTHLY.trader * 10,  // $150/yr
+  pro: TIER_PRICE_MONTHLY.pro * 10,        // $490/yr
+  whale: TIER_PRICE_MONTHLY.whale * 10,    // $990/yr
 };
 
 export interface TierBranding {
@@ -207,7 +207,7 @@ export const TOOLS_BY_TIER: TierToolList[] = [
       { label: 'Token Unlocks', href: '/token-unlocks', hint: 'Vesting + cliffs' },
       { label: 'Liq Heatmap', href: '/liquidation-heatmap' },
       { label: 'News + Signals', href: '/news' },
-      { label: '5 custom alerts · 10 watched wallets', hint: '90d history · 100 API req/min · 5k req/day' },
+      { label: '3 custom alerts · 5 watched wallets', hint: '30d history · 100 API req/min · 5k req/day' },
       { label: 'Community Telegram support' },
     ],
   },

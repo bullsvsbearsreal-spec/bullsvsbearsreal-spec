@@ -77,10 +77,10 @@ describe('TIER_LIMITS', () => {
     expect(TIER_LIMITS.whale.historyDays).toBeGreaterThanOrEqual(TIER_LIMITS.pro.historyDays);
   });
 
-  it('Free has the documented limits (5 alerts, 10 wallets, 90d history)', () => {
-    expect(TIER_LIMITS.free.maxAlerts).toBe(5);
-    expect(TIER_LIMITS.free.maxWatchedWallets).toBe(10);
-    expect(TIER_LIMITS.free.historyDays).toBe(90);
+  it('Free has the documented limits (3 alerts, 5 wallets, 30d history)', () => {
+    expect(TIER_LIMITS.free.maxAlerts).toBe(3);
+    expect(TIER_LIMITS.free.maxWatchedWallets).toBe(5);
+    expect(TIER_LIMITS.free.historyDays).toBe(30);
   });
 
   it('Trader has the documented limits (15 alerts, 30 wallets, 180d history)', () => {
@@ -102,10 +102,10 @@ describe('TIER_PRICE_MONTHLY + TIER_PRICE_ANNUAL', () => {
     expect(TIER_PRICE_ANNUAL.free).toBe(0);
   });
 
-  it('Trader is $12, Pro is $29, Whale is $59 monthly', () => {
-    expect(TIER_PRICE_MONTHLY.trader).toBe(12);
-    expect(TIER_PRICE_MONTHLY.pro).toBe(29);
-    expect(TIER_PRICE_MONTHLY.whale).toBe(59);
+  it('Trader is $15, Pro is $49, Whale is $99 monthly', () => {
+    expect(TIER_PRICE_MONTHLY.trader).toBe(15);
+    expect(TIER_PRICE_MONTHLY.pro).toBe(49);
+    expect(TIER_PRICE_MONTHLY.whale).toBe(99);
   });
 
   it('Annual prices are 10x monthly (~17% off = 2 months free)', () => {
@@ -259,16 +259,16 @@ describe('tierAtLeast', () => {
 });
 
 describe('annualSavingsUsd', () => {
-  it('Trader annual saves $24/yr ($144 - $120)', () => {
-    expect(annualSavingsUsd('trader')).toBe(24);
+  it('Trader annual saves $30/yr ($180 - $150)', () => {
+    expect(annualSavingsUsd('trader')).toBe(30);
   });
 
-  it('Pro annual saves $58/yr ($348 - $290)', () => {
-    expect(annualSavingsUsd('pro')).toBe(58);
+  it('Pro annual saves $98/yr ($588 - $490)', () => {
+    expect(annualSavingsUsd('pro')).toBe(98);
   });
 
-  it('Whale annual saves $118/yr ($708 - $590)', () => {
-    expect(annualSavingsUsd('whale')).toBe(118);
+  it('Whale annual saves $198/yr ($1188 - $990)', () => {
+    expect(annualSavingsUsd('whale')).toBe(198);
   });
 
   it('Free saves $0 (both $0)', () => {

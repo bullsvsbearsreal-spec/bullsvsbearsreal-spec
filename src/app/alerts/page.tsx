@@ -631,7 +631,7 @@ export default function AlertsPage() {
                 <Bell className="w-10 h-10 text-neutral-700 mx-auto mb-3" />
                 <p className="text-neutral-400 text-sm">No alerts set up yet.</p>
                 <p className="text-neutral-600 text-xs mt-1">
-                  Free tier includes <span className="text-neutral-300 font-semibold">5 custom alerts</span>.{' '}
+                  Free tier includes <span className="text-neutral-300 font-semibold">3 custom alerts</span>.{' '}
                   <Link href="/pricing" className="text-emerald-400 hover:text-emerald-300 underline decoration-emerald-400/30">
                     Upgrade to Trader (15) or Pro (75)
                   </Link>{' '}for more.
