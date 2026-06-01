@@ -42,7 +42,7 @@ function DonutChart({ value: rawValue, label, color, size = 160 }: { value: numb
           cy={center}
           r={radius}
           fill="none"
-          stroke="rgba(255,255,255,0.06)"
+          stroke="rgba(255,255,255,0.10)"
           strokeWidth="12"
         />
         <circle
@@ -185,7 +185,7 @@ export default function DominancePage() {
                     <DollarSign className="w-3.5 h-3.5 text-hub-yellow" />
                     <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Total Market Cap</p>
                   </div>
-                  <p className={`text-lg font-bold text-white font-mono ${mcapFlash}`}>
+                  <p className={`text-lg font-bold text-white font-mono tabular-nums ${mcapFlash}`}>
                     {data.totalMarketCap != null ? `$${formatCompact(data.totalMarketCap)}` : '-'}
                   </p>
                   {data.marketCapChange24h != null && (
@@ -200,7 +200,7 @@ export default function DominancePage() {
                     <BarChart3 className="w-3.5 h-3.5 text-blue-400" />
                     <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">24h Volume</p>
                   </div>
-                  <p className={`text-lg font-bold text-white font-mono ${volFlash}`}>
+                  <p className={`text-lg font-bold text-white font-mono tabular-nums ${volFlash}`}>
                     {data.totalVolume24h != null ? `$${formatCompact(data.totalVolume24h)}` : '-'}
                   </p>
                   <span className="text-neutral-700 text-[8px]">Global spot+deriv · {data.source === 'cmc' ? 'CoinMarketCap' : 'CoinGecko'}</span>
@@ -210,7 +210,7 @@ export default function DominancePage() {
                     <Coins className="w-3.5 h-3.5 text-green-400" />
                     <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Active Cryptos</p>
                   </div>
-                  <p className="text-lg font-bold text-white font-mono">
+                  <p className="text-lg font-bold text-white font-mono tabular-nums">
                     {data.activeCryptos != null ? data.activeCryptos.toLocaleString() : '-'}
                   </p>
                 </div>
@@ -219,7 +219,7 @@ export default function DominancePage() {
                     <Globe className="w-3.5 h-3.5 text-purple-400" />
                     <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Markets</p>
                   </div>
-                  <p className="text-lg font-bold text-white font-mono">
+                  <p className="text-lg font-bold text-white font-mono tabular-nums">
                     {data.markets != null ? data.markets.toLocaleString() : '-'}
                   </p>
                 </div>
@@ -276,7 +276,7 @@ export default function DominancePage() {
                           }}
                         />
                       </div>
-                      <span className="text-xs font-mono text-neutral-400 w-16 text-right">
+                      <span className="text-xs font-mono tabular-nums text-neutral-400 w-16 text-right">
                         {entry.pct.toFixed(2)}%
                       </span>
                     </div>
@@ -290,7 +290,7 @@ export default function DominancePage() {
                           style={{ width: `${othersPercent}%` }}
                         />
                       </div>
-                      <span className="text-xs font-mono text-neutral-500 w-16 text-right">
+                      <span className="text-xs font-mono tabular-nums text-neutral-500 w-16 text-right">
                         {othersPercent.toFixed(2)}%
                       </span>
                     </div>
