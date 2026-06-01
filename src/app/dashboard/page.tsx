@@ -1105,7 +1105,7 @@ function OpenPositionsTable({ positions, hasData, loading }: { positions: Positi
                       {p.side}
                     </span>
                     {p.leverage != null && p.leverage > 1 && (
-                      <div className="text-[10px] text-neutral-600 mt-0.5 font-mono">{p.leverage}×</div>
+                      <div className="text-[10px] text-neutral-600 mt-0.5 font-mono">{p.leverage.toFixed(1)}×</div>
                     )}
                   </td>
                   <td className="py-2.5 pr-3 text-right font-mono tabular-nums text-neutral-300">

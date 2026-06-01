@@ -177,7 +177,12 @@ export default function WatchlistPage() {
     (Array.isArray(fundingData) ? fundingData : []).forEach((f) => {
       const sym = normalizeSymbol(f.symbol);
       if (!wlSet.has(sym)) return;
-      const mult = f.fundingInterval === '1h' ? 8 : f.fundingInterval === '4h' ? 2 : 1;
+      // Normalize each venue's rate to an 8h basis (8 / its interval hours)
+      // rather than only special-casing 1h/4h — a 2h/12h/24h venue was
+      // silently treated as 8h, skewing the average. (1h/4h/8h are unchanged:
+      // 8/1=8, 8/4=2, 8/8=1.)
+      const ivH = parseInt(String(f.fundingInterval ?? ''), 10);
+      const mult = 8 / (Number.isFinite(ivH) && ivH > 0 ? ivH : 8);
       const prev = fundingMap.get(sym) ?? { sum: 0, count: 0 };
       const rate = f.fundingRate ?? 0;
       fundingMap.set(sym, { sum: prev.sum + rate * mult, count: prev.count + 1 });
@@ -385,7 +390,7 @@ export default function WatchlistPage() {
                         ['symbol', 'Symbol'],
                         ['price', 'Price'],
                         ['change24h', '24h Change'],
-                        ['avgFunding', 'Avg Funding'],
+                        ['avgFunding', 'Avg Funding (8h)'],
                         ['totalOI', 'Total OI'],
                         ['volume', 'Volume'],
                       ] as [SortField, string][]).map(([field, label]) => (
@@ -477,7 +482,7 @@ export default function WatchlistPage() {
         )}
         <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
           <p className="text-neutral-500 text-xs leading-relaxed">
-            Watchlist data is aggregated across all active exchanges. Prices show the highest-volume match. Funding rates are averaged across all exchanges offering the pair. Open Interest is the sum across all exchanges. Data refreshes every 60 seconds. Your watchlist is stored locally in your browser.
+            Watchlist data is aggregated across all active exchanges. Prices show the highest-volume match. Funding rates are averaged across all exchanges offering the pair, normalized to an 8h basis. Open Interest is the sum across all exchanges. Data refreshes every 60 seconds. Your watchlist is stored locally in your browser.
           </p>
         </div>
       </main>

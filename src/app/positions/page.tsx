@@ -781,7 +781,7 @@ function PositionCardMobile({ p }: { p: Position }) {
   const a24 = fundingTone(p.side, p.avg24hFunding);
   const a48 = fundingTone(p.side, p.avg48hFunding);
 
-  const intervalH = intervalHoursFor(p.exchange);
+  const intervalH = intervalHoursFor(p.exchange, p.fundingIntervalHours);
   const sideMul = p.side === 'long' ? -1 : 1;
   const aprNow = p.currentFunding != null ? annualizeRate(p.currentFunding, intervalH) * sideMul : null;
   const apr24 = p.avg24hFunding != null ? annualizeRate(p.avg24hFunding, intervalH) * sideMul : null;
