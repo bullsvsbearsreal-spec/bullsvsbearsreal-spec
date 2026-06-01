@@ -111,9 +111,7 @@ const NAV_GROUPS: NavGroup[] = [
       { id: 'calendar',        label: 'Event Calendar',  href: '/economic-calendar',     hint: 'Macro + token events' },
       { id: 'fomc',            label: 'FOMC Playbook',   href: '/fomc-playbook',         hint: 'BTC reaction to past Fed decisions' },
       { id: 'unlocks',         label: 'Token Unlocks',   href: '/token-unlocks',         hint: 'Vesting schedules' },
-      { id: 'tge-calendar',    label: 'TGE Calendar',    href: '/tge-calendar',          hint: 'Upcoming launches · FDV · cliffs' },
       { id: 'cliff-watch',     label: 'Cliff Watch',     href: '/cliff-watch',           hint: 'Upcoming unlocks ranked by impact' },
-      { id: 'airdrops',        label: 'Airdrops',        href: '/airdrops',              hint: 'Upcoming + claimed' },
       { id: 'btc-treasuries',  label: 'BTC Treasuries',  href: '/bitcoin-treasuries',    hint: 'Corporate holdings' },
       { id: 'smart-money',     label: 'Smart Money',     href: '/smart-money',           hint: 'Top trader flows' },
       // /smart-money-composite folded into /smart-money (May 2026)

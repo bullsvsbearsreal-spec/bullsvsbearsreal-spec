@@ -84,11 +84,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/hash-ribbons',       priority: 0.6, changeFrequency: 'daily' as const },
     { path: '/economic-calendar',  priority: 0.7, changeFrequency: 'daily' as const },
     { path: '/earnings-calendar',  priority: 0.7, changeFrequency: 'daily' as const },
-    { path: '/tge-calendar',       priority: 0.7, changeFrequency: 'daily' as const },
     { path: '/token-unlocks',      priority: 0.7, changeFrequency: 'daily' as const },
     { path: '/cliff-watch',        priority: 0.7, changeFrequency: 'daily' as const },
     { path: '/listings',           priority: 0.7, changeFrequency: 'daily' as const },
-    { path: '/airdrops',           priority: 0.7, changeFrequency: 'daily' as const },
     { path: '/fomc-playbook',      priority: 0.6, changeFrequency: 'monthly' as const },
 
     // ─── Institutional flow + on-chain ────────────────────────────────
@@ -166,11 +164,6 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { path: '/leaderboard',        priority: 0.6, changeFrequency: 'hourly' as const },
     { path: '/invite/leaderboard', priority: 0.5, changeFrequency: 'hourly' as const },
 
-    // ─── Bounce (rekt leaderboard) ────────────────────────────────────
-    { path: '/bounce',             priority: 0.6, changeFrequency: 'daily' as const },
-    { path: '/bounce/leaderboard', priority: 0.6, changeFrequency: 'hourly' as const },
-    { path: '/bounce/check',       priority: 0.5, changeFrequency: 'monthly' as const },
-    { path: '/bounce/claim',       priority: 0.4, changeFrequency: 'monthly' as const },
 
     // ─── Legal + brand ────────────────────────────────────────────────
     { path: '/brand',              priority: 0.4, changeFrequency: 'monthly' as const },

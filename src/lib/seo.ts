@@ -277,10 +277,6 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Stock Heatmap',
     description: 'Real-time stock market heatmap — S&P 500, US stocks, and global equities. Visualize performance by sector, market cap, and timeframe.',
   },
-  '/airdrops': {
-    title: 'Airdrop Tracker',
-    description: 'Track upcoming and active crypto airdrops. Filter by status, chain, and requirements. Never miss a free token distribution.',
-  },
   '/yields': {
     title: 'DeFi Yields',
     description: 'Compare DeFi yield opportunities across protocols and chains. Track APY, TVL, and risk metrics for lending, staking, and liquidity pools.',
@@ -469,22 +465,6 @@ export const PAGE_META: Record<string, PageMeta> = {
     title: 'Leverage Dashboard',
     description: `OI-weighted funding rates, spot-vs-perp volume ratio, and aggregate leverage pressure across ${ALL_EXCHANGES.length} venues. One lens on real positioning vs retail noise.`,
   },
-  '/bounce': {
-    title: 'bounce.tech · Leveraged Tokens + Rekt Profiles',
-    description: 'Check any Hyperliquid wallet\'s bounce.tech rekt profile: liquidation score, per-asset breakdown, monthly history, and claim status. Plus an overview of bounce.tech\'s leveraged-tokens protocol on HyperEVM.',
-  },
-  '/bounce/leaderboard': {
-    title: 'Rekt Leaderboard · Biggest Hyperliquid Liquidations',
-    description: 'Most-liquidated wallets on Hyperliquid scored 0-1000 by bounce.tech. The worse the rekt, the bigger the potential BOUNCE claim.',
-  },
-  '/bounce/check': {
-    title: 'Check Wallet Rekt Profile · bounce.tech',
-    description: 'Look up any Hyperliquid-active wallet to see its bounce.tech rekt profile — score, per-asset breakdown, monthly history, claim status.',
-  },
-  '/bounce/claim': {
-    title: 'How to Claim BOUNCE · Rekt Rebate Guide',
-    description: 'Step-by-step walkthrough for claiming BOUNCE tokens for your Hyperliquid liquidation history. Check score, register, claim.',
-  },
   '/donate': {
     title: 'Support the project · Crypto Donations',
     description: 'Help keep InfoHub free, no-ads, no-signup. Accepting BTC, ETH (+ all L2s), SOL, HYPE, USDT-TRC20. Every tip funds hosting, APIs, and shipping velocity.',
@@ -584,10 +564,6 @@ export const PAGE_META: Record<string, PageMeta> = {
   '/stablecoin-supply': {
     title: 'Stablecoin Supply · Total Issued + 7d / 30d Change',
     description: 'Live supply across USDT, USDC, DAI, FDUSD, PYUSD, USDe and more. 7d / 30d issuance changes — net stablecoin inflow into crypto is a leading risk-on indicator.',
-  },
-  '/tge-calendar': {
-    title: 'TGE Calendar · Upcoming Token Generation Events',
-    description: 'Upcoming token generation events with FDV, initial circulating supply, vesting cliff, funding raised, and chain. Listings historically pump 30-200% in the first 24h.',
   },
   '/trade-optimizer': {
     title: 'Trade Optimizer · Best Venue + Size + Slippage',

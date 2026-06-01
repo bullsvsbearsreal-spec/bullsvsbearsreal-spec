@@ -121,14 +121,12 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/exchange-reserves', label: 'Reserves',     color: MUTE, icon: I.building },
     { href: '/listings',          label: 'New Listings', color: MUTE, icon: I.layers },
     // /listing-radar consolidated into /listings (May 2026)
-    { href: '/tge-calendar',      label: 'TGE Calendar', color: MUTE, icon: I.layers },
     { href: '/earnings-calendar', label: 'Earnings Calendar', color: ACC, icon: I.calendar },
   ]},
   { id: 'discovery', label: 'Movers & Discovery', items: [
     { href: '/top-movers',        label: 'Top Movers',     color: PUMP, icon: I.rocket },
     { href: '/momentum',          label: 'Momentum',       color: PUMP, icon: I.trending },
     { href: '/breakouts',         label: 'Breakouts',      color: PUMP, icon: I.zap },
-    { href: '/bounce',            label: 'Bounce',         color: PUMP, icon: I.trending },
     { href: '/outperformers',     label: 'Outperformers',  color: PUMP, icon: I.trending },
     { href: '/trending-tokens',   label: 'Trending Tokens', color: PUMP, icon: I.flame },
     { href: '/memecoin-radar',    label: 'Memecoin Radar', color: PUMP, icon: I.flame },
@@ -175,7 +173,6 @@ const DEFAULT_SECTIONS: SidebarSection[] = [
     { href: '/fomc-playbook',     label: 'FOMC Playbook',  color: ACC,  icon: I.calendar },
     { href: '/token-unlocks',     label: 'Token Unlocks',  color: ACC,  icon: I.calendar },
     { href: '/cliff-watch',       label: 'Cliff Watch',    color: ACC,  icon: I.calendar },
-    { href: '/airdrops',          label: 'Airdrops',       color: ACC,  icon: I.gift },
     { href: '/bitcoin-treasuries', label: 'BTC Treasuries', color: ACL, icon: I.bitcoin },
     { href: '/fear-greed',        label: 'Fear & Greed',   color: ACC,  icon: I.flame },
     { href: '/news',              label: 'News',           color: MUTE, icon: I.news },

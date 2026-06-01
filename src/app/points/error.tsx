@@ -32,10 +32,10 @@ export default function PointsError({
           Try again
         </button>
         <a
-          href="/airdrops"
+          href="/token-unlocks"
           className="px-4 py-2 border border-white/[0.1] text-neutral-300 rounded-lg text-sm hover:bg-white/[0.04] transition-colors"
         >
-          Airdrops
+          Token Unlocks
         </a>
       </div>
     </main>
