@@ -135,9 +135,11 @@ function primaryToken(symbol: string): string {
   return first;
 }
 
-/** Get the APY bar width as a percentage (capped at 50% APY = 100% bar) */
+/** Get the APY bar width as a percentage (capped at 50% APY = 100% bar).
+ *  Clamped to a 0 floor so a negative APY (DeFiLlama can report net-negative
+ *  reward pools) never produces an invalid negative CSS width. */
 function apyBarWidth(apy: number): number {
-  return Math.min(100, (apy / 50) * 100);
+  return Math.max(0, Math.min(100, (apy / 50) * 100));
 }
 
 /** Check if pool has IL risk */
