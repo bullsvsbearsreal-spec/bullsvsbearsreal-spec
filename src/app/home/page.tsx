@@ -5,6 +5,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react';
 import {
   Activity, BarChart3, Zap, TrendingUp, Newspaper, Shield, Flame,
   ArrowUp, ArrowDown, ChevronRight, GitCompareArrows, Crosshair,
@@ -418,6 +419,12 @@ export default function HomePage() {
     return { text: 'Two-sided liquidation', color: 'var(--fg-muted)' };
   }, [liqTotals]);
 
+  // Logged-out visitors land on /home as a marketing surface; signed-in
+  // users see it as their dashboard. Gate the conversion hero on
+  // `unauthenticated` only (never 'loading') so it never flashes for
+  // signed-in users.
+  const { status } = useSession();
+
   return (
     <div id="main-content" style={{ padding: '14px 18px 32px', width: '100%' }}>
       {/* Visually-hidden h1 — every page needs exactly one for SEO + a11y.
@@ -426,6 +433,46 @@ export default function HomePage() {
           itself. Without this, screen readers can't tell users what page
           they're on and Lighthouse / Google flag a structural SEO miss. */}
       <h1 className="sr-only">InfoHub · Live Crypto Derivatives Dashboard</h1>
+
+      {/* Logged-out hero / value-prop band — the page's only above-the-fold
+          conversion surface. Hidden for signed-in users (dashboard view). */}
+      {status === 'unauthenticated' && (
+        <section style={{ marginBottom: 16 }}>
+          <div style={{
+            borderRadius: 14,
+            border: '1px solid var(--hub-border-subtle)',
+            background: 'radial-gradient(120% 160% at 0% 0%, rgba(255,165,0,0.06), transparent 60%)',
+            padding: '20px 22px',
+            display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16,
+          }}>
+            <div style={{ minWidth: 0 }}>
+              <h2 style={{ fontSize: 'clamp(20px, 3vw, 28px)', fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--fg-default)', lineHeight: 1.12, margin: 0 }}>
+                Every funding rate, liquidation, and whale position — <span style={{ color: 'var(--hub-accent)' }}>free</span>.
+              </h2>
+              <p style={{ fontSize: 13, color: 'var(--fg-muted)', marginTop: 8, maxWidth: 580, lineHeight: 1.5 }}>
+                The crypto-derivatives terminal. {ALL_EXCHANGES.length} venues, live funding · open interest · liquidations · on-chain whales — no paywall on the data.
+              </p>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
+              <Link href="/signup" style={{
+                display: 'inline-flex', alignItems: 'center', height: 38, padding: '0 16px', borderRadius: 9,
+                background: 'var(--hub-accent)', color: '#000', fontSize: 13, fontWeight: 700,
+                textDecoration: 'none', whiteSpace: 'nowrap',
+              }}>
+                Create free account
+              </Link>
+              <Link href="/screener" style={{
+                display: 'inline-flex', alignItems: 'center', height: 38, padding: '0 14px', borderRadius: 9,
+                background: 'var(--hub-darker)', border: '1px solid var(--hub-border-subtle)',
+                color: 'var(--fg-default)', fontSize: 13, fontWeight: 600,
+                textDecoration: 'none', whiteSpace: 'nowrap',
+              }}>
+                Browse the terminal
+              </Link>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* Onboarding checklist — self-hides for logged-out, completed, or
           dismissed users; only paints when there's an incomplete setup
