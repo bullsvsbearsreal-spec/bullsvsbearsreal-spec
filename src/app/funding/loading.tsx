@@ -21,7 +21,7 @@ export default function FundingLoading() {
 
         {/* Table skeleton */}
         <div className="bg-hub-darker border border-hub-subtle rounded-xl overflow-hidden">
-          <div className="h-12 bg-white/[0.03] border-b border-hub-subtle" />
+          <div className="h-12 bg-white/[0.06] border-b border-hub-subtle" />
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="h-14 border-b border-hub-subtle flex items-center px-4 gap-4">
               <div className="w-6 h-6 rounded-full bg-white/[0.06] animate-pulse" />

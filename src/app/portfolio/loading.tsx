@@ -16,15 +16,15 @@ export default function PortfolioLoading() {
           <div className="flex items-start justify-between gap-3 flex-wrap">
             <div className="min-w-0">
               <div className="inline-flex items-center gap-2 mb-2">
-                <div className="w-9 h-9 rounded-xl bg-white/[0.04] animate-pulse" />
-                <div className="h-3 w-32 bg-white/[0.04] rounded animate-pulse" />
+                <div className="w-9 h-9 rounded-xl bg-white/[0.06] animate-pulse" />
+                <div className="h-3 w-32 bg-white/[0.06] rounded animate-pulse" />
               </div>
-              <div className="h-9 w-64 bg-white/[0.04] rounded animate-pulse mb-2" />
-              <div className="h-3 w-96 max-w-full bg-white/[0.03] rounded animate-pulse" />
+              <div className="h-9 w-64 bg-white/[0.06] rounded animate-pulse mb-2" />
+              <div className="h-3 w-96 max-w-full bg-white/[0.06] rounded animate-pulse" />
             </div>
             <div className="flex gap-2">
-              <div className="h-9 w-24 rounded-xl bg-white/[0.04] animate-pulse" />
-              <div className="h-9 w-28 rounded-xl bg-white/[0.04] animate-pulse" />
+              <div className="h-9 w-24 rounded-xl bg-white/[0.06] animate-pulse" />
+              <div className="h-9 w-28 rounded-xl bg-white/[0.06] animate-pulse" />
             </div>
           </div>
         </div>

@@ -27,7 +27,7 @@ export default function OptionsLoading() {
 
         {/* Table */}
         <div className="bg-hub-darker border border-hub-subtle rounded-xl overflow-hidden">
-          <div className="h-10 bg-white/[0.03] border-b border-hub-subtle" />
+          <div className="h-10 bg-white/[0.06] border-b border-hub-subtle" />
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="h-12 border-b border-hub-subtle animate-pulse" />
           ))}

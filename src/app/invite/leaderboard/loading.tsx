@@ -13,11 +13,11 @@ export default function InviteLeaderboardLoading() {
         {/* PageHero skeleton */}
         <div className="mb-5">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-9 h-9 rounded-xl bg-white/[0.04] animate-pulse" />
-            <div className="h-3 w-24 bg-white/[0.04] rounded animate-pulse" />
+            <div className="w-9 h-9 rounded-xl bg-white/[0.06] animate-pulse" />
+            <div className="h-3 w-24 bg-white/[0.06] rounded animate-pulse" />
           </div>
-          <div className="h-9 w-72 bg-white/[0.04] rounded animate-pulse mb-2" />
-          <div className="h-3 w-96 max-w-full bg-white/[0.03] rounded animate-pulse" />
+          <div className="h-9 w-72 bg-white/[0.06] rounded animate-pulse mb-2" />
+          <div className="h-3 w-96 max-w-full bg-white/[0.06] rounded animate-pulse" />
         </div>
 
         {/* Leaderboard table */}

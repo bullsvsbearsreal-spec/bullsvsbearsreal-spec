@@ -13,9 +13,9 @@ export default function TokenUnlocksLoading() {
                 <div className="w-6 h-6 bg-white/[0.06] rounded-full animate-pulse" />
                 <div className="h-4 w-20 bg-white/[0.06] rounded animate-pulse" />
                 <div className="flex-1" />
-                <div className="h-5 w-14 bg-white/[0.04] rounded-full animate-pulse" />
+                <div className="h-5 w-14 bg-white/[0.06] rounded-full animate-pulse" />
               </div>
-              <div className="h-3 w-full bg-white/[0.04] rounded animate-pulse" />
+              <div className="h-3 w-full bg-white/[0.06] rounded animate-pulse" />
               <div className="flex justify-between">
                 <div className="h-3 w-16 bg-white/[0.06] rounded animate-pulse" />
                 <div className="h-3 w-20 bg-white/[0.06] rounded animate-pulse" />

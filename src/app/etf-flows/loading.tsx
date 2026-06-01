@@ -14,13 +14,13 @@ export default function EtfFlowsLoading() {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-5">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-white/[0.04] animate-pulse" />
-              <div className="h-3 w-28 bg-white/[0.04] rounded animate-pulse" />
+              <div className="w-9 h-9 rounded-xl bg-white/[0.06] animate-pulse" />
+              <div className="h-3 w-28 bg-white/[0.06] rounded animate-pulse" />
             </div>
-            <div className="h-9 w-64 bg-white/[0.04] rounded animate-pulse mb-2" />
-            <div className="h-3 w-96 max-w-full bg-white/[0.03] rounded animate-pulse" />
+            <div className="h-9 w-64 bg-white/[0.06] rounded animate-pulse mb-2" />
+            <div className="h-3 w-96 max-w-full bg-white/[0.06] rounded animate-pulse" />
           </div>
-          <div className="h-9 w-32 rounded-lg bg-white/[0.04] animate-pulse" />
+          <div className="h-9 w-32 rounded-lg bg-white/[0.06] animate-pulse" />
         </div>
 
         {/* Summary stats — 3-cell */}
@@ -36,7 +36,7 @@ export default function EtfFlowsLoading() {
             {Array.from({ length: 30 }).map((_, i) => (
               <div
                 key={i}
-                className="flex-1 rounded-t bg-white/[0.04] animate-pulse"
+                className="flex-1 rounded-t bg-white/[0.06] animate-pulse"
                 style={{
                   height: `${30 + Math.abs(Math.sin(i)) * 60}%`,
                   animationDelay: `${i * 20}ms`,

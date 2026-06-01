@@ -19,11 +19,11 @@ export default function TraderWatchLoading() {
         {/* PageHero skeleton */}
         <div className="mb-5">
           <div className="flex items-center gap-2 mb-2">
-            <div className="w-9 h-9 rounded-xl bg-white/[0.04] animate-pulse" />
-            <div className="h-3 w-20 bg-white/[0.04] rounded animate-pulse" />
+            <div className="w-9 h-9 rounded-xl bg-white/[0.06] animate-pulse" />
+            <div className="h-3 w-20 bg-white/[0.06] rounded animate-pulse" />
           </div>
-          <div className="h-9 w-56 bg-white/[0.04] rounded animate-pulse mb-2" />
-          <div className="h-3 w-72 max-w-full bg-white/[0.03] rounded animate-pulse" />
+          <div className="h-9 w-56 bg-white/[0.06] rounded animate-pulse mb-2" />
+          <div className="h-3 w-72 max-w-full bg-white/[0.06] rounded animate-pulse" />
         </div>
 
         {/* 4-cell stats skeleton */}
@@ -39,7 +39,7 @@ export default function TraderWatchLoading() {
         {/* Bookmark chips row */}
         <div className="flex flex-wrap gap-2 mb-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-7 w-32 rounded-md bg-white/[0.04] animate-pulse" />
+            <div key={i} className="h-7 w-32 rounded-md bg-white/[0.06] animate-pulse" />
           ))}
         </div>
 

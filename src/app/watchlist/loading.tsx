@@ -13,15 +13,15 @@ export default function WatchlistLoading() {
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-2 mb-2">
-              <div className="w-9 h-9 rounded-xl bg-white/[0.04] animate-pulse" />
-              <div className="h-3 w-20 bg-white/[0.04] rounded animate-pulse" />
+              <div className="w-9 h-9 rounded-xl bg-white/[0.06] animate-pulse" />
+              <div className="h-3 w-20 bg-white/[0.06] rounded animate-pulse" />
             </div>
-            <div className="h-9 w-64 bg-white/[0.04] rounded animate-pulse mb-2" />
-            <div className="h-3 w-96 max-w-full bg-white/[0.03] rounded animate-pulse" />
+            <div className="h-9 w-64 bg-white/[0.06] rounded animate-pulse mb-2" />
+            <div className="h-3 w-96 max-w-full bg-white/[0.06] rounded animate-pulse" />
           </div>
           <div className="flex gap-2">
-            <div className="h-9 w-24 rounded-lg bg-white/[0.04] animate-pulse" />
-            <div className="h-9 w-24 rounded-lg bg-white/[0.04] animate-pulse" />
+            <div className="h-9 w-24 rounded-lg bg-white/[0.06] animate-pulse" />
+            <div className="h-9 w-24 rounded-lg bg-white/[0.06] animate-pulse" />
           </div>
         </div>
 

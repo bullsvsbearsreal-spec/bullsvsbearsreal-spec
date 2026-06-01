@@ -18,7 +18,7 @@ export default function DominanceLoading() {
         {/* Chart */}
         <div className="bg-hub-darker border border-hub-subtle rounded-xl p-4">
           <div className="h-4 w-36 bg-white/[0.06] rounded animate-pulse mb-4" />
-          <div className="h-72 bg-white/[0.03] rounded-lg animate-pulse" />
+          <div className="h-72 bg-white/[0.06] rounded-lg animate-pulse" />
         </div>
       </main>
     </div>

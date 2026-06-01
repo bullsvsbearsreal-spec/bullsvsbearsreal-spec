@@ -8,7 +8,7 @@ export default function LongShortLoading() {
         {/* Chart skeleton */}
         <div className="bg-hub-darker border border-hub-subtle rounded-xl p-4 mb-6">
           <div className="h-4 w-32 bg-white/[0.06] rounded animate-pulse mb-4" />
-          <div className="h-64 bg-white/[0.03] rounded-lg animate-pulse" />
+          <div className="h-64 bg-white/[0.06] rounded-lg animate-pulse" />
         </div>
 
         {/* Table skeleton */}
@@ -19,7 +19,7 @@ export default function LongShortLoading() {
               <div className="h-4 w-16 bg-white/[0.06] rounded animate-pulse" />
               <div className="flex-1" />
               <div className="h-4 w-24 bg-white/[0.06] rounded animate-pulse" />
-              <div className="h-3 w-12 bg-white/[0.04] rounded animate-pulse" />
+              <div className="h-3 w-12 bg-white/[0.06] rounded animate-pulse" />
             </div>
           ))}
         </div>

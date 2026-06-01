@@ -12,11 +12,11 @@ export default function CyclePhaseLoading() {
       <main id="main-content" className="max-w-[1200px] mx-auto px-4 py-6">
         <div className="mb-5">
           <div className="inline-flex items-center gap-2 mb-2">
-            <div className="w-9 h-9 rounded-xl bg-white/[0.04] animate-pulse" />
-            <div className="h-3 w-20 bg-white/[0.04] rounded animate-pulse" />
+            <div className="w-9 h-9 rounded-xl bg-white/[0.06] animate-pulse" />
+            <div className="h-3 w-20 bg-white/[0.06] rounded animate-pulse" />
           </div>
-          <div className="h-9 w-56 bg-white/[0.04] rounded animate-pulse mb-2" />
-          <div className="h-3 w-96 max-w-full bg-white/[0.03] rounded animate-pulse" />
+          <div className="h-9 w-56 bg-white/[0.06] rounded animate-pulse mb-2" />
+          <div className="h-3 w-96 max-w-full bg-white/[0.06] rounded animate-pulse" />
         </div>
 
         {/* Phase strip + history */}

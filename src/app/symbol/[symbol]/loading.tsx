@@ -12,10 +12,10 @@ export default function SymbolLoading() {
       <main id="main-content" className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         {/* Symbol hero */}
         <div className="flex items-center gap-4 mb-6">
-          <div className="w-12 h-12 rounded-full bg-white/[0.04] animate-pulse" />
+          <div className="w-12 h-12 rounded-full bg-white/[0.06] animate-pulse" />
           <div className="space-y-2">
-            <div className="h-7 w-32 bg-white/[0.04] rounded animate-pulse" />
-            <div className="h-3 w-48 bg-white/[0.03] rounded animate-pulse" />
+            <div className="h-7 w-32 bg-white/[0.06] rounded animate-pulse" />
+            <div className="h-3 w-48 bg-white/[0.06] rounded animate-pulse" />
           </div>
         </div>
 

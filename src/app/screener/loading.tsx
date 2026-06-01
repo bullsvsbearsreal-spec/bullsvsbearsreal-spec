@@ -22,7 +22,7 @@ export default function ScreenerLoading() {
 
         {/* Table */}
         <div className="bg-hub-darker border border-hub-subtle rounded-xl overflow-hidden">
-          <div className="h-10 bg-white/[0.03] border-b border-hub-subtle" />
+          <div className="h-10 bg-white/[0.06] border-b border-hub-subtle" />
           {Array.from({ length: 15 }).map((_, i) => (
             <div key={i} className="h-11 border-b border-hub-subtle flex items-center px-4 gap-4">
               <div className="h-4 w-16 bg-white/[0.06] rounded animate-pulse" />

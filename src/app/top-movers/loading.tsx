@@ -23,7 +23,7 @@ export default function TopMoversLoading() {
               <div className="h-4 w-16 bg-white/[0.06] rounded animate-pulse" />
               <div className="flex-1" />
               <div className="h-4 w-20 bg-white/[0.06] rounded animate-pulse" />
-              <div className="h-4 w-14 bg-white/[0.04] rounded animate-pulse" />
+              <div className="h-4 w-14 bg-white/[0.06] rounded animate-pulse" />
             </div>
           ))}
         </div>

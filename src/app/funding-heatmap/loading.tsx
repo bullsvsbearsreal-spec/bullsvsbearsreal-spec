@@ -19,15 +19,15 @@ export default function FundingHeatmapLoading() {
           <header className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
             <div className="min-w-0">
               <div className="inline-flex items-center gap-2 mb-2">
-                <div className="w-9 h-9 rounded-xl bg-white/[0.04] animate-pulse" />
-                <div className="h-3 w-24 bg-white/[0.04] rounded animate-pulse" />
+                <div className="w-9 h-9 rounded-xl bg-white/[0.06] animate-pulse" />
+                <div className="h-3 w-24 bg-white/[0.06] rounded animate-pulse" />
               </div>
-              <div className="h-9 w-56 bg-white/[0.04] rounded animate-pulse mb-2" />
-              <div className="h-3 w-80 max-w-full bg-white/[0.03] rounded animate-pulse" />
+              <div className="h-9 w-56 bg-white/[0.06] rounded animate-pulse mb-2" />
+              <div className="h-3 w-80 max-w-full bg-white/[0.06] rounded animate-pulse" />
             </div>
             <div className="flex items-center gap-3">
-              <div className="h-7 w-40 bg-white/[0.04] rounded animate-pulse" />
-              <div className="h-9 w-36 rounded-lg bg-white/[0.04] animate-pulse" />
+              <div className="h-7 w-40 bg-white/[0.06] rounded animate-pulse" />
+              <div className="h-9 w-36 rounded-lg bg-white/[0.06] animate-pulse" />
             </div>
           </header>
 
@@ -43,11 +43,11 @@ export default function FundingHeatmapLoading() {
             <div className="space-y-1">
               {Array.from({ length: 12 }).map((_, r) => (
                 <div key={r} className="flex gap-1">
-                  <div className="w-16 h-6 rounded bg-white/[0.04] animate-pulse shrink-0" />
+                  <div className="w-16 h-6 rounded bg-white/[0.06] animate-pulse shrink-0" />
                   {Array.from({ length: 14 }).map((_, c) => (
                     <div
                       key={c}
-                      className="flex-1 h-6 rounded bg-white/[0.04] animate-pulse"
+                      className="flex-1 h-6 rounded bg-white/[0.06] animate-pulse"
                       style={{ animationDelay: `${(r * 14 + c) * 8}ms` }}
                     />
                   ))}
@@ -57,7 +57,7 @@ export default function FundingHeatmapLoading() {
           </div>
 
           {/* Legend skeleton */}
-          <div className="h-8 w-72 max-w-full bg-white/[0.03] rounded animate-pulse" />
+          <div className="h-8 w-72 max-w-full bg-white/[0.06] rounded animate-pulse" />
         </div>
       </main>
       <Footer />

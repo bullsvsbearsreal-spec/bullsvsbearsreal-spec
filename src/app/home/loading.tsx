@@ -14,10 +14,10 @@ export default function HomeLoading() {
           {/* Hero strip */}
           <div className="mb-5 flex flex-col sm:flex-row sm:items-end justify-between gap-3">
             <div className="min-w-0">
-              <div className="h-9 w-72 bg-white/[0.04] rounded animate-pulse mb-2" />
-              <div className="h-3 w-96 max-w-full bg-white/[0.03] rounded animate-pulse" />
+              <div className="h-9 w-72 bg-white/[0.06] rounded animate-pulse mb-2" />
+              <div className="h-3 w-96 max-w-full bg-white/[0.06] rounded animate-pulse" />
             </div>
-            <div className="h-7 w-40 bg-white/[0.04] rounded animate-pulse" />
+            <div className="h-7 w-40 bg-white/[0.06] rounded animate-pulse" />
           </div>
 
           {/* Top stat strip */}
