@@ -383,24 +383,21 @@ function TierCard({
       <div className="mb-4">
         {isPaid ? (
           <>
-            <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-[11px] text-neutral-500 line-through">
-                ${displayMonthly}
-              </span>
-              <span className="text-2xl font-bold text-white">$0</span>
-              <span className="text-[12px] text-neutral-500">/mo</span>
+            {/* Real (post-launch) price is the hero figure so the
+                $12/$29/$59 ladder is legible; the launch chip below carries
+                the "$0 today" message (previously $0 was the giant number on
+                every paid card, flattening the ladder). */}
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold text-white">${displayMonthly}</span>
+              <span className="text-[12px] text-neutral-500">/mo{period === 'annual' ? ' · billed annually' : ''}</span>
             </div>
-            <p className="text-[10px] uppercase font-bold tracking-wider text-amber-300">
+            <span className="inline-flex items-center gap-1.5 mt-1.5 text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-400/30">
               Free during launch
-            </p>
+              <span className="line-through text-amber-200/70 normal-case tracking-normal">$0 today</span>
+            </span>
             {period === 'annual' && (
-              <p className="text-[10px] text-neutral-500 mt-1">
-                Then ${annual}/yr — save ${annualSavingsUsd(tier)}/yr vs monthly
-              </p>
-            )}
-            {period === 'monthly' && (
-              <p className="text-[10px] text-neutral-500 mt-1">
-                Then ${monthly}/mo after launch
+              <p className="text-[10px] text-neutral-500 mt-1.5">
+                ${annual}/yr — save ${annualSavingsUsd(tier)}/yr vs monthly
               </p>
             )}
           </>
