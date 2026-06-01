@@ -69,6 +69,7 @@ interface TraderData {
 function useTraderComparison(address: string): TraderData {
   const hl = useApi<HLDossier>({
     key: address ? `cmp-hl-${address}` : null,
+    refreshInterval: 60_000,
     fetcher: async () => {
       const res = await fetch(`/api/hl-traders/${address}`, { signal: AbortSignal.timeout(10_000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -79,6 +80,7 @@ function useTraderComparison(address: string): TraderData {
 
   const gmxArb = useApi<GMXDossier>({
     key: address ? `cmp-gmx-arb-${address}` : null,
+    refreshInterval: 60_000,
     fetcher: async () => {
       const res = await fetch(`/api/gmx-traders/${address}?chain=arbitrum`, { signal: AbortSignal.timeout(10_000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -89,6 +91,7 @@ function useTraderComparison(address: string): TraderData {
 
   const gmxAvax = useApi<GMXDossier>({
     key: address ? `cmp-gmx-avax-${address}` : null,
+    refreshInterval: 60_000,
     fetcher: async () => {
       const res = await fetch(`/api/gmx-traders/${address}?chain=avalanche`, { signal: AbortSignal.timeout(10_000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

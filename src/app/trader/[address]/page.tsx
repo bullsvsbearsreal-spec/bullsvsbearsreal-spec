@@ -301,6 +301,7 @@ export default function TraderUnifiedPage() {
   // the same address. useApi deduplicates via the `enabled` gate.
   const gmxArb = useApi<GMXDossier>({
     key: address ? `trader-gmx-arbitrum-${address}` : null,
+    refreshInterval: 60_000,
     fetcher: async () => {
       const res = await fetch(`/api/gmx-traders/${address}?chain=arbitrum`, { signal: AbortSignal.timeout(10_000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -311,6 +312,7 @@ export default function TraderUnifiedPage() {
 
   const gmxAvax = useApi<GMXDossier>({
     key: address ? `trader-gmx-avalanche-${address}` : null,
+    refreshInterval: 60_000,
     fetcher: async () => {
       const res = await fetch(`/api/gmx-traders/${address}?chain=avalanche`, { signal: AbortSignal.timeout(10_000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -321,6 +323,7 @@ export default function TraderUnifiedPage() {
 
   const hl = useApi<HLDossier>({
     key: address ? `trader-hl-${address}` : null,
+    refreshInterval: 60_000,
     fetcher: async () => {
       const res = await fetch(`/api/hl-traders/${address}`, { signal: AbortSignal.timeout(10_000) });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);

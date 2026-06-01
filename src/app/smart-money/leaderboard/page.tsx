@@ -87,7 +87,14 @@ export default function SmartMoneyLeaderboardPage() {
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [topN, lookback]);
+  useEffect(() => {
+    load();
+    // "Live" eyebrow promised auto-refresh but the board only reloaded on
+    // filter change — poll every 60s so realized-PnL stays current.
+    const iv = setInterval(load, 60_000);
+    return () => clearInterval(iv);
+    /* eslint-disable-next-line react-hooks/exhaustive-deps */
+  }, [topN, lookback]);
 
   return (
     <>
