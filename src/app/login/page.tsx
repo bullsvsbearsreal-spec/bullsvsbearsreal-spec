@@ -259,14 +259,14 @@ function LoginPageInner() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center px-4 py-12 relative overflow-hidden">
+    <div className="min-h-screen bg-hub-darker flex items-center justify-center px-4 py-12 relative overflow-hidden">
       {/* Background effects */}
       <div className="absolute inset-0">
         <div className="absolute top-[-20%] left-[50%] -translate-x-1/2 w-[800px] h-[800px] rounded-full opacity-[0.07]"
-          style={{ background: 'radial-gradient(circle, #eab308, transparent 70%)' }}
+          style={{ background: 'radial-gradient(circle, var(--hub-accent), transparent 70%)' }}
         />
         <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] rounded-full opacity-[0.04]"
-          style={{ background: 'radial-gradient(circle, #f97316, transparent 70%)' }}
+          style={{ background: 'radial-gradient(circle, var(--hub-accent), transparent 70%)' }}
         />
         <div className="absolute inset-0 opacity-[0.025]"
           style={{
@@ -299,7 +299,7 @@ function LoginPageInner() {
           className="rounded-2xl p-px shadow-2xl shadow-black/40"
           style={{ background: 'linear-gradient(145deg, rgba(234,179,8,0.18), rgba(255,255,255,0.04) 35%, rgba(255,255,255,0.02))' }}
         >
-        <div className="rounded-2xl border border-white/[0.04] bg-[#0a0a0a]/85 backdrop-blur-xl p-8">
+        <div className="rounded-2xl border border-white/[0.04] bg-hub-darker/85 backdrop-blur-xl p-8">
           {step === 'credentials' && (
             <>
               <div className="mb-7">
@@ -330,7 +330,7 @@ function LoginPageInner() {
                       onChange={e => setEmail(e.target.value)}
                       required
                       autoFocus
-                      className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/[0.06] border border-white/[0.1] text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/50 focus:ring-2 focus:ring-hub-yellow/20 transition-all"
+                      className="w-full h-12 pl-10 pr-4 rounded-xl bg-white/[0.06] border border-white/[0.1] text-sm font-mono text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/50 focus:ring-2 focus:ring-hub-yellow/20 transition-all"
                     />
                   </div>
                 </div>
@@ -352,7 +352,7 @@ function LoginPageInner() {
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       required
-                      className="w-full h-12 pl-10 pr-11 rounded-xl bg-white/[0.06] border border-white/[0.1] text-sm text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/50 focus:ring-2 focus:ring-hub-yellow/20 transition-all"
+                      className="w-full h-12 pl-10 pr-11 rounded-xl bg-white/[0.06] border border-white/[0.1] text-sm font-mono text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/50 focus:ring-2 focus:ring-hub-yellow/20 transition-all"
                     />
                     <button type="button" onClick={() => setShowPw(!showPw)}
                       className="absolute right-3.5 top-1/2 -translate-y-1/2 text-neutral-500 hover:text-neutral-300 transition-colors">
