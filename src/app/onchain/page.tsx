@@ -105,7 +105,7 @@ function puellColor(val: number): string {
 function historyToLineData(history: HistoryPoint[]): LineData<Time>[] {
   return history
     .map((p) => ({
-      time: (Math.floor(p.time / 1000) || p.time) as Time,
+      time: p.time as Time,
       value: p.value,
     }))
     .sort((a, b) => (a.time as number) - (b.time as number));
@@ -114,7 +114,7 @@ function historyToLineData(history: HistoryPoint[]): LineData<Time>[] {
 function historyToHistogramData(history: HistoryPoint[], color: string): HistogramData<Time>[] {
   return history
     .map((p) => ({
-      time: (Math.floor(p.time / 1000) || p.time) as Time,
+      time: p.time as Time,
       value: p.value,
       color,
     }))
