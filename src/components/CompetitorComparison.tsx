@@ -119,7 +119,7 @@ export default function CompetitorComparison() {
         </h2>
         <Link
           href="/pricing"
-          style={{ fontSize: 11, color: 'rgb(110, 231, 183)', textDecoration: 'none' }}
+          style={{ fontSize: 11, color: 'var(--hub-accent)', textDecoration: 'none' }}
           className="hover:underline"
         >
           See full pricing →
@@ -139,7 +139,7 @@ export default function CompetitorComparison() {
                 Feature
               </th>
               <th scope="col" className="px-3 py-2.5 text-center">
-                <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-emerald-300 uppercase tracking-wider">
+                <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-hub-yellow uppercase tracking-wider">
                   InfoHub
                 </div>
               </th>

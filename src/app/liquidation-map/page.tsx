@@ -286,7 +286,7 @@ function LiquidationChart({
           y1={currentPriceY}
           x2={chartWidth - marginRight}
           y2={currentPriceY}
-          stroke="#FACC15"
+          stroke="#FFA500"
           strokeWidth="2"
           strokeDasharray="6 3"
         />
@@ -296,7 +296,7 @@ function LiquidationChart({
           width={110}
           height={24}
           rx="4"
-          fill="#FACC15"
+          fill="#FFA500"
         />
         <text
           x={centerX}

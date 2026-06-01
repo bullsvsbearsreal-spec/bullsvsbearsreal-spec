@@ -170,7 +170,7 @@ export default function MarketHeatmapPage() {
       </div>
 
       {/* Heatmap fills remaining vertical space */}
-      <div style={{ flex: 1, minHeight: 0, position: 'relative', background: '#000' }}>
+      <div style={{ flex: 1, minHeight: 0, position: 'relative', background: 'var(--hub-darker)' }}>
         <CryptoHeatmapWidget blockColor={blockColor} blockSize={blockSize} />
       </div>
     </div>

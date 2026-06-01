@@ -303,7 +303,7 @@ function LoginPageInner() {
           {step === 'credentials' && (
             <>
               <div className="mb-7">
-                <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold tracking-tight text-white">
                   Welcome back
                 </h1>
                 <p className="text-neutral-500 text-sm mt-1.5">Pick up where you left off — watchlist, alerts, positions.</p>
@@ -414,7 +414,7 @@ function LoginPageInner() {
                 <div className="w-12 h-12 rounded-full bg-hub-yellow/10 border border-hub-yellow/20 flex items-center justify-center mx-auto mb-4">
                   <Shield size={24} className="text-hub-yellow" />
                 </div>
-                <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">Two-factor auth</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-white">Two-factor auth</h1>
                 <p className="text-neutral-500 text-sm mt-1.5">
                   {selectedMethod === 'totp'
                     ? 'Enter the code from your authenticator app'
@@ -524,7 +524,7 @@ function LoginPageInner() {
                 <div className="w-12 h-12 rounded-full bg-hub-yellow/10 border border-hub-yellow/20 flex items-center justify-center mx-auto mb-4">
                   <Mail size={24} className="text-hub-yellow" />
                 </div>
-                <h1 className="text-xl font-bold tracking-tight bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">Email not verified</h1>
+                <h1 className="text-xl font-bold tracking-tight text-white">Email not verified</h1>
                 <p className="text-neutral-500 text-sm mt-1.5">
                   Please verify your email before signing in.
                 </p>

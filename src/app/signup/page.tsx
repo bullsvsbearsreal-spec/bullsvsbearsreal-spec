@@ -284,7 +284,7 @@ function SignupContent() {
           {step === 'form' ? (
             <>
               <div className="mb-7">
-                <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold tracking-tight text-white">
                   Create account
                 </h1>
                 <p className="text-neutral-500 text-sm mt-1.5">Sync watchlists, alerts &amp; settings across devices</p>
@@ -405,7 +405,7 @@ function SignupContent() {
                 <div className="w-12 h-12 rounded-full bg-hub-yellow/10 border border-hub-yellow/20 flex items-center justify-center mx-auto mb-4">
                   <Mail size={24} className="text-hub-yellow" />
                 </div>
-                <h1 className="text-2xl font-bold tracking-tight bg-gradient-to-br from-white to-neutral-400 bg-clip-text text-transparent">Check your email</h1>
+                <h1 className="text-2xl font-bold tracking-tight text-white">Check your email</h1>
                 <p className="text-neutral-500 text-sm mt-1.5">
                   We sent a 6-digit code to <span className="text-neutral-300">{email}</span>
                 </p>
