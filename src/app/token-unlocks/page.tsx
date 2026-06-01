@@ -43,14 +43,19 @@ const TYPE_COLORS: Record<UnlockType, { bg: string; text: string; dot: string }>
 /* ------------------------------------------------------------------ */
 /*  Calendar helpers                                                   */
 /* ------------------------------------------------------------------ */
+// UTC throughout. Unlock timestamps are UTC-midnight ISO strings
+// (lib/api/tokenunlocks.ts builds them as `${date}T00:00:00Z`), so the
+// grid layout, day buckets, and day comparisons must all be computed in
+// UTC. Using local getters bucketed unlocks one cell early for any user
+// west of UTC (e.g. a 15th-of-month unlock showed on the 14th in US tz).
 function getMonthDays(year: number, month: number) {
-  const firstDay = new Date(year, month, 1).getDay();
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDay = new Date(Date.UTC(year, month, 1)).getUTCDay();
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
   return { firstDay, daysInMonth };
 }
 
 function isSameDay(a: Date, b: Date) {
-  return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  return a.getUTCFullYear() === b.getUTCFullYear() && a.getUTCMonth() === b.getUTCMonth() && a.getUTCDate() === b.getUTCDate();
 }
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -88,7 +93,7 @@ function UnlockCard({ unlock }: { unlock: TokenUnlock }) {
   const days = getDaysUntilUnlock(unlock.unlockDate);
   const relDate = formatUnlockDate(unlock.unlockDate);
   const absDate = new Date(unlock.unlockDate).toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC',
   });
   const isPast = days < 0;
 
@@ -186,8 +191,8 @@ function CalendarView({
   onSelectDate: (d: Date | null) => void;
 }) {
   const today = new Date();
-  const [viewYear, setViewYear] = useState(today.getFullYear());
-  const [viewMonth, setViewMonth] = useState(today.getMonth());
+  const [viewYear, setViewYear] = useState(today.getUTCFullYear());
+  const [viewMonth, setViewMonth] = useState(today.getUTCMonth());
   const { firstDay, daysInMonth } = getMonthDays(viewYear, viewMonth);
 
   // Build a map: day number -> unlocks
@@ -195,8 +200,8 @@ function CalendarView({
     const m = new Map<number, TokenUnlock[]>();
     for (const u of unlocks) {
       const d = new Date(u.unlockDate);
-      if (d.getFullYear() === viewYear && d.getMonth() === viewMonth) {
-        const day = d.getDate();
+      if (d.getUTCFullYear() === viewYear && d.getUTCMonth() === viewMonth) {
+        const day = d.getUTCDate();
         if (!m.has(day)) m.set(day, []);
         m.get(day)!.push(u);
       }
@@ -249,7 +254,7 @@ function CalendarView({
       <div className="grid grid-cols-7 gap-1">
         {cells.map((day, idx) => {
           if (day === null) return <div key={`pad-${idx}`} />;
-          const cellDate = new Date(viewYear, viewMonth, day);
+          const cellDate = new Date(Date.UTC(viewYear, viewMonth, day));
           const isToday = isSameDay(cellDate, today);
           const isSelected = selectedDate ? isSameDay(cellDate, selectedDate) : false;
           const dayUnlocks = dayMap.get(day);
@@ -296,7 +301,7 @@ function CalendarView({
         <div className="mt-4 space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-semibold text-white">
-              {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', timeZone: 'UTC' })}
             </h4>
             <button onClick={() => onSelectDate(null)} aria-label="Clear date filter" className="p-1 rounded hover:bg-white/[0.06] text-neutral-500 hover:text-white transition-colors">
               <X className="w-4 h-4" />

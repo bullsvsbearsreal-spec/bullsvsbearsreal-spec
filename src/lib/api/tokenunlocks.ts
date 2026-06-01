@@ -605,5 +605,5 @@ export function formatUnlockDate(unlockDate: string): string {
   if (days < 0) return 'Unlocked';
   if (days <= 7) return `In ${days} days`;
   if (days <= 30) return `In ${Math.ceil(days / 7)} weeks`;
-  return new Date(unlockDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return new Date(unlockDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
 }

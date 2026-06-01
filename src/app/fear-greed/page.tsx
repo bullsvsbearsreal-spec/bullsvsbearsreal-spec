@@ -33,17 +33,24 @@ const TIMEFRAME_LABELS: Record<Timeframe, string> = {
   '365': '1y',
 };
 
+// 5-band scheme matching the /api/fear-greed source (and CMC's
+// value_classification): Extreme Fear / Fear / Neutral / Greed /
+// Extreme Greed at 20/40/60/80. Previously this page used a 4-band
+// 25/50/75 split with no Neutral, so a value of e.g. 55 showed
+// "Greed" here while the API/CMC called it "Neutral".
 function getClassification(value: number): { label: string; color: string; bgColor: string } {
-  if (value <= 25) return { label: 'Extreme Fear', color: '#ef4444', bgColor: 'bg-red-500/10' };
-  if (value <= 50) return { label: 'Fear', color: '#f97316', bgColor: 'bg-orange-500/10' };
-  if (value <= 75) return { label: 'Greed', color: '#4ade80', bgColor: 'bg-green-400/10' };
+  if (value <= 20) return { label: 'Extreme Fear', color: '#ef4444', bgColor: 'bg-red-500/10' };
+  if (value <= 40) return { label: 'Fear', color: '#f97316', bgColor: 'bg-orange-500/10' };
+  if (value <= 60) return { label: 'Neutral', color: '#eab308', bgColor: 'bg-yellow-500/10' };
+  if (value <= 80) return { label: 'Greed', color: '#4ade80', bgColor: 'bg-green-400/10' };
   return { label: 'Extreme Greed', color: '#22c55e', bgColor: 'bg-green-500/10' };
 }
 
 function getValueColor(value: number): string {
-  if (value <= 25) return '#ef4444';
-  if (value <= 50) return '#f97316';
-  if (value <= 75) return '#4ade80';
+  if (value <= 20) return '#ef4444';
+  if (value <= 40) return '#f97316';
+  if (value <= 60) return '#eab308';
+  if (value <= 80) return '#4ade80';
   return '#22c55e';
 }
 
@@ -290,19 +297,23 @@ export default function FearGreedPage() {
                   <div className="grid grid-cols-2 gap-2 mt-2">
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-red-500" />
-                      <span className="text-xs text-neutral-400">0-25 Extreme Fear</span>
+                      <span className="text-xs text-neutral-400">0-20 Extreme Fear</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-orange-500" />
-                      <span className="text-xs text-neutral-400">25-50 Fear</span>
+                      <span className="text-xs text-neutral-400">20-40 Fear</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                      <span className="text-xs text-neutral-400">40-60 Neutral</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-green-400" />
-                      <span className="text-xs text-neutral-400">50-75 Greed</span>
+                      <span className="text-xs text-neutral-400">60-80 Greed</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded-full bg-green-500" />
-                      <span className="text-xs text-neutral-400">75-100 Extreme Greed</span>
+                      <span className="text-xs text-neutral-400">80-100 Extreme Greed</span>
                     </div>
                   </div>
                 </div>
@@ -341,14 +352,16 @@ export default function FearGreedPage() {
 
               {/* Zone indicator bar */}
               <div className="mt-4 flex rounded-full overflow-hidden h-2">
-                <div className="flex-1 bg-red-500" title="Extreme Fear (0-25)" />
-                <div className="flex-1 bg-orange-500" title="Fear (25-50)" />
-                <div className="flex-1 bg-green-400" title="Greed (50-75)" />
-                <div className="flex-1 bg-green-500" title="Extreme Greed (75-100)" />
+                <div className="flex-1 bg-red-500" title="Extreme Fear (0-20)" />
+                <div className="flex-1 bg-orange-500" title="Fear (20-40)" />
+                <div className="flex-1 bg-yellow-500" title="Neutral (40-60)" />
+                <div className="flex-1 bg-green-400" title="Greed (60-80)" />
+                <div className="flex-1 bg-green-500" title="Extreme Greed (80-100)" />
               </div>
               <div className="flex justify-between mt-1">
                 <span className="text-[10px] text-red-400">Extreme Fear</span>
                 <span className="text-[10px] text-orange-400">Fear</span>
+                <span className="text-[10px] text-yellow-400">Neutral</span>
                 <span className="text-[10px] text-green-400">Greed</span>
                 <span className="text-[10px] text-green-500">Extreme Greed</span>
               </div>
