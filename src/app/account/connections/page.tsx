@@ -723,7 +723,7 @@ function AddKeyForm({ exchanges, onSaved }: { exchanges: string[]; onSaved: () =
           <select
             value={exchange}
             onChange={e => setExchange(e.target.value)}
-            className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-sky-500 outline-none"
+            className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-hub-yellow/50 outline-none"
           >
             {sortedExchanges.map(ex => (
               // Inline "(passphrase)" suffix sets expectations before the
@@ -755,7 +755,7 @@ function AddKeyForm({ exchanges, onSaved }: { exchanges: string[]; onSaved: () =
             onChange={e => setLabel(e.target.value)}
             maxLength={60}
             placeholder="main, alt-account, …"
-            className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-sky-500 outline-none"
+            className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-hub-yellow/50 outline-none"
           />
         </label>
       </div>
@@ -769,7 +769,7 @@ function AddKeyForm({ exchanges, onSaved }: { exchanges: string[]; onSaved: () =
           required
           minLength={8}
           maxLength={256}
-          className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-sky-500 outline-none font-mono"
+          className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-hub-yellow/50 outline-none font-mono"
         />
       </label>
       <label className="block">
@@ -782,7 +782,7 @@ function AddKeyForm({ exchanges, onSaved }: { exchanges: string[]; onSaved: () =
           required
           minLength={8}
           maxLength={256}
-          className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-sky-500 outline-none font-mono"
+          className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-hub-yellow/50 outline-none font-mono"
         />
       </label>
       {showPassphrase && (
@@ -797,7 +797,7 @@ function AddKeyForm({ exchanges, onSaved }: { exchanges: string[]; onSaved: () =
             onChange={e => setPassphrase(e.target.value)}
             required={showPassphrase}
             maxLength={128}
-            className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-sky-500 outline-none font-mono"
+            className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-hub-yellow/50 outline-none font-mono"
           />
         </label>
       )}
@@ -893,7 +893,7 @@ function AddWalletForm({ chains, onSaved }: { chains: string[]; onSaved: () => v
           <select
             value={chain}
             onChange={e => setChain(e.target.value)}
-            className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-emerald-500 outline-none capitalize"
+            className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-hub-yellow/50 outline-none capitalize"
           >
             {chains.map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
           </select>
@@ -906,7 +906,7 @@ function AddWalletForm({ chains, onSaved }: { chains: string[]; onSaved: () => v
             onChange={e => setLabel(e.target.value)}
             maxLength={60}
             placeholder="main wallet, hot, …"
-            className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-emerald-500 outline-none"
+            className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-hub-yellow/50 outline-none"
           />
         </label>
       </div>
@@ -919,7 +919,7 @@ function AddWalletForm({ chains, onSaved }: { chains: string[]; onSaved: () => v
           onChange={e => setAddress(e.target.value)}
           required
           placeholder={chain === 'solana' ? 'base58 32-44 chars' : '0x… 40 hex chars'}
-          className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-emerald-500 outline-none font-mono"
+          className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-hub-yellow/50 outline-none font-mono"
         />
         {coverage.addressHint && (
           <span className="block mt-1 text-[10px] text-neutral-500">{coverage.addressHint}</span>

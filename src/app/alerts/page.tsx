@@ -395,7 +395,7 @@ export default function AlertsPage() {
           {/* Create Alert Form */}
           {showForm && (
             <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-6">
-              <h3 className="text-sm font-semibold text-white mb-3">Create Alert</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-white mb-3">Create Alert</h3>
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
                 <div>
                   <label className="text-xs text-neutral-500 block mb-1">Symbol</label>
@@ -564,7 +564,7 @@ export default function AlertsPage() {
           {triggered.length > 0 && (
             <div className="mb-6">
               <div className="flex items-center justify-between mb-3">
-                <h2 className="text-sm font-semibold text-white flex items-center gap-2">
+                <h2 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
                   Triggered ({undismissedCount} new)
                 </h2>
@@ -625,7 +625,7 @@ export default function AlertsPage() {
 
           {/* Active Alerts */}
           <div>
-            <h2 className="text-sm font-semibold text-white mb-3">Active Alerts ({alerts.length})</h2>
+            <h2 className="text-sm font-bold uppercase tracking-wider text-white mb-3">Active Alerts ({alerts.length})</h2>
             {alerts.length === 0 ? (
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-8 text-center">
                 <Bell className="w-10 h-10 text-neutral-700 mx-auto mb-3" />
@@ -746,7 +746,7 @@ export default function AlertsPage() {
           {/* Notification Settings (logged-in users only) */}
           {session?.user && (
             <div className="mt-6 bg-hub-darker border border-white/[0.06] rounded-xl p-4">
-              <h2 className="text-sm font-semibold text-white flex items-center gap-2 mb-4">
+              <h2 className="text-sm font-bold uppercase tracking-wider text-white flex items-center gap-2 mb-4">
                 <Settings2 className="w-4 h-4 text-hub-yellow" />
                 Notification Settings
               </h2>
