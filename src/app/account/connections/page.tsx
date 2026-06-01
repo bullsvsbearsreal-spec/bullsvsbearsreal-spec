@@ -723,7 +723,7 @@ function AddKeyForm({ exchanges, onSaved }: { exchanges: string[]; onSaved: () =
           <select
             value={exchange}
             onChange={e => setExchange(e.target.value)}
-            className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-hub-yellow/50 outline-none"
+            className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-hub-yellow/50 outline-none select-caret"
           >
             {sortedExchanges.map(ex => (
               // Inline "(passphrase)" suffix sets expectations before the
@@ -893,7 +893,7 @@ function AddWalletForm({ chains, onSaved }: { chains: string[]; onSaved: () => v
           <select
             value={chain}
             onChange={e => setChain(e.target.value)}
-            className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-hub-yellow/50 outline-none capitalize"
+            className="w-full bg-white/[0.04] text-white text-sm rounded-md px-2.5 py-1.5 ring-1 ring-white/[0.08] focus:ring-hub-yellow/50 outline-none capitalize select-caret"
           >
             {chains.map(c => <option key={c} value={c} className="capitalize">{c}</option>)}
           </select>

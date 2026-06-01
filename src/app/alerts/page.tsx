@@ -415,7 +415,7 @@ export default function AlertsPage() {
                       setFormMetric(e.target.value as AlertMetric);
                       if (e.target.value !== 'fundingRate') setFormExchange('');
                     }}
-                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-hub-yellow/50"
+                    className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-hub-yellow/50 select-caret"
                   >
                     <option value="price">Price</option>
                     <option value="fundingRate">Funding Rate</option>
@@ -433,7 +433,7 @@ export default function AlertsPage() {
                     <select
                       value={formOperator}
                       onChange={(e) => setFormOperator(e.target.value as AlertOperator)}
-                      className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-hub-yellow/50"
+                      className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-hub-yellow/50 select-caret"
                     >
                       <option value="gt">Greater than</option>
                       <option value="lt">Less than</option>
@@ -459,7 +459,7 @@ export default function AlertsPage() {
                     <select
                       value={formProximityPct}
                       onChange={(e) => setFormProximityPct(e.target.value)}
-                      className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-hub-yellow/50"
+                      className="w-full bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-hub-yellow/50 select-caret"
                     >
                       <option value="5">5%</option>
                       <option value="10">10%</option>
@@ -486,7 +486,7 @@ export default function AlertsPage() {
                   <select
                     value={formExchange}
                     onChange={(e) => setFormExchange(e.target.value)}
-                    className="w-full max-w-xs bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-hub-yellow/50"
+                    className="w-full max-w-xs bg-white/[0.04] border border-white/[0.08] rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-hub-yellow/50 select-caret"
                   >
                     <option value="">All exchanges (average)</option>
                     {ALL_EXCHANGES.map((ex) => (

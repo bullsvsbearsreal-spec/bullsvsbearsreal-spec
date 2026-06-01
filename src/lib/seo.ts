@@ -50,7 +50,6 @@ const VARIANT_BY_PATH_PREFIX: { match: string; variant: OGVariant }[] = [
   { match: 'news', variant: 'news' },
   { match: 'economic-calendar', variant: 'news' },
   { match: 'token-unlocks', variant: 'news' },
-  { match: 'airdrops', variant: 'news' },
   { match: 'listings', variant: 'news' },
   { match: 'donate', variant: 'donate' },
   { match: 'referrals', variant: 'donate' },
