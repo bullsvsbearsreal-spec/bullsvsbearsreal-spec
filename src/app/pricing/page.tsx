@@ -80,7 +80,7 @@ export default function PricingPage() {
           eyebrow="Pricing"
           title="Pick your"
           accentNoun="tier"
-          accent="emerald"
+          accent="hub-yellow"
           description={
             <>
               Everything is free during launch. Prices below are what each tier will
@@ -105,9 +105,9 @@ export default function PricingPage() {
               type="button"
               aria-pressed={period === 'monthly'}
               onClick={() => setPeriod('monthly')}
-              className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 ${
+              className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-hub-yellow/50 ${
                 period === 'monthly'
-                  ? 'bg-white/[0.08] text-white'
+                  ? 'bg-hub-yellow/15 text-hub-yellow border border-hub-yellow/30'
                   : 'text-neutral-400 hover:text-white'
               }`}
             >
@@ -117,14 +117,14 @@ export default function PricingPage() {
               type="button"
               aria-pressed={period === 'annual'}
               onClick={() => setPeriod('annual')}
-              className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors inline-flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/50 ${
+              className={`px-4 py-1.5 rounded-full text-[12px] font-semibold transition-colors inline-flex items-center gap-1.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-hub-yellow/50 ${
                 period === 'annual'
-                  ? 'bg-white/[0.08] text-white'
+                  ? 'bg-hub-yellow/15 text-hub-yellow border border-hub-yellow/30'
                   : 'text-neutral-400 hover:text-white'
               }`}
             >
               Annual
-              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-emerald-500/15 text-emerald-300 border border-emerald-400/30">
+              <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-hub-yellow/15 text-hub-yellow border border-hub-yellow/30">
                 Save {ANNUAL_DISCOUNT_PCT}%
               </span>
             </button>
@@ -358,11 +358,11 @@ function TierCard({
   return (
     <div
       className={`relative rounded-xl border-2 ${b.borderTint} ${b.bgTint} p-5 flex flex-col ${desktopOrderClass} ${
-        isMostPopular ? 'ring-2 ring-emerald-400/30 ring-offset-2 ring-offset-hub-black' : ''
+        isMostPopular ? 'ring-2 ring-hub-yellow/50 ring-offset-2 ring-offset-hub-black shadow-glow-md z-10 lg:scale-[1.03] lg:-translate-y-1' : ''
       }`}
     >
       {isMostPopular && (
-        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-[0.15em] px-2.5 py-0.5 rounded-full bg-emerald-500 text-black shadow-lg shadow-emerald-500/30">
+        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 text-[9px] font-bold uppercase tracking-[0.15em] px-2.5 py-0.5 rounded-full bg-hub-yellow text-black shadow-glow-md">
           Most popular
         </span>
       )}
@@ -513,14 +513,14 @@ function TierCta({
     );
   }
 
-  // CTA color per tier — Whale gets amber gradient, Pro gets emerald,
-  // Trader gets sky. Pulled into a helper so logged-out + signed-in
-  // variants stay in sync.
+  // CTA color per tier — Whale gets amber gradient, Pro (the conversion
+  // anchor) gets the brand-orange gradient, Trader gets sky. Pulled into a
+  // helper so logged-out + signed-in variants stay in sync.
   const ctaColorClass =
     tier === 'whale'
       ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-black hover:from-amber-400 hover:to-orange-400 focus-visible:ring-amber-400/60'
       : tier === 'pro'
-      ? 'bg-emerald-500 text-black hover:bg-emerald-400 focus-visible:ring-emerald-400/60'
+      ? 'bg-gradient-to-r from-hub-yellow to-hub-yellow-dark text-black hover:opacity-90 focus-visible:ring-hub-yellow/60'
       : 'bg-sky-500 text-black hover:bg-sky-400 focus-visible:ring-sky-400/60';
 
   // Paid tier (Trader / Pro / Whale) — subscribe button. Logged-out users
