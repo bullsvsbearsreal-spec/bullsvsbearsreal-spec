@@ -21,7 +21,7 @@ function fmtTickerPrice(p: number): string {
 export default function MarketTape({ items, stickyTop = 0, className }: MarketTapeProps) {
   if (!items?.length) return null;
   return (
-    <div className={className} style={{ position: 'sticky', top: stickyTop, zIndex: 39, height: 28, background: 'rgba(10,10,10,0.92)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--hub-border-subtle)', display: 'flex', alignItems: 'center', overflow: 'hidden', flexShrink: 0 }} aria-label="Live market tape">
+    <div className={className} style={{ position: 'sticky', top: stickyTop, zIndex: 39, height: 28, background: 'rgba(8,12,24,0.92)', backdropFilter: 'blur(10px)', borderBottom: '1px solid var(--hub-border-subtle)', display: 'flex', alignItems: 'center', overflow: 'hidden', flexShrink: 0 }} aria-label="Live market tape">
       <div style={{ flexShrink: 0, padding: '0 14px', fontFamily: 'var(--font-sans)', fontSize: 10, fontWeight: 700, color: 'var(--hub-accent)', textTransform: 'uppercase', letterSpacing: '0.12em', borderRight: '1px solid var(--hub-border-subtle)', height: '100%', display: 'flex', alignItems: 'center', gap: 8, background: 'linear-gradient(90deg, rgba(255,165,0,0.08), transparent)' }}>
         <RadarPulse size={12} color="var(--pump-mild)" />
         <span>LIVE</span>

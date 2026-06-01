@@ -13,8 +13,8 @@ export default function TerminalPageTitle({ title, subtitle, right, className, a
   return (
     <div className={className} style={{ display: 'flex', alignItems: 'baseline', gap: 14, flexWrap: 'wrap' }}>
       <h1 style={{
-        fontSize: 22,
-        fontWeight: 700,
+        fontSize: 26,
+        fontWeight: 800,
         letterSpacing: '-0.02em',
         color: 'var(--fg-default)',
         margin: 0,
