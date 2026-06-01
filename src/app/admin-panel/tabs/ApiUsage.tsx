@@ -46,18 +46,22 @@ export function ApiUsageTab({ onToast }: { onToast: (msg: string, ok: boolean) =
   const [data, setData] = useState<UsageResp | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [window, setWindow] = useState<Window>('24h');
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setRefreshing(true);
+    setError(null);
     try {
       const res = await fetch(`/api/admin/api-usage?window=${window}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData(json);
     } catch (e) {
-      onToast(e instanceof Error ? e.message : 'Failed to load API usage', false);
+      const msg = e instanceof Error ? e.message : 'Failed to load API usage';
+      setError(msg);
+      onToast(msg, false);
     }
     setLoading(false);
     setRefreshing(false);
@@ -139,6 +143,8 @@ export function ApiUsageTab({ onToast }: { onToast: (msg: string, ok: boolean) =
         <Card title="Top endpoints">
           {loading ? (
             <SkeletonBlock w="100%" h={160} />
+          ) : error && !data ? (
+            <div style={{ color: 'var(--rekt-mild)', fontSize: 11, padding: '8px 0' }}>Couldn&apos;t load · {error}</div>
           ) : !data || data.topEndpoints.length === 0 ? (
             <div style={{ color: 'var(--fg-faint)', fontSize: 11, padding: '8px 0' }}>No traffic in this window.</div>
           ) : (
@@ -176,6 +182,8 @@ export function ApiUsageTab({ onToast }: { onToast: (msg: string, ok: boolean) =
         <Card title="Top API consumers">
           {loading ? (
             <SkeletonBlock w="100%" h={160} />
+          ) : error && !data ? (
+            <div style={{ color: 'var(--rekt-mild)', fontSize: 11, padding: '8px 0' }}>Couldn&apos;t load · {error}</div>
           ) : !data || data.topUsers.length === 0 ? (
             <div style={{ color: 'var(--fg-faint)', fontSize: 11, padding: '8px 0' }}>No consumers in this window.</div>
           ) : (

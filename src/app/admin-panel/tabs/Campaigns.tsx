@@ -42,6 +42,7 @@ export function CampaignsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
 
   const [slug, setSlug] = useState('');
@@ -53,13 +54,16 @@ export function CampaignsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setRefreshing(true);
+    setError(null);
     try {
       const res = await fetch('/api/marketing/campaigns');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setCampaigns(json.campaigns ?? []);
     } catch (e) {
-      onToast(e instanceof Error ? e.message : 'Failed to load campaigns', false);
+      const msg = e instanceof Error ? e.message : 'Failed to load campaigns';
+      setError(msg);
+      onToast(msg, false);
     }
     setLoading(false);
     setRefreshing(false);
@@ -229,6 +233,10 @@ export function CampaignsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
             <SkeletonBlock w="100%" h={40} />
             <div style={{ height: 4 }} />
             <SkeletonBlock w="100%" h={40} />
+          </div>
+        ) : error && campaigns.length === 0 ? (
+          <div style={{ padding: 32, textAlign: 'center', color: 'var(--rekt-mild)', fontSize: 12 }}>
+            Couldn&apos;t load campaigns · {error}
           </div>
         ) : campaigns.length === 0 ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--fg-faint)', fontSize: 12 }}>

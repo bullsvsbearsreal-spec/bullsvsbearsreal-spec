@@ -81,18 +81,22 @@ export function AnalyticsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
   const [data, setData] = useState<AnalyticsResp | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [period, setPeriod] = useState<Period>('7d');
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setRefreshing(true);
+    setError(null);
     try {
       const res = await fetch(`/api/admin/analytics?window=${period}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData(json);
     } catch (e) {
-      onToast(e instanceof Error ? e.message : 'Failed to load analytics', false);
+      const msg = e instanceof Error ? e.message : 'Failed to load analytics';
+      setError(msg);
+      onToast(msg, false);
     }
     setLoading(false);
     setRefreshing(false);
@@ -157,6 +161,11 @@ export function AnalyticsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
 
   return (
     <>
+      {error && !data && (
+        <div style={{ padding: 10, marginBottom: 12, borderRadius: 8, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', color: 'var(--rekt-mild)', fontSize: 12 }}>
+          Couldn&apos;t load analytics · {error}
+        </div>
+      )}
       <SectionHead
         title="Site analytics"
         icon={<Activity style={{ width: 13, height: 13 }} />}
