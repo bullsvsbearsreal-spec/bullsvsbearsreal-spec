@@ -429,6 +429,20 @@ option { background: #171717; color: #fff; }
   }
 }
 
+/* Hover affordance for the terminal-header nav-group buttons + the icon
+   cluster (donate / theme / alerts). Inline styles set the resting state;
+   these :hover rules add the pointer feedback that was missing. Default
+   scope (not inside a media query) so they apply at all widths. */
+header.terminal-header .terminal-header-nav button:hover {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 6px;
+}
+header.terminal-header [data-iconbtn]:hover {
+  border-color: var(--hub-border-hover);
+  color: var(--fg-default);
+  background: var(--hub-secondary);
+}
+
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 

@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useSession, signOut } from 'next-auth/react';
@@ -248,6 +248,7 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchFocus, setSearchFocus] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const optionRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
 
   const callbackUrl = encodeURIComponent(pathname || '/');
   const isAuthed = status === 'authenticated';
@@ -292,7 +293,9 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
       group: ac === 'crypto' ? 'Crypto' : ac === 'stocks' ? 'Stocks' : ac === 'forex' ? 'FX' : 'Commodities',
     }));
     const all = [...symbols, ...pages];
-    if (!q) return all.slice(0, 14);
+    // Empty query: surface BOTH halves of the value prop — a few symbols
+    // AND a few pages — instead of 14 crypto tickers and zero pages.
+    if (!q) return [...symbols.slice(0, 6), ...pages.slice(0, 8)];
     const matched = all
       .filter(r => r.label.toLowerCase().includes(q) || r.hint.toLowerCase().includes(q) || r.href.toLowerCase().includes(q))
       .slice(0, 30);
@@ -342,6 +345,10 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
 
   // Reset focus index when results change; focus input when palette opens
   useEffect(() => { setSearchFocus(0); }, [searchQuery]);
+  // Keep the keyboard-focused result scrolled into view (arrow-key nav).
+  useEffect(() => {
+    if (searchOpen) optionRefs.current.get(searchFocus)?.scrollIntoView({ block: 'nearest' });
+  }, [searchFocus, searchOpen]);
   useEffect(() => {
     if (searchOpen) {
       setSearchQuery('');
@@ -390,12 +397,12 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
                 onClick={() => setOpenKey(isOpen ? null : g.key)}
                 aria-expanded={isOpen}
                 aria-haspopup="menu"
-                style={{ height: '100%', padding: '0 10px', background: 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: 6, color: groupActive || isOpen ? 'var(--fg-default)' : 'var(--fg-muted)', fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: groupActive ? 600 : 500, letterSpacing: '-0.005em', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                style={{ height: '100%', padding: '0 10px', background: 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: 6, color: groupActive ? 'var(--hub-accent)' : (isOpen ? 'var(--fg-default)' : 'var(--fg-muted)'), fontFamily: 'var(--font-sans)', fontSize: 13, fontWeight: groupActive ? 600 : 500, letterSpacing: '-0.005em', cursor: 'pointer', whiteSpace: 'nowrap' }}
               >
                 <span style={{ color: 'var(--hub-accent)', display: 'inline-flex' }}>{g.icon}</span>
                 {g.label}
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--fg-subtle)', transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 150ms' }}><polyline points="6 9 12 15 18 9" /></svg>
-                {groupActive && <span style={{ position: 'absolute', left: 10, right: 10, bottom: 0, height: 2, background: 'var(--hub-accent)', boxShadow: '0 0 8px rgb(255 165 0 / 0.4)' }} />}
+                {groupActive && <span style={{ position: 'absolute', left: 10, right: 10, bottom: 0, height: 2, background: 'var(--hub-accent)', boxShadow: '0 0 8px rgb(var(--hub-accent-rgb) / 0.4)' }} />}
               </button>
               {isOpen && triggerRect && (
                 <div
@@ -473,6 +480,7 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
       <button
         type="button"
         aria-label="Open search palette"
+        title="Press ⌘K or /"
         className="terminal-header-search-trigger"
         onClick={() => { setSearchOpen(true); onSearch?.(); }}
         style={{ background: 'var(--hub-darker)', border: '1px solid var(--hub-border)', borderRadius: 8, padding: '6px 10px', display: 'flex', alignItems: 'center', gap: 8, color: 'var(--fg-subtle)', fontFamily: 'var(--font-sans)', fontSize: 12, cursor: 'pointer', minWidth: 220, flexShrink: 0 }}
@@ -488,13 +496,13 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
         href="/pricing"
         title="Free, Trader, Pro, Whale — free during launch"
         style={{
-          background: 'linear-gradient(135deg, rgba(16,185,129,0.18) 0%, rgba(245,158,11,0.18) 100%)',
-          border: '1px solid rgba(16,185,129,0.35)',
+          background: 'rgb(var(--hub-accent-rgb) / 0.10)',
+          border: '1px solid rgb(var(--hub-accent-rgb) / 0.35)',
           borderRadius: 8,
           padding: '6px 10px',
           fontSize: 11,
           fontWeight: 700,
-          color: 'rgb(110,231,183)',
+          color: 'var(--hub-accent)',
           textDecoration: 'none',
           letterSpacing: '0.04em',
           textTransform: 'uppercase',
@@ -506,12 +514,13 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
         }}
       >
         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-        Upgrade
+        Pricing
       </Link>
-      <Link href="/donate" style={{ ...iconBtn, textDecoration: 'none' }} aria-label="Donate">
+      <Link href="/donate" data-iconbtn style={{ ...iconBtn, textDecoration: 'none' }} aria-label="Donate">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" /></svg>
       </Link>
       <button
+        data-iconbtn
         style={iconBtn}
         aria-label="Toggle theme"
         onClick={() => {
@@ -525,9 +534,8 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
       >
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" /></svg>
       </button>
-      <Link href="/alerts" style={{ ...iconBtn, textDecoration: 'none' }} aria-label="Alerts">
+      <Link href="/alerts" data-iconbtn style={{ ...iconBtn, textDecoration: 'none' }} aria-label="Alerts">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
-        <span style={{ position: 'absolute', top: 6, right: 6, width: 7, height: 7, borderRadius: 999, background: 'var(--hub-accent)', boxShadow: '0 0 6px var(--hub-accent)' }} />
       </Link>
       {!isAuthed ? (
         <Link
@@ -694,54 +702,64 @@ export default function TerminalHeader({ onSearch }: { onSearch?: () => void }) 
             <div style={{ flex: 1, overflowY: 'auto', padding: 6 }} role="listbox">
               {searchResults.length === 0 && (
                 <div style={{ padding: 20, textAlign: 'center', color: 'var(--fg-muted)', fontSize: 12 }}>
-                  No matches for &ldquo;{searchQuery}&rdquo;
+                  <div>No matches for &ldquo;{searchQuery}&rdquo;</div>
+                  <div style={{ fontSize: 11, color: 'var(--fg-subtle)', marginTop: 6 }}>Try a symbol like BTC, or browse the nav above.</div>
                 </div>
               )}
               {searchResults.map((r, i) => {
                 const focused = i === searchFocus;
                 const isSym = r.kind === 'symbol';
+                // Group header when the asset-class / nav-group changes — the
+                // `group` field is already on every result, just never shown.
+                const showHeader = i === 0 || r.group !== searchResults[i - 1].group;
                 return (
-                  <button
-                    key={r.key}
-                    role="option"
-                    aria-selected={focused}
-                    onClick={() => goToResult(i)}
-                    onMouseEnter={() => setSearchFocus(i)}
-                    style={{
-                      width: '100%',
-                      display: 'flex', alignItems: 'center', gap: 10,
-                      padding: '8px 10px',
-                      borderRadius: 7,
-                      background: focused ? 'rgba(var(--hub-accent-rgb), 0.15)' : 'transparent',
-                      border: 'none',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                      color: focused ? 'var(--hub-accent)' : 'var(--fg-default)',
-                    }}
-                  >
-                    <span style={{
-                      width: 22, height: 22, borderRadius: 5,
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      flexShrink: 0,
-                      background: isSym ? 'rgba(var(--hub-accent-rgb), 0.18)' : 'rgba(96,165,250,0.18)',
-                      color: isSym ? 'var(--hub-accent)' : '#60a5fa',
-                      fontSize: 9, fontWeight: 800,
-                    }}>
-                      {isSym ? r.label.slice(0, 3) : (
-                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                      )}
-                    </span>
-                    <span style={{
-                      fontWeight: 700, fontSize: 13,
-                    }}>{r.label}</span>
-                    <span style={{ flex: 1 }} />
-                    <span style={{
-                      fontSize: 10, color: 'var(--fg-muted)',
-                      fontFamily: 'var(--font-mono)',
-                    }}>{r.hint}</span>
-                  </button>
+                  <Fragment key={r.key}>
+                    {showHeader && (
+                      <div style={{ padding: '6px 10px 2px', fontSize: 9, color: 'var(--fg-subtle)', textTransform: 'uppercase', letterSpacing: '0.14em', fontWeight: 700 }}>{r.group}</div>
+                    )}
+                    <button
+                      ref={(el) => { if (el) optionRefs.current.set(i, el); else optionRefs.current.delete(i); }}
+                      role="option"
+                      aria-selected={focused}
+                      onClick={() => goToResult(i)}
+                      onMouseEnter={() => setSearchFocus(i)}
+                      style={{
+                        width: '100%',
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        padding: '8px 10px',
+                        borderRadius: 7,
+                        background: focused ? 'rgb(var(--hub-accent-rgb) / 0.15)' : 'transparent',
+                        border: 'none',
+                        borderLeft: focused ? '2px solid var(--hub-accent)' : '2px solid transparent',
+                        textAlign: 'left',
+                        cursor: 'pointer',
+                        color: focused ? 'var(--hub-accent)' : 'var(--fg-default)',
+                      }}
+                    >
+                      <span style={{
+                        width: 22, height: 22, borderRadius: 5,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        flexShrink: 0,
+                        background: isSym ? 'rgb(var(--hub-accent-rgb) / 0.18)' : 'rgba(96,165,250,0.18)',
+                        color: isSym ? 'var(--hub-accent)' : '#60a5fa',
+                        fontSize: 9, fontWeight: 800,
+                      }}>
+                        {isSym ? r.label.slice(0, 3) : (
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
+                        )}
+                      </span>
+                      <span style={{
+                        fontWeight: 700, fontSize: 13,
+                      }}>{r.label}</span>
+                      <span style={{ flex: 1 }} />
+                      <span style={{
+                        fontSize: 10, color: 'var(--fg-muted)',
+                        fontFamily: 'var(--font-mono)',
+                      }}>{r.hint}</span>
+                    </button>
+                  </Fragment>
                 );
               })}
             </div>
