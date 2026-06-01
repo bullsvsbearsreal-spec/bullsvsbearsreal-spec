@@ -243,15 +243,15 @@ export default function OpenInterestPage() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mb-4">
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
             <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-semibold">Total OI</span>
-            <div className={`text-xl font-black text-white font-mono mt-0.5 tracking-tight ${totalOIFlash}`}>{formatUSD(totalOI)}</div>
+            <div className={`text-xl font-black text-white font-mono tabular-nums mt-0.5 tracking-tight ${totalOIFlash}`}>{formatUSD(totalOI)}</div>
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
             <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-semibold">Symbols</span>
-            <div className="text-xl font-black text-white font-mono mt-0.5 tracking-tight">{symbolAggregated.size.toLocaleString()}</div>
+            <div className="text-xl font-black text-white font-mono tabular-nums mt-0.5 tracking-tight">{symbolAggregated.size.toLocaleString()}</div>
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
             <span className="text-neutral-600 text-[10px] uppercase tracking-wider font-semibold">Exchanges</span>
-            <div className="text-xl font-black text-white font-mono mt-0.5 tracking-tight">{exchanges.length}</div>
+            <div className="text-xl font-black text-white font-mono tabular-nums mt-0.5 tracking-tight">{exchanges.length}</div>
           </div>
         </div>
 
@@ -444,7 +444,7 @@ export default function OpenInterestPage() {
                 const fmtMobile = (v: number | null) => {
                   if (v == null) return <span className="text-neutral-700">--</span>;
                   const color = v > 0 ? 'text-green-400 pip-up' : v < 0 ? 'text-red-400 pip-down' : 'text-neutral-500';
-                  return <span className={`${color} font-mono`}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>;
+                  return <span className={`${color} font-mono tabular-nums`}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>;
                 };
                 const percentage = totalOI > 0 ? (value / totalOI) * 100 : 0;
                 return (
@@ -520,7 +520,7 @@ export default function OpenInterestPage() {
                     const fmt = (v: number | null) => {
                       if (v == null) return <span className="text-neutral-700">—</span>;
                       const color = v > 0 ? 'text-green-400 pip-up' : v < 0 ? 'text-red-400 pip-down' : 'text-neutral-500';
-                      return <span className={`${color} font-mono`}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>;
+                      return <span className={`${color} font-mono tabular-nums`}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>;
                     };
                     return (
                       <tr
@@ -538,7 +538,7 @@ export default function OpenInterestPage() {
                           </div>
                         </td>
                         <td className="px-4 py-2 text-right">
-                          <span className="text-white font-mono font-semibold">{formatUSD(value)}</span>
+                          <span className="text-white font-mono tabular-nums font-semibold">{formatUSD(value)}</span>
                         </td>
                         <td className="px-4 py-2 text-right text-xs">{fmt(delta?.change1h ?? null)}</td>
                         <td className="px-4 py-2 text-right text-xs">{fmt(delta?.change4h ?? null)}</td>
@@ -656,19 +656,19 @@ export default function OpenInterestPage() {
                         </div>
                       </td>
                       <td className="px-4 py-2 text-right">
-                        <span className="text-neutral-500 font-mono">
+                        <span className="text-neutral-500 font-mono tabular-nums">
                           {oi.openInterest.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                         </span>
                       </td>
                       <td className="px-4 py-2 text-right">
-                        <span className="text-white font-mono font-semibold">{formatUSD(oi.openInterestValue)}</span>
+                        <span className="text-white font-mono tabular-nums font-semibold">{formatUSD(oi.openInterestValue)}</span>
                       </td>
                       {(() => {
                         const delta = oiDeltas.get(oi.symbol);
                         const fmtDelta = (v: number | null | undefined) => {
                           if (v == null) return <span className="text-neutral-700">—</span>;
                           const color = v > 0 ? 'text-green-400' : v < 0 ? 'text-red-400' : 'text-neutral-500';
-                          return <span className={`${color} font-mono`}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>;
+                          return <span className={`${color} font-mono tabular-nums`}>{v > 0 ? '+' : ''}{v.toFixed(2)}%</span>;
                         };
                         return (
                           <>

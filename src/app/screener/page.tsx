@@ -521,20 +521,20 @@ export default function ScreenerPage() {
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-4">
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Symbols</div>
-              <div className="text-sm font-bold text-white font-mono">{stats.symbols.toLocaleString()}</div>
+              <div className="text-sm font-bold text-white font-mono tabular-nums">{stats.symbols.toLocaleString()}</div>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Total OI</div>
-              <div className={`text-sm font-bold text-white font-mono ${oiFlash || ''}`}>{formatNumber(stats.totalOI)}</div>
+              <div className={`text-sm font-bold text-white font-mono tabular-nums ${oiFlash || ''}`}>{formatNumber(stats.totalOI)}</div>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Combined Volume</div>
-              <div className={`text-sm font-bold text-white font-mono ${volFlash || ''}`}>{formatNumber(stats.totalVol)}</div>
+              <div className={`text-sm font-bold text-white font-mono tabular-nums ${volFlash || ''}`}>{formatNumber(stats.totalVol)}</div>
               <div className="text-[9px] text-neutral-500 mt-0.5">Sum across all exchange-pairs</div>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider">Avg Funding</div>
-              <div className={`text-sm font-bold font-mono ${stats.avgFunding > 0 ? 'text-green-400' : stats.avgFunding < 0 ? 'text-red-400' : 'text-neutral-300'}`}>
+              <div className={`text-sm font-bold font-mono tabular-nums ${stats.avgFunding > 0 ? 'text-green-400' : stats.avgFunding < 0 ? 'text-red-400' : 'text-neutral-300'}`}>
                 {formatFundingRate(stats.avgFunding)}
               </div>
             </div>
@@ -542,13 +542,13 @@ export default function ScreenerPage() {
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider flex items-center gap-1">
                 <TrendingUp className="w-2.5 h-2.5 text-green-500" /> Gainers
               </div>
-              <div className="text-sm font-bold text-green-400 font-mono">{stats.gainers}</div>
+              <div className="text-sm font-bold text-green-400 font-mono tabular-nums">{stats.gainers}</div>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-3 py-2.5">
               <div className="text-[10px] text-neutral-500 uppercase tracking-wider flex items-center gap-1">
                 <TrendingDown className="w-2.5 h-2.5 text-red-500" /> Losers
               </div>
-              <div className="text-sm font-bold text-red-400 font-mono">{stats.losers}</div>
+              <div className="text-sm font-bold text-red-400 font-mono tabular-nums">{stats.losers}</div>
             </div>
           </div>
         )}
@@ -601,7 +601,7 @@ export default function ScreenerPage() {
                         the table. */}
                     {count !== undefined && count >= 0 && rows.length > 0 && p.conditions.length > 0 && (
                       <span
-                        className={`text-[9px] font-mono px-1 rounded ${
+                        className={`text-[9px] font-mono tabular-nums px-1 rounded ${
                           count === 0
                             ? 'text-neutral-600 bg-white/[0.02]'
                             : 'text-neutral-500 bg-white/[0.04]'
@@ -824,7 +824,7 @@ export default function ScreenerPage() {
                         </Link>
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-right text-neutral-300 font-mono text-xs">{formatPrice(row.price)}</td>
+                    <td className="px-3 py-2 text-right text-neutral-300 font-mono tabular-nums text-xs">{formatPrice(row.price)}</td>
                     <td className="px-3 py-2 text-right">
                       <span className={`delta-badge text-[11px] ${
                         Math.abs(row.change24h) >= 10
@@ -834,13 +834,13 @@ export default function ScreenerPage() {
                         {formatPercent(row.change24h)}
                       </span>
                     </td>
-                    <td className="px-3 py-2 text-right text-neutral-400 font-mono text-xs">{formatNumber(row.volume24h)}</td>
-                    <td className={`px-3 py-2 text-right font-mono text-xs ${
+                    <td className="px-3 py-2 text-right text-neutral-400 font-mono tabular-nums text-xs">{formatNumber(row.volume24h)}</td>
+                    <td className={`px-3 py-2 text-right font-mono tabular-nums text-xs ${
                       row.avgFunding > 0.01 ? 'text-green-400' : row.avgFunding < -0.01 ? 'text-red-400' : 'text-neutral-400'
                     }`}>
                       {row.avgFunding !== 0 ? formatFundingRate(row.avgFunding) : '—'}
                     </td>
-                    <td className="px-3 py-2 text-right text-neutral-400 font-mono text-xs">
+                    <td className="px-3 py-2 text-right text-neutral-400 font-mono tabular-nums text-xs">
                       {row.totalOI > 0 ? formatNumber(row.totalOI) : '—'}
                     </td>
                     <td className="px-3 py-2 text-right">
@@ -852,7 +852,7 @@ export default function ScreenerPage() {
                         }`}>
                           {row.oiChange24h > 0 ? '+' : ''}{row.oiChange24h.toFixed(1)}%
                         </span>
-                      ) : <span className="text-neutral-600 font-mono text-xs">—</span>}
+                      ) : <span className="text-neutral-600 font-mono tabular-nums text-xs">—</span>}
                     </td>
                     <td className="px-3 py-2 text-right text-neutral-600 text-[11px]">
                       {row.fundingExchanges > 0 ? `${row.fundingExchanges}F` : ''}
@@ -922,15 +922,15 @@ export default function ScreenerPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-3 gap-y-1">
                   <div>
                     <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Price</span>
-                    <div className="text-xs font-mono text-neutral-300">{formatPrice(row.price)}</div>
+                    <div className="text-xs font-mono tabular-nums text-neutral-300">{formatPrice(row.price)}</div>
                   </div>
                   <div>
                     <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Vol 24h</span>
-                    <div className="text-xs font-mono text-neutral-400">{formatNumber(row.volume24h)}</div>
+                    <div className="text-xs font-mono tabular-nums text-neutral-400">{formatNumber(row.volume24h)}</div>
                   </div>
                   <div>
                     <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Funding</span>
-                    <div className={`text-xs font-mono ${
+                    <div className={`text-xs font-mono tabular-nums ${
                       row.avgFunding > 0.01 ? 'text-green-400' : row.avgFunding < -0.01 ? 'text-red-400' : 'text-neutral-400'
                     }`}>
                       {row.avgFunding !== 0 ? formatFundingRate(row.avgFunding) : '—'}
@@ -938,7 +938,7 @@ export default function ScreenerPage() {
                   </div>
                   <div>
                     <span className="text-neutral-600 text-[10px] uppercase tracking-wider">OI</span>
-                    <div className="text-xs font-mono text-neutral-400">
+                    <div className="text-xs font-mono tabular-nums text-neutral-400">
                       {row.totalOI > 0 ? formatNumber(row.totalOI) : '—'}
                     </div>
                   </div>
