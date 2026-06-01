@@ -189,7 +189,7 @@ export default function FearGreedPage() {
             {/* Loading indicator */}
             <div className="flex items-center justify-center gap-3 py-3 mb-4">
               <RefreshCw className="w-4 h-4 text-hub-yellow animate-spin" />
-              <span className="text-neutral-400 text-sm">Loading sentiment data from Alternative.me...</span>
+              <span className="text-neutral-400 text-sm">Loading sentiment data from CoinMarketCap...</span>
             </div>
             {/* Skeleton: Gauge + Stats */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
@@ -403,7 +403,7 @@ export default function FearGreedPage() {
 
         <div className="mt-4 p-3 rounded-lg bg-hub-yellow/5 border border-hub-yellow/10">
           <p className="text-neutral-500 text-xs leading-relaxed">
-            The Fear & Greed Index measures crypto market sentiment on a scale of 0-100. It combines volatility (25%), market momentum &amp; volume (25%), social media (15%), Bitcoin dominance (10%), and Google Trends (10%). Values below 25 indicate Extreme Fear (potential buying opportunity), while values above 75 suggest Extreme Greed (potential correction risk). Data from Alternative.me, updated daily.
+            The Fear & Greed Index measures crypto market sentiment on a scale of 0-100. Values below 25 indicate Extreme Fear (potential buying opportunity), while values above 75 suggest Extreme Greed (potential correction risk). Data from CoinMarketCap, updated daily.
           </p>
         </div>
       </main>

@@ -1062,7 +1062,7 @@ console.log(data);`,
                 </div>
                 <div className="flex items-center justify-between py-2">
                   <span className="text-gray-400">Endpoints</span>
-                  <span className="text-white font-semibold">All 26</span>
+                  <span className="text-white font-semibold">All {TOTAL_ENDPOINTS}</span>
                 </div>
               </div>
             </div>
@@ -1082,7 +1082,7 @@ console.log(data);`,
               <div className="text-sm space-y-3">
                 <div className="flex items-center justify-between py-2 border-b border-amber-500/10">
                   <span className="text-gray-400">Requests / min</span>
-                  <span className="text-white font-mono font-bold text-base">500</span>
+                  <span className="text-white font-mono font-bold text-base">{PRO_TIER_PER_MINUTE}</span>
                 </div>
                 <div className="flex items-center justify-between py-2 border-b border-amber-500/10">
                   <span className="text-gray-400">Requests / day</span>
@@ -1113,7 +1113,7 @@ console.log(data);`,
             />
             <FaqItem
               q="How fresh is the data?"
-              a="Most endpoints use an in-memory L1 cache with 3 to 10 second freshness. Funding rates update every few seconds. Historical endpoints cache for 5 minutes."
+              a="Most endpoints use an in-memory L1 cache with ~30 second freshness. Historical endpoints cache for ~5 minutes."
             />
             <FaqItem
               q="Do I need separate API keys for each exchange?"
