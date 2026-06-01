@@ -443,6 +443,14 @@ header.terminal-header [data-iconbtn]:hover {
   background: var(--hub-secondary);
 }
 
+/* Quick-links chips (RecentChips) — inline styles set the resting border/
+   color, so the hover needs !important to win. Gives the dead `transition:
+   all 100ms` something to animate. */
+.rc-chip:hover {
+  border-color: var(--hub-border-hover) !important;
+  color: var(--fg-default) !important;
+}
+
 .scrollbar-hide::-webkit-scrollbar { display: none; }
 .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
 
