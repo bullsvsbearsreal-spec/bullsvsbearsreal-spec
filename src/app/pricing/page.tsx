@@ -383,21 +383,15 @@ function TierCard({
       <div className="mb-4">
         {isPaid ? (
           <>
-            {/* Real (post-launch) price is the hero figure so the
-                $12/$29/$59 ladder is legible; the launch chip below carries
-                the "$0 today" message (previously $0 was the giant number on
-                every paid card, flattening the ladder). */}
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-bold text-white">${displayMonthly}</span>
+            {/* Post-launch price shown struck through; free during launch. */}
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-bold text-white/90 line-through decoration-[3px] decoration-rose-400/90">${displayMonthly}</span>
               <span className="text-[12px] text-neutral-500">/mo{period === 'annual' ? ' · billed annually' : ''}</span>
             </div>
-            <span className="inline-flex items-center gap-1.5 mt-1.5 text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 border border-amber-400/30">
-              Free during launch
-              <span className="line-through text-amber-200/70 normal-case tracking-normal">$0 today</span>
-            </span>
+            <p className="text-[11px] uppercase font-bold tracking-wider text-amber-300 mt-1.5">Free during launch</p>
             {period === 'annual' && (
               <p className="text-[10px] text-neutral-500 mt-1.5">
-                ${annual}/yr — save ${annualSavingsUsd(tier)}/yr vs monthly
+                ${annual}/yr after launch, save ${annualSavingsUsd(tier)}/yr vs monthly
               </p>
             )}
           </>
