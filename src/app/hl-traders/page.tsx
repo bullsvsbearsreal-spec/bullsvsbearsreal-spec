@@ -158,7 +158,7 @@ function PnLChart({
   height?: number;
 }) {
   if (!points || points.length < 2) {
-    return <div className="h-[90px] flex items-center justify-center text-[10px] text-neutral-600 font-mono">No history in this window</div>;
+    return <div className="h-[90px] flex items-center justify-center text-[10px] text-neutral-600 font-mono tabular-nums">No history in this window</div>;
   }
   const values = points.map(p => p.v);
   const min = Math.min(...values, 0);
@@ -191,7 +191,7 @@ function PnLChart({
         <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-semibold">
           PnL · {windowLabel}
         </span>
-        <span className={`text-[11px] font-mono font-bold tabular-nums ${isUp ? 'text-green-400' : 'text-red-400'}`}>
+        <span className={`text-[11px] font-mono tabular-nums font-bold tabular-nums ${isUp ? 'text-green-400' : 'text-red-400'}`}>
           {netChange >= 0 ? '+' : ''}{fmtUSD(netChange)}
         </span>
       </div>
@@ -284,19 +284,19 @@ function TraderRow({
           {t.displayName ? (
             <span className="text-white text-xs font-semibold truncate">{t.displayName}</span>
           ) : (
-            <span className="font-mono text-xs text-white font-medium">{shortAddr(t.address)}</span>
+            <span className="font-mono tabular-nums text-xs text-white font-medium">{shortAddr(t.address)}</span>
           )}
           {rank === 1 && <Trophy className="w-3 h-3 text-hub-yellow flex-shrink-0" />}
           {t.pnl >= 1_000_000 && <Flame className="w-3 h-3 text-orange-400 flex-shrink-0" aria-label=">$1M PnL window" />}
           {t.prize > 0 && <Target className="w-3 h-3 text-green-400 flex-shrink-0" aria-label={`Prize: $${t.prize}`} />}
         </div>
-        <div className="text-[10px] text-neutral-600 font-mono truncate">
+        <div className="text-[10px] text-neutral-600 font-mono tabular-nums truncate">
           {t.displayName ? shortAddr(t.address) + ' · ' : ''}acct {fmtUSD(t.accountValue)}
         </div>
       </div>
 
       <div className="text-right w-[100px] md:w-[120px]">
-        <div className={`font-mono font-bold text-sm tabular-nums ${pnlColor}`}>
+        <div className={`font-mono tabular-nums font-bold text-sm tabular-nums ${pnlColor}`}>
           {fmtUSD(t.pnl)}
         </div>
         <div className={`text-[9px] font-mono tabular-nums ${roiColor}`}>
@@ -305,7 +305,7 @@ function TraderRow({
       </div>
 
       <div className="text-right w-[90px] hidden md:block">
-        <div className="font-mono text-xs text-white tabular-nums">{fmtUSD(t.volume)}</div>
+        <div className="font-mono tabular-nums text-xs text-white tabular-nums">{fmtUSD(t.volume)}</div>
         <div className="text-[9px] text-neutral-600 font-mono tabular-nums">volume</div>
       </div>
 
@@ -328,7 +328,7 @@ function PositionRow({ p }: { p: HLPosition }) {
         <div className="flex items-center gap-1.5">
           <span className="text-xs text-white font-semibold truncate">{p.coin}</span>
           {p.leverage !== null && (
-            <span className="text-[10px] font-mono text-hub-yellow/80 bg-hub-yellow/[0.08] px-1 rounded">
+            <span className="text-[10px] font-mono tabular-nums text-hub-yellow/80 bg-hub-yellow/[0.08] px-1 rounded">
               {p.leverage}×
             </span>
           )}
@@ -336,7 +336,7 @@ function PositionRow({ p }: { p: HLPosition }) {
             <span className="text-[9px] text-neutral-500 uppercase tracking-wider">{p.leverageType}</span>
           )}
         </div>
-        <div className="text-[10px] text-neutral-600 font-mono truncate">
+        <div className="text-[10px] text-neutral-600 font-mono tabular-nums truncate">
           {fmtUSD(p.sizeUsd)} · entry ${p.entryPrice.toLocaleString('en-US', { maximumFractionDigits: p.entryPrice < 1 ? 4 : 2 })}
           {p.liquidationPrice > 0 && (
             <> · liq ${p.liquidationPrice.toLocaleString('en-US', { maximumFractionDigits: p.liquidationPrice < 1 ? 4 : 2 })}</>
@@ -344,7 +344,7 @@ function PositionRow({ p }: { p: HLPosition }) {
         </div>
       </div>
       <div className="text-right whitespace-nowrap">
-        <div className={`text-xs font-mono font-semibold ${pnlColor} tabular-nums`}>
+        <div className={`text-xs font-mono tabular-nums font-semibold ${pnlColor} tabular-nums`}>
           {p.unrealizedPnl >= 0 ? '+' : ''}{fmtUSD(p.unrealizedPnl)}
         </div>
         <div className={`text-[9px] font-mono tabular-nums ${roeColor}`}>
@@ -382,16 +382,16 @@ function TraderDrawer({ address, onClose }: { address: string; onClose: () => vo
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <BookmarkStar address={address} displayName={data?.displayName} venues={['hyperliquid']} size={14} />
-            <span className="font-mono text-sm text-white font-bold truncate">
+            <span className="font-mono tabular-nums text-sm text-white font-bold truncate">
               {data?.displayName || shortAddr(address)}
             </span>
             <button onClick={copyAddr} className="text-neutral-500 hover:text-hub-yellow transition-colors" aria-label="Copy address">
               <Copy className="w-3 h-3" />
             </button>
-            {copied && <span className="text-[9px] text-green-400 font-mono">copied</span>}
+            {copied && <span className="text-[9px] text-green-400 font-mono tabular-nums">copied</span>}
           </div>
           {data?.displayName && (
-            <div className="text-[10px] text-neutral-500 font-mono mt-0.5">{shortAddr(address)}</div>
+            <div className="text-[10px] text-neutral-500 font-mono tabular-nums mt-0.5">{shortAddr(address)}</div>
           )}
           <div className="flex items-center gap-3 mt-1">
             <a
@@ -440,19 +440,19 @@ function TraderDrawer({ address, onClose }: { address: string; onClose: () => vo
           <div className="grid grid-cols-2 gap-2 mb-3">
             <div className="bg-white/[0.02] rounded-lg p-2">
               <div className="text-[9px] text-neutral-500 uppercase tracking-wider mb-1">Account Value</div>
-              <div className="font-mono font-bold text-sm tabular-nums text-white">{fmtUSD(data.summary.accountValue)}</div>
-              <div className="text-[9px] text-neutral-600 mt-0.5 font-mono">
+              <div className="font-mono tabular-nums font-bold text-sm tabular-nums text-white">{fmtUSD(data.summary.accountValue)}</div>
+              <div className="text-[9px] text-neutral-600 mt-0.5 font-mono tabular-nums">
                 {fmtUSD(data.summary.withdrawable)} withdrawable
               </div>
             </div>
             <div className="bg-white/[0.02] rounded-lg p-2">
               <div className="text-[9px] text-neutral-500 uppercase tracking-wider mb-1">Unrealized</div>
-              <div className={`font-mono font-bold text-sm tabular-nums ${
+              <div className={`font-mono tabular-nums font-bold text-sm tabular-nums ${
                 data.summary.unrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'
               }`}>
                 {data.summary.unrealizedPnl >= 0 ? '+' : ''}{fmtUSD(data.summary.unrealizedPnl)}
               </div>
-              <div className="text-[9px] text-neutral-600 mt-0.5 font-mono">
+              <div className="text-[9px] text-neutral-600 mt-0.5 font-mono tabular-nums">
                 margin {fmtUSD(data.summary.marginUsed)}
               </div>
             </div>
@@ -479,7 +479,7 @@ function TraderDrawer({ address, onClose }: { address: string; onClose: () => vo
                       <div className="text-[8px] text-neutral-600 uppercase tracking-wider">
                         {win === 'allTime' ? 'All' : win === 'day' ? '1D' : win === 'week' ? '7D' : '30D'}
                       </div>
-                      <div className={`text-[10px] font-mono font-bold tabular-nums ${color}`}>
+                      <div className={`text-[10px] font-mono tabular-nums font-bold tabular-nums ${color}`}>
                         {p.pnl >= 0 ? '+' : ''}{fmtUSD(p.pnl)}
                       </div>
                     </div>
@@ -612,7 +612,7 @@ export default function HLTradersPage() {
                 >
                   <Eye className="w-3.5 h-3.5" />
                   Watchlist
-                  <span className="font-mono opacity-80">· {bookmarks.length}</span>
+                  <span className="font-mono tabular-nums opacity-80">· {bookmarks.length}</span>
                 </Link>
               )}
               <DataFreshness
@@ -634,7 +634,7 @@ export default function HLTradersPage() {
                 value={lookupAddr}
                 onChange={e => setLookupAddr(e.target.value)}
                 placeholder="Paste any 0x… address for cross-platform view"
-                className="w-full bg-white/[0.02] border border-white/[0.06] rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/40 focus:bg-white/[0.04] font-mono transition-colors"
+                className="w-full bg-white/[0.02] border border-white/[0.06] rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/40 focus:bg-white/[0.04] font-mono tabular-nums transition-colors"
                 aria-label="Lookup trader address"
               />
             </div>
@@ -762,7 +762,7 @@ export default function HLTradersPage() {
           </aside>
         </div>
 
-        <div className="mt-4 flex items-center gap-3 text-[10px] text-neutral-600 font-mono">
+        <div className="mt-4 flex items-center gap-3 text-[10px] text-neutral-600 font-mono tabular-nums">
           <span className="inline-flex items-center gap-1">
             <Activity className="w-2.5 h-2.5" /> Data from Hyperliquid public stats feed
           </span>

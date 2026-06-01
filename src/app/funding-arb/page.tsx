@@ -113,26 +113,26 @@ function VenueTable({ venues }: { venues: VenueQuote[] }) {
             <span className={`text-[8px] font-bold uppercase px-1 py-0.5 rounded tracking-wider ${venueBadgeClass(min.type)}`}>
               {min.type}
             </span>
-            <span className="text-[9px] text-neutral-600 font-mono ml-auto">{min.interval}</span>
+            <span className="text-[9px] text-neutral-600 font-mono tabular-nums ml-auto">{min.interval}</span>
           </div>
           <div className="text-sm font-bold text-white">{min.exchange}</div>
-          <div className="text-[10px] text-neutral-500 font-mono mt-0.5">
+          <div className="text-[10px] text-neutral-500 font-mono tabular-nums mt-0.5">
             {min.rate < 0 ? 'receives ' : 'pays '}
             <span className={min.rate < 0 ? 'text-green-400' : 'text-red-400'}>{fmtPct(Math.abs(min.rate8h), 3)}</span>
             {' / 8h'}
           </div>
         </div>
-        <div className="hidden sm:flex items-center justify-center text-neutral-600 font-mono text-lg">→</div>
+        <div className="hidden sm:flex items-center justify-center text-neutral-600 font-mono tabular-nums text-lg">→</div>
         <div className="rounded-lg border border-red-400/20 bg-red-500/[0.04] p-2.5">
           <div className="flex items-center gap-1.5 mb-1">
             <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-red-400">Short</span>
             <span className={`text-[8px] font-bold uppercase px-1 py-0.5 rounded tracking-wider ${venueBadgeClass(max.type)}`}>
               {max.type}
             </span>
-            <span className="text-[9px] text-neutral-600 font-mono ml-auto">{max.interval}</span>
+            <span className="text-[9px] text-neutral-600 font-mono tabular-nums ml-auto">{max.interval}</span>
           </div>
           <div className="text-sm font-bold text-white">{max.exchange}</div>
-          <div className="text-[10px] text-neutral-500 font-mono mt-0.5">
+          <div className="text-[10px] text-neutral-500 font-mono tabular-nums mt-0.5">
             {max.rate > 0 ? 'receives ' : 'pays '}
             <span className={max.rate > 0 ? 'text-green-400' : 'text-red-400'}>{fmtPct(Math.abs(max.rate8h), 3)}</span>
             {' / 8h'}
@@ -144,22 +144,22 @@ function VenueTable({ venues }: { venues: VenueQuote[] }) {
           user can see at a glance: gross → minus fee → net. */}
       <div className="flex items-center gap-2 flex-wrap mb-3 px-1">
         <div className="text-[10px] uppercase tracking-[0.14em] text-neutral-500 font-semibold">Net edge</div>
-        <div className="inline-flex items-center gap-1 text-[11px] font-mono">
+        <div className="inline-flex items-center gap-1 text-[11px] font-mono tabular-nums">
           <span className="text-hub-yellow font-bold">{fmtPct(grossSpread8h)}</span>
           <span className="text-neutral-600">gross</span>
         </div>
         <span className="text-neutral-700">−</span>
-        <div className="inline-flex items-center gap-1 text-[11px] font-mono">
+        <div className="inline-flex items-center gap-1 text-[11px] font-mono tabular-nums">
           <span className="text-amber-400/80">{fmtPct(roundTripFee)}</span>
           <span className="text-neutral-600">round-trip fee</span>
         </div>
         <span className="text-neutral-700">=</span>
-        <div className="inline-flex items-center gap-1 text-[11px] font-mono">
+        <div className="inline-flex items-center gap-1 text-[11px] font-mono tabular-nums">
           <span className={`font-bold ${netSpread8h > 0 ? 'text-green-400' : 'text-red-400'}`}>{fmtPct(netSpread8h)}</span>
           <span className="text-neutral-600">/ 8h</span>
         </div>
         <span className="text-neutral-700">·</span>
-        <div className="inline-flex items-center gap-1 text-[11px] font-mono">
+        <div className="inline-flex items-center gap-1 text-[11px] font-mono tabular-nums">
           <span className={`font-bold ${netApr > 0 ? 'text-green-400' : 'text-red-400'}`}>{fmtAPR(netApr)}</span>
           <span className="text-neutral-600">APR</span>
         </div>
@@ -185,7 +185,7 @@ function VenueTable({ venues }: { venues: VenueQuote[] }) {
                 {v.type}
               </span>
               <span className="text-white truncate font-medium">{v.exchange}</span>
-              <span className="text-[9px] text-neutral-600 font-mono">{v.interval}</span>
+              <span className="text-[9px] text-neutral-600 font-mono tabular-nums">{v.interval}</span>
               {(v.borrow8h ?? 0) > 0 && (
                 <span
                   className="text-[8px] font-bold uppercase tracking-wider px-1 rounded bg-amber-500/[0.08] text-amber-300/90"
@@ -210,7 +210,7 @@ function VenueTable({ venues }: { venues: VenueQuote[] }) {
         );
       })}
 
-      <div className="mt-2 pt-2 px-2 border-t border-white/[0.05] text-[9px] text-neutral-600 font-mono leading-relaxed">
+      <div className="mt-2 pt-2 px-2 border-t border-white/[0.05] text-[9px] text-neutral-600 font-mono tabular-nums leading-relaxed">
         Fees from canonical schedule ({FEE_MODEL_VERSION}, taker × 4 fills).
         Borrow cost on DEX legs is excluded from the "net" math above —
         see the symbol&apos;s borrow chip in the row header above for the
@@ -252,7 +252,7 @@ function ArbRowView({ row, rank, expanded, onToggle }: { row: ArbRow; rank: numb
       >
         {/* Rank chip — small but readable, masks behind the gradient
             tint on top 3 for visual reinforcement. */}
-        <span className={`shrink-0 w-6 text-center text-[10px] font-mono font-bold tabular-nums ${
+        <span className={`shrink-0 w-6 text-center text-[10px] font-mono tabular-nums font-bold tabular-nums ${
           rank <= 3 ? 'text-hub-yellow' : 'text-neutral-600'
         }`}>
           {rank}
@@ -278,33 +278,33 @@ function ArbRowView({ row, rank, expanded, onToggle }: { row: ArbRow; rank: numb
               </span>
             )}
           </div>
-          <div className="text-[10px] text-neutral-500 font-mono mt-0.5 truncate">
+          <div className="text-[10px] text-neutral-500 font-mono tabular-nums mt-0.5 truncate">
             <span className="text-green-400/90 font-semibold">LONG</span> <span className="text-neutral-300">{row.min.exchange}</span> <span className="text-neutral-600">{fmtPct(row.min.rate8h, 3)}</span>
             <span className="mx-1.5 text-neutral-700">→</span>
             <span className="text-red-400/90 font-semibold">SHORT</span> <span className="text-neutral-300">{row.max.exchange}</span> <span className="text-neutral-600">{fmtPct(row.max.rate8h, 3)}</span>
           </div>
         </div>
         <div className="text-right w-[90px]">
-          <div className="font-mono font-bold text-sm tabular-nums text-hub-yellow">
+          <div className="font-mono tabular-nums font-bold text-sm tabular-nums text-hub-yellow">
             {fmtPct(row.spread8h, 3)}
           </div>
-          <div className="text-[9px] text-neutral-600 font-mono uppercase tracking-wider">8h spread</div>
+          <div className="text-[9px] text-neutral-600 font-mono tabular-nums uppercase tracking-wider">8h spread</div>
         </div>
         <div className="text-right w-[80px]">
-          <div className={`font-mono font-bold text-sm tabular-nums ${aprColor}`}>
+          <div className={`font-mono tabular-nums font-bold text-sm tabular-nums ${aprColor}`}>
             {fmtAPR(row.annualized)}
           </div>
-          <div className="text-[9px] text-neutral-600 font-mono uppercase tracking-wider">APR gross</div>
+          <div className="text-[9px] text-neutral-600 font-mono tabular-nums uppercase tracking-wider">APR gross</div>
         </div>
         {/* Net APR column — only renders when borrow data is present
             so symbols where both legs are CEXes don't get a redundant
             "same number twice" column. */}
         {hasBorrowData && (
           <div className="text-right w-[80px]">
-            <div className={`font-mono font-bold text-sm tabular-nums ${netAprColor}`} title="Annualized after pool borrow on both DEX legs (excludes trading fees + slippage)">
+            <div className={`font-mono tabular-nums font-bold text-sm tabular-nums ${netAprColor}`} title="Annualized after pool borrow on both DEX legs (excludes trading fees + slippage)">
               {fmtAPR(netApr)}
             </div>
-            <div className="text-[9px] text-neutral-600 font-mono uppercase tracking-wider">APR net</div>
+            <div className="text-[9px] text-neutral-600 font-mono tabular-nums uppercase tracking-wider">APR net</div>
           </div>
         )}
         <div className={`shrink-0 transition-transform ${expanded ? 'rotate-90' : ''}`}>
@@ -477,11 +477,11 @@ export default function FundingArbPage() {
                 <div className="flex items-baseline gap-3">
                   <TokenIconSimple symbol={data.summary.topSymbol} size={22} />
                   <span className="text-xl font-bold text-white">{data.summary.topSymbol}</span>
-                  <span className="ml-auto font-mono font-bold text-xl tabular-nums text-green-400">
+                  <span className="ml-auto font-mono tabular-nums font-bold text-xl tabular-nums text-green-400">
                     {fmtAPR(data.summary.topAnnualized)}
                   </span>
                 </div>
-                <div className="text-[10px] text-neutral-500 mt-1.5 font-mono">
+                <div className="text-[10px] text-neutral-500 mt-1.5 font-mono tabular-nums">
                   click to inspect ↓
                 </div>
               </Link>
@@ -545,7 +545,7 @@ export default function FundingArbPage() {
               <select
                 value={minVenues}
                 onChange={e => setMinVenues(Number(e.target.value))}
-                className="bg-transparent text-xs text-white font-mono focus:outline-none cursor-pointer"
+                className="bg-transparent text-xs text-white font-mono tabular-nums focus:outline-none cursor-pointer"
                 aria-label="Minimum venues per opportunity"
               >
                 {[2, 3, 5, 8, 10, 15].map(n => <option key={n} value={n} className="bg-hub-darker">{n}+</option>)}
@@ -556,7 +556,7 @@ export default function FundingArbPage() {
               <select
                 value={minSpread}
                 onChange={e => setMinSpread(Number(e.target.value))}
-                className="bg-transparent text-xs text-white font-mono focus:outline-none cursor-pointer"
+                className="bg-transparent text-xs text-white font-mono tabular-nums focus:outline-none cursor-pointer"
                 aria-label="Minimum 8h spread in basis points"
               >
                 <option value="0.01" className="bg-hub-darker">1 bp</option>
@@ -625,7 +625,7 @@ export default function FundingArbPage() {
                   <Activity className="w-4 h-4" />
                 </div>
                 <span className="text-sm font-medium">Failed to load</span>
-                <span className="text-[11px] text-neutral-500 font-mono">{String(error)}</span>
+                <span className="text-[11px] text-neutral-500 font-mono tabular-nums">{String(error)}</span>
               </div>
             </div>
           )}
@@ -657,7 +657,7 @@ export default function FundingArbPage() {
           </div>
         </div>
 
-        <div className="mt-4 text-[10px] text-neutral-600 font-mono flex items-center gap-3 flex-wrap">
+        <div className="mt-4 text-[10px] text-neutral-600 font-mono tabular-nums flex items-center gap-3 flex-wrap">
           <span className="inline-flex items-center gap-1">
             <Activity className="w-2.5 h-2.5" /> Data refreshes every 60s
           </span>

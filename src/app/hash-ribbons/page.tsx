@@ -221,32 +221,32 @@ export default function HashRibbonsPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
             <div className="card-premium p-3">
               <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 font-medium">Status</div>
-              <div className={`font-mono text-sm font-bold inline-flex items-center gap-1.5 ${computed.inCapitulation ? 'text-rose-400' : 'text-emerald-400'}`}>
+              <div className={`font-mono tabular-nums text-sm font-bold inline-flex items-center gap-1.5 ${computed.inCapitulation ? 'text-rose-400' : 'text-emerald-400'}`}>
                 {computed.inCapitulation ? <AlertTriangle className="w-3 h-3" /> : <Sparkles className="w-3 h-3" />}
                 {computed.inCapitulation ? 'Capitulation' : 'Healthy'}
               </div>
-              <div className="text-[10px] text-neutral-600 mt-0.5 font-mono">
+              <div className="text-[10px] text-neutral-600 mt-0.5 font-mono tabular-nums">
                 {computed.inCapitulation ? '30d MA < 60d MA' : '30d MA ≥ 60d MA'}
               </div>
             </div>
             <div className="card-premium p-3">
               <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 font-medium">Latest hash</div>
-              <div className="font-mono text-sm font-bold text-white">{fmtHash(computed.latest.hashTH)}</div>
-              <div className="text-[10px] text-neutral-600 mt-0.5 font-mono">{computed.latest.date}</div>
+              <div className="font-mono tabular-nums text-sm font-bold text-white">{fmtHash(computed.latest.hashTH)}</div>
+              <div className="text-[10px] text-neutral-600 mt-0.5 font-mono tabular-nums">{computed.latest.date}</div>
             </div>
             <div className="card-premium p-3">
               <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 font-medium">Last capitulation</div>
-              <div className="font-mono text-sm font-bold text-rose-300">
+              <div className="font-mono tabular-nums text-sm font-bold text-rose-300">
                 {computed.lastCapitulationStart ?? '—'}
               </div>
-              <div className="text-[10px] text-neutral-600 mt-0.5 font-mono">30d crossed below 60d</div>
+              <div className="text-[10px] text-neutral-600 mt-0.5 font-mono tabular-nums">30d crossed below 60d</div>
             </div>
             <div className="card-premium p-3">
               <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 font-medium">Last recovery</div>
-              <div className="font-mono text-sm font-bold text-emerald-300">
+              <div className="font-mono tabular-nums text-sm font-bold text-emerald-300">
                 {computed.lastRecoveryDate ?? '—'}
               </div>
-              <div className="text-[10px] text-neutral-600 mt-0.5 font-mono">historical buy signal</div>
+              <div className="text-[10px] text-neutral-600 mt-0.5 font-mono tabular-nums">historical buy signal</div>
             </div>
           </div>
         )}
@@ -304,7 +304,7 @@ export default function HashRibbonsPage() {
               {/* 30d MA */}
               <path d={chart.ma30Path} stroke="#34d399" strokeWidth={1.75} fill="none" />
             </svg>
-            <div className="flex justify-between text-[9px] text-neutral-600 font-mono mt-1">
+            <div className="flex justify-between text-[9px] text-neutral-600 font-mono tabular-nums mt-1">
               <span>{chart.pts[0]?.date}</span>
               <span>{chart.pts[chart.pts.length - 1]?.date}</span>
             </div>

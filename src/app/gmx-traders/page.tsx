@@ -332,7 +332,7 @@ function TraderRow({
             venues={[`gmx-${chain}`]}
             size={13}
           />
-          <span className="font-mono text-xs text-white font-medium">{shortAddr(t.address)}</span>
+          <span className="font-mono tabular-nums text-xs text-white font-medium">{shortAddr(t.address)}</span>
           {rank === 1 && <Trophy className="w-3 h-3 text-hub-yellow" />}
           {t.winRate >= 85 && t.totalTrades >= 50 && <Target className="w-3 h-3 text-green-400" aria-label="Sniper" />}
           {t.realizedPnl >= 1_000_000 && <Flame className="w-3 h-3 text-orange-400" aria-label=">$1M PnL" />}
@@ -349,7 +349,7 @@ function TraderRow({
 
       {/* PnL */}
       <div className="text-right w-[100px] md:w-[120px]">
-        <div className={`font-mono font-bold text-sm tabular-nums ${pnlColor}`}>
+        <div className={`font-mono tabular-nums font-bold text-sm tabular-nums ${pnlColor}`}>
           {fmtUSD(t.realizedPnl)}
         </div>
         <div
@@ -362,13 +362,13 @@ function TraderRow({
 
       {/* Volume */}
       <div className="text-right w-[90px] hidden md:block">
-        <div className="font-mono text-xs text-white tabular-nums">{fmtUSD(t.volume)}</div>
+        <div className="font-mono tabular-nums text-xs text-white tabular-nums">{fmtUSD(t.volume)}</div>
         <div className="text-[9px] text-neutral-600 font-mono tabular-nums">volume</div>
       </div>
 
       {/* Win Rate */}
       <div className="text-right w-[70px] hidden md:block">
-        <div className={`font-mono text-xs tabular-nums font-semibold ${wrColor}`}>
+        <div className={`font-mono tabular-nums text-xs tabular-nums font-semibold ${wrColor}`}>
           {t.winRate.toFixed(1)}%
         </div>
         <div className="text-[9px] text-neutral-600 font-mono tabular-nums">
@@ -402,7 +402,7 @@ function RecentTradeRow({ t }: { t: RecentTrade }) {
             {isWin ? 'WIN' : 'LOSS'}
           </span>
         </div>
-        <div className="text-[10px] text-neutral-600 font-mono truncate">
+        <div className="text-[10px] text-neutral-600 font-mono tabular-nums truncate">
           {fmtUSD(t.sizeUsd)} · {timeAgo(t.timestamp)}
           {t.executionPrice > 0 && (
             <> · @ ${t.executionPrice.toLocaleString('en-US', { maximumFractionDigits: t.executionPrice < 1 ? 4 : 2 })}</>
@@ -410,7 +410,7 @@ function RecentTradeRow({ t }: { t: RecentTrade }) {
         </div>
       </div>
       <div className="text-right whitespace-nowrap">
-        <div className={`text-xs font-mono font-semibold ${pnlColor} tabular-nums`}>
+        <div className={`text-xs font-mono tabular-nums font-semibold ${pnlColor} tabular-nums`}>
           {t.netPnl >= 0 ? '+' : ''}{fmtUSD(t.netPnl)}
         </div>
         <div className={`text-[9px] font-mono tabular-nums ${pctColor}`}>
@@ -455,7 +455,7 @@ function PositionRow({
         <div className="flex items-center gap-1.5 min-w-0">
           <span className="text-xs text-white font-semibold truncate">{symbol}</span>
           {p.leverage && (
-            <span className="text-[10px] font-mono text-hub-yellow/80 bg-hub-yellow/[0.08] px-1 rounded">
+            <span className="text-[10px] font-mono tabular-nums text-hub-yellow/80 bg-hub-yellow/[0.08] px-1 rounded">
               {p.leverage.toFixed(1)}×
             </span>
           )}
@@ -463,7 +463,7 @@ function PositionRow({
             <span className="text-[9px] text-orange-400/80 uppercase tracking-wider">depr.</span>
           )}
         </div>
-        <div className="text-[10px] text-neutral-600 font-mono truncate">
+        <div className="text-[10px] text-neutral-600 font-mono tabular-nums truncate">
           {fmtUSD(p.sizeUsd)} · entry ${p.entryPrice.toLocaleString('en-US', { maximumFractionDigits: p.entryPrice < 1 ? 4 : 2 })}
           {p.livePrice > 0 && p.entryPrice > 0 && (
             <> · now ${p.livePrice.toLocaleString('en-US', { maximumFractionDigits: p.livePrice < 1 ? 4 : 2 })}</>
@@ -471,7 +471,7 @@ function PositionRow({
         </div>
       </div>
       <div className="text-right whitespace-nowrap">
-        <div className={`text-xs font-mono font-semibold ${pnlColor} tabular-nums`}>
+        <div className={`text-xs font-mono tabular-nums font-semibold ${pnlColor} tabular-nums`}>
           {p.unrealizedPnl >= 0 ? '+' : ''}{fmtUSD(p.unrealizedPnl)}
         </div>
         <div className={`text-[9px] font-mono tabular-nums ${pctColor}`}>
@@ -523,11 +523,11 @@ function TraderDrawer({ address, chain, onClose }: { address: string; chain: Cha
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <BookmarkStar address={address} venues={[`gmx-${chain}`]} size={14} />
-            <span className="font-mono text-sm text-white font-bold truncate">{shortAddr(address)}</span>
+            <span className="font-mono tabular-nums text-sm text-white font-bold truncate">{shortAddr(address)}</span>
             <button onClick={copyAddr} className="text-neutral-500 hover:text-hub-yellow transition-colors" aria-label="Copy address">
               <Copy className="w-3 h-3" />
             </button>
-            {copied && <span className="text-[9px] text-green-400 font-mono">copied</span>}
+            {copied && <span className="text-[9px] text-green-400 font-mono tabular-nums">copied</span>}
             <a
               href={explorerUrl}
               target="_blank"
@@ -597,13 +597,13 @@ function TraderDrawer({ address, chain, onClose }: { address: string; chain: Cha
           <div className="grid grid-cols-2 gap-2 mb-4">
             <div className="bg-white/[0.02] rounded-lg p-2">
               <div className="text-[9px] text-neutral-500 uppercase tracking-wider mb-1">Total PnL</div>
-              <div className={`font-mono font-bold text-sm tabular-nums ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <div className={`font-mono tabular-nums font-bold text-sm tabular-nums ${totalPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {fmtUSD(totalPnl)}
               </div>
               <div className="text-[9px] text-neutral-600 mt-0.5">
-                <span className="font-mono">{fmtUSD(data.summary.realizedPnl)}</span> realized
+                <span className="font-mono tabular-nums">{fmtUSD(data.summary.realizedPnl)}</span> realized
                 {data.summary.unrealizedPnl !== 0 && (
-                  <> · <span className={`font-mono ${data.summary.unrealizedPnl >= 0 ? 'text-green-400/70' : 'text-red-400/70'}`}>
+                  <> · <span className={`font-mono tabular-nums ${data.summary.unrealizedPnl >= 0 ? 'text-green-400/70' : 'text-red-400/70'}`}>
                     {data.summary.unrealizedPnl >= 0 ? '+' : ''}{fmtUSD(data.summary.unrealizedPnl)}
                   </span> open</>
                 )}
@@ -611,24 +611,24 @@ function TraderDrawer({ address, chain, onClose }: { address: string; chain: Cha
             </div>
             <div className="bg-white/[0.02] rounded-lg p-2">
               <div className="text-[9px] text-neutral-500 uppercase tracking-wider mb-1">Win Rate</div>
-              <div className="font-mono font-bold text-sm tabular-nums text-white">
+              <div className="font-mono tabular-nums font-bold text-sm tabular-nums text-white">
                 {data.summary.winRate.toFixed(1)}%
               </div>
-              <div className="text-[9px] text-neutral-600 mt-0.5 font-mono">
+              <div className="text-[9px] text-neutral-600 mt-0.5 font-mono tabular-nums">
                 {data.summary.wins}W · {data.summary.losses}L
               </div>
             </div>
             <div className="bg-white/[0.02] rounded-lg p-2">
               <div className="text-[9px] text-neutral-500 uppercase tracking-wider mb-1">Volume</div>
-              <div className="font-mono text-xs tabular-nums text-white">{fmtUSD(data.summary.volume)}</div>
-              <div className="text-[9px] text-neutral-600 mt-0.5 font-mono">
+              <div className="font-mono tabular-nums text-xs tabular-nums text-white">{fmtUSD(data.summary.volume)}</div>
+              <div className="text-[9px] text-neutral-600 mt-0.5 font-mono tabular-nums">
                 {data.summary.totalTrades} trades
               </div>
             </div>
             <div className="bg-white/[0.02] rounded-lg p-2">
               <div className="text-[9px] text-neutral-500 uppercase tracking-wider mb-1">Max Capital</div>
-              <div className="font-mono text-xs tabular-nums text-white">{fmtUSD(data.summary.maxCapital)}</div>
-              <div className="text-[9px] text-neutral-600 mt-0.5 font-mono">
+              <div className="font-mono tabular-nums text-xs tabular-nums text-white">{fmtUSD(data.summary.maxCapital)}</div>
+              <div className="text-[9px] text-neutral-600 mt-0.5 font-mono tabular-nums">
                 Fees paid {fmtUSD(data.summary.realizedFees)}
               </div>
             </div>
@@ -842,7 +842,7 @@ export default function GMXTradersPage() {
                 >
                   <Eye className="w-3.5 h-3.5" />
                   Watchlist
-                  <span className="font-mono opacity-80">· {bookmarks.length}</span>
+                  <span className="font-mono tabular-nums opacity-80">· {bookmarks.length}</span>
                 </Link>
               )}
               {/* Chain segmented control — modernized to match the
@@ -882,7 +882,7 @@ export default function GMXTradersPage() {
                 value={lookupAddr}
                 onChange={e => setLookupAddr(e.target.value)}
                 placeholder="Paste any 0x… address for cross-platform view"
-                className="w-full bg-white/[0.02] border border-white/[0.06] rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/40 focus:bg-white/[0.04] font-mono transition-colors"
+                className="w-full bg-white/[0.02] border border-white/[0.06] rounded-lg pl-9 pr-3 py-2 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/40 focus:bg-white/[0.04] font-mono tabular-nums transition-colors"
                 aria-label="Lookup trader address"
               />
             </div>
@@ -969,7 +969,7 @@ export default function GMXTradersPage() {
               placeholder="Search address (0x…)"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full md:w-64 bg-white/[0.04] border border-white/[0.06] rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/[0.12] font-mono"
+              className="w-full md:w-64 bg-white/[0.04] border border-white/[0.06] rounded-lg px-3 py-1.5 text-xs text-white placeholder:text-neutral-600 focus:outline-none focus:border-white/[0.12] font-mono tabular-nums"
             />
             <button
               onClick={() => { if (data?.data) exportCSV(data.data, period, chain); }}
@@ -1048,7 +1048,7 @@ export default function GMXTradersPage() {
         </div>
 
         {/* Footer meta */}
-        <div className="mt-4 flex items-center gap-3 text-[10px] text-neutral-600 font-mono">
+        <div className="mt-4 flex items-center gap-3 text-[10px] text-neutral-600 font-mono tabular-nums">
           <span className="inline-flex items-center gap-1">
             <Activity className="w-2.5 h-2.5" /> Data from GMX V2 {chain === 'avalanche' ? 'Avalanche' : 'Arbitrum'} subgraph
           </span>

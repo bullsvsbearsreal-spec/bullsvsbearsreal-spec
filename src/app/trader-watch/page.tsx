@@ -461,7 +461,7 @@ export default function TraderWatchPage() {
         accentNoun="traders"
         accent="hub-yellow"
         description={
-          <span className="font-mono">
+          <span className="font-mono tabular-nums">
             <span className="text-white font-bold">{bookmarks.length}</span> {bookmarks.length === 1 ? 'trader' : 'traders'}
             {' · '}
             <span className="text-white font-bold">{positions.length}</span> open {positions.length === 1 ? 'position' : 'positions'}
@@ -558,7 +558,7 @@ export default function TraderWatchPage() {
           </button>
         ))}
         {(filterAddr || sideFilter !== 'all') && positions.length !== sorted.length && (
-          <span className="text-[10px] text-neutral-500 font-mono ml-1">
+          <span className="text-[10px] text-neutral-500 font-mono tabular-nums ml-1">
             {sorted.length} of {positions.length} shown
           </span>
         )}
@@ -650,7 +650,7 @@ function BookmarkChip({
   const label = bookmark.displayName?.trim() || trunc(bookmark.address);
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono border transition-colors ${
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono tabular-nums border transition-colors ${
         active
           ? 'bg-hub-yellow/[0.08] border-hub-yellow/40 text-white'
           : 'bg-white/[0.03] border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.10]'
@@ -760,7 +760,7 @@ function PositionRow({ p, onTraderClick }: { p: NormalizedPosition; onTraderClic
 
   return (
     <tr className={rowClass}>
-      <td className="px-3 py-2.5 font-mono text-[11px] whitespace-nowrap">
+      <td className="px-3 py-2.5 font-mono tabular-nums text-[11px] whitespace-nowrap">
         {/* Click trader label to filter — same action as the chip up
             top. Lets the user pivot to a single-trader view from any
             row without scrolling back up to the chip strip. */}
@@ -792,16 +792,16 @@ function PositionRow({ p, onTraderClick }: { p: NormalizedPosition; onTraderClic
           )}
         </span>
       </td>
-      <td className="px-3 py-2.5 font-mono text-white whitespace-nowrap">{fmtUsd(p.sizeUsd)}</td>
-      <td className="px-3 py-2.5 font-mono text-neutral-400 whitespace-nowrap">{fmtPrice(p.entryPrice)}</td>
-      <td className="px-3 py-2.5 font-mono text-white whitespace-nowrap">{fmtPrice(p.markPrice)}</td>
-      <td className={`px-3 py-2.5 font-mono whitespace-nowrap ${pnlColor}`}>
+      <td className="px-3 py-2.5 font-mono tabular-nums text-white whitespace-nowrap">{fmtUsd(p.sizeUsd)}</td>
+      <td className="px-3 py-2.5 font-mono tabular-nums text-neutral-400 whitespace-nowrap">{fmtPrice(p.entryPrice)}</td>
+      <td className="px-3 py-2.5 font-mono tabular-nums text-white whitespace-nowrap">{fmtPrice(p.markPrice)}</td>
+      <td className={`px-3 py-2.5 font-mono tabular-nums whitespace-nowrap ${pnlColor}`}>
         {fmtUsd(p.unrealizedPnl, { sign: true })}
         {p.pnlPct != null && (
           <div className="text-[10px] opacity-70">{fmtPct(p.pnlPct, { sign: true })}</div>
         )}
       </td>
-      <td className={`px-3 py-2.5 font-mono whitespace-nowrap ${liqColor}`}>
+      <td className={`px-3 py-2.5 font-mono tabular-nums whitespace-nowrap ${liqColor}`}>
         {p.liqPrice == null ? '—' : (
           <>
             {fmtPrice(p.liqPrice)}
@@ -815,7 +815,7 @@ function PositionRow({ p, onTraderClick }: { p: NormalizedPosition; onTraderClic
         )}
       </td>
       <td
-        className={`px-3 py-2.5 font-mono whitespace-nowrap ${fundingColor}`}
+        className={`px-3 py-2.5 font-mono tabular-nums whitespace-nowrap ${fundingColor}`}
         title={fundingTitle}
       >
         {fmtPct(p.funding8hPct, { sign: true, digits: 3 })}
@@ -857,7 +857,7 @@ function ActivityFeed({
       <div className="flex items-center gap-2 mb-2 flex-wrap">
         <Bell className="w-3.5 h-3.5 text-hub-yellow" />
         <h2 className="text-xs font-semibold text-white uppercase tracking-wider">Tracked activity</h2>
-        <span className="text-[10px] text-neutral-500 font-mono">{feed.length} events</span>
+        <span className="text-[10px] text-neutral-500 font-mono tabular-nums">{feed.length} events</span>
         {lastCheck && alertsEnabled && (
           <span className="text-[10px] text-neutral-600">
             · checked {Math.floor((nowTick - lastCheck) / 1000)}s ago
@@ -924,7 +924,7 @@ function ActivityFeed({
                   {a.displayName || `${a.address.slice(0, 6)}…${a.address.slice(-4)}`}
                 </span>
                 <span className="text-[10px] text-neutral-400 truncate flex-1">{a.details}</span>
-                <span className="text-[9px] text-neutral-600 font-mono flex-shrink-0">{agoStr}</span>
+                <span className="text-[9px] text-neutral-600 font-mono tabular-nums flex-shrink-0">{agoStr}</span>
               </Link>
             );
           })}

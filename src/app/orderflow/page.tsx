@@ -327,15 +327,15 @@ export default function OrderflowPage() {
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mb-6">
                     <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                       <p className="text-xs text-neutral-500">Avg Mid Price</p>
-                      <p className={`text-lg font-bold text-white font-mono ${avgMidFlash || ''}`}>{formatPrice(multiSummary.avgMid)}</p>
+                      <p className={`text-lg font-bold text-white font-mono tabular-nums ${avgMidFlash || ''}`}>{formatPrice(multiSummary.avgMid)}</p>
                     </div>
                     <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                       <p className="text-xs text-neutral-500">Total Bid Depth</p>
-                      <p className={`text-lg font-bold text-green-400 font-mono ${totalBidFlash || ''}`}>{formatUsd(multiSummary.totalBid)}</p>
+                      <p className={`text-lg font-bold text-green-400 font-mono tabular-nums ${totalBidFlash || ''}`}>{formatUsd(multiSummary.totalBid)}</p>
                     </div>
                     <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                       <p className="text-xs text-neutral-500">Total Ask Depth</p>
-                      <p className={`text-lg font-bold text-red-400 font-mono ${totalAskFlash || ''}`}>{formatUsd(multiSummary.totalAsk)}</p>
+                      <p className={`text-lg font-bold text-red-400 font-mono tabular-nums ${totalAskFlash || ''}`}>{formatUsd(multiSummary.totalAsk)}</p>
                     </div>
                     <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                       <p className="text-xs text-neutral-500">Bid/Ask Ratio</p>
@@ -343,14 +343,14 @@ export default function OrderflowPage() {
                         <div className="flex-1 h-3 rounded-full overflow-hidden bg-red-500/20 flex">
                           <div className="h-full bg-green-500/60 transition-all" style={{ width: `${multiSummary.ratio * 100}%` }} />
                         </div>
-                        <span className={`text-xs font-bold font-mono ${multiSummary.ratio >= 0.5 ? 'text-green-400' : 'text-red-400'}`}>
+                        <span className={`text-xs font-bold font-mono tabular-nums ${multiSummary.ratio >= 0.5 ? 'text-green-400' : 'text-red-400'}`}>
                           {(multiSummary.ratio * 100).toFixed(0)}%
                         </span>
                       </div>
                     </div>
                     <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                       <p className="text-xs text-neutral-500">Exchanges</p>
-                      <p className="text-lg font-bold text-white font-mono">{multiSummary.exchangeCount}</p>
+                      <p className="text-lg font-bold text-white font-mono tabular-nums">{multiSummary.exchangeCount}</p>
                     </div>
                   </div>
                 )}
@@ -393,22 +393,22 @@ export default function OrderflowPage() {
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
                   <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                     <p className="text-xs text-neutral-500">Mid Price</p>
-                    <p className="text-lg font-bold text-white font-mono">{formatPrice(obData.midPrice)}</p>
+                    <p className="text-lg font-bold text-white font-mono tabular-nums">{formatPrice(obData.midPrice)}</p>
                   </div>
                   <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                     <p className="text-xs text-neutral-500">Spread</p>
-                    <p className="text-lg font-bold text-white font-mono">{formatPrice(obData.spread)}</p>
+                    <p className="text-lg font-bold text-white font-mono tabular-nums">{formatPrice(obData.spread)}</p>
                     <p className="text-xs text-neutral-500">
                       {obData.midPrice > 0 ? ((obData.spread / obData.midPrice) * 100).toFixed(4) : '0'}%
                     </p>
                   </div>
                   <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                     <p className="text-xs text-neutral-500">Bid Depth</p>
-                    <p className="text-lg font-bold text-green-400 font-mono">{formatUsd(obData.bidDepth)}</p>
+                    <p className="text-lg font-bold text-green-400 font-mono tabular-nums">{formatUsd(obData.bidDepth)}</p>
                   </div>
                   <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                     <p className="text-xs text-neutral-500">Ask Depth</p>
-                    <p className="text-lg font-bold text-red-400 font-mono">{formatUsd(obData.askDepth)}</p>
+                    <p className="text-lg font-bold text-red-400 font-mono tabular-nums">{formatUsd(obData.askDepth)}</p>
                   </div>
                 </div>
 
@@ -462,8 +462,8 @@ export default function OrderflowPage() {
                           return (
                             <div key={i} className="relative flex items-center justify-between px-4 py-[5px] hover:bg-white/[0.02] transition-colors">
                               <div className="absolute inset-y-0 left-0 bg-green-500/10 transition-all" style={{ width: `${pct}%` }} />
-                              <span className="relative text-xs text-neutral-400 font-mono">{formatQty(bid.quantity)}</span>
-                              <span className="relative text-xs text-green-400 font-mono font-medium">{formatPrice(bid.price)}</span>
+                              <span className="relative text-xs text-neutral-400 font-mono tabular-nums">{formatQty(bid.quantity)}</span>
+                              <span className="relative text-xs text-green-400 font-mono tabular-nums font-medium">{formatPrice(bid.price)}</span>
                             </div>
                           );
                         })}
@@ -474,8 +474,8 @@ export default function OrderflowPage() {
                           return (
                             <div key={i} className="relative flex items-center justify-between px-4 py-[5px] hover:bg-white/[0.02] transition-colors">
                               <div className="absolute inset-y-0 right-0 bg-red-500/10 transition-all" style={{ width: `${pct}%` }} />
-                              <span className="relative text-xs text-red-400 font-mono font-medium">{formatPrice(ask.price)}</span>
-                              <span className="relative text-xs text-neutral-400 font-mono">{formatQty(ask.quantity)}</span>
+                              <span className="relative text-xs text-red-400 font-mono tabular-nums font-medium">{formatPrice(ask.price)}</span>
+                              <span className="relative text-xs text-neutral-400 font-mono tabular-nums">{formatQty(ask.quantity)}</span>
                             </div>
                           );
                         })}
@@ -504,10 +504,10 @@ export default function OrderflowPage() {
                             const timeStr = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
                             return (
                               <tr key={i} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
-                                <td className={`px-3 py-[5px] text-xs font-mono font-medium ${isBuy ? 'text-green-400' : 'text-red-400'}`}>
+                                <td className={`px-3 py-[5px] text-xs font-mono tabular-nums font-medium ${isBuy ? 'text-green-400' : 'text-red-400'}`}>
                                   {formatPrice(trade.price)}
                                 </td>
-                                <td className="px-3 py-[5px] text-xs font-mono text-neutral-400 text-right">
+                                <td className="px-3 py-[5px] text-xs font-mono tabular-nums text-neutral-400 text-right">
                                   {formatQty(trade.quantity)}
                                 </td>
                                 <td className="px-3 py-[5px] text-xs text-neutral-600 text-right">{timeStr}</td>

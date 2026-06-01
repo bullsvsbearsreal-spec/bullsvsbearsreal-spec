@@ -243,15 +243,15 @@ export default async function LeaderboardPage({
         <div className="fixed bottom-0 left-0 right-0 z-30 bg-amber-500/[0.06] backdrop-blur-md border-t border-amber-400/20">
           <div className="max-w-[1100px] mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-3 min-w-0">
-              <span className="font-mono text-amber-200 font-bold whitespace-nowrap">
+              <span className="font-mono tabular-nums text-amber-200 font-bold whitespace-nowrap">
                 You · #{board.yours.rank}
               </span>
               <span className="text-neutral-400 truncate hidden sm:block">{board.yours.displayName}</span>
             </div>
             <div className="flex items-center gap-4 sm:gap-6 whitespace-nowrap">
-              <span><span className="text-neutral-500">Earned</span> <span className="font-mono text-emerald-300 font-semibold">{fmtUSD(board.yours.earned)}</span></span>
-              <span><span className="text-neutral-500">Pending</span> <span className="font-mono text-amber-300 font-semibold">{fmtUSD(board.yours.pending)}</span></span>
-              <span className="hidden sm:inline"><span className="text-neutral-500">Convs</span> <span className="font-mono text-white">{board.yours.conversions}</span></span>
+              <span><span className="text-neutral-500">Earned</span> <span className="font-mono tabular-nums text-emerald-300 font-semibold">{fmtUSD(board.yours.earned)}</span></span>
+              <span><span className="text-neutral-500">Pending</span> <span className="font-mono tabular-nums text-amber-300 font-semibold">{fmtUSD(board.yours.pending)}</span></span>
+              <span className="hidden sm:inline"><span className="text-neutral-500">Convs</span> <span className="font-mono tabular-nums text-white">{board.yours.conversions}</span></span>
               <Link
                 href="/settings/referrals"
                 className="text-amber-200 hover:text-amber-100 underline-offset-2 hover:underline"
@@ -280,7 +280,7 @@ function LeaderRowItem({ row }: { row: LeaderRow }) {
 
   return (
     <li className="grid grid-cols-[60px_1fr_110px_110px_90px_90px] sm:grid-cols-[60px_1fr_120px_120px_100px_100px] gap-2 px-4 py-2.5 items-center text-xs hover:bg-white/[0.02] transition-colors">
-      <div className={`font-mono font-bold text-base sm:text-lg ${rankColor}`}>
+      <div className={`font-mono tabular-nums font-bold text-base sm:text-lg ${rankColor}`}>
         {isTop3 ? <span aria-hidden>{['🥇','🥈','🥉'][row.rank - 1]}</span> : `#${row.rank}`}
       </div>
       <div className="min-w-0">
@@ -291,16 +291,16 @@ function LeaderRowItem({ row }: { row: LeaderRow }) {
           <div className="text-[10px] text-neutral-600">anonymous</div>
         )}
       </div>
-      <div className="text-right font-mono font-semibold text-emerald-300">
+      <div className="text-right font-mono tabular-nums font-semibold text-emerald-300">
         {fmtUSD(row.earned)}
       </div>
-      <div className="text-right font-mono font-semibold text-amber-300/90">
+      <div className="text-right font-mono tabular-nums font-semibold text-amber-300/90">
         {fmtUSD(row.pending)}
       </div>
-      <div className="text-right font-mono text-neutral-300 hidden sm:block">{row.signups}</div>
-      <div className="text-right font-mono text-neutral-300 hidden sm:block">{row.conversions}</div>
+      <div className="text-right font-mono tabular-nums text-neutral-300 hidden sm:block">{row.signups}</div>
+      <div className="text-right font-mono tabular-nums text-neutral-300 hidden sm:block">{row.conversions}</div>
       {/* Mobile: signups · convs collapsed */}
-      <div className="text-right font-mono text-neutral-400 sm:hidden text-[11px]">
+      <div className="text-right font-mono tabular-nums text-neutral-400 sm:hidden text-[11px]">
         {row.signups}<span className="text-neutral-700 mx-1">·</span>{row.conversions}
       </div>
     </li>

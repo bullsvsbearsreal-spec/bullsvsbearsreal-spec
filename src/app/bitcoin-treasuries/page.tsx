@@ -360,7 +360,7 @@ export default function BitcoinTreasuriesPage() {
                     Total BTC Held
                   </p>
                 </div>
-                <p className={`text-xl font-bold text-white font-mono ${btcFlash}`}>
+                <p className={`text-xl font-bold text-white font-mono tabular-nums ${btcFlash}`}>
                   {data.totalBTC.toLocaleString()}
                 </p>
                 <p className="text-xs text-neutral-600 mt-0.5">
@@ -376,7 +376,7 @@ export default function BitcoinTreasuriesPage() {
                     Total Value
                   </p>
                 </div>
-                <p className={`text-xl font-bold text-white font-mono ${valueFlash}`}>
+                <p className={`text-xl font-bold text-white font-mono tabular-nums ${valueFlash}`}>
                   {formatUSD(data.totalValueUsd)}
                 </p>
                 <p className="text-xs text-neutral-600 mt-0.5">
@@ -392,7 +392,7 @@ export default function BitcoinTreasuriesPage() {
                     BTC Price
                   </p>
                 </div>
-                <p className={`text-xl font-bold text-white font-mono ${priceFlash}`}>
+                <p className={`text-xl font-bold text-white font-mono tabular-nums ${priceFlash}`}>
                   ${data.price.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
                 </p>
                 <p className="text-xs text-neutral-600 mt-0.5">
@@ -507,14 +507,14 @@ export default function BitcoinTreasuriesPage() {
                           key={holder.name}
                           className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
                         >
-                          <td className="px-4 py-3 text-xs text-neutral-600 font-mono">{idx + 1}</td>
+                          <td className="px-4 py-3 text-xs text-neutral-600 font-mono tabular-nums">{idx + 1}</td>
                           <td className="px-4 py-3">
                             <div className="flex items-center gap-2">
                               <TypeIcon type={holder.type} />
                               <div>
                                 <span className="text-white font-semibold text-sm">{holder.name}</span>
                                 {holder.ticker && (
-                                  <span className="text-hub-yellow text-xs ml-2 font-mono">{holder.ticker}</span>
+                                  <span className="text-hub-yellow text-xs ml-2 font-mono tabular-nums">{holder.ticker}</span>
                                 )}
                                 {/* Show type badge inline on mobile */}
                                 <span className={`sm:hidden ml-2 inline-flex px-1.5 py-0.5 rounded text-[10px] font-semibold ${badge.bg} ${badge.text}`}>
@@ -528,10 +528,10 @@ export default function BitcoinTreasuriesPage() {
                               {badge.label}
                             </span>
                           </td>
-                          <td className="px-4 py-3 text-right font-mono text-sm text-white font-semibold">
+                          <td className="px-4 py-3 text-right font-mono tabular-nums text-sm text-white font-semibold">
                             {holder.btcHoldings.toLocaleString()}
                           </td>
-                          <td className="px-4 py-3 text-right font-mono text-sm text-neutral-400">
+                          <td className="px-4 py-3 text-right font-mono tabular-nums text-sm text-neutral-400">
                             {formatUSD(holder.estimatedValueUsd)}
                           </td>
                           <td className="px-4 py-3 text-right">
@@ -542,7 +542,7 @@ export default function BitcoinTreasuriesPage() {
                                   style={{ width: `${Math.min(pctSupply / 3 * 100, 100)}%` }}
                                 />
                               </div>
-                              <span className="font-mono text-sm text-neutral-400">
+                              <span className="font-mono tabular-nums text-sm text-neutral-400">
                                 {pctSupply >= 0.01 ? pctSupply.toFixed(2) : pctSupply.toFixed(4)}%
                               </span>
                             </div>

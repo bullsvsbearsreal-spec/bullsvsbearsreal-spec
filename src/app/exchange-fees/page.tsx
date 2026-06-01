@@ -151,7 +151,7 @@ export default function ExchangeFeesPage() {
           icon={DollarSign}
           eyebrow="Fees · maker/taker schedule"
           eyebrowExtra={
-            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">
+            <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono tabular-nums">
               {FEES.length} venues · curated
             </span>
           }
@@ -181,7 +181,7 @@ export default function ExchangeFeesPage() {
             <div className="font-mono tabular-nums text-sm font-semibold text-white">
               {cheapestPerpTaker.name}
             </div>
-            <div className="text-[10px] text-green-400 mt-0.5 font-mono">{fmtFee(cheapestPerpTaker.perp.taker)}</div>
+            <div className="text-[10px] text-green-400 mt-0.5 font-mono tabular-nums">{fmtFee(cheapestPerpTaker.perp.taker)}</div>
           </div>
           <div className="card-premium p-3">
             <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 font-medium inline-flex items-center gap-1">
@@ -190,7 +190,7 @@ export default function ExchangeFeesPage() {
             <div className="font-mono tabular-nums text-sm font-semibold text-white">
               {cheapestSpotTaker?.name ?? '—'}
             </div>
-            <div className="text-[10px] text-green-400 mt-0.5 font-mono">{cheapestSpotTaker ? fmtFee(cheapestSpotTaker.spot!.taker) : '—'}</div>
+            <div className="text-[10px] text-green-400 mt-0.5 font-mono tabular-nums">{cheapestSpotTaker ? fmtFee(cheapestSpotTaker.spot!.taker) : '—'}</div>
           </div>
           <div className="card-premium p-3">
             <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 font-medium inline-flex items-center gap-1">
@@ -199,7 +199,7 @@ export default function ExchangeFeesPage() {
             <div className="font-mono tabular-nums text-sm font-semibold text-white">
               {bestMakerRebate.name}
             </div>
-            <div className="text-[10px] text-green-400 mt-0.5 font-mono">{fmtFee(bestMakerRebate.perp.maker)}</div>
+            <div className="text-[10px] text-green-400 mt-0.5 font-mono tabular-nums">{fmtFee(bestMakerRebate.perp.maker)}</div>
           </div>
           <div className="card-premium p-3">
             <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 font-medium inline-flex items-center gap-1">
@@ -208,7 +208,7 @@ export default function ExchangeFeesPage() {
             <div className="font-mono tabular-nums text-sm font-semibold text-white">
               {highestAffiliate?.name || '—'}
             </div>
-            <div className="text-[10px] text-hub-yellow mt-0.5 font-mono">{highestAffiliate?.affiliate?.rebate || '—'}</div>
+            <div className="text-[10px] text-hub-yellow mt-0.5 font-mono tabular-nums">{highestAffiliate?.affiliate?.rebate || '—'}</div>
           </div>
         </div>
 
@@ -217,7 +217,7 @@ export default function ExchangeFeesPage() {
           <div className="flex items-center gap-2 mb-3">
             <Calculator className="w-4 h-4 text-hub-yellow" />
             <h2 className="text-sm font-bold text-white">Cost calculator</h2>
-            <span className="text-[10px] text-neutral-500 font-mono">round-trip · per {fmtUsd(calcSize * 2)} traded</span>
+            <span className="text-[10px] text-neutral-500 font-mono tabular-nums">round-trip · per {fmtUsd(calcSize * 2)} traded</span>
           </div>
 
           <div className="grid sm:grid-cols-2 gap-4 mb-4">
@@ -235,7 +235,7 @@ export default function ExchangeFeesPage() {
                 className="w-full accent-hub-yellow"
                 aria-label="Position size in USD"
               />
-              <div className="flex justify-between text-[10px] text-neutral-600 font-mono mt-1">
+              <div className="flex justify-between text-[10px] text-neutral-600 font-mono tabular-nums mt-1">
                 <span>$100</span><span>$1k</span><span>$10k</span><span>$100k</span><span>$1M</span>
               </div>
             </div>
@@ -254,7 +254,7 @@ export default function ExchangeFeesPage() {
                 className="w-full accent-hub-yellow"
                 aria-label="Taker fill percentage"
               />
-              <div className="flex justify-between text-[10px] text-neutral-600 font-mono mt-1">
+              <div className="flex justify-between text-[10px] text-neutral-600 font-mono tabular-nums mt-1">
                 <span>all maker</span><span>50/50</span><span>all taker</span>
               </div>
             </div>
@@ -296,9 +296,9 @@ export default function ExchangeFeesPage() {
             <p className="text-[11px] text-neutral-500 mt-3 leading-relaxed inline-flex items-start gap-1.5">
               <Sparkles className="w-3 h-3 text-hub-yellow mt-0.5 flex-shrink-0" />
               Switching from a median-priced venue to the cheapest saves{' '}
-              <span className="text-emerald-400 font-semibold font-mono">{fmtUsd(calc.median.cost - calc.cheapest.cost)}</span>{' '}
+              <span className="text-emerald-400 font-semibold font-mono tabular-nums">{fmtUsd(calc.median.cost - calc.cheapest.cost)}</span>{' '}
               per round-trip. At 1 RT/day that&apos;s{' '}
-              <span className="text-emerald-400 font-semibold font-mono">{fmtUsd((calc.median.cost - calc.cheapest.cost) * 30)}</span>/month{' '}
+              <span className="text-emerald-400 font-semibold font-mono tabular-nums">{fmtUsd((calc.median.cost - calc.cheapest.cost) * 30)}</span>/month{' '}
               on {fmtUsd(monthlyVolume)} of monthly volume.
             </p>
           )}
@@ -388,7 +388,7 @@ export default function ExchangeFeesPage() {
                   <div className="text-sm text-white font-semibold truncate flex items-center gap-1.5">
                     {r.name}
                     {r.vipFloor && (
-                      <span className="text-[9px] text-neutral-600 font-mono uppercase border border-white/[0.06] rounded px-1 py-px">VIP</span>
+                      <span className="text-[9px] text-neutral-600 font-mono tabular-nums uppercase border border-white/[0.06] rounded px-1 py-px">VIP</span>
                     )}
                   </div>
                   {r.notes && (
@@ -396,24 +396,24 @@ export default function ExchangeFeesPage() {
                   )}
                 </div>
               </div>
-              <div className="text-[10px] text-neutral-500 font-mono uppercase">{r.kind}</div>
-              <div className="text-right font-mono text-xs tabular-nums text-neutral-300">
+              <div className="text-[10px] text-neutral-500 font-mono tabular-nums uppercase">{r.kind}</div>
+              <div className="text-right font-mono tabular-nums text-xs tabular-nums text-neutral-300">
                 {r.spot ? fmtFee(r.spot.maker) : <span className="text-neutral-700">—</span>}
               </div>
-              <div className="text-right font-mono text-xs tabular-nums text-neutral-300">
+              <div className="text-right font-mono tabular-nums text-xs tabular-nums text-neutral-300">
                 {r.spot ? fmtFee(r.spot.taker) : <span className="text-neutral-700">—</span>}
               </div>
-              <div className={`text-right font-mono text-xs tabular-nums ${r.perp.maker < 0 ? 'text-green-400 font-semibold' : 'text-neutral-300'}`}>
+              <div className={`text-right font-mono tabular-nums text-xs tabular-nums ${r.perp.maker < 0 ? 'text-green-400 font-semibold' : 'text-neutral-300'}`}>
                 {fmtFee(r.perp.maker)}
               </div>
-              <div className="text-right font-mono text-xs tabular-nums text-white font-semibold">
+              <div className="text-right font-mono tabular-nums text-xs tabular-nums text-white font-semibold">
                 {fmtFee(r.perp.taker)}
               </div>
-              <div className="text-right font-mono text-[10px] tabular-nums text-neutral-500">
+              <div className="text-right font-mono tabular-nums text-[10px] tabular-nums text-neutral-500">
                 <div>{r.withdrawalBtc ?? <span className="text-neutral-700">—</span>}</div>
                 <div className="text-neutral-600">{r.withdrawalUsdt ?? ''}</div>
               </div>
-              <div className="text-right text-[10px] font-mono">
+              <div className="text-right text-[10px] font-mono tabular-nums">
                 {r.affiliate ? (
                   <span className="text-hub-yellow">{r.affiliate.rebate}</span>
                 ) : (

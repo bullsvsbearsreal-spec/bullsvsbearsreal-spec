@@ -270,7 +270,7 @@ export default function ETFPage() {
                 </div>
                 {stats.leadFund.price ? (
                   <>
-                    <p className={`text-xl font-bold text-white font-mono ${priceFlash}`}>${stats.leadFund.price.toFixed(2)}</p>
+                    <p className={`text-xl font-bold text-white font-mono tabular-nums ${priceFlash}`}>${stats.leadFund.price.toFixed(2)}</p>
                     {stats.leadFund.change24h !== null && (
                       <span className={`delta-badge text-[11px] mt-1 ${
                         Math.abs(stats.leadFund.change24h) >= 5
@@ -292,7 +292,7 @@ export default function ETFPage() {
                   <Activity className="w-3.5 h-3.5 text-blue-400" />
                   <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Daily Volume</p>
                 </div>
-                <p className={`text-xl font-bold text-white font-mono ${volumeFlash}`}>
+                <p className={`text-xl font-bold text-white font-mono tabular-nums ${volumeFlash}`}>
                   {data.summary.dailyVolume ? formatUSD(data.summary.dailyVolume) : '—'}
                 </p>
                 <p className="text-xs text-neutral-600 mt-0.5">
@@ -318,7 +318,7 @@ export default function ETFPage() {
                   <Percent className="w-3.5 h-3.5 text-green-400" />
                   <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Lowest Fee</p>
                 </div>
-                <p className="text-xl font-bold text-green-400 font-mono">{stats.lowestFee.toFixed(2)}%</p>
+                <p className="text-xl font-bold text-green-400 font-mono tabular-nums">{stats.lowestFee.toFixed(2)}%</p>
                 <p className="text-xs text-neutral-600 mt-0.5">{stats.lowestFeeTicker} — Avg {stats.avgFee.toFixed(2)}%</p>
               </div>
             </div>
@@ -336,7 +336,7 @@ export default function ETFPage() {
                     </p>
                   </div>
                   {stats.leadFund.price && stats.leadFund.change24h !== null && (
-                    <div className={`px-3 py-1 rounded-lg text-xs font-bold font-mono ${
+                    <div className={`px-3 py-1 rounded-lg text-xs font-bold font-mono tabular-nums ${
                       stats.leadFund.change24h >= 0
                         ? 'bg-green-500/10 text-green-400'
                         : 'bg-red-500/10 text-red-400'
@@ -418,7 +418,7 @@ export default function ETFPage() {
                         key={fund.ticker}
                         className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors"
                       >
-                        <td className="px-4 py-3 text-xs text-neutral-600 font-mono">{idx + 1}</td>
+                        <td className="px-4 py-3 text-xs text-neutral-600 font-mono tabular-nums">{idx + 1}</td>
                         <td className="px-4 py-3">
                           <div>
                             <span className="text-hub-yellow font-bold text-sm">{fund.ticker}</span>
@@ -432,7 +432,7 @@ export default function ETFPage() {
                         </td>
                         <td className="px-4 py-3 text-right">
                           <span
-                            className={`font-mono text-sm font-semibold ${
+                            className={`font-mono tabular-nums text-sm font-semibold ${
                               fund.fee <= 0.20
                                 ? 'text-green-400'
                                 : fund.fee <= 0.25
@@ -447,7 +447,7 @@ export default function ETFPage() {
                         </td>
                         {hasLiveData && (
                           <>
-                            <td className="px-4 py-3 text-right font-mono text-sm text-white">
+                            <td className="px-4 py-3 text-right font-mono tabular-nums text-sm text-white">
                               {fund.price ? `$${fund.price.toFixed(2)}` : '—'}
                             </td>
                             <td className="px-4 py-3 text-right">
@@ -463,7 +463,7 @@ export default function ETFPage() {
                                 <span className="text-neutral-600">—</span>
                               )}
                             </td>
-                            <td className="px-4 py-3 text-right font-mono text-sm text-neutral-400">
+                            <td className="px-4 py-3 text-right font-mono tabular-nums text-sm text-neutral-400">
                               {fund.volume ? formatUSD(fund.volume) : '—'}
                             </td>
                           </>
@@ -493,7 +493,7 @@ export default function ETFPage() {
                     const pct = maxFee > 0 ? (fund.fee / maxFee) * 100 : 0;
                     return (
                       <div key={fund.ticker} className="flex items-center gap-3 group">
-                        <span className="text-xs text-hub-yellow font-bold w-12 text-right font-mono">
+                        <span className="text-xs text-hub-yellow font-bold w-12 text-right font-mono tabular-nums">
                           {fund.ticker}
                         </span>
                         <div className="flex-1 h-6 bg-white/[0.03] rounded overflow-hidden relative">
@@ -513,7 +513,7 @@ export default function ETFPage() {
                             {fund.issuer}
                           </span>
                         </div>
-                        <span className="text-xs font-mono text-neutral-400 w-14 text-right">
+                        <span className="text-xs font-mono tabular-nums text-neutral-400 w-14 text-right">
                           {fund.fee.toFixed(2)}%
                         </span>
                       </div>

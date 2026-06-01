@@ -93,7 +93,7 @@ function MetricCard({ icon, label, value, sub, accent, className = '' }: {
         {icon}
         <span className="text-[11px] text-neutral-500 uppercase tracking-wider font-medium">{label}</span>
       </div>
-      <p className="text-2xl font-bold text-white font-mono leading-none">{value}</p>
+      <p className="text-2xl font-bold text-white font-mono tabular-nums leading-none">{value}</p>
       {sub && <div className="mt-2">{sub}</div>}
     </div>
   );
@@ -131,7 +131,7 @@ function BasisDistributionChart({ data }: { data: BasisEntry[] }) {
         const isNeg = i < 4;
         return (
           <div key={b.label} className="group text-center">
-            <p className="text-[10px] font-mono font-semibold text-neutral-400 mb-0.5 group-hover:text-white transition-colors">
+            <p className="text-[10px] font-mono tabular-nums font-semibold text-neutral-400 mb-0.5 group-hover:text-white transition-colors">
               {b.count.toLocaleString()}
             </p>
             <div className="h-10 flex items-end">
@@ -205,10 +205,10 @@ function TopBasisChart({ entries, direction }: { entries: BasisEntry[]; directio
             top: `${clampedTop}px`,
           }}
         >
-          <p className="text-[11px] font-bold text-white font-mono">{hoveredEntry.symbol}</p>
+          <p className="text-[11px] font-bold text-white font-mono tabular-nums">{hoveredEntry.symbol}</p>
           <p className="text-[10px] text-neutral-400">{hoveredEntry.exchange}</p>
           <div className="flex items-center gap-2 mt-1">
-            <span className={`text-[11px] font-mono font-bold ${isGreen ? 'text-green-400' : 'text-red-400'}`}>
+            <span className={`text-[11px] font-mono tabular-nums font-bold ${isGreen ? 'text-green-400' : 'text-red-400'}`}>
               {formatBasis(hoveredEntry.basis)}
             </span>
             <span className="text-[10px] text-neutral-500">
@@ -291,10 +291,10 @@ function PremiumDiscountSplit({ premiumCount, discountCount, avgBasis }: {
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded bg-green-500/70" />
           <span className="text-green-400 font-medium">Premium</span>
-          <span className="text-white font-mono font-semibold">{premiumCount}</span>
+          <span className="text-white font-mono tabular-nums font-semibold">{premiumCount}</span>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-white font-mono font-semibold">{discountCount}</span>
+          <span className="text-white font-mono tabular-nums font-semibold">{discountCount}</span>
           <span className="text-red-400 font-medium">Discount</span>
           <div className="w-3 h-3 rounded bg-red-500/70" />
         </div>
@@ -309,7 +309,7 @@ function PremiumDiscountSplit({ premiumCount, discountCount, avgBasis }: {
           style={{ width: `${discPct}%` }}
         />
       </div>
-      <div className="flex justify-between text-xs text-neutral-500 mt-2 font-mono">
+      <div className="flex justify-between text-xs text-neutral-500 mt-2 font-mono tabular-nums">
         <span>{premPct.toFixed(1)}%</span>
         <span className="text-neutral-600 italic font-sans text-[11px]">{sentiment}</span>
         <span>{discPct.toFixed(1)}%</span>
@@ -353,7 +353,7 @@ function ExchangeBasisCard({ exchange, entries, isActive, onClick }: {
           <div className="h-full bg-green-500/60 rounded-l-full" style={{ width: `${premPct}%` }} />
           <div className="h-full bg-red-500/60 rounded-r-full" style={{ width: `${100 - premPct}%` }} />
         </div>
-        <span className="text-[10px] text-neutral-500 font-mono">{entries.length}</span>
+        <span className="text-[10px] text-neutral-500 font-mono tabular-nums">{entries.length}</span>
       </div>
     </button>
   );
@@ -661,7 +661,7 @@ export default function BasisPage() {
                 icon={<ArrowLeftRight className="w-4 h-4 text-purple-400" />}
                 title="Premium / Discount Split"
                 subtitle="Market-wide futures vs spot positioning"
-                right={<span className="text-xs text-neutral-500 font-mono">{basisData.length} pairs</span>}
+                right={<span className="text-xs text-neutral-500 font-mono tabular-nums">{basisData.length} pairs</span>}
               />
               <div className="flex items-center gap-6">
                 {/* Donut */}
@@ -754,7 +754,7 @@ export default function BasisPage() {
                         <Globe className="w-4 h-4 text-neutral-400" />
                         <span className="text-white text-xs font-semibold">All Exchanges</span>
                       </div>
-                      <span className="text-[10px] text-neutral-500 font-mono">{basisData.length}</span>
+                      <span className="text-[10px] text-neutral-500 font-mono tabular-nums">{basisData.length}</span>
                     </div>
                   </button>
                   {exchanges.map(ex => (
@@ -934,7 +934,7 @@ export default function BasisPage() {
                 <span>
                   <span className="text-success font-medium">Positive basis (premium)</span> = futures trading above spot; traders are bullish.{' '}
                   <span className="text-danger font-medium">Negative basis (discount)</span> = futures trading below spot; traders are bearish.{' '}
-                  Basis is calculated as <span className="text-neutral-400 font-mono">(markPrice - indexPrice) / indexPrice x 100</span>.
+                  Basis is calculated as <span className="text-neutral-400 font-mono tabular-nums">(markPrice - indexPrice) / indexPrice x 100</span>.
                   Large premiums often precede funding rate increases.
                 </span>
               </p>

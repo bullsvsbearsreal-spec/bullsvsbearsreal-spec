@@ -94,7 +94,7 @@ function SentimentGauge({ longPct, hasActivity }: { longPct: number; hasActivity
       </div>
       <div className="flex items-baseline gap-2 mb-2">
         <span className={`text-lg font-bold ${color}`}>{label}</span>
-        <span className="text-xs text-neutral-500 font-mono">
+        <span className="text-xs text-neutral-500 font-mono tabular-nums">
           {hasActivity ? `${pct.toFixed(0)}% long · ${(100 - pct).toFixed(0)}% short` : 'no open positions'}
         </span>
       </div>
@@ -149,7 +149,7 @@ function WalletRow({ w, rank }: { w: SmartWallet; rank: number }) {
           {w.displayName ? (
             <span className="text-xs text-white font-semibold truncate">{w.displayName}</span>
           ) : (
-            <span className="font-mono text-xs text-white font-medium">{shortAddr(w.address)}</span>
+            <span className="font-mono tabular-nums text-xs text-white font-medium">{shortAddr(w.address)}</span>
           )}
           {rank === 1 && <Trophy className="w-3 h-3 text-hub-yellow flex-shrink-0" />}
           {w.realizedPnl >= 5_000_000 && <Flame className="w-3 h-3 text-orange-400 flex-shrink-0" />}
@@ -170,29 +170,29 @@ function WalletRow({ w, rank }: { w: SmartWallet; rank: number }) {
             );
           })}
           {w.closedCount > 0 ? (
-            <span className="text-[9px] text-neutral-600 font-mono">
+            <span className="text-[9px] text-neutral-600 font-mono tabular-nums">
               {w.wins}W/{w.losses}L · {w.winRate.toFixed(0)}%
             </span>
           ) : (
-            <span className="text-[9px] text-neutral-700 font-mono">W/L not exposed</span>
+            <span className="text-[9px] text-neutral-700 font-mono tabular-nums">W/L not exposed</span>
           )}
         </div>
       </div>
 
       {/* Lifetime PnL */}
       <div className="text-right w-[100px]">
-        <div className={`font-mono font-bold text-sm tabular-nums ${pnlColor}`}>
+        <div className={`font-mono tabular-nums font-bold text-sm tabular-nums ${pnlColor}`}>
           {fmtUSD(w.realizedPnl)}
         </div>
-        <div className="text-[9px] text-neutral-600 font-mono">lifetime PnL</div>
+        <div className="text-[9px] text-neutral-600 font-mono tabular-nums">lifetime PnL</div>
       </div>
 
       {/* Live positioning */}
       <div className="text-right w-[110px] hidden md:block">
-        <div className={`font-mono font-bold text-xs tabular-nums ${biasColor}`}>
+        <div className={`font-mono tabular-nums font-bold text-xs tabular-nums ${biasColor}`}>
           {biasLabel}
         </div>
-        <div className="text-[9px] text-neutral-600 font-mono">
+        <div className="text-[9px] text-neutral-600 font-mono tabular-nums">
           {w.openPositionsCount > 0 ? `${fmtUSD(w.liveNotional)} · ${w.openPositionsCount} pos` : 'no open positions'}
         </div>
       </div>
@@ -201,13 +201,13 @@ function WalletRow({ w, rank }: { w: SmartWallet; rank: number }) {
       <div className="text-right w-[80px] hidden md:block">
         {w.liveUnrealizedPnl !== 0 ? (
           <>
-            <div className={`font-mono font-bold text-xs tabular-nums ${w.liveUnrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <div className={`font-mono tabular-nums font-bold text-xs tabular-nums ${w.liveUnrealizedPnl >= 0 ? 'text-green-400' : 'text-red-400'}`}>
               {w.liveUnrealizedPnl >= 0 ? '+' : ''}{fmtUSD(w.liveUnrealizedPnl)}
             </div>
-            <div className="text-[9px] text-neutral-600 font-mono">unrealized</div>
+            <div className="text-[9px] text-neutral-600 font-mono tabular-nums">unrealized</div>
           </>
         ) : (
-          <div className="text-[9px] text-neutral-700 font-mono">—</div>
+          <div className="text-[9px] text-neutral-700 font-mono tabular-nums">—</div>
         )}
       </div>
 
@@ -414,7 +414,7 @@ export default function SmartMoneyPage() {
             <div className="card-premium p-3">
               <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 font-semibold">Live Notional</div>
               <div className="text-lg font-bold text-white font-mono tabular-nums">{fmtUSD(data.summary.totalLiveNotional)}</div>
-              <div className={`text-[10px] font-mono mt-0.5 ${
+              <div className={`text-[10px] font-mono tabular-nums mt-0.5 ${
                 data.summary.totalLiveUnrealized >= 0 ? 'text-green-400' : 'text-red-400'
               }`}>
                 {data.summary.totalLiveUnrealized >= 0 ? '+' : ''}{fmtUSD(data.summary.totalLiveUnrealized)} unrealized
@@ -437,7 +437,7 @@ export default function SmartMoneyPage() {
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <Target className="w-3.5 h-3.5 text-hub-yellow" />
               <h2 className="text-xs font-semibold text-white uppercase tracking-wider">My Tracked Traders</h2>
-              <span className="text-[10px] text-neutral-500 font-mono">{bookmarks.length}</span>
+              <span className="text-[10px] text-neutral-500 font-mono tabular-nums">{bookmarks.length}</span>
               <span className="text-[10px] text-neutral-600">· saved locally to your browser</span>
               <div className="ml-auto flex items-center gap-2">
                 {bookmarks.length >= 2 && (
@@ -450,7 +450,7 @@ export default function SmartMoneyPage() {
                   </Link>
                 )}
                 {importError && (
-                  <span className={`text-[10px] font-mono ${
+                  <span className={`text-[10px] font-mono tabular-nums ${
                     importError === 'copied' || importError.startsWith('imported') ? 'text-green-400' : 'text-red-400'
                   }`}>
                     {importError}
@@ -587,7 +587,7 @@ export default function SmartMoneyPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
               <h2 className="text-xs font-semibold text-white uppercase tracking-wider">Tracked Activity</h2>
-              <span className="text-[10px] text-neutral-500 font-mono">{feed.length} events</span>
+              <span className="text-[10px] text-neutral-500 font-mono tabular-nums">{feed.length} events</span>
               {lastCheck && alertsEnabled && (
                 <span className="text-[10px] text-neutral-600">
                   · checked {Math.floor((nowTick - lastCheck) / 1000)}s ago
@@ -650,7 +650,7 @@ export default function SmartMoneyPage() {
                         {a.displayName || `${a.address.slice(0, 6)}…${a.address.slice(-4)}`}
                       </span>
                       <span className="text-[10px] text-neutral-400 truncate flex-1">{a.details}</span>
-                      <span className="text-[9px] text-neutral-600 font-mono flex-shrink-0">{agoStr}</span>
+                      <span className="text-[9px] text-neutral-600 font-mono tabular-nums flex-shrink-0">{agoStr}</span>
                     </Link>
                   );
                 })}
@@ -668,7 +668,7 @@ export default function SmartMoneyPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
               </svg>
               <h2 className="text-xs font-semibold text-white uppercase tracking-wider">Recently Viewed</h2>
-              <span className="text-[10px] text-neutral-500 font-mono">{visibleRecents.length}</span>
+              <span className="text-[10px] text-neutral-500 font-mono tabular-nums">{visibleRecents.length}</span>
               <span className="text-[10px] text-neutral-600">· auto-logs when you open a trader</span>
               <div className="ml-auto">
                 <button
@@ -851,7 +851,7 @@ export default function SmartMoneyPage() {
           </div>
         </div>
 
-        <div className="mt-4 text-[10px] text-neutral-600 font-mono flex items-center gap-3 flex-wrap">
+        <div className="mt-4 text-[10px] text-neutral-600 font-mono tabular-nums flex items-center gap-3 flex-wrap">
           <span className="inline-flex items-center gap-1">
             <Activity className="w-2.5 h-2.5" /> Ingredients from GMX V2 (Arb+Avax) and Hyperliquid leaderboards
           </span>

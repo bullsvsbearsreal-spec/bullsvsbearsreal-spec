@@ -147,10 +147,10 @@ export default function CyclePhasePage() {
                     </div>
                     <div className="text-right">
                       <div className="text-[10px] uppercase tracking-wider text-neutral-400 font-medium mb-1">Composite score</div>
-                      <div className="text-3xl font-mono font-bold text-white">
+                      <div className="text-3xl font-mono tabular-nums font-bold text-white">
                         {data.composite != null ? (data.composite > 0 ? '+' : '') + data.composite.toFixed(2) : '—'}
                       </div>
-                      <div className="text-[10px] text-neutral-500 mt-0.5 font-mono">
+                      <div className="text-[10px] text-neutral-500 mt-0.5 font-mono tabular-nums">
                         confidence {data.confidence}%
                       </div>
                     </div>
@@ -171,8 +171,8 @@ export default function CyclePhasePage() {
                     className="flex flex-col md:grid md:grid-cols-[180px,140px,110px,1fr] gap-1 md:gap-3 px-3 py-2 md:items-center border-b border-white/[0.03] last:border-b-0"
                   >
                     <div className="text-sm text-white font-bold">{s.name}</div>
-                    <div className="text-xs text-neutral-300 font-mono">{fmtValue(s.name, s.value)}</div>
-                    <div className={`text-xs font-mono ${scoreTone(s.score)}`}>
+                    <div className="text-xs text-neutral-300 font-mono tabular-nums">{fmtValue(s.name, s.value)}</div>
+                    <div className={`text-xs font-mono tabular-nums ${scoreTone(s.score)}`}>
                       {scoreLabel(s.score)}
                     </div>
                     <div className="text-xs text-neutral-500 italic md:truncate">{s.reading}</div>
@@ -200,7 +200,7 @@ export default function CyclePhasePage() {
                   />
                 )}
               </div>
-              <div className="flex justify-between text-[9px] text-neutral-600 font-mono mt-1">
+              <div className="flex justify-between text-[9px] text-neutral-600 font-mono tabular-nums mt-1">
                 <span>+2.0 (deep bear)</span>
                 <span>0.0 (neutral)</span>
                 <span>−2.0 (peak euphoria)</span>
@@ -212,13 +212,13 @@ export default function CyclePhasePage() {
               <div className="grid grid-cols-2 gap-2 mb-4">
                 <div className="card-premium p-3">
                   <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 font-medium">BTC price</div>
-                  <div className="font-mono text-base font-bold text-white">
+                  <div className="font-mono tabular-nums text-base font-bold text-white">
                     {data.underlying.btcPrice != null ? `$${data.underlying.btcPrice.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
                   </div>
                 </div>
                 <div className="card-premium p-3">
                   <div className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 font-medium">200-day SMA</div>
-                  <div className="font-mono text-base font-bold text-white">
+                  <div className="font-mono tabular-nums text-base font-bold text-white">
                     {data.underlying.sma200 != null ? `$${data.underlying.sma200.toLocaleString(undefined, { maximumFractionDigits: 0 })}` : '—'}
                   </div>
                 </div>

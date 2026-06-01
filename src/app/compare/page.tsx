@@ -253,11 +253,11 @@ export default function ComparePage() {
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-neutral-600 text-xs">Volume</span>
-                      <span className="text-white font-mono text-sm">{formatNumber(coin.volume)}</span>
+                      <span className="text-white font-mono tabular-nums text-sm">{formatNumber(coin.volume)}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-neutral-600 text-xs">Total OI</span>
-                      <span className="text-white font-mono text-sm">{formatUSD(coin.totalOI)}</span>
+                      <span className="text-white font-mono tabular-nums text-sm">{formatUSD(coin.totalOI)}</span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-neutral-600 text-xs">Avg Funding</span>
@@ -310,7 +310,7 @@ export default function ComparePage() {
                                   <span className="text-neutral-400 text-[11px]">{o.exchange}</span>
                                 ); })()}
                               </div>
-                              <span className="text-white font-mono text-[11px]">{formatUSD(o.value)}</span>
+                              <span className="text-white font-mono tabular-nums text-[11px]">{formatUSD(o.value)}</span>
                             </div>
                             <div className="h-1 bg-white/[0.04] rounded-full overflow-hidden">
                               <div className="h-full bg-hub-yellow rounded-full" style={{ width: `${pct}%` }} />
@@ -340,7 +340,7 @@ export default function ComparePage() {
                         <span className="text-white font-semibold text-xs w-12">{coin.symbol}</span>
                         <div className="flex-1 h-5 bg-white/[0.04] rounded-full overflow-hidden">
                           <div className="h-full bg-gradient-to-r from-hub-yellow to-hub-orange rounded-full transition-all flex items-center justify-end pr-2" style={{ width: `${Math.max(pct, 5)}%` }}>
-                            <span className="text-[9px] font-mono text-black font-bold">{formatUSD(coin.totalOI)}</span>
+                            <span className="text-[9px] font-mono tabular-nums text-black font-bold">{formatUSD(coin.totalOI)}</span>
                           </div>
                         </div>
                       </div>
@@ -361,7 +361,7 @@ export default function ComparePage() {
                         <span className="text-white font-semibold text-xs w-12">{coin.symbol}</span>
                         <div className="flex-1 h-5 bg-white/[0.04] rounded-full overflow-hidden">
                           <div className="h-full bg-gradient-to-r from-blue-500 to-blue-400 rounded-full transition-all flex items-center justify-end pr-2" style={{ width: `${Math.max(pct, 5)}%` }}>
-                            <span className="text-[9px] font-mono text-white font-bold">{formatNumber(coin.volume)}</span>
+                            <span className="text-[9px] font-mono tabular-nums text-white font-bold">{formatNumber(coin.volume)}</span>
                           </div>
                         </div>
                       </div>
@@ -388,14 +388,14 @@ export default function ComparePage() {
                               className="absolute top-0 bottom-0 left-1/2 bg-green-500/60 rounded-r-full flex items-center justify-end pr-1"
                               style={{ width: `${Math.max(pct, 2)}%` }}
                             >
-                              <span className="text-[9px] font-mono font-bold" style={{ color: 'var(--pump-hot)' }}>+{coin.avgFunding.toFixed(4)}%</span>
+                              <span className="text-[9px] font-mono tabular-nums font-bold" style={{ color: 'var(--pump-hot)' }}>+{coin.avgFunding.toFixed(4)}%</span>
                             </div>
                           ) : (
                             <div
                               className="absolute top-0 bottom-0 bg-red-500/60 rounded-l-full flex items-center pl-1"
                               style={{ width: `${Math.max(pct, 2)}%`, right: '50%' }}
                             >
-                              <span className="text-[9px] font-mono font-bold" style={{ color: 'var(--rekt-hot)' }}>  {coin.avgFunding.toFixed(4)}%</span>
+                              <span className="text-[9px] font-mono tabular-nums font-bold" style={{ color: 'var(--rekt-hot)' }}>  {coin.avgFunding.toFixed(4)}%</span>
                             </div>
                           )}
                         </div>

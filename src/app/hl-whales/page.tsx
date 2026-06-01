@@ -195,22 +195,22 @@ function PositionRow({
           {pos.side}
         </span>
       </div>
-      <div className="w-16 sm:w-20 text-right font-mono text-neutral-300">
+      <div className="w-16 sm:w-20 text-right font-mono tabular-nums text-neutral-300">
         {fmtSize(pos.size, pos.coin)}
       </div>
-      <div className="w-20 sm:w-24 text-right font-mono text-neutral-400">
+      <div className="w-20 sm:w-24 text-right font-mono tabular-nums text-neutral-400">
         {formatUSD(pos.positionValue)}
       </div>
-      <div className="hidden sm:block w-20 text-right font-mono text-neutral-500">
+      <div className="hidden sm:block w-20 text-right font-mono tabular-nums text-neutral-500">
         {fmtPrice(pos.entryPrice)}
       </div>
-      <div className={`flex-1 text-right font-mono ${pnlColor}`}>
+      <div className={`flex-1 text-right font-mono tabular-nums ${pnlColor}`}>
         {fmtPnl(pos.unrealizedPnl)}
       </div>
-      <div className={`w-14 text-right font-mono text-[11px] ${pnlColor}`}>
+      <div className={`w-14 text-right font-mono tabular-nums text-[11px] ${pnlColor}`}>
         {fmtPct(pos.roe)}
       </div>
-      <div className="hidden sm:block w-10 text-right font-mono text-neutral-600">
+      <div className="hidden sm:block w-10 text-right font-mono tabular-nums text-neutral-600">
         {pos.leverage}x
       </div>
       <Link
@@ -266,7 +266,7 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-white font-semibold text-sm truncate">{whale.label}</span>
-              <span className="text-neutral-600 text-xs font-mono">{truncAddr(whale.address)}</span>
+              <span className="text-neutral-600 text-xs font-mono tabular-nums">{truncAddr(whale.address)}</span>
               <a
                 href={`https://app.hyperliquid.xyz/explorer/address/${whale.address}`}
                 target="_blank"
@@ -281,11 +281,11 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
               <span className="text-neutral-500 text-xs">
                 {whale.positionCount} position{whale.positionCount !== 1 ? 's' : ''}
               </span>
-              <span className={`text-xs font-mono ${pnlColor}`}>
+              <span className={`text-xs font-mono tabular-nums ${pnlColor}`}>
                 uPnL {fmtPnl(totalPnl)}
               </span>
               {whale.allTimePnl != null && (
-                <span className={`text-xs font-mono ${whale.allTimePnl >= 0 ? 'text-green-500/60' : 'text-red-500/60'}`}>
+                <span className={`text-xs font-mono tabular-nums ${whale.allTimePnl >= 0 ? 'text-green-500/60' : 'text-red-500/60'}`}>
                   AT {fmtPnl(whale.allTimePnl)}
                 </span>
               )}
@@ -295,11 +295,11 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
 
         <div className="flex items-center gap-4 flex-shrink-0">
           <div className="text-right hidden sm:block">
-            <div className="text-white font-bold font-mono text-sm">{formatUSD(whale.accountValue)}</div>
+            <div className="text-white font-bold font-mono tabular-nums text-sm">{formatUSD(whale.accountValue)}</div>
             <div className="text-neutral-600 text-[10px] uppercase tracking-wider">Account</div>
           </div>
           <div className="text-right sm:hidden">
-            <div className="text-white font-bold font-mono text-sm">{formatUSD(whale.accountValue)}</div>
+            <div className="text-white font-bold font-mono tabular-nums text-sm">{formatUSD(whale.accountValue)}</div>
           </div>
           {expanded ? (
             <ChevronUp className="w-4 h-4 text-neutral-600" />
@@ -316,19 +316,19 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 px-4 py-3">
             <div className="bg-white/[0.03] rounded-lg px-3 py-2">
               <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Notional</span>
-              <div className="text-white font-mono text-sm font-bold mt-0.5">{formatUSD(whale.totalNotional)}</div>
+              <div className="text-white font-mono tabular-nums text-sm font-bold mt-0.5">{formatUSD(whale.totalNotional)}</div>
             </div>
             <div className="bg-white/[0.03] rounded-lg px-3 py-2">
               <span className="text-neutral-600 text-[10px] uppercase tracking-wider">Margin Used</span>
-              <div className="text-white font-mono text-sm font-bold mt-0.5">{formatUSD(whale.marginUsed)}</div>
+              <div className="text-white font-mono tabular-nums text-sm font-bold mt-0.5">{formatUSD(whale.marginUsed)}</div>
             </div>
             <div className="bg-green-500/5 rounded-lg px-3 py-2">
               <span className="text-green-500/60 text-[10px] uppercase tracking-wider">Long Exposure</span>
-              <div className="text-green-400 font-mono text-sm font-bold mt-0.5">{formatUSD(longNotional)}</div>
+              <div className="text-green-400 font-mono tabular-nums text-sm font-bold mt-0.5">{formatUSD(longNotional)}</div>
             </div>
             <div className="bg-red-500/5 rounded-lg px-3 py-2">
               <span className="text-red-500/60 text-[10px] uppercase tracking-wider">Short Exposure</span>
-              <div className="text-red-400 font-mono text-sm font-bold mt-0.5">{formatUSD(shortNotional)}</div>
+              <div className="text-red-400 font-mono tabular-nums text-sm font-bold mt-0.5">{formatUSD(shortNotional)}</div>
             </div>
           </div>
 
@@ -362,7 +362,7 @@ function WhaleCard({ whale }: { whale: WhaleData }) {
               {whale.volume != null && whale.volume > 0 && (
                 <div className="bg-white/[0.03] rounded-lg px-3 py-2">
                   <span className="text-neutral-600 text-[10px] uppercase tracking-wider">All-Time Volume</span>
-                  <div className="text-white font-mono text-sm font-bold mt-0.5">{formatUSD(whale.volume)}</div>
+                  <div className="text-white font-mono tabular-nums text-sm font-bold mt-0.5">{formatUSD(whale.volume)}</div>
                 </div>
               )}
             </div>
@@ -609,21 +609,21 @@ export default function HLWhalesPage() {
                 <Users className="w-3 h-3" />
                 Tracked Whales
               </span>
-              <div className="text-lg font-bold text-white font-mono mt-0.5">{allWhales.length}</div>
+              <div className="text-lg font-bold text-white font-mono tabular-nums mt-0.5">{allWhales.length}</div>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-4 py-3">
               <span className="text-neutral-500 text-[11px] uppercase tracking-wider flex items-center gap-1">
                 <DollarSign className="w-3 h-3" />
                 Total Account Value
               </span>
-              <div className={`text-lg font-bold text-white font-mono mt-0.5 ${avFlash}`}>{formatUSD(stats.totalAV)}</div>
+              <div className={`text-lg font-bold text-white font-mono tabular-nums mt-0.5 ${avFlash}`}>{formatUSD(stats.totalAV)}</div>
             </div>
             <div className="bg-hub-darker border border-white/[0.06] rounded-lg px-4 py-3">
               <span className="text-neutral-500 text-[11px] uppercase tracking-wider flex items-center gap-1">
                 <BarChart3 className="w-3 h-3" />
                 Total Notional
               </span>
-              <div className="text-lg font-bold text-white font-mono mt-0.5">{formatUSD(stats.totalNotional)}</div>
+              <div className="text-lg font-bold text-white font-mono tabular-nums mt-0.5">{formatUSD(stats.totalNotional)}</div>
             </div>
             <div className={`bg-hub-darker border ${stats.totalPnl >= 0 ? 'border-green-500/10' : 'border-red-500/10'} rounded-lg px-4 py-3`}>
               <span className={`${stats.totalPnl >= 0 ? 'text-green-500/60' : 'text-red-500/60'} text-[11px] uppercase tracking-wider flex items-center gap-1`}>
@@ -710,7 +710,7 @@ export default function HLWhalesPage() {
                   setCustomError('');
                 }}
                 onKeyDown={(e) => e.key === 'Enter' && handleAddCustom()}
-                className="flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs font-mono placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/30"
+                className="flex-1 px-3 py-2 bg-white/[0.04] border border-white/[0.06] rounded-lg text-white text-xs font-mono tabular-nums placeholder:text-neutral-600 focus:outline-none focus:border-hub-yellow/30"
               />
               <button
                 onClick={handleAddCustom}

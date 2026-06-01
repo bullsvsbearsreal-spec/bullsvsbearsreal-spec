@@ -104,7 +104,7 @@ export default function ValidatorsPage() {
         {data && (
           <div className="card-premium p-3 mb-4 flex items-center justify-between flex-wrap gap-2">
             <div className="text-sm">
-              Total LST + restaking TVL tracked: <span className="text-white font-mono font-bold">{fmtUsd(data.totalTvl)}</span>
+              Total LST + restaking TVL tracked: <span className="text-white font-mono tabular-nums font-bold">{fmtUsd(data.totalTvl)}</span>
             </div>
             <div className="flex items-center gap-3 text-[10px] text-neutral-500">
               <span className="inline-flex items-center gap-1.5">
@@ -144,7 +144,7 @@ export default function ValidatorsPage() {
                   {asset}
                   <span className="text-neutral-500 font-normal ml-2">{rows.length} pools</span>
                 </h2>
-                <div className="text-[11px] text-neutral-500 font-mono">
+                <div className="text-[11px] text-neutral-500 font-mono tabular-nums">
                   TVL <span className="text-white font-bold">{fmtUsd(totalTvl)}</span>
                   <span className="mx-2">·</span>
                   avg APY <span className="text-emerald-300 font-bold">{fmtPct(avgApy)}</span>
@@ -167,13 +167,13 @@ export default function ValidatorsPage() {
                   >
                     <div className="min-w-0">
                       <div className="text-sm text-white font-bold truncate">{r.project}</div>
-                      <div className="text-[10px] text-neutral-600 font-mono truncate">{r.symbol}</div>
+                      <div className="text-[10px] text-neutral-600 font-mono tabular-nums truncate">{r.symbol}</div>
                     </div>
-                    <div className="text-right font-mono text-sm font-bold text-emerald-300">{fmtPct(r.apy)}</div>
-                    <div className="text-right font-mono text-xs text-neutral-300">{fmtPct(r.apyBase)}</div>
-                    <div className="text-right font-mono text-xs text-amber-300">{r.apyReward > 0 ? `+${fmtPct(r.apyReward)}` : '—'}</div>
-                    <div className="text-right font-mono text-[10px] text-neutral-400 uppercase">{r.chain}</div>
-                    <div className="text-right font-mono text-xs text-neutral-300">{fmtUsd(r.tvlUsd)}</div>
+                    <div className="text-right font-mono tabular-nums text-sm font-bold text-emerald-300">{fmtPct(r.apy)}</div>
+                    <div className="text-right font-mono tabular-nums text-xs text-neutral-300">{fmtPct(r.apyBase)}</div>
+                    <div className="text-right font-mono tabular-nums text-xs text-amber-300">{r.apyReward > 0 ? `+${fmtPct(r.apyReward)}` : '—'}</div>
+                    <div className="text-right font-mono tabular-nums text-[10px] text-neutral-400 uppercase">{r.chain}</div>
+                    <div className="text-right font-mono tabular-nums text-xs text-neutral-300">{fmtUsd(r.tvlUsd)}</div>
                     <div>
                       <span className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-px rounded border ${CATEGORY_TONE[r.category] ?? CATEGORY_TONE['liquid-staking']}`}>
                         {r.category.replace('-', ' ')}

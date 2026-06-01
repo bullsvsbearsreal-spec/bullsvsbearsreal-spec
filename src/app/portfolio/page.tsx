@@ -283,7 +283,7 @@ export default function PortfolioPage() {
               {/* Total Value */}
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                 <p className="text-neutral-500 text-xs mb-1">Total Value</p>
-                <p className={`text-xl font-bold font-mono ${valueFlash}`}>
+                <p className={`text-xl font-bold font-mono tabular-nums ${valueFlash}`}>
                   {formatUSD(totals.totalValue)}
                 </p>
               </div>
@@ -292,7 +292,7 @@ export default function PortfolioPage() {
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                 <p className="text-neutral-500 text-xs mb-1">Total P&amp;L</p>
                 <p
-                  className={`text-xl font-bold font-mono ${
+                  className={`text-xl font-bold font-mono tabular-nums ${
                     totals.totalPnl >= 0 ? 'text-green-500' : 'text-red-500'
                   } ${pnlFlash}`}
                 >
@@ -304,7 +304,7 @@ export default function PortfolioPage() {
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4">
                 <p className="text-neutral-500 text-xs mb-1">Total P&amp;L %</p>
                 <p
-                  className={`text-xl font-bold font-mono ${
+                  className={`text-xl font-bold font-mono tabular-nums ${
                     totals.totalPnlPct >= 0 ? 'text-green-500' : 'text-red-500'
                   }`}
                 >
@@ -319,7 +319,7 @@ export default function PortfolioPage() {
                   <div className="flex items-center gap-2">
                     <TokenIconSimple symbol={totals.best.symbol} size={20} />
                     <span className="font-semibold text-sm">{totals.best.symbol}</span>
-                    <span className={`${totals.best.pnlPct >= 0 ? 'text-green-500' : 'text-red-500'} font-mono text-sm font-bold`}>
+                    <span className={`${totals.best.pnlPct >= 0 ? 'text-green-500' : 'text-red-500'} font-mono tabular-nums text-sm font-bold`}>
                       {formatPercent(totals.best.pnlPct)}
                     </span>
                   </div>
@@ -335,7 +335,7 @@ export default function PortfolioPage() {
                   <div className="flex items-center gap-2">
                     <TokenIconSimple symbol={totals.worst.symbol} size={20} />
                     <span className="font-semibold text-sm">{totals.worst.symbol}</span>
-                    <span className={`${totals.worst.pnlPct >= 0 ? 'text-green-500' : 'text-red-500'} font-mono text-sm font-bold`}>
+                    <span className={`${totals.worst.pnlPct >= 0 ? 'text-green-500' : 'text-red-500'} font-mono tabular-nums text-sm font-bold`}>
                       {formatPercent(totals.worst.pnlPct)}
                     </span>
                   </div>
@@ -407,19 +407,19 @@ export default function PortfolioPage() {
                                 <span className="font-semibold">{h.symbol}</span>
                               </div>
                             </td>
-                            <td className="text-right px-4 py-3 font-mono text-neutral-300">
+                            <td className="text-right px-4 py-3 font-mono tabular-nums text-neutral-300">
                               {formatQty(h.quantity)}
                             </td>
-                            <td className="text-right px-4 py-3 font-mono text-neutral-300">
+                            <td className="text-right px-4 py-3 font-mono tabular-nums text-neutral-300">
                               {formatPrice(h.avgPrice)}
                             </td>
-                            <td className="text-right px-4 py-3 font-mono text-neutral-300">
+                            <td className="text-right px-4 py-3 font-mono tabular-nums text-neutral-300">
                               {h.currentPrice > 0 ? formatPrice(h.currentPrice) : (
                                 <span className="text-neutral-600">--</span>
                               )}
                             </td>
                             <td
-                              className={`text-right px-4 py-3 font-mono font-semibold ${
+                              className={`text-right px-4 py-3 font-mono tabular-nums font-semibold ${
                                 h.pnl >= 0 ? 'text-green-500' : 'text-red-500'
                               }`}
                             >
@@ -432,7 +432,7 @@ export default function PortfolioPage() {
                               )}
                             </td>
                             <td
-                              className={`text-right px-4 py-3 font-mono font-semibold ${
+                              className={`text-right px-4 py-3 font-mono tabular-nums font-semibold ${
                                 h.pnlPct >= 0 ? 'text-green-500' : 'text-red-500'
                               }`}
                             >
@@ -440,7 +440,7 @@ export default function PortfolioPage() {
                                 <span className="text-neutral-600">--</span>
                               )}
                             </td>
-                            <td className="text-right px-4 py-3 font-mono text-neutral-400">
+                            <td className="text-right px-4 py-3 font-mono tabular-nums text-neutral-400">
                               {alloc.toFixed(1)}%
                             </td>
                             <td className="text-right px-4 py-3">
@@ -528,7 +528,7 @@ export default function PortfolioPage() {
                   onChange={(e) => setFormSymbol(e.target.value.toUpperCase())}
                   disabled={!!editSymbol}
                   placeholder="BTC"
-                  className={`w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm font-mono placeholder-neutral-600 outline-none focus:border-hub-yellow/50 transition-colors ${
+                  className={`w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm font-mono tabular-nums placeholder-neutral-600 outline-none focus:border-hub-yellow/50 transition-colors ${
                     editSymbol ? 'opacity-50 cursor-not-allowed' : ''
                   }`}
                 />
@@ -544,7 +544,7 @@ export default function PortfolioPage() {
                   placeholder="0.5"
                   step="any"
                   min="0"
-                  className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm font-mono placeholder-neutral-600 outline-none focus:border-hub-yellow/50 transition-colors"
+                  className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm font-mono tabular-nums placeholder-neutral-600 outline-none focus:border-hub-yellow/50 transition-colors"
                 />
               </div>
 
@@ -558,7 +558,7 @@ export default function PortfolioPage() {
                   placeholder="42000"
                   step="any"
                   min="0"
-                  className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm font-mono placeholder-neutral-600 outline-none focus:border-hub-yellow/50 transition-colors"
+                  className="w-full px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white text-sm font-mono tabular-nums placeholder-neutral-600 outline-none focus:border-hub-yellow/50 transition-colors"
                 />
               </div>
             </div>

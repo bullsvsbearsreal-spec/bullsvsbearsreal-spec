@@ -289,19 +289,19 @@ export default function CorrelationPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Avg Correlation</div>
-            <div className={`text-lg font-bold font-mono ${stats.avgCorrelation >= 0.5 ? 'text-orange-400' : stats.avgCorrelation >= 0 ? 'text-neutral-300' : 'text-blue-400'}`}>
+            <div className={`text-lg font-bold font-mono tabular-nums ${stats.avgCorrelation >= 0.5 ? 'text-orange-400' : stats.avgCorrelation >= 0 ? 'text-neutral-300' : 'text-blue-400'}`}>
               {stats.avgCorrelation.toFixed(3)}
             </div>
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Most Correlated</div>
             <div className="text-sm font-bold text-orange-400 truncate">{stats.mostCorrelated.pair}</div>
-            <div className="text-xs text-neutral-500 font-mono">r = {Number.isFinite(stats.mostCorrelated.r) ? stats.mostCorrelated.r.toFixed(3) : 'N/A'}</div>
+            <div className="text-xs text-neutral-500 font-mono tabular-nums">r = {Number.isFinite(stats.mostCorrelated.r) ? stats.mostCorrelated.r.toFixed(3) : 'N/A'}</div>
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Least Correlated</div>
             <div className="text-sm font-bold text-blue-400 truncate">{stats.leastCorrelated.pair}</div>
-            <div className="text-xs text-neutral-500 font-mono">r = {Number.isFinite(stats.leastCorrelated.r) ? stats.leastCorrelated.r.toFixed(3) : 'N/A'}</div>
+            <div className="text-xs text-neutral-500 font-mono tabular-nums">r = {Number.isFinite(stats.leastCorrelated.r) ? stats.leastCorrelated.r.toFixed(3) : 'N/A'}</div>
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Valid Pairs</div>
@@ -460,7 +460,7 @@ export default function CorrelationPage() {
                         onMouseLeave={() => setHoveredCell(null)}
                       >
                         <span
-                          className={`text-[10px] sm:text-xs font-mono font-medium ${
+                          className={`text-[10px] sm:text-xs font-mono tabular-nums font-medium ${
                             isDiagonal
                               ? 'text-neutral-500'
                               : getCorrelationTextColor(r)
@@ -492,7 +492,7 @@ export default function CorrelationPage() {
                 <div className="space-y-1 text-xs">
                   <div className="flex justify-between gap-4">
                     <span className="text-neutral-500">Correlation (r)</span>
-                    <span className={`font-mono font-bold ${getCorrelationTextColor(hoveredCell.r)}`}>
+                    <span className={`font-mono tabular-nums font-bold ${getCorrelationTextColor(hoveredCell.r)}`}>
                       {isNaN(hoveredCell.r) ? 'N/A' : hoveredCell.r.toFixed(4)}
                     </span>
                   </div>
@@ -505,14 +505,14 @@ export default function CorrelationPage() {
                   {!isNaN(hoveredCell.r) && (
                     <div className="flex justify-between gap-4">
                       <span className="text-neutral-500">R-squared</span>
-                      <span className="text-neutral-300 font-mono">
+                      <span className="text-neutral-300 font-mono tabular-nums">
                         {(hoveredCell.r * hoveredCell.r).toFixed(4)}
                       </span>
                     </div>
                   )}
                   <div className="flex justify-between gap-4">
                     <span className="text-neutral-500">Common exchanges</span>
-                    <span className="text-neutral-300 font-mono">
+                    <span className="text-neutral-300 font-mono tabular-nums">
                       {(() => {
                         const a = symbols.find(s => s.symbol === hoveredCell.rowSym);
                         const b = symbols.find(s => s.symbol === hoveredCell.colSym);
@@ -576,10 +576,10 @@ export default function CorrelationPage() {
                       className="border-b border-white/[0.03] hover:bg-white/[0.02]"
                     >
                       <td className="px-4 py-2 font-bold text-white">{s.symbol}</td>
-                      <td className={`px-4 py-2 text-right font-mono ${s.avgChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                      <td className={`px-4 py-2 text-right font-mono tabular-nums ${s.avgChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                         {s.avgChange >= 0 ? '+' : ''}{s.avgChange.toFixed(2)}%
                       </td>
-                      <td className="px-4 py-2 text-right font-mono text-neutral-300">
+                      <td className="px-4 py-2 text-right font-mono tabular-nums text-neutral-300">
                         {formatVolume(s.totalVolume)}
                       </td>
                       <td className="px-4 py-2 text-right text-neutral-400">{s.exchangeCount}</td>

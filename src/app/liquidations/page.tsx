@@ -254,7 +254,7 @@ export default function LiquidationsPage() {
                     role="tab"
                     aria-selected={timeframe === tf}
                     onClick={() => setTimeframe(tf)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-mono font-semibold transition-all ${
+                    className={`px-2.5 py-1 rounded-md text-xs font-mono tabular-nums font-semibold transition-all ${
                       timeframe === tf
                         ? 'bg-hub-yellow/15 text-hub-yellow shadow-sm'
                         : 'text-neutral-500 hover:text-neutral-300'
@@ -277,7 +277,7 @@ export default function LiquidationsPage() {
                 </div>
                 <span className="text-xs text-neutral-500 font-medium">Total Volume</span>
               </div>
-              <span className={`text-xl font-mono font-bold text-white tracking-tight ${totalFlash}`}>
+              <span className={`text-xl font-mono tabular-nums font-bold text-white tracking-tight ${totalFlash}`}>
                 {formatLiqValue(stats.total)}
               </span>
               <div className="mt-1.5 text-[11px] text-neutral-600 font-medium">
@@ -293,7 +293,7 @@ export default function LiquidationsPage() {
                 </div>
                 <span className="text-xs text-neutral-500 font-medium">Liquidations</span>
               </div>
-              <span className="text-xl font-mono font-bold text-white tracking-tight">
+              <span className="text-xl font-mono tabular-nums font-bold text-white tracking-tight">
                 {stats.count.toLocaleString()}
               </span>
               <div className="mt-1.5 text-[11px] text-neutral-600 font-medium">
@@ -312,11 +312,11 @@ export default function LiquidationsPage() {
                   <span className="text-xs text-neutral-500 font-medium">Longs Liquidated</span>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-xl font-mono font-bold text-red-400 tracking-tight">
+                  <span className="text-xl font-mono tabular-nums font-bold text-red-400 tracking-tight">
                     {formatLiqValue(stats.longValue)}
                   </span>
                 </div>
-                <div className="mt-1.5 text-[11px] text-red-400/50 font-mono font-medium">
+                <div className="mt-1.5 text-[11px] text-red-400/50 font-mono tabular-nums font-medium">
                   {longPct.toFixed(1)}% of total
                 </div>
               </div>
@@ -333,11 +333,11 @@ export default function LiquidationsPage() {
                   <span className="text-xs text-neutral-500 font-medium">Shorts Liquidated</span>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-xl font-mono font-bold text-green-400 tracking-tight">
+                  <span className="text-xl font-mono tabular-nums font-bold text-green-400 tracking-tight">
                     {formatLiqValue(stats.shortValue)}
                   </span>
                 </div>
-                <div className="mt-1.5 text-[11px] text-green-400/50 font-mono font-medium">
+                <div className="mt-1.5 text-[11px] text-green-400/50 font-mono tabular-nums font-medium">
                   {shortPct.toFixed(1)}% of total
                 </div>
               </div>
@@ -348,7 +348,7 @@ export default function LiquidationsPage() {
           <div className="flex items-center gap-3 mb-1">
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-sm bg-red-500/70" />
-              <span className="text-[11px] font-mono text-red-400/80 font-semibold">{longPct.toFixed(1)}% Long</span>
+              <span className="text-[11px] font-mono tabular-nums text-red-400/80 font-semibold">{longPct.toFixed(1)}% Long</span>
             </div>
             <div className="h-2 rounded-full overflow-hidden bg-white/[0.04] flex-1 flex">
               <div
@@ -361,7 +361,7 @@ export default function LiquidationsPage() {
               />
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-mono text-green-400/80 font-semibold">{shortPct.toFixed(1)}% Short</span>
+              <span className="text-[11px] font-mono tabular-nums text-green-400/80 font-semibold">{shortPct.toFixed(1)}% Short</span>
               <span className="w-2 h-2 rounded-sm bg-green-500/70" />
             </div>
           </div>

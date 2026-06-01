@@ -178,21 +178,21 @@ function OIByStrikeChart({
             top: 0,
           }}
         >
-          <p className="text-xs font-bold text-white font-mono mb-1.5">
+          <p className="text-xs font-bold text-white font-mono tabular-nums mb-1.5">
             Strike ${hoveredStrike.strike.toLocaleString()}
           </p>
           <div className="flex items-center gap-2 text-[11px]">
             <span className="w-2 h-2 rounded-sm bg-[#22c55e]" />
             <span className="text-neutral-400">Call OI</span>
-            <span className="text-white font-mono font-medium ml-auto">${formatCompact(hoveredStrike.callOI)}</span>
+            <span className="text-white font-mono tabular-nums font-medium ml-auto">${formatCompact(hoveredStrike.callOI)}</span>
           </div>
           <div className="flex items-center gap-2 text-[11px] mt-1">
             <span className="w-2 h-2 rounded-sm bg-[#ef4444]" />
             <span className="text-neutral-400">Put OI</span>
-            <span className="text-white font-mono font-medium ml-auto">${formatCompact(hoveredStrike.putOI)}</span>
+            <span className="text-white font-mono tabular-nums font-medium ml-auto">${formatCompact(hoveredStrike.putOI)}</span>
           </div>
           <div className="border-t border-white/[0.06] mt-2 pt-1.5">
-            <p className="text-[10px] text-neutral-500 font-mono">
+            <p className="text-[10px] text-neutral-500 font-mono tabular-nums">
               {(((hoveredStrike.callOI + hoveredStrike.putOI) / totalOI) * 100).toFixed(1)}% of total OI
             </p>
           </div>
@@ -392,23 +392,23 @@ function OIByExpiryChart({
             top: 0,
           }}
         >
-          <p className="text-xs font-bold text-white font-mono mb-1.5">{hoveredEntry.date}</p>
+          <p className="text-xs font-bold text-white font-mono tabular-nums mb-1.5">{hoveredEntry.date}</p>
           <div className="flex items-center gap-2 text-[11px]">
             <span className="w-2 h-2 rounded-sm bg-[#22c55e]" />
             <span className="text-neutral-400">Calls</span>
-            <span className="text-white font-mono font-medium ml-auto">${formatCompact(hoveredEntry.callOI)}</span>
+            <span className="text-white font-mono tabular-nums font-medium ml-auto">${formatCompact(hoveredEntry.callOI)}</span>
           </div>
           <div className="flex items-center gap-2 text-[11px] mt-1">
             <span className="w-2 h-2 rounded-sm bg-[#ef4444]" />
             <span className="text-neutral-400">Puts</span>
-            <span className="text-white font-mono font-medium ml-auto">${formatCompact(hoveredEntry.putOI)}</span>
+            <span className="text-white font-mono tabular-nums font-medium ml-auto">${formatCompact(hoveredEntry.putOI)}</span>
           </div>
           <div className="border-t border-white/[0.06] mt-2 pt-1.5 flex flex-col gap-0.5">
-            <span className="text-[10px] text-neutral-500 font-mono">
+            <span className="text-[10px] text-neutral-500 font-mono tabular-nums">
               {((hoveredEntry.totalOI / totalOI) * 100).toFixed(1)}% of total OI
             </span>
             {hoveredEntry.maxPain != null && (
-              <span className="text-[10px] text-orange-400 font-mono">
+              <span className="text-[10px] text-orange-400 font-mono tabular-nums">
                 Max Pain: ${hoveredEntry.maxPain.toLocaleString()}
               </span>
             )}
@@ -637,18 +637,18 @@ function IVSmileChart({
             top: 0,
           }}
         >
-          <p className="text-xs font-bold text-white font-mono mb-1.5">
+          <p className="text-xs font-bold text-white font-mono tabular-nums mb-1.5">
             Strike ${hoveredPoint.strike.toLocaleString()}
           </p>
           {(hoveredPoint.callIV > 0 || hoveredPoint.putIV > 0) && (
             <div className="flex items-center gap-2 text-[11px]">
               <span className="w-2 h-2 rounded-sm bg-[#eab308]" />
               <span className="text-neutral-400">Implied Vol</span>
-              <span className="text-hub-yellow font-mono font-medium ml-auto">{((hoveredPoint.callIV + hoveredPoint.putIV) / (hoveredPoint.callIV > 0 && hoveredPoint.putIV > 0 ? 2 : 1)).toFixed(1)}%</span>
+              <span className="text-hub-yellow font-mono tabular-nums font-medium ml-auto">{((hoveredPoint.callIV + hoveredPoint.putIV) / (hoveredPoint.callIV > 0 && hoveredPoint.putIV > 0 ? 2 : 1)).toFixed(1)}%</span>
             </div>
           )}
           {hoveredPoint.callIV > 0 && hoveredPoint.putIV > 0 && Math.abs(hoveredPoint.callIV - hoveredPoint.putIV) > 0.5 && (
-            <div className="border-t border-white/[0.06] mt-2 pt-1.5 text-[10px] text-neutral-500 font-mono">
+            <div className="border-t border-white/[0.06] mt-2 pt-1.5 text-[10px] text-neutral-500 font-mono tabular-nums">
               Skew: {(hoveredPoint.putIV - hoveredPoint.callIV).toFixed(1)}%
             </div>
           )}
@@ -766,7 +766,7 @@ function MetricCard({ icon, label, value, sub, accent, className = '', flash }: 
         {icon}
         <span className="text-[11px] text-neutral-500 uppercase tracking-wider font-medium">{label}</span>
       </div>
-      <p className={`text-2xl font-bold text-white font-mono leading-none ${flash || ''}`}>{value}</p>
+      <p className={`text-2xl font-bold text-white font-mono tabular-nums leading-none ${flash || ''}`}>{value}</p>
       {sub && <div className="mt-2">{sub}</div>}
     </div>
   );
@@ -1039,7 +1039,7 @@ export default function OptionsPage() {
               <SectionHeader
                 icon={<ArrowLeftRight className="w-4 h-4 text-purple-400" />}
                 title={`Call / Put Open Interest${activeExchange !== 'all' ? ` — ${activeExchange}` : ''}`}
-                right={<span className="text-xs text-neutral-500 font-mono">Total: ${formatCompact(filteredOI.totalOI)}</span>}
+                right={<span className="text-xs text-neutral-500 font-mono tabular-nums">Total: ${formatCompact(filteredOI.totalOI)}</span>}
               />
 
               <div className="flex items-center gap-6">
@@ -1079,10 +1079,10 @@ export default function OptionsPage() {
                     <div className="flex items-center gap-2">
                       <div className="w-3 h-3 rounded bg-green-500/70" />
                       <span className="text-green-400 font-medium">Calls</span>
-                      <span className="text-white font-mono font-semibold">${formatCompact(filteredOI.callOI)}</span>
+                      <span className="text-white font-mono tabular-nums font-semibold">${formatCompact(filteredOI.callOI)}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-white font-mono font-semibold">${formatCompact(filteredOI.putOI)}</span>
+                      <span className="text-white font-mono tabular-nums font-semibold">${formatCompact(filteredOI.putOI)}</span>
                       <span className="text-red-400 font-medium">Puts</span>
                       <div className="w-3 h-3 rounded bg-red-500/70" />
                     </div>
@@ -1099,7 +1099,7 @@ export default function OptionsPage() {
                     />
                   </div>
 
-                  <div className="flex justify-between text-xs text-neutral-500 mt-2 font-mono">
+                  <div className="flex justify-between text-xs text-neutral-500 mt-2 font-mono tabular-nums">
                     <span>{filteredOI.totalOI ? ((filteredOI.callOI / filteredOI.totalOI) * 100).toFixed(1) : '50.0'}%</span>
                     <span className="text-neutral-600 italic font-sans text-[11px]">
                       {data.putCallRatio > 1.2
@@ -1185,12 +1185,12 @@ export default function OptionsPage() {
                             <div className="flex items-center gap-2">
                               <ExchangeLogo exchange={ex.exchange.toLowerCase()} size={18} />
                               <span className="text-sm font-semibold text-white">{ex.exchange}</span>
-                              <span className="text-[10px] text-neutral-600 bg-white/[0.04] px-1.5 py-0.5 rounded-md font-mono">
+                              <span className="text-[10px] text-neutral-600 bg-white/[0.04] px-1.5 py-0.5 rounded-md font-mono tabular-nums">
                                 {ex.share.toFixed(1)}%
                               </span>
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <span className="text-sm font-bold text-white font-mono">${formatCompact(ex.totalOI)}</span>
+                              <span className="text-sm font-bold text-white font-mono tabular-nums">${formatCompact(ex.totalOI)}</span>
                               <ChevronRight className={`w-3.5 h-3.5 text-neutral-600 transition-transform ${isActive ? 'rotate-90 text-hub-yellow' : ''}`} />
                             </div>
                           </div>
@@ -1200,7 +1200,7 @@ export default function OptionsPage() {
                           </div>
                           <div className="flex items-center justify-between mt-1.5 text-[10px] text-neutral-500">
                             <span>{ex.instruments} instruments</span>
-                            <span className="font-mono">C:{callPct.toFixed(0)}% / P:{(100 - callPct).toFixed(0)}%</span>
+                            <span className="font-mono tabular-nums">C:{callPct.toFixed(0)}% / P:{(100 - callPct).toFixed(0)}%</span>
                           </div>
                         </button>
                       );
@@ -1279,7 +1279,7 @@ export default function OptionsPage() {
                         }`}
                       >
                         <div>
-                          <p className={`text-xs font-mono font-semibold ${isNear ? 'text-orange-400' : 'text-white'}`}>
+                          <p className={`text-xs font-mono tabular-nums font-semibold ${isNear ? 'text-orange-400' : 'text-white'}`}>
                             {expLabel}
                           </p>
                           <p className="text-[10px] text-neutral-600">
@@ -1293,14 +1293,14 @@ export default function OptionsPage() {
                             <div className="h-full bg-red-500/50 transition-all" style={{ width: `${100 - callPct}%` }} />
                           </div>
                           <div className="flex justify-between mt-1">
-                            <span className="text-[10px] text-green-400/60 font-mono">C: {callPct.toFixed(0)}%</span>
-                            <span className="text-[10px] text-red-400/60 font-mono">P: {(100 - callPct).toFixed(0)}%</span>
+                            <span className="text-[10px] text-green-400/60 font-mono tabular-nums">C: {callPct.toFixed(0)}%</span>
+                            <span className="text-[10px] text-red-400/60 font-mono tabular-nums">P: {(100 - callPct).toFixed(0)}%</span>
                           </div>
                         </div>
 
-                        <p className="text-xs font-mono text-neutral-300 text-right">${formatCompact(exp.totalOI)}</p>
+                        <p className="text-xs font-mono tabular-nums text-neutral-300 text-right">${formatCompact(exp.totalOI)}</p>
 
-                        <p className="text-xs font-mono text-orange-400 font-semibold text-right">
+                        <p className="text-xs font-mono tabular-nums text-orange-400 font-semibold text-right">
                           ${exp.maxPain ? exp.maxPain.toLocaleString() : '—'}
                         </p>
 
@@ -1328,7 +1328,7 @@ export default function OptionsPage() {
                       <ExchangeLogo exchange={h.exchange.toLowerCase()} size={12} />
                       <span className="text-[11px] text-neutral-500">{h.exchange}</span>
                       {h.count > 0 && (
-                        <span className="text-[10px] text-neutral-600 font-mono">{h.latency}ms</span>
+                        <span className="text-[10px] text-neutral-600 font-mono tabular-nums">{h.latency}ms</span>
                       )}
                     </div>
                   ))}

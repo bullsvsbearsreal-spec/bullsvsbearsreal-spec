@@ -194,11 +194,11 @@ export default function TgeCalendarPage() {
                     <div className="flex items-start gap-4 flex-wrap">
                       {/* Date column */}
                       <div className="flex-shrink-0 w-24">
-                        <div className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+                        <div className="font-mono tabular-nums text-[10px] uppercase tracking-wider text-neutral-500">
                           {t.dateTbd ? 'Est.' : 'TGE'}
                         </div>
-                        <div className="font-mono text-sm font-bold text-white">{t.date}</div>
-                        <div className={`font-mono text-[10px] mt-0.5 ${
+                        <div className="font-mono tabular-nums text-sm font-bold text-white">{t.date}</div>
+                        <div className={`font-mono tabular-nums text-[10px] mt-0.5 ${
                           days < 0 ? 'text-emerald-400'
                           : days < 7 ? 'text-amber-400 font-bold'
                           : 'text-neutral-400'
@@ -206,7 +206,7 @@ export default function TgeCalendarPage() {
                           {dayLabel}
                         </div>
                         {t.dateTbd && (
-                          <div className="font-mono text-[9px] text-neutral-600 mt-0.5 inline-flex items-center gap-0.5">
+                          <div className="font-mono tabular-nums text-[9px] text-neutral-600 mt-0.5 inline-flex items-center gap-0.5">
                             <AlertTriangle className="w-2.5 h-2.5" /> TBD
                           </div>
                         )}
@@ -217,12 +217,12 @@ export default function TgeCalendarPage() {
                         <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <h3 className="text-sm font-bold text-white">{t.name}</h3>
                           {t.symbol && (
-                            <span className="text-xs font-mono text-hub-yellow">${t.symbol}</span>
+                            <span className="text-xs font-mono tabular-nums text-hub-yellow">${t.symbol}</span>
                           )}
                           <span className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-px rounded border ${CATEGORY_TONES[t.category] || CATEGORY_TONES.Other}`}>
                             {t.category}
                           </span>
-                          <span className="text-[10px] text-neutral-500 font-mono">{t.chain}</span>
+                          <span className="text-[10px] text-neutral-500 font-mono tabular-nums">{t.chain}</span>
                         </div>
                         <p className="text-xs text-neutral-400 mb-2 leading-relaxed">{t.description}</p>
                         <div className="flex items-center gap-3 flex-wrap">
@@ -253,24 +253,24 @@ export default function TgeCalendarPage() {
                       <div className="grid grid-cols-3 gap-2 text-right">
                         <div>
                           <div className="text-[9px] uppercase tracking-wider text-neutral-500">FDV</div>
-                          <div className="font-mono text-xs text-white font-semibold">{fmtUsd(t.fdvUsd)}</div>
+                          <div className="font-mono tabular-nums text-xs text-white font-semibold">{fmtUsd(t.fdvUsd)}</div>
                         </div>
                         <div>
                           <div className="text-[9px] uppercase tracking-wider text-neutral-500">Init circ</div>
-                          <div className="font-mono text-xs text-white font-semibold">
+                          <div className="font-mono tabular-nums text-xs text-white font-semibold">
                             {t.initialCirc != null ? `${t.initialCirc}%` : '—'}
                           </div>
                         </div>
                         <div>
                           <div className="text-[9px] uppercase tracking-wider text-neutral-500">Cliff</div>
-                          <div className="font-mono text-xs text-white font-semibold">
+                          <div className="font-mono tabular-nums text-xs text-white font-semibold">
                             {t.vestingCliffMonths != null ? `${t.vestingCliffMonths}mo` : '—'}
                           </div>
                         </div>
                         {t.fundingRaised != null && (
                           <div className="col-span-3 mt-1">
                             <div className="text-[9px] uppercase tracking-wider text-neutral-500">Raised</div>
-                            <div className="font-mono text-xs text-emerald-300 font-semibold">{fmtUsd(t.fundingRaised)}</div>
+                            <div className="font-mono tabular-nums text-xs text-emerald-300 font-semibold">{fmtUsd(t.fundingRaised)}</div>
                           </div>
                         )}
                       </div>
@@ -286,7 +286,7 @@ export default function TgeCalendarPage() {
                 <div className="flex items-center gap-2 mb-3">
                   <Sparkles className="w-4 h-4 text-emerald-400" />
                   <h2 className="text-sm font-bold text-white">Recently launched</h2>
-                  <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono">CoinGecko · last 14d</span>
+                  <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-mono tabular-nums">CoinGecko · last 14d</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
                   {data.recent.map(r => (
@@ -305,18 +305,18 @@ export default function TgeCalendarPage() {
                         <div className="text-sm font-bold text-white truncate group-hover:text-hub-yellow transition-colors">
                           {r.symbol}
                         </div>
-                        <span className="text-[10px] text-neutral-600 font-mono ml-auto">{r.ageDays}d</span>
+                        <span className="text-[10px] text-neutral-600 font-mono tabular-nums ml-auto">{r.ageDays}d</span>
                       </div>
                       <div className="text-[11px] text-neutral-500 truncate mb-2">{r.name}</div>
                       <div className="flex items-center justify-between text-[11px]">
-                        <span className="font-mono text-neutral-300">{fmtUsd(r.priceUsd)}</span>
+                        <span className="font-mono tabular-nums text-neutral-300">{fmtUsd(r.priceUsd)}</span>
                         {r.change24h != null && (
-                          <span className={`font-mono ${r.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          <span className={`font-mono tabular-nums ${r.change24h >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {fmtPct(r.change24h)}
                           </span>
                         )}
                       </div>
-                      <div className="text-[9px] text-neutral-600 font-mono mt-1">
+                      <div className="text-[9px] text-neutral-600 font-mono tabular-nums mt-1">
                         mcap {fmtUsd(r.marketCapUsd)}
                       </div>
                     </a>
