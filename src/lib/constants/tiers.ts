@@ -294,7 +294,7 @@ export const FEATURE_MATRIX: FeatureGroup[] = [
   {
     label: 'API archive window (historical bulk export)',
     values: {
-      free: '90 days',
+      free: '30 days',
       trader: '180 days',
       pro: '1 year',
       whale: '5 years',
@@ -311,11 +311,11 @@ export const FEATURE_MATRIX: FeatureGroup[] = [
   // ── Alerts + Watch ──
   {
     label: 'Custom alerts (price / funding / OI / change)',
-    values: { free: '5', trader: '15', pro: '75', whale: 'Unlimited' },
+    values: { free: '3', trader: '15', pro: '75', whale: 'Unlimited' },
   },
   {
     label: 'Wallet Alerts (HL + gTrade)',
-    values: { free: '10', trader: '30', pro: '200', whale: 'Unlimited' },
+    values: { free: '5', trader: '30', pro: '200', whale: 'Unlimited' },
   },
   {
     label: 'Sub-second priority alert delivery (P99 < 2s)',
@@ -328,7 +328,7 @@ export const FEATURE_MATRIX: FeatureGroup[] = [
   // ── Data ──
   {
     label: 'Historical funding + OI in-app window',
-    values: { free: '90 days', trader: '180 days', pro: '1 year', whale: '5 years' },
+    values: { free: '30 days', trader: '180 days', pro: '1 year', whale: '5 years' },
   },
   {
     label: `Real-time aggregator (${ALL_EXCHANGES.length} venues)`,
