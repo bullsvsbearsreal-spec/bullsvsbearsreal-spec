@@ -8,7 +8,7 @@
  *   Trader $15  — Active retail. All venues + power dashboards + 15 alerts.
  *   Pro    $49  — "I trade for a living". + API archive, tax export,
  *                  custom dashboards, setup scanner.
- *   Whale  $99  — Funds + desks. + Sub-second alerts, unlimited everything.
+ *   Whale  $99  — Funds + desks. + Priority alerts, unlimited everything.
  *
  * Today: Pro + Trader + Whale are "FREE DURING LAUNCH" — the prices
  * are visible on /pricing for transparency but no charges happen yet.
@@ -153,7 +153,7 @@ export const TIER_BRANDING: Record<Tier, TierBranding> = {
     bgTint: 'bg-gradient-to-br from-amber-500/[0.08] to-orange-500/[0.05]',
     borderTint: 'border-amber-400/40',
     iconName: 'Crown',
-    tagline: 'Funds + desks — sub-second alerts + unlimited everything',
+    tagline: 'Funds + desks — priority alerts + unlimited everything',
   },
 };
 
@@ -168,7 +168,7 @@ export const TIER_BRANDING: Record<Tier, TierBranding> = {
  * the upgrade path clearly.
  *
  * Items can be either pages (with `href`) or pure features without a
- * route (custom webhooks, sub-second alerts, etc. — the Whale tier has
+ * route (custom webhooks, priority alerts, etc. — the Whale tier has
  * several of these).
  */
 export interface TierToolItem {
@@ -234,7 +234,7 @@ export const TOOLS_BY_TIER: TierToolList[] = [
     heading: 'Pro adds',
     description: 'Trade-for-a-living tools — power API + tax + dashboards + scanner',
     items: [
-      { label: 'API archive endpoints (1y)', href: '/developers/docs', hint: 'Bulk historical funding / OI / liq export' },
+      { label: 'API funding-history archive (1y)', href: '/developers/docs', hint: 'Bulk historical funding export via /api/v1/funding/history' },
       { label: 'Tax CSV export', href: '/positions/tax', hint: 'Positions + funding paid + realized PnL' },
       { label: 'Custom dashboards', href: '/dashboard', hint: 'Drag/drop tiles · save layouts' },
       { label: 'Setup scanner', href: '/breakouts', hint: 'Breakout / range / divergence across top 200' },
@@ -245,11 +245,11 @@ export const TOOLS_BY_TIER: TierToolList[] = [
   {
     tier: 'whale',
     heading: 'Whale adds',
-    description: 'Funds + desks — sub-second alerts + unlimited everything',
+    description: 'Funds + desks — priority alerts + unlimited everything',
     items: [
-      { label: 'Sub-second alert priority delivery', hint: 'P99 < 2s · dedicated queue vs the standard cron' },
+      { label: 'Priority alert delivery', hint: 'Dedicated Whale queue — delivers in seconds, vs the 5-min standard cron' },
       { label: 'Custom alert webhooks', href: '/developers/webhooks', hint: 'HMAC-signed POSTs to your endpoint' },
-      { label: 'API archive (5y)', href: '/developers/docs', hint: 'Full historical export, unlimited rate' },
+      { label: 'API funding-history archive (5y)', href: '/developers/docs', hint: 'Full funding-history export, unlimited rate' },
       { label: 'Unlimited alerts · unlimited watched wallets' },
       { label: '1:1 Telegram channel with the team', hint: 'Feature requests + priority response' },
     ],
@@ -318,7 +318,7 @@ export const FEATURE_MATRIX: FeatureGroup[] = [
     values: { free: '5', trader: '30', pro: '200', whale: 'Unlimited' },
   },
   {
-    label: 'Sub-second priority alert delivery (P99 < 2s)',
+    label: 'Priority alert delivery (dedicated queue · seconds)',
     values: { free: false, trader: false, pro: false, whale: true },
   },
   {

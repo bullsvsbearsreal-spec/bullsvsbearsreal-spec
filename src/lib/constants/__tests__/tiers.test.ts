@@ -181,9 +181,9 @@ describe('FEATURE_MATRIX', () => {
       r.values.whale === true && r.values.free === false && r.values.trader === false && r.values.pro === false,
     );
     expect(whaleOnly.length).toBeGreaterThan(0);
-    // Sub-second alerts is documented Whale-only
+    // Priority alert delivery is documented Whale-only
     const labels = whaleOnly.map((r) => r.label.toLowerCase());
-    expect(labels.some((l) => l.includes('sub-second'))).toBe(true);
+    expect(labels.some((l) => l.includes('priority alert'))).toBe(true);
   });
 
   it('Pro-tier power features exist (true for Pro + Whale only)', () => {
@@ -322,7 +322,7 @@ describe('TOOLS_BY_TIER', () => {
     });
   });
 
-  it('Whale tier has at least one feature without an href (pure features like sub-second alerts)', () => {
+  it('Whale tier has at least one feature without an href (pure features like priority alerts)', () => {
     const whale = TOOLS_BY_TIER.find((t) => t.tier === 'whale')!;
     const hrefless = whale.items.filter((i) => !i.href);
     expect(hrefless.length).toBeGreaterThan(0);

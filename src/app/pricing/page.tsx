@@ -272,7 +272,7 @@ export default function PricingPage() {
             />
             <FaqItem
               q="What's the difference between Trader, Pro, and Whale?"
-              a={`Trader ($12) is active retail — every venue real-time, ${TIER_LIMITS.trader.maxAlerts} alerts, ${TIER_LIMITS.trader.maxWatchedWallets} wallets, ${TIER_LIMITS.trader.historyDays}d history, ${TIER_LIMITS.trader.apiPerMinute}/min API. Pro ($29) is "trade for a living" — adds API archive (1y) + Tax CSV export + Custom dashboards + Setup scanner, plus ${TIER_LIMITS.pro.maxAlerts} alerts, ${TIER_LIMITS.pro.maxWatchedWallets} wallets, 1y history, ${TIER_LIMITS.pro.apiPerMinute}/min API. Whale ($59) is funds + desks — adds sub-second alert priority (P99 < 2s), custom alert webhooks, 5y archive, unlimited everything, and a 1:1 Telegram channel with the team.`}
+              a={`Trader ($${TIER_PRICE_MONTHLY.trader}) is active retail — every venue real-time, ${TIER_LIMITS.trader.maxAlerts} alerts, ${TIER_LIMITS.trader.maxWatchedWallets} wallets, ${TIER_LIMITS.trader.historyDays}d history, ${TIER_LIMITS.trader.apiPerMinute}/min API. Pro ($${TIER_PRICE_MONTHLY.pro}) is "trade for a living" — adds API archive (1y) + Tax CSV export + Custom dashboards + Setup scanner, plus ${TIER_LIMITS.pro.maxAlerts} alerts, ${TIER_LIMITS.pro.maxWatchedWallets} wallets, 1y history, ${TIER_LIMITS.pro.apiPerMinute}/min API. Whale ($${TIER_PRICE_MONTHLY.whale}) is funds + desks — adds priority alert delivery (dedicated queue), custom alert webhooks, 5y archive, unlimited everything, and a 1:1 Telegram channel with the team.`}
             />
             <FaqItem
               q="Do you charge based on usage?"
@@ -425,7 +425,7 @@ function TierCard({
         </Bullet>
         {tier === 'whale' && (
           <>
-            <Bullet>Sub-second alert priority (P99 &lt; 2s)</Bullet>
+            <Bullet>Priority alert delivery (dedicated queue)</Bullet>
             <Bullet>Custom alert webhooks (HTTPS)</Bullet>
             <Bullet>1:1 Telegram channel with the team</Bullet>
           </>
