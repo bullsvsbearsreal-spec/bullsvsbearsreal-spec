@@ -206,7 +206,7 @@ export default function LiquidationsPage() {
                 )}
               </div>
               <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
-                <span className="text-red-400">Liquidations</span>
+                <span className="text-hub-yellow">Liquidations</span>
               </h1>
               <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
                 Real-time liquidation feed across{' '}

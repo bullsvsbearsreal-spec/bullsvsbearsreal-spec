@@ -7,6 +7,7 @@ import { useApi } from '@/hooks/useSWRApi';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
 import PageHero from '@/components/PageHero';
+import { TokenIconSimple } from '@/components/TokenIcon';
 import { formatUSD, formatPrice } from '@/lib/utils/format';
 import {
   RefreshCw,
@@ -514,9 +515,10 @@ export default function LiquidationMapPage() {
               <button
                 key={sym}
                 onClick={() => setSymbol(sym)}
-                className={`btn-group-item ${symbol === sym ? 'btn-group-item-active' : ''}`}
+                className={`btn-group-item inline-flex items-center gap-1.5 ${symbol === sym ? 'btn-group-item-active' : ''}`}
                 aria-pressed={symbol === sym}
               >
+                <TokenIconSimple symbol={sym} size={14} />
                 {sym}
               </button>
             ))}
@@ -780,7 +782,7 @@ export default function LiquidationMapPage() {
               <p className="text-hub-yellow text-sm font-medium">How This Estimate Works</p>
               <p className="text-neutral-500 text-sm mt-1">
                 This liquidation map estimates where leveraged positions would get liquidated based on
-                common leverage tiers (2x through 100x). Liquidation prices are calculated using the
+                common leverage tiers. Liquidation prices are calculated using the
                 simplified formula:
               </p>
               <div className="mt-2 space-y-1">

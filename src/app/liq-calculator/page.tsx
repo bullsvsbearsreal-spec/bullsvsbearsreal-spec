@@ -99,7 +99,7 @@ export default function LiqCalculatorPage() {
           eyebrow="Tools · pre-trade risk"
           title="Liquidation"
           accentNoun="calculator"
-          accent="cyan"
+          accent="red"
           description={
             <>Linear perp liquidation price, breakeven, and PnL scenarios. Sized
               on your initial margin + leverage. Works for USDT/USDC-margined
@@ -195,20 +195,25 @@ export default function LiqCalculatorPage() {
             <div>
               <label className="text-[10px] uppercase tracking-wider text-neutral-500 mb-1 font-medium block">Margin mode</label>
               <div className="flex gap-1 bg-white/[0.03] rounded-lg p-0.5">
-                {(['isolated', 'cross'] as const).map(m => (
-                  <button
-                    key={m}
-                    onClick={() => setMode(m)}
-                    className={`flex-1 px-3 py-1.5 rounded text-xs font-semibold uppercase transition-colors ${
-                      mode === m ? 'bg-hub-yellow text-black' : 'text-neutral-400 hover:text-white'
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
+                {(['isolated', 'cross'] as const).map(m => {
+                  const disabled = m === 'cross';
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => { if (!disabled) setMode(m); }}
+                      disabled={disabled}
+                      title={disabled ? 'Isolated only — cross-margin math is not modeled' : undefined}
+                      className={`flex-1 px-3 py-1.5 rounded text-xs font-semibold uppercase transition-colors ${
+                        mode === m ? 'bg-hub-yellow text-black' : 'text-neutral-400 hover:text-white'
+                      } ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {m}
+                    </button>
+                  );
+                })}
               </div>
               <div className="text-[10px] text-neutral-600 mt-1 font-mono">
-                Cross mode shares balance with other positions, liquidation can use your full wallet. This calc assumes isolated behaviour.
+                Cross-margin is not modeled — figures assume isolated margin.
               </div>
             </div>
           </div>

@@ -110,10 +110,10 @@ function classifyTier(w: { realizedPnl: number; winRate: number; liveNotional: n
   return null;
 }
 
-const TIER_STYLES: Record<TraderTier, { label: string; cls: string; icon: string }> = {
-  whale:  { label: 'WHALE',  cls: 'bg-violet-500/15 text-violet-300 border-violet-400/30',  icon: '🐋' },
-  sniper: { label: 'SNIPER', cls: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30', icon: '🎯' },
-  elite:  { label: 'ELITE',  cls: 'bg-amber-500/15 text-amber-300 border-amber-400/30',  icon: '★' },
+const TIER_STYLES: Record<TraderTier, { label: string; cls: string }> = {
+  whale:  { label: 'WHALE',  cls: 'bg-violet-500/15 text-violet-300 border-violet-400/30' },
+  sniper: { label: 'SNIPER', cls: 'bg-emerald-500/15 text-emerald-300 border-emerald-400/30' },
+  elite:  { label: 'ELITE',  cls: 'bg-amber-500/15 text-amber-300 border-amber-400/30' },
 };
 
 function shortAddr(a: string): string {
@@ -166,9 +166,9 @@ const KIND_LABEL: Record<EventRow['kind'], string> = {
  */
 function liqSeverity(distPct: number): { tag: string; tone: 'caution' | 'warning' | 'critical' } {
   const pct = Math.abs(distPct);
-  if (pct < 0.05) return { tag: '🔴 CRITICAL', tone: 'critical' };  // <5%
-  if (pct < 0.10) return { tag: '🟡 WARNING',  tone: 'warning'  };  // <10%
-  return { tag: '🟢 CAUTION', tone: 'caution' };
+  if (pct < 0.05) return { tag: 'CRITICAL', tone: 'critical' };  // <5%
+  if (pct < 0.10) return { tag: 'WARNING',  tone: 'warning'  };  // <10%
+  return { tag: 'CAUTION', tone: 'caution' };
 }
 
 function formatEvent(e: EventRow): string {
@@ -545,7 +545,7 @@ function WatchPageInner() {
                 <span className="text-[10px] uppercase tracking-[0.18em] text-neutral-500 font-bold">Watcher</span>
               </div>
               <h1 className="text-3xl sm:text-[34px] font-extrabold tracking-tight text-white leading-[1.05]">
-                Wallet <span className="text-hub-yellow">alerts</span>
+                Wallet <span className="text-hub-yellow">watch</span>
               </h1>
               <div className="flex items-center gap-1.5 flex-wrap mt-3">
                 {[
@@ -918,7 +918,7 @@ function WatchPageInner() {
                           className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border ${tierStyle.cls} shrink-0`}
                           title={`${tierStyle.label} · realized ${tier!.realizedPnlUsd >= 1_000_000 ? `$${(tier!.realizedPnlUsd / 1_000_000).toFixed(1)}M` : `$${Math.round(tier!.realizedPnlUsd / 1_000)}K`}${tier!.winRate > 0 ? ` · ${tier!.winRate.toFixed(0)}% WR` : ''}`}
                         >
-                          {tierStyle.icon} {tierStyle.label}
+                          {tierStyle.label}
                         </span>
                       )}
                       <span className="text-neutral-500 truncate">·</span>

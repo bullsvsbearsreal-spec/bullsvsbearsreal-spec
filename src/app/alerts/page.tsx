@@ -368,8 +368,9 @@ export default function AlertsPage() {
               </h1>
               <p className="text-[13px] text-neutral-400 mt-2 max-w-xl leading-relaxed">
                 Set conditions on price, funding rate, open interest, or 24h change.
-                Checked every 60 seconds — pings deliver via Email, Telegram, Discord,
-                or WhatsApp (configure below).
+                Server-side checks run every 5 min — even when your browser is closed;
+                the open tab re-checks every 60s. Pings deliver via Email, Telegram,
+                Discord, or WhatsApp (configure below).
               </p>
             </div>
             <button
