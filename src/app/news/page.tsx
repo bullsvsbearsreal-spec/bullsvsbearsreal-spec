@@ -569,7 +569,7 @@ export default function NewsPage() {
                 </p>
                 <button
                   onClick={() => { setSearch(''); setFilter('all'); setTimeRange('all'); setCurrency(''); }}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-hub-yellow text-black rounded-lg text-sm font-medium hover:opacity-90 transition-opacity"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/[0.04] border border-white/[0.06] text-neutral-300 rounded-lg text-sm font-medium hover:bg-white/[0.08] hover:text-white transition-colors"
                 >
                   <RefreshCw className="w-3.5 h-3.5" />
                   Clear Filters

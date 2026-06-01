@@ -8,6 +8,7 @@ import RefreshButton from '@/components/RefreshButton';
 import UsdDisplay from '@/components/UsdDisplay';
 import PageHero from '@/components/PageHero';
 import { Fuel, Info, CheckCircle2, AlertTriangle, Zap } from 'lucide-react';
+import { ErrorDisplay } from '@/components/ui/ErrorDisplay';
 
 interface GasRow {
   chain: string;
@@ -146,7 +147,7 @@ export default function GasTrackerPage() {
           )}
 
           {error && (
-            <div className="text-center py-12 text-red-400 text-sm">Failed to load · {String(error)}</div>
+            <ErrorDisplay message={`Failed to load · ${String(error)}`} onRetry={refresh} />
           )}
 
           {data?.data?.map(r => (
