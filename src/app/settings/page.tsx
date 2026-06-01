@@ -124,7 +124,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Display (theme toggle — tiny, kept inline) */}
-          <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-4 mb-4">
+          <div className="card-premium p-4 mb-4">
             <h2 className="text-sm font-semibold text-white flex items-center gap-2 mb-4">
               {theme === 'dark' ? <Moon className="w-4 h-4 text-hub-yellow" /> : <Sun className="w-4 h-4 text-hub-yellow" />}
               Display

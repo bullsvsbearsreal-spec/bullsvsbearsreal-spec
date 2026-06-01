@@ -432,7 +432,7 @@ function SectionCard({ title, description, icon: Icon, children }: {
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-5 mb-4">
+    <section className="card-premium p-5 mb-4">
       <header className="mb-4">
         <h2 className="text-sm font-bold uppercase tracking-[0.1em] text-white flex items-center gap-2">
           {Icon && <Icon className="w-4 h-4 text-hub-yellow" />}

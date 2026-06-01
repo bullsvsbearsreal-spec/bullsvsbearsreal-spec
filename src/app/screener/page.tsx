@@ -71,11 +71,11 @@ function deriveSentiment(change24h: number, oiChange: number, funding: number): 
   if (change24h > 5 && funding > 0) return { label: 'PUMPING', color: 'text-green-400 bg-green-500/10' };
   if (change24h < -5 && funding < 0) return { label: 'DUMPING', color: 'text-red-400 bg-red-500/10' };
   // Moderate directional
-  if (change24h > 5) return { label: 'BULLISH', color: 'text-green-400/80 bg-green-500/8' };
-  if (change24h < -5) return { label: 'BEARISH', color: 'text-red-400/80 bg-red-500/8' };
+  if (change24h > 5) return { label: 'BULLISH', color: 'text-green-400/80 bg-green-500/10' };
+  if (change24h < -5) return { label: 'BEARISH', color: 'text-red-400/80 bg-red-500/10' };
   // Mild directional
-  if (change24h > 2) return { label: 'BID', color: 'text-green-400/70 bg-green-500/5' };
-  if (change24h < -2) return { label: 'OFFERED', color: 'text-red-400/70 bg-red-500/5' };
+  if (change24h > 2) return { label: 'BID', color: 'text-green-400/70 bg-green-500/10' };
+  if (change24h < -2) return { label: 'OFFERED', color: 'text-red-400/70 bg-red-500/10' };
   return { label: 'FLAT', color: 'text-neutral-500 bg-white/[0.02]' };
 }
 
@@ -860,7 +860,7 @@ export default function ScreenerPage() {
                       {row.oiExchanges > 0 ? `${row.oiExchanges}OI` : ''}
                     </td>
                     <td className="px-2 py-2 text-center">
-                      <span aria-label={row.sentiment} className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide whitespace-nowrap ${row.sentimentColor}`}>
+                      <span aria-label={row.sentiment} className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide whitespace-nowrap ${row.sentimentColor}`}>
                         {row.sentiment}
                       </span>
                     </td>
@@ -944,7 +944,7 @@ export default function ScreenerPage() {
                   </div>
                 </div>
                 <div className="mt-1.5 flex items-center gap-2">
-                  <span aria-label={row.sentiment} className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold tracking-wide ${row.sentimentColor}`}>
+                  <span aria-label={row.sentiment} className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide ${row.sentimentColor}`}>
                     {row.sentiment}
                   </span>
                   {row.oiChange24h !== 0 && (
