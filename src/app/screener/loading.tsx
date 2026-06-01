@@ -1,7 +1,6 @@
 export default function ScreenerLoading() {
   return (
     <div className="min-h-screen bg-hub-black">
-      <div className="h-14 bg-hub-card border-b border-hub-subtle" />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         {/* Title + actions */}
@@ -22,7 +21,7 @@ export default function ScreenerLoading() {
         </div>
 
         {/* Table */}
-        <div className="bg-hub-card border border-hub-subtle rounded-xl overflow-hidden">
+        <div className="bg-hub-darker border border-hub-subtle rounded-xl overflow-hidden">
           <div className="h-10 bg-white/[0.03] border-b border-hub-subtle" />
           {Array.from({ length: 15 }).map((_, i) => (
             <div key={i} className="h-11 border-b border-hub-subtle flex items-center px-4 gap-4">

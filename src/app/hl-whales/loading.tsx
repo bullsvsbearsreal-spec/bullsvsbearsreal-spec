@@ -1,13 +1,12 @@
 export default function HLWhalesLoading() {
   return (
     <div className="min-h-screen bg-hub-black">
-      <div className="h-14 bg-hub-card border-b border-hub-subtle" />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         <div className="h-7 w-32 bg-white/[0.06] rounded-lg animate-pulse mb-6" />
 
         {/* Table */}
-        <div className="bg-hub-card border border-hub-subtle rounded-xl overflow-hidden">
+        <div className="bg-hub-darker border border-hub-subtle rounded-xl overflow-hidden">
           <div className="flex items-center gap-4 px-4 py-3 border-b border-hub-subtle">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="h-3 w-20 bg-white/[0.06] rounded animate-pulse" />

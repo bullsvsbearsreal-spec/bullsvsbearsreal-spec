@@ -6,7 +6,6 @@
 export default function GMXTradersLoading() {
   return (
     <div className="min-h-screen bg-hub-black">
-      <div className="h-14 bg-hub-card border-b border-hub-subtle" />
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         {/* Header block */}
         <div className="mb-4">

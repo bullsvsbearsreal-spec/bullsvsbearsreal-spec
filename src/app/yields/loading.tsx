@@ -1,7 +1,6 @@
 export default function YieldsLoading() {
   return (
     <div className="min-h-screen bg-hub-black">
-      <div className="h-14 bg-hub-card border-b border-hub-subtle" />
 
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         {/* Title + filters */}
@@ -15,7 +14,7 @@ export default function YieldsLoading() {
         </div>
 
         {/* Table skeleton */}
-        <div className="bg-hub-card border border-hub-subtle rounded-xl overflow-hidden">
+        <div className="bg-hub-darker border border-hub-subtle rounded-xl overflow-hidden">
           <div className="flex items-center gap-4 px-4 py-3 border-b border-hub-subtle">
             {Array.from({ length: 6 }).map((_, i) => (
               <div key={i} className="h-3 w-16 bg-white/[0.06] rounded animate-pulse" />

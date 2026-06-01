@@ -1,7 +1,6 @@
 export default function CompareTradersLoading() {
   return (
     <div className="min-h-screen bg-hub-black">
-      <div className="h-14 bg-hub-card border-b border-hub-subtle" />
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         <div className="flex items-center gap-3 mb-4">
           <div className="h-4 w-24 bg-white/[0.06] rounded animate-pulse" />

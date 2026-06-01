@@ -16,7 +16,7 @@ export default function DashboardLoading() {
           <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-7">
             <div className="grid grid-cols-1 lg:grid-cols-[1fr_minmax(280px,360px)] gap-6 items-start">
               <div className="flex items-start gap-4">
-                <div className="w-16 h-16 rounded-2xl bg-white/[0.04] animate-pulse shrink-0" />
+                <div className="w-16 h-16 rounded-xl bg-white/[0.04] animate-pulse shrink-0" />
                 <div className="flex-1 space-y-2">
                   <div className="h-7 w-64 bg-white/[0.04] rounded animate-pulse" />
                   <div className="h-3 w-48 bg-white/[0.03] rounded animate-pulse" />
@@ -26,7 +26,7 @@ export default function DashboardLoading() {
                   </div>
                 </div>
               </div>
-              <div className="rounded-2xl border border-white/[0.06] bg-white/[0.02] h-24 animate-pulse" />
+              <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] h-24 animate-pulse" />
             </div>
           </div>
         </section>

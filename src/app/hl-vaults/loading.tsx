@@ -1,7 +1,6 @@
 export default function HlVaultsLoading() {
   return (
     <div className="min-h-screen bg-hub-black">
-      <div className="h-14 bg-hub-card border-b border-hub-subtle" />
       <main className="max-w-[1400px] mx-auto px-4 sm:px-6 py-6">
         <div className="h-10 bg-white/[0.04] rounded animate-pulse mb-4" />
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
