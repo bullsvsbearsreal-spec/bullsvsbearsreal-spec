@@ -43,21 +43,21 @@ const CATEGORY_COLORS: Record<StockRow['category'], string> = {
 };
 
 function fmtUsd(n: number | null): string {
-  if (n == null) return '—';
+  if (n == null || !Number.isFinite(n)) return '—';
   if (n >= 1000) return `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
   if (n >= 10) return `$${n.toFixed(2)}`;
   return `$${n.toFixed(3)}`;
 }
 
 function fmtPct(n: number | null, digits = 2): string {
-  if (n == null) return '—';
+  if (n == null || !Number.isFinite(n)) return '—';
   const v = n * 100;
   const sign = v >= 0 ? '+' : '';
   return `${sign}${v.toFixed(digits)}%`;
 }
 
 function fmtBeta(n: number | null): string {
-  if (n == null) return '—';
+  if (n == null || !Number.isFinite(n)) return '—';
   return n.toFixed(2);
 }
 

@@ -127,6 +127,7 @@ function fmtPnl(n: number): string {
 }
 
 function fmtUsd(n: number): string {
+  if (!Number.isFinite(n)) return '$0';
   const abs = Math.abs(n);
   const sign = n < 0 ? '-' : '';
   if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(2)}B`;

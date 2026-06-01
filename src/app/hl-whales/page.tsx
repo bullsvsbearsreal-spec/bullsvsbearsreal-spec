@@ -83,6 +83,7 @@ function truncAddr(addr: string): string {
 }
 
 function fmtPnl(n: number): string {
+  if (!Number.isFinite(n)) return '—';
   const sign = n >= 0 ? '+' : '';
   if (Math.abs(n) >= 1e6) return `${sign}$${(n / 1e6).toFixed(2)}M`;
   if (Math.abs(n) >= 1e3) return `${sign}$${(n / 1e3).toFixed(1)}K`;
@@ -90,6 +91,7 @@ function fmtPnl(n: number): string {
 }
 
 function fmtPct(n: number): string {
+  if (!Number.isFinite(n)) return '—';
   const sign = n >= 0 ? '+' : '';
   return `${sign}${(n * 100).toFixed(1)}%`;
 }

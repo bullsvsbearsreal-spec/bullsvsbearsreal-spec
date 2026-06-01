@@ -40,6 +40,7 @@ interface ApiResponse {
 }
 
 const fmtUsd = (n: number): string => {
+  if (!Number.isFinite(n)) return '—';
   const abs = Math.abs(n);
   const sign = n < 0 ? '-' : '';
   if (abs >= 1e9) return `${sign}$${(abs / 1e9).toFixed(2)}B`;
@@ -48,16 +49,16 @@ const fmtUsd = (n: number): string => {
   return `${sign}$${abs.toFixed(0)}`;
 };
 const fmtUsdSign = (n: number) => (n >= 0 ? '+' : '') + fmtUsd(n);
-const fmtPct = (n: number) => `${n.toFixed(1)}%`;
+const fmtPct = (n: number) => (Number.isFinite(n) ? `${n.toFixed(1)}%` : '—');
 const truncAddr = (a: string) => `${a.slice(0, 6)}…${a.slice(-4)}`;
 
 function activityBadge(days: number | null): string {
   if (days == null) return 'inactive';
-  if (days < 1) return '🟢 today';
-  if (days < 3) return '🟢 active';
-  if (days < 7) return '🟡 this week';
-  if (days < 30) return '🟡 this month';
-  return '⚪ stale';
+  if (days < 1) return 'today';
+  if (days < 3) return 'active';
+  if (days < 7) return 'this week';
+  if (days < 30) return 'this month';
+  return 'stale';
 }
 
 export default function SmartMoneyLeaderboardPage() {

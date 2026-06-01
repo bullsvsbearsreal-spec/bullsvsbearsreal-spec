@@ -296,12 +296,12 @@ export default function CorrelationPage() {
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Most Correlated</div>
             <div className="text-sm font-bold text-orange-400 truncate">{stats.mostCorrelated.pair}</div>
-            <div className="text-xs text-neutral-500 font-mono">r = {stats.mostCorrelated.r.toFixed(3)}</div>
+            <div className="text-xs text-neutral-500 font-mono">r = {Number.isFinite(stats.mostCorrelated.r) ? stats.mostCorrelated.r.toFixed(3) : 'N/A'}</div>
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Least Correlated</div>
             <div className="text-sm font-bold text-blue-400 truncate">{stats.leastCorrelated.pair}</div>
-            <div className="text-xs text-neutral-500 font-mono">r = {stats.leastCorrelated.r.toFixed(3)}</div>
+            <div className="text-xs text-neutral-500 font-mono">r = {Number.isFinite(stats.leastCorrelated.r) ? stats.leastCorrelated.r.toFixed(3) : 'N/A'}</div>
           </div>
           <div className="bg-hub-darker border border-white/[0.06] rounded-xl p-3">
             <div className="text-[11px] text-neutral-500 mb-1">Valid Pairs</div>
