@@ -747,8 +747,8 @@ export default function ScreenerPage() {
           <table className="w-full text-sm" aria-label="Cryptocurrency screener">
             <thead>
               <tr className="bg-hub-darker border-b border-white/[0.06] sticky top-0 z-10">
-                <th className="text-left px-3 py-2.5 text-[11px] font-medium text-neutral-500 w-8">#</th>
-                <th className="text-left px-3 py-2.5 text-[11px] font-medium text-neutral-500 w-6"></th>
+                <th className="text-left px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 w-8">#</th>
+                <th className="text-left px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500 w-6"></th>
                 {([
                   ['symbol', 'Symbol'],
                   ['price', 'Price'],
@@ -764,7 +764,7 @@ export default function ScreenerPage() {
                     tabIndex={0}
                     onClick={() => handleSort(field)}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSort(field); } }}
-                    className={`px-3 py-2.5 text-[11px] font-medium cursor-pointer hover:text-white transition-colors select-none focus:outline-none focus:ring-2 focus:ring-hub-yellow/20 ${
+                    className={`px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider cursor-pointer hover:text-white transition-colors select-none focus:outline-none focus:ring-2 focus:ring-hub-yellow/20 ${
                       field === 'symbol' ? 'text-left' : 'text-right'
                     } ${sortField === field ? 'text-hub-yellow' : 'text-neutral-500'}`}
                   >
@@ -773,8 +773,8 @@ export default function ScreenerPage() {
                     </span>
                   </th>
                 ))}
-                <th className="text-right px-3 py-2.5 text-[11px] font-medium text-neutral-500">Exchanges</th>
-                <th className="text-center px-3 py-2.5 text-[11px] font-medium text-neutral-500">Sentiment</th>
+                <th className="text-right px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">Exchanges</th>
+                <th className="text-center px-3 py-2.5 text-[11px] font-semibold uppercase tracking-wider text-neutral-500">Sentiment</th>
               </tr>
             </thead>
             <tbody>
@@ -790,7 +790,7 @@ export default function ScreenerPage() {
                       router.push(`/symbol/${row.symbol}`);
                     }}
                     className={`border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors cursor-pointer ${
-                      matchesAll ? 'bg-hub-yellow/[0.02]' : ''
+                      matchesAll ? 'bg-hub-yellow/[0.02]' : idx % 2 === 1 ? 'bg-white/[0.015]' : ''
                     }`}
                   >
                     <td className="px-3 py-2 text-[11px] text-neutral-600">{rank}</td>
