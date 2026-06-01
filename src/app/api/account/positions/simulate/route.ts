@@ -120,7 +120,9 @@ export async function POST(request: NextRequest) {
   const buffer = margin; // pre-fee/funding — close enough for the on-open snapshot
   let liquidationPrice: number | null = null;
   if (markPrice && markPrice > 0 && positionValueUsd > 0) {
-    const ratio = (buffer / positionValueUsd) * (1 - MMF);
+    // Maintenance margin stands on its own (liq = 1/lev − mmf), not folded
+    // inside the 1/lev term — otherwise mmf gets divided by leverage.
+    const ratio = (buffer / positionValueUsd) - MMF;
     liquidationPrice = side === 'long'
       ? markPrice * Math.max(0, 1 - ratio)
       : markPrice * (1 + ratio);

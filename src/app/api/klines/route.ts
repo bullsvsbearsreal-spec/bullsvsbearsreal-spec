@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
   const rawSymbol = searchParams.get('symbol')?.toUpperCase() || '';
   const symbol = /^[A-Z0-9]+$/.test(rawSymbol) ? rawSymbol : '';
   const interval = searchParams.get('interval') || '1h';
-  const limit = Math.min(parseInt(searchParams.get('limit') || '200') || 200, 500);
+  const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '200') || 200, 1), 500);
 
   if (!symbol) {
     return NextResponse.json({ error: 'Missing symbol parameter' }, { status: 400 });

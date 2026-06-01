@@ -309,6 +309,19 @@ export default function SymbolFundingPage() {
     return map;
   }, [symbolRates]);
 
+  // Per-exchange real settle interval in HOURS, honoring the per-symbol
+  // fundingIntervalHours override — so annualization uses the true cadence
+  // (24/hrs periods/day) and never 3x a venue whose actual interval differs
+  // from its enum bucket. Mirrors the `stats` normalize8h logic above.
+  const exchangeHoursMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    symbolRates.forEach((r: FundingRateData) => {
+      const h = r.fundingIntervalHours;
+      if (typeof h === 'number' && h > 0 && Number.isFinite(h)) map[r.exchange] = h;
+    });
+    return map;
+  }, [symbolRates]);
+
   // Annualized chart data — multiply each rate by periodsPerDay * 365
   const displayChartData = useMemo(() => {
     if (!showAnnualized) return chartData;
@@ -318,13 +331,15 @@ export default function SymbolFundingPage() {
         if (key === 'time') continue;
         const val = point[key];
         if (typeof val !== 'number') { newPoint[key] = val; continue; }
+        const hrs = exchangeHoursMap[key];
         const interval = exchangeIntervalMap[key] || '8h';
-        const periodsPerDay = interval === '1h' ? 24 : interval === '4h' ? 6 : 3;
+        const periodsPerDay = hrs ? 24 / hrs
+          : interval === '1h' ? 24 : interval === '4h' ? 6 : 3;
         newPoint[key] = val * periodsPerDay * 365;
       }
       return newPoint;
     });
-  }, [chartData, showAnnualized, exchangeIntervalMap]);
+  }, [chartData, showAnnualized, exchangeIntervalMap, exchangeHoursMap]);
 
   // Live rate per exchange for picker display
   const liveRateMap = useMemo(() => {
@@ -691,7 +706,10 @@ export default function SymbolFundingPage() {
                     {symbolRates
                       .sort((a: FundingRateData, b: FundingRateData) => b.fundingRate - a.fundingRate)
                       .map((fr: FundingRateData, i: number) => {
-                        const periodsPerDay = fr.fundingInterval === '1h' ? 24 : fr.fundingInterval === '4h' ? 6 : 3;
+                        const hrs = fr.fundingIntervalHours;
+                        const periodsPerDay = (typeof hrs === 'number' && hrs > 0 && Number.isFinite(hrs))
+                          ? 24 / hrs
+                          : fr.fundingInterval === '1h' ? 24 : fr.fundingInterval === '4h' ? 6 : 3;
                         const annualized = fr.fundingRate * periodsPerDay * 365;
                         const pairKey = `${fr.symbol}|${fr.exchange}`;
                         const oiVal = oiMap.get(pairKey);

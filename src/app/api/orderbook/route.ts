@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const rawSym = (searchParams.get('symbol') || 'BTC').toUpperCase();
   const symbol = /^[A-Z0-9]+$/.test(rawSym) ? rawSym : 'BTC';
-  const limit = Math.min(parseInt(searchParams.get('limit') || '25'), 50);
+  const limit = Math.min(Math.max(parseInt(searchParams.get('limit') || '25') || 25, 1), 50);
   const pair = `${symbol}USDT`;
 
   // L1 cache
