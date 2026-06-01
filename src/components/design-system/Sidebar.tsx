@@ -301,10 +301,28 @@ export default function Sidebar({ sections = DEFAULT_SECTIONS, className }: Side
       aria-label="Primary navigation"
     >
       <div style={{ position: 'relative', padding: '0 4px' }}>
-        <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--fg-subtle)', display: 'inline-flex' }}>
+        <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--fg-subtle)', display: 'inline-flex', pointerEvents: 'none' }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" /></svg>
         </span>
-        <input value={q} onChange={e => setQ(e.target.value)} placeholder="Search coin…" style={{ width: '100%', background: 'var(--hub-darker)', border: '1px solid var(--hub-border)', borderRadius: 7, padding: '7px 10px 7px 30px', color: 'var(--fg-default)', fontFamily: 'var(--font-sans)', fontSize: 12, outline: 'none' }} />
+        <input
+          value={q}
+          onChange={e => setQ(e.target.value)}
+          placeholder="Filter menu…"
+          aria-label="Filter navigation menu"
+          style={{ width: '100%', background: 'var(--hub-darker)', border: '1px solid var(--hub-border)', borderRadius: 7, padding: '7px 28px 7px 30px', color: 'var(--fg-default)', fontFamily: 'var(--font-sans)', fontSize: 12, outline: 'none', transition: 'border-color 120ms' }}
+          onFocus={e => { e.currentTarget.style.borderColor = 'var(--hub-accent)'; }}
+          onBlur={e => { e.currentTarget.style.borderColor = 'var(--hub-border)'; }}
+        />
+        {q && (
+          <button
+            type="button"
+            aria-label="Clear filter"
+            onClick={() => setQ('')}
+            style={{ position: 'absolute', right: 11, top: '50%', transform: 'translateY(-50%)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 16, height: 16, padding: 0, border: 'none', background: 'transparent', color: 'var(--fg-subtle)', cursor: 'pointer' }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
+          </button>
+        )}
       </div>
       {filtered.map(sec => (
         <div key={sec.id}>
@@ -322,6 +340,11 @@ export default function Sidebar({ sections = DEFAULT_SECTIONS, className }: Side
           </div>
         </div>
       ))}
+      {q.trim() && filtered.length === 0 && (
+        <div style={{ padding: '6px 12px', fontSize: 11, color: 'var(--fg-subtle)', lineHeight: 1.5 }}>
+          No menu items match “{q.trim()}”. Try <kbd style={{ fontFamily: 'var(--font-mono)', fontSize: 10, background: 'var(--hub-secondary)', padding: '1px 5px', borderRadius: 3, color: 'var(--fg-muted)' }}>⌘K</kbd> to search coins &amp; pages.
+        </div>
+      )}
       <div style={{ flex: 1 }} />
       {/* Live venue + throughput panel — number-first hierarchy:
           big mono numbers anchor each row, the small uppercase label sits
