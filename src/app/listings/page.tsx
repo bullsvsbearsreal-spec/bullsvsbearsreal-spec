@@ -45,10 +45,10 @@ function fmtAge(mins: number): string {
 
 function kindBadge(k: ListingRow['kind']): { label: string; cls: string } {
   switch (k) {
-    case 'spot':      return { label: 'spot',       cls: 'bg-blue-400/15 text-blue-400' };
-    case 'perpetual': return { label: 'perpetual',  cls: 'bg-purple-400/15 text-purple-400' };
-    case 'futures':   return { label: 'futures',    cls: 'bg-indigo-400/15 text-indigo-400' };
-    case 'earn':      return { label: 'earn',       cls: 'bg-green-400/15 text-green-400' };
+    case 'spot':      return { label: 'spot',       cls: 'bg-white/10 text-neutral-300' };
+    case 'perpetual': return { label: 'perpetual',  cls: 'bg-hub-yellow/15 text-hub-yellow' };
+    case 'futures':   return { label: 'futures',    cls: 'bg-hub-yellow/10 text-hub-yellow/80' };
+    case 'earn':      return { label: 'earn',       cls: 'bg-white/[0.06] text-neutral-400' };
     case 'delist':    return { label: 'delist',     cls: 'bg-red-400/15 text-red-400' };
     default:          return { label: 'other',      cls: 'bg-neutral-500/15 text-neutral-400' };
   }
@@ -229,6 +229,9 @@ export default function ListingsPage() {
                       {t}
                     </span>
                   ))}
+                  {r.tickers.length > 3 && (
+                    <span className="text-[10px] font-mono text-neutral-600 px-1.5 py-0.5">+{r.tickers.length - 3}</span>
+                  )}
                 </div>
                 <div>
                   <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${badge.cls}`}>

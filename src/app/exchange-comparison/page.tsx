@@ -250,7 +250,7 @@ export default function ExchangeComparisonPage() {
 
           {/* Sort */}
           <div className="flex rounded-lg overflow-hidden bg-white/[0.04] border border-white/[0.06]">
-            {(['oi', 'funding', 'volume', 'symbols'] as SortKey[]).map(k => (
+            {(['oi', 'funding', 'symbols', 'fees'] as SortKey[]).map(k => (
               <button
                 key={k}
                 onClick={() => setSortKey(k)}
@@ -258,7 +258,7 @@ export default function ExchangeComparisonPage() {
                   sortKey === k ? 'bg-hub-yellow text-black' : 'text-neutral-400 hover:text-white'
                 }`}
               >
-                {k === 'oi' ? 'OI' : k === 'funding' ? 'Funding' : k === 'volume' ? 'Volume' : 'Symbols'}
+                {k === 'oi' ? 'OI' : k === 'funding' ? 'Funding' : k === 'symbols' ? 'Symbols' : 'Fees'}
               </button>
             ))}
           </div>
@@ -290,13 +290,33 @@ export default function ExchangeComparisonPage() {
         {!isLoading && sorted.length > 0 && (
           <>
             {viewMode === 'chart' ? (
-              <ComparisonCharts
-                oiChartData={oiChartData}
-                fundingForSymbol={fundingForSymbol}
-                selectedSymbol={selectedSymbol}
-                onSymbolChange={setSelectedSymbol}
-                availableSymbols={availableSymbols}
-              />
+              <>
+                {(() => {
+                  // Surface the cheapest taker fee even in chart view (fees
+                  // otherwise live only in the table). Derived from EXCHANGE_FEES
+                  // — no hardcoded venue names or fee literals.
+                  let cheapest: { exchange: string; taker: number } | null = null;
+                  for (const s of sorted) {
+                    const taker = EXCHANGE_FEES[s.exchange]?.taker;
+                    if (typeof taker === 'number' && (!cheapest || taker < cheapest.taker)) {
+                      cheapest = { exchange: s.exchange, taker };
+                    }
+                  }
+                  return cheapest ? (
+                    <div className="text-[11px] text-neutral-500 mb-3">
+                      Cheapest taker fee:{' '}
+                      <span className="text-green-400 font-mono">{cheapest.exchange} {cheapest.taker.toFixed(3)}%</span>
+                    </div>
+                  ) : null;
+                })()}
+                <ComparisonCharts
+                  oiChartData={oiChartData}
+                  fundingForSymbol={fundingForSymbol}
+                  selectedSymbol={selectedSymbol}
+                  onSymbolChange={setSelectedSymbol}
+                  availableSymbols={availableSymbols}
+                />
+              </>
             ) : (
               /* Table view */
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl overflow-hidden">

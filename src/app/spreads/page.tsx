@@ -2,9 +2,6 @@
 
 import React, { useEffect } from 'react';
 import { ArrowLeftRight, ChevronDown, RefreshCw, Calculator, Info, Wifi, WifiOff, X, Activity } from 'lucide-react';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import ReferralBanner from '@/components/ReferralBanner';
 import FeatureHint from '@/components/FeatureHint';
 import RelatedPages from '@/components/RelatedPages';
 import { getCoinIcon } from '@/lib/coinIcons';

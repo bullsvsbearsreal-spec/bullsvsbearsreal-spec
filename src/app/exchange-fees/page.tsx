@@ -336,7 +336,7 @@ export default function ExchangeFeesPage() {
                 key={k}
                 onClick={() => setSort(k)}
                 className={`px-3 py-1 rounded text-[11px] font-semibold uppercase whitespace-nowrap transition-colors ${
-                  sort === k ? 'bg-green-400 text-black' : 'text-neutral-400 hover:text-white'
+                  sort === k ? 'bg-hub-yellow text-black' : 'text-neutral-400 hover:text-white'
                 }`}
               >
                 {label}

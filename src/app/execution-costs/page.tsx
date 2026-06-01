@@ -5,9 +5,6 @@ import { useSearchParams } from 'next/navigation';
 import { useApi } from '@/hooks/useSWRApi';
 import { fetchExecutionCosts } from '@/lib/api/aggregator';
 import { Direction, ExecutionCostResponse } from '@/lib/execution-costs/types';
-import Header from '@/components/Header';
-import Footer from '@/components/Footer';
-import ReferralBanner from '@/components/ReferralBanner';
 import DataFreshness from '@/components/DataFreshness';
 import AssetSelector from './components/AssetSelector';
 import SizeSelector from './components/SizeSelector';
@@ -312,9 +309,7 @@ function ExecutionCostsInner() {
           <p className="text-neutral-300 text-xs leading-relaxed flex items-start gap-2.5">
             <Info className="w-4 h-4 text-hub-yellow mt-0.5 flex-shrink-0" />
             <span>
-              <span className="text-hub-yellow font-medium">Total cost</span> = Fee + Spread + Impact.
               CLOB venues (Hyperliquid, dYdX, Aster, Aevo, Lighter, edgeX) use real-time orderbook depth.
-              AMM venues (gTrade, GMX) use formula-based pricing with no spread.
               Venues with stale prices (&gt;5% from consensus) are automatically excluded.
             </span>
           </p>
