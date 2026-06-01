@@ -459,9 +459,9 @@ export default function HomePage() {
           gap: 8,
           padding: 10,
           borderRadius: 12,
-          border: '1px solid rgba(255,215,0,0.16)',
+          border: '1px solid rgba(255,165,0,0.16)',
           background: 'radial-gradient(130% 150% at 50% 0%, rgba(255,165,0,0.07), transparent 72%)',
-          boxShadow: '0 0 36px -14px rgba(255,170,0,0.30)',
+          boxShadow: '0 0 36px -14px rgba(255,165,0,0.30)',
         }}>
           <StatTile
             label="24h Volume"
@@ -499,7 +499,7 @@ export default function HomePage() {
         <Card padding={0}>
           <div style={{
             position: 'absolute', top: 0, left: 0, right: 0, height: 1,
-            background: 'linear-gradient(90deg, transparent, var(--rekt-mild), transparent)',
+            background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.10), transparent)',
           }} />
           <div style={{ padding: '14px 16px 16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
