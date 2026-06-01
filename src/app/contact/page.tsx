@@ -131,7 +131,7 @@ export default function ContactPage() {
                 className="inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-lg bg-amber-500 text-black hover:bg-amber-400 transition-colors"
               >
                 <LogIn className="w-3.5 h-3.5" />
-                Log in
+                Sign in
               </Link>
               <a
                 href="mailto:support@info-hub.io"

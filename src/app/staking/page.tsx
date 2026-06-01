@@ -212,7 +212,7 @@ export default function StakingPage() {
               </div>
               <div className={`text-right font-mono text-xs tabular-nums font-semibold inline-flex items-center justify-end gap-1 ${r.apyChange7d > 0 ? 'text-green-400' : r.apyChange7d < 0 ? 'text-red-400' : 'text-neutral-500'}`}>
                 {r.apyChange7d > 0 ? <TrendingUp className="w-3 h-3" /> : r.apyChange7d < 0 ? <TrendingDown className="w-3 h-3" /> : null}
-                {fmtApy(r.apyChange7d)}
+                {r.apyChange7d === 0 ? '—' : fmtApy(r.apyChange7d)}
               </div>
             </div>
           ))}

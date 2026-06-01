@@ -120,6 +120,9 @@ export default function ReferralsDashboardPage() {
         setSaveOk(true);
         // Refresh to get the canonical state
         fetchData();
+        // Auto-dismiss the confirmation so a stale "Saved." doesn't linger
+        // on screen long after the action (matches NotificationsSection).
+        setTimeout(() => setSaveOk(false), 2500);
       }
     } catch {
       setSaveErr('Network error. Try again.');

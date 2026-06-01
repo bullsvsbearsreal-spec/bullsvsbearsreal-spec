@@ -123,7 +123,7 @@ const faqs: FAQEntry[] = [
   {
     category: 'Trading Concepts',
     q: 'How are funding rates normalized?',
-    a: 'All rates are converted to an 8-hour basis for cross-venue comparison. Venues settle on different cadences: 1h (Hyperliquid, dYdX, Aevo, Coinbase, GMX, Extended, Lighter, edgeX, Nado, Backpack), 4h (Kraken), 8h (most CEX + 2 DEX — Binance / Bybit / OKX / Bitget / Blofin / MEXC / BingX / Phemex / KuCoin / Deribit / HTX / Bitfinex / WhiteBIT / CoinEx / Aster / gTrade / Orderly / Paradex). Bitunix and Variational vary per market — those carry their actual fundingIntervalHours in the API. Each row also includes its native fundingInterval so you can see the unconverted source rate if you need it.',
+    a: 'All rates are converted to an 8-hour basis for cross-venue comparison. Venues settle on different cadences: 1h (Hyperliquid, dYdX, Aevo, Coinbase, GMX, Extended, Lighter, edgeX, Nado, Backpack), 4h (Kraken), 8h (most CEX + 4 DEX — Binance / Bybit / OKX / Bitget / Blofin / MEXC / BingX / Phemex / KuCoin / Deribit / HTX / Bitfinex / WhiteBIT / CoinEx / Gate.io / BitMEX / Aster / gTrade / Orderly / Paradex). Bitunix and Variational vary per market — those carry their actual fundingIntervalHours in the API. Each row also includes its native fundingInterval so you can see the unconverted source rate if you need it.',
   },
   {
     category: 'Trading Concepts',

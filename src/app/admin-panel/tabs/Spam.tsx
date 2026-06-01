@@ -53,21 +53,25 @@ export function SpamTab({ onToast, onOpenUser }: {
   const [data, setData] = useState<{ clusters: Cluster[]; total: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     setRefreshing(true);
+    setError(null);
     try {
       const res = await fetch('/api/mod/spam-detector');
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
       setData({ clusters: json.clusters ?? [], total: json.total ?? 0 });
     } catch (e) {
-      // Don't leave data=null on failure or the empty-state copy
-      // ("No suspicious clusters detected. Nice and clean.") will
-      // be a lie — the API actually failed, not the inbox being empty.
-      setData(prev => prev ?? { clusters: [], total: 0 });
-      onToast(e instanceof Error ? e.message : 'Failed to load spam clusters', false);
+      // Surface the failure in the panel body instead of fabricating an
+      // empty "nice and clean" all-clear. Keep any prior data (a failed
+      // refresh still shows last-known clusters); a failed first load
+      // falls through to the `error` branch in render below.
+      const msg = e instanceof Error ? e.message : 'Failed to load spam clusters';
+      setError(msg);
+      onToast(msg, false);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -109,6 +113,14 @@ export function SpamTab({ onToast, onOpenUser }: {
       <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10 }}>
         {loading ? (
           <SkeletonBlock w="100%" h={80} />
+        ) : error && (!data || data.clusters.length === 0) ? (
+          <div style={{
+            padding: 32, textAlign: 'center', color: 'var(--rekt-mild)', fontSize: 12,
+            background: 'var(--hub-darker)', border: '1px solid var(--hub-border-subtle)', borderRadius: 10,
+          }}>
+            <AlertTriangle style={{ width: 22, height: 22, opacity: 0.5, margin: '0 auto 6px' }} />
+            Couldn&apos;t load spam clusters · {error}
+          </div>
         ) : !data || data.clusters.length === 0 ? (
           <div style={{
             padding: 32, textAlign: 'center', color: 'var(--fg-faint)',
