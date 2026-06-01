@@ -220,7 +220,7 @@ export default function ETFPage() {
                     onClick={() => setType(t)}
                     className={`px-3 py-1 rounded text-[10px] font-bold uppercase tracking-wider transition-all ${
                       type === t
-                        ? 'bg-hub-yellow text-black shadow-[0_2px_8px_-2px_rgba(255,165,0,0.4)]'
+                        ? 'bg-violet-500 text-white shadow-[0_2px_8px_-2px_rgba(139,92,246,0.4)]'
                         : 'text-neutral-500 hover:text-white'
                     }`}
                   >
@@ -263,7 +263,7 @@ export default function ETFPage() {
               {/* Lead ETF Price */}
               <div className="bg-hub-darker border border-white/[0.06] rounded-xl px-4 py-3">
                 <div className="flex items-center gap-2 mb-1">
-                  <DollarSign className="w-3.5 h-3.5 text-hub-yellow" />
+                  <DollarSign className="w-3.5 h-3.5 text-violet-300" />
                   <p className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">
                     {stats.leadFund.ticker} Price
                   </p>

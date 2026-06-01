@@ -1262,6 +1262,14 @@ export default function OptionsPage() {
                     const mpDist = tableSpot > 0 && exp.maxPain
                       ? ((exp.maxPain - tableSpot) / tableSpot * 100)
                       : 0;
+                    // Format like the Max-Pain summary card — raw "05-12"
+                    // reads ambiguously (May 12 vs Dec 5).
+                    const expLabel = (() => {
+                      const d = new Date(exp.date);
+                      return Number.isNaN(d.getTime())
+                        ? exp.date.slice(5)
+                        : d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+                    })();
 
                     return (
                       <div
@@ -1272,7 +1280,7 @@ export default function OptionsPage() {
                       >
                         <div>
                           <p className={`text-xs font-mono font-semibold ${isNear ? 'text-orange-400' : 'text-white'}`}>
-                            {exp.date.slice(5)}
+                            {expLabel}
                           </p>
                           <p className="text-[10px] text-neutral-600">
                             {daysUntil === 0 ? 'TODAY' : daysUntil === 1 ? '1 day' : `${daysUntil} days`}

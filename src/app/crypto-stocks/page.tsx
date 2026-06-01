@@ -170,7 +170,7 @@ export default function CryptoStocksPage() {
                 key={k}
                 onClick={() => setFilter(k as Filter)}
                 className={`px-3 py-1 rounded text-[11px] font-semibold uppercase whitespace-nowrap transition-colors ${
-                  filter === k ? 'bg-blue-400 text-black' : 'text-neutral-400 hover:text-white'
+                  filter === k ? 'bg-cyan-400 text-black' : 'text-neutral-400 hover:text-white'
                 }`}
               >
                 {label}
@@ -190,7 +190,7 @@ export default function CryptoStocksPage() {
                 key={k}
                 onClick={() => setSort(k)}
                 className={`px-3 py-1 rounded text-[11px] font-semibold uppercase whitespace-nowrap transition-colors ${
-                  sort === k ? 'bg-emerald-400 text-black' : 'text-neutral-400 hover:text-white'
+                  sort === k ? 'bg-cyan-400 text-black' : 'text-neutral-400 hover:text-white'
                 }`}
               >
                 {label}

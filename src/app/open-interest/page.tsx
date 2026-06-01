@@ -417,9 +417,9 @@ export default function OpenInterestPage() {
 
         {/* Error State */}
         {error && (
-          <div className="bg-error/10 border border-error/30 rounded-2xl p-4 mb-6 flex items-center gap-3">
-            <AlertTriangle className="w-5 h-5 text-error" />
-            <span className="text-error">{error}</span>
+          <div className="bg-red-500/10 border border-red-400/30 rounded-xl p-4 mb-6 flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-red-400" />
+            <span className="text-red-400">{error}</span>
           </div>
         )}
 
@@ -429,7 +429,7 @@ export default function OpenInterestPage() {
             <div className="flex items-center justify-center gap-3">
               <RefreshCw className="w-6 h-6 text-hub-yellow animate-spin" />
               <div className="flex flex-col">
-                <span className="text-white">Aggregating OI from {exchanges.length || 17} exchanges...</span>
+                <span className="text-white">Aggregating OI{exchanges.length ? ` from ${exchanges.length} exchanges` : ''}...</span>
                 <span className="text-neutral-600 text-xs mt-1">Fetching open interest data and historical deltas</span>
               </div>
             </div>

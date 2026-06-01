@@ -6,6 +6,7 @@ import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import ReferralBanner from '@/components/ReferralBanner';
+import PageHero from '@/components/PageHero';
 import { useApi } from '@/hooks/useSWRApi';
 import { ArrowUpDown, ArrowLeftRight, RefreshCw, TrendingUp, TrendingDown } from 'lucide-react';
 import { getCoinIcon } from '@/lib/coinIcons';
@@ -92,34 +93,34 @@ export default function SpreadScannerPage() {
   );
 
   return (
-    <div className="min-h-screen bg-background text-white flex flex-col">
+    <div className="min-h-screen bg-hub-black text-white flex flex-col">
       <Header />
       <main id="main-content" className="flex-1 max-w-[1400px] mx-auto w-full px-4 sm:px-6 py-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-3">
-              <ArrowLeftRight className="w-7 h-7 text-hub-yellow" />
-              Spread Scanner
-            </h1>
-            <p className="text-sm text-neutral-500 mt-1">
-              Live cross-exchange price spreads for all tracked coins. Click a row to view detailed spread chart.
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {/* DataFreshness's `exchangeCount` prop renders as "X exchanges".
-                Passing rows.length here was rendering "773 exchanges" — that's
-                773 SYMBOLS with cross-exchange spreads, not the exchange count.
-                Use the `sources` prop to render an accurate label. */}
-            <DataFreshness
-              exchangeCount={0}
-              sources={[`${rows.length} symbols across exchanges`]}
-              lastUpdated={lastUpdate}
-            />
-            <button onClick={fetchData} className="p-1.5 rounded-lg hover:bg-white/[0.05] transition" title="Refresh">
-              <RefreshCw className={`w-4 h-4 text-neutral-500 ${loading ? 'animate-spin' : ''}`} />
-            </button>
-          </div>
-        </div>
+        <PageHero
+          icon={ArrowLeftRight}
+          eyebrow="Markets · cross-exchange"
+          title="Spread"
+          accentNoun="scanner"
+          accent="hub-yellow"
+          className="mb-6"
+          description={
+            <>Live cross-exchange price spreads for all tracked coins. Click a row to view detailed spread chart.</>
+          }
+          actions={
+            <>
+              {/* DataFreshness's `exchangeCount` renders as "X exchanges";
+                  rows.length is the SYMBOL count, not venue count — use sources. */}
+              <DataFreshness
+                exchangeCount={0}
+                sources={[`${rows.length} symbols across exchanges`]}
+                lastUpdated={lastUpdate}
+              />
+              <button onClick={fetchData} className="p-1.5 rounded-lg hover:bg-white/[0.05] transition" title="Refresh">
+                <RefreshCw className={`w-4 h-4 text-neutral-500 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </>
+          }
+        />
 
         {/* Search + filters */}
         <div className="mb-4 flex items-center gap-3 flex-wrap">
