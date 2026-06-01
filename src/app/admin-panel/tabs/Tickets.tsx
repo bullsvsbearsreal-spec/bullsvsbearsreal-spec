@@ -126,7 +126,13 @@ export function TicketsTab({ onToast, viewerId }: { onToast: (msg: string, ok: b
     }
   }, [filter, onToast]);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+    // Poll every 30s (silent) so newly-filed tickets — including urgent
+    // auto-filed email-bounce tickets — surface without a manual reload.
+    const id = setInterval(() => load(true), 30_000);
+    return () => clearInterval(id);
+  }, [load]);
 
   const loadDetail = useCallback(async (id: number) => {
     setDetailLoading(true);

@@ -25,14 +25,24 @@ export function GrowthTab({ stats }: { stats: StatsResp | null }) {
   const [topPages, setTopPages] = useState<TopPage[] | null>(null);
 
   useEffect(() => {
-    fetch('/api/admin/funnel')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setFunnel(Array.isArray(d.steps) ? d.steps : []); })
-      .catch(() => setFunnel([]));
-    fetch('/api/admin/top-pages?days=7&limit=10')
-      .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d) setTopPages(Array.isArray(d.pages) ? d.pages : []); })
-      .catch(() => setTopPages([]));
+    // Funnel + top-pages used to fetch once on mount and never refresh,
+    // while the parent re-polled `stats` every 120s — so these two panels
+    // silently went stale (and the header still said "updated HH:MM").
+    // Poll them on the same cadence; keep last-known data on a transient
+    // failure rather than blanking to [].
+    const loadGrowth = () => {
+      fetch('/api/admin/funnel')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setFunnel(Array.isArray(d.steps) ? d.steps : []); })
+        .catch(() => setFunnel(prev => prev ?? []));
+      fetch('/api/admin/top-pages?days=7&limit=10')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d) setTopPages(Array.isArray(d.pages) ? d.pages : []); })
+        .catch(() => setTopPages(prev => prev ?? []));
+    };
+    loadGrowth();
+    const id = setInterval(loadGrowth, 120_000);
+    return () => clearInterval(id);
   }, []);
 
   return (

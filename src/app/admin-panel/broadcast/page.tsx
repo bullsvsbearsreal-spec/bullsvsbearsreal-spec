@@ -24,7 +24,10 @@ import { Card, ConfirmModal, ToastHost, type ToastMsg } from '../components/prim
 export default function BroadcastPage() {
   const { data: session, status } = useSession();
   const role = session?.user?.role;
-  const isAdmin = role === 'admin';
+  // Owner inherits admin everywhere else (main panel gate + requireAdmin API
+  // gate both accept owner); without this an owner hit the "Admin only" lock
+  // on a page the POST endpoint would have accepted.
+  const isAdmin = role === 'admin' || role === 'owner';
 
   const [message, setMessage] = useState('');
   const [channels, setChannels] = useState<{ push: boolean; telegram: boolean }>({ push: true, telegram: true });

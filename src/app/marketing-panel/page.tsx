@@ -75,14 +75,19 @@ export default function MarketingPanelPage() {
     setRefreshing(true);
     try {
       const res = await fetch('/api/admin/stats');
-      if (res.ok) {
-        const d = await res.json();
-        if (!d.error) setStats(d as StatsResp);
-      }
-    } catch {}
-    setLastRefresh(new Date());
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const d = await res.json();
+      if (d.error) throw new Error(d.error);
+      setStats(d as StatsResp);
+      setLastRefresh(new Date());  // only stamp "updated" on a real success
+    } catch (e) {
+      // Previously this swallowed errors and still stamped lastRefresh, so
+      // a failed stats fetch left the tab in perpetual skeletons under a
+      // fresh "updated HH:MM" — actively misleading. Surface it instead.
+      fireToast(e instanceof Error ? `Failed to load stats · ${e.message}` : 'Failed to load stats', false);
+    }
     setRefreshing(false);
-  }, [allowed]);
+  }, [allowed, fireToast]);
 
   useEffect(() => {
     if (!allowed) return;
