@@ -9,7 +9,7 @@ import FeatureHint from '@/components/FeatureHint';
 import RelatedPages from '@/components/RelatedPages';
 import { fetchAllOpenInterest, aggregateOpenInterestBySymbol, aggregateOpenInterestByExchange } from '@/lib/api/aggregator';
 import { OpenInterestData } from '@/lib/api/types';
-import { RefreshCw, ArrowUpDown, AlertTriangle, TrendingUp, TrendingDown } from 'lucide-react';
+import { RefreshCw, ArrowUpDown, AlertTriangle, TrendingUp, TrendingDown, ChevronUp, ChevronDown } from 'lucide-react';
 import { getExchangeBadgeColor } from '@/lib/constants';
 import { ExchangeLogo } from '@/components/ExchangeLogos';
 import { getExchangeReferralUrl } from '@/lib/referralLinks';
@@ -198,6 +198,17 @@ export default function OpenInterestPage() {
       setSortField(field);
       setSortOrder('desc');
     }
+  };
+
+  // Direction-aware sort indicator: a dim ArrowUpDown when this column is
+  // inactive, an orange Chevron (up=asc / down=desc) when it's the active
+  // sort — so the current sort and its direction are always visible. The
+  // old static ArrowUpDown on every header gave no such cue.
+  const sortGlyph = (field: SortField) => {
+    if (sortField !== field) return <ArrowUpDown className="w-3 h-3 text-neutral-600" />;
+    return sortOrder === 'asc'
+      ? <ChevronUp className="w-3 h-3 text-hub-yellow" />
+      : <ChevronDown className="w-3 h-3 text-hub-yellow" />;
   };
 
 
@@ -479,7 +490,7 @@ export default function OpenInterestPage() {
                     >
                       <div className="flex items-center gap-1 justify-end">
                         Total OI Value
-                        <ArrowUpDown className="w-3 h-3" />
+                        {sortGlyph('openInterestValue')}
                       </div>
                     </th>
                     <th
@@ -488,7 +499,7 @@ export default function OpenInterestPage() {
                     >
                       <div className="flex items-center gap-1 justify-end">
                         1h Δ
-                        <ArrowUpDown className="w-3 h-3" />
+                        {sortGlyph('change1h')}
                       </div>
                     </th>
                     <th
@@ -497,7 +508,7 @@ export default function OpenInterestPage() {
                     >
                       <div className="flex items-center gap-1 justify-end">
                         4h Δ
-                        <ArrowUpDown className="w-3 h-3" />
+                        {sortGlyph('change4h')}
                       </div>
                     </th>
                     <th
@@ -506,7 +517,7 @@ export default function OpenInterestPage() {
                     >
                       <div className="flex items-center gap-1 justify-end">
                         24h Δ
-                        <ArrowUpDown className="w-3 h-3" />
+                        {sortGlyph('change24h')}
                       </div>
                     </th>
                     <th className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">% of Total</th>
@@ -580,7 +591,7 @@ export default function OpenInterestPage() {
                     >
                       <div className="flex items-center gap-2">
                         Symbol
-                        <ArrowUpDown className="w-4 h-4" />
+                        {sortGlyph('symbol')}
                       </div>
                     </th>
                     <th
@@ -589,7 +600,7 @@ export default function OpenInterestPage() {
                     >
                       <div className="flex items-center gap-2">
                         Exchange
-                        <ArrowUpDown className="w-4 h-4" />
+                        {sortGlyph('exchange')}
                       </div>
                     </th>
                     <th className="px-4 py-2 text-right text-[11px] font-semibold text-neutral-500 uppercase tracking-wider">
@@ -601,7 +612,7 @@ export default function OpenInterestPage() {
                     >
                       <div className="flex items-center gap-2 justify-end">
                         OI Value
-                        <ArrowUpDown className="w-4 h-4" />
+                        {sortGlyph('openInterestValue')}
                       </div>
                     </th>
                     <th
@@ -610,7 +621,7 @@ export default function OpenInterestPage() {
                     >
                       <div className="flex items-center gap-1 justify-end">
                         1h Δ
-                        <ArrowUpDown className="w-3 h-3" />
+                        {sortGlyph('change1h')}
                       </div>
                     </th>
                     <th
@@ -619,7 +630,7 @@ export default function OpenInterestPage() {
                     >
                       <div className="flex items-center gap-1 justify-end">
                         4h Δ
-                        <ArrowUpDown className="w-3 h-3" />
+                        {sortGlyph('change4h')}
                       </div>
                     </th>
                     <th
@@ -628,7 +639,7 @@ export default function OpenInterestPage() {
                     >
                       <div className="flex items-center gap-1 justify-end">
                         24h Δ
-                        <ArrowUpDown className="w-3 h-3" />
+                        {sortGlyph('change24h')}
                       </div>
                     </th>
                   </tr>
