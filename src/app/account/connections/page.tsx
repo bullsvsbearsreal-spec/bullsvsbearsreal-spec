@@ -589,7 +589,7 @@ function FundingFlipAlert() {
                 disabled={saving}
                 className={`text-xs font-semibold px-3 py-1.5 rounded-md inline-flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed ${
                   enabled
-                    ? 'bg-amber-500/20 text-amber-300 ring-1 ring-amber-500/40 hover:bg-amber-500/30'
+                    ? 'bg-emerald-500/15 text-emerald-300 ring-1 ring-emerald-500/40 hover:bg-emerald-500/25'
                     : 'bg-sky-500 text-black hover:bg-sky-400'
                 }`}
               >

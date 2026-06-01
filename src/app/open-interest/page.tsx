@@ -549,7 +549,7 @@ export default function OpenInterestPage() {
                         <td className="px-4 py-2">
                           <div className="w-32 h-2 bg-white/[0.04] rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-hub-yellow to-hub-orange rounded-full"
+                              className="h-full bg-hub-yellow rounded-full"
                               style={{ width: `${Math.min(percentage, 100)}%` }}
                             />
                           </div>

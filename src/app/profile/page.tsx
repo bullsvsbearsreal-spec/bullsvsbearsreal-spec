@@ -458,7 +458,7 @@ function OverviewTab({
           value={bio} onChange={(e) => setBio(e.target.value)}
           rows={3} maxLength={280}
           placeholder="A short bio — what you trade, your edge, anything."
-          className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40 resize-none"
+          className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2.5 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/50 disabled:opacity-50 disabled:cursor-not-allowed resize-none"
         />
         <div className="flex items-center justify-between mt-2">
           <span className="text-[10px] text-neutral-600 font-mono">{bio.length}/280</span>
@@ -673,7 +673,7 @@ function PreferencesTab({
             <select
               value={displayPrefs.currency}
               onChange={(e) => setDisplayPrefs(p => ({ ...p, currency: e.target.value }))}
-              className="w-full appearance-none rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 pr-8 text-sm text-white focus:outline-none focus:border-hub-yellow/40"
+              className="w-full appearance-none rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 pr-8 text-sm text-white focus:outline-none focus:border-hub-yellow/50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {CURRENCY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -686,7 +686,7 @@ function PreferencesTab({
             type="text" value={displayPrefs.defaultExchange}
             onChange={(e) => setDisplayPrefs(p => ({ ...p, defaultExchange: e.target.value }))}
             placeholder="e.g. Binance, Hyperliquid"
-            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/40"
+            className="w-full rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white placeholder-neutral-600 focus:outline-none focus:border-hub-yellow/50 disabled:opacity-50 disabled:cursor-not-allowed"
           />
         </div>
         <div>
@@ -695,7 +695,7 @@ function PreferencesTab({
             <select
               value={displayPrefs.fundingDisplay}
               onChange={(e) => setDisplayPrefs(p => ({ ...p, fundingDisplay: e.target.value }))}
-              className="w-full appearance-none rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 pr-8 text-sm text-white focus:outline-none focus:border-hub-yellow/40"
+              className="w-full appearance-none rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 pr-8 text-sm text-white focus:outline-none focus:border-hub-yellow/50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {FUNDING_DISPLAY_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
             </select>

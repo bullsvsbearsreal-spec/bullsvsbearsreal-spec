@@ -365,7 +365,7 @@ export default function ExchangeComparisonPage() {
                               </div>
                             </td>
                             <td className="text-right px-4 py-2.5 text-white font-mono">{formatUSD(s.totalOI)}</td>
-                            <td className={`text-right px-4 py-2.5 font-mono ${s.avgFunding >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                            <td className={`text-right px-4 py-2.5 font-mono ${s.avgFunding > 0 ? 'text-green-400' : s.avgFunding < 0 ? 'text-red-400' : 'text-neutral-400'}`}>
                               {formatRate(s.avgFunding)}
                             </td>
                             <td className="text-right px-4 py-2.5 text-white font-mono">{s.symbolCount}</td>
