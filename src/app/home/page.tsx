@@ -440,8 +440,9 @@ export default function HomePage() {
         <section style={{ marginBottom: 16 }}>
           <div style={{
             borderRadius: 14,
-            border: '1px solid var(--hub-border-subtle)',
-            background: 'radial-gradient(120% 160% at 0% 0%, rgba(255,165,0,0.06), transparent 60%)',
+            border: '1px solid rgba(255,165,0,0.35)',
+            background: 'radial-gradient(120% 160% at 0% 0%, rgba(255,165,0,0.10), transparent 62%)',
+            boxShadow: '0 0 0 1px rgba(255,165,0,0.12), 0 10px 44px -16px rgba(255,165,0,0.45)',
             padding: '20px 22px',
             display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16,
           }}>

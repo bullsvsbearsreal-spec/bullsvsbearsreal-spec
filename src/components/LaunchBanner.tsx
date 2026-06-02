@@ -68,9 +68,9 @@ export default function LaunchBanner() {
         <div className="flex-1 min-w-0 flex items-center gap-2 text-[11px] sm:text-xs">
           <Sparkles className="w-3.5 h-3.5 text-amber-300 shrink-0 animate-pulse" aria-hidden />
           <p className="text-neutral-200 truncate">
-            <span className="font-extrabold uppercase tracking-wide text-amber-200 [text-shadow:0_0_14px_rgba(255,193,7,0.6)]">Free during launch</span>
-            <span className="text-neutral-400">
-              {' · '}Trader, Pro + Whale tiers unlocked for everyone while we onboard early users.
+            <span className="inline-flex items-center rounded-full bg-amber-400 px-2 py-[1px] font-extrabold uppercase tracking-wide text-black shadow-[0_0_16px_rgba(255,193,7,0.75)]">Free during launch!</span>
+            <span className="text-neutral-300">
+              {' '}Trader, Pro + Whale tiers unlocked for everyone — free while we onboard early users.
             </span>
           </p>
           <Link
