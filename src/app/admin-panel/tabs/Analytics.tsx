@@ -45,6 +45,7 @@ interface AnalyticsResp {
   topPages: PageRow[];
   topReferrers: RefRow[];
   topCountries: GeoRow[];
+  stickiness?: { dau: number; wau: number; ratioPct: number };
 }
 
 // Public Umami host — used for the "Open Umami ↗" deep-link in the
@@ -255,6 +256,40 @@ export function AnalyticsTab({ onToast }: { onToast: (msg: string, ok: boolean) 
           </>
         )}
       </div>
+
+      {/* Stickiness · DAU/WAU — period-independent (always today-over-this-week).
+          The activation signal: of this week's unique visitors, how many also
+          showed up today. <30% occasional · 30-50% recurring · 50%+ daily habit. */}
+      {data?.stickiness && (() => {
+        const s = data.stickiness;
+        const noData = s.wau === 0;
+        const color = noData ? 'var(--fg-muted)' : s.ratioPct >= 50 ? '#86efac' : s.ratioPct >= 30 ? '#fcd34d' : '#f87171';
+        const note = noData ? 'no visitors yet this week'
+          : s.ratioPct >= 50 ? 'daily-habit territory'
+          : s.ratioPct >= 30 ? 'returning every few days'
+          : 'mostly occasional reference';
+        return (
+          <div
+            title="DAU/WAU = unique visitors in the last 24h ÷ unique visitors in the last 7d. Higher = more of your weekly audience treats InfoHub as a daily workflow."
+            style={{
+              display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: 10,
+              padding: '10px 14px', marginBottom: 12,
+              background: 'var(--hub-darker)', border: '1px solid var(--hub-border-subtle)', borderRadius: 10,
+            }}
+          >
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--fg-muted)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              Stickiness · DAU/WAU
+            </span>
+            <span style={{ fontSize: 20, fontWeight: 800, color, fontFamily: 'var(--font-mono)' }}>
+              {noData ? '—' : `${s.ratioPct}%`}
+            </span>
+            <span style={{ fontSize: 11, color: 'var(--fg-faint)', fontFamily: 'var(--font-mono)' }}>
+              {fmtNumber(s.dau)} today · {fmtNumber(s.wau)} this week
+            </span>
+            <span style={{ fontSize: 11, color }}>{note}</span>
+          </div>
+        );
+      })()}
 
       {/* Time-series — pageview bars + 3-tick x-axis */}
       <Card title={`Pageviews · last ${period}`}>

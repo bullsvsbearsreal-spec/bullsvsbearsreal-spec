@@ -170,6 +170,7 @@ export async function GET(request: NextRequest) {
       topPages: [],
       topReferrers: [],
       topCountries: [],
+      stickiness: { dau: 0, wau: 0, ratioPct: 0 },
     });
   }
 
@@ -194,6 +195,8 @@ export async function GET(request: NextRequest) {
     pages,
     referrers,
     countries,
+    stats24h,
+    stats7d,
   ] = await Promise.all([
     umamiFetch<{ visitors: number } | { x: number }>(`/api/websites/${UMAMI_WEBSITE_ID}/active`, {}),
     umamiFetch<{
@@ -215,6 +218,10 @@ export async function GET(request: NextRequest) {
     umamiFetch<MetricRow[]>(`/api/websites/${UMAMI_WEBSITE_ID}/metrics`, {
       startAt, endAt: now, type: 'country', limit: 12,
     }),
+    // DAU/WAU stickiness — unique visitors over fixed 24h + 7d windows,
+    // independent of the selected `window` (it's always today-over-this-week).
+    umamiFetch<{ visitors: { value: number } }>(`/api/websites/${UMAMI_WEBSITE_ID}/stats`, { startAt: now - 24 * 3600_000, endAt: now }),
+    umamiFetch<{ visitors: { value: number } }>(`/api/websites/${UMAMI_WEBSITE_ID}/stats`, { startAt: now - 7 * 24 * 3600_000, endAt: now }),
   ]);
 
   const sv = stats?.visits?.value ?? 0;
@@ -268,6 +275,13 @@ export async function GET(request: NextRequest) {
     );
   }
 
+  // DAU/WAU stickiness — what fraction of the week's unique visitors also
+  // showed up in the last 24h. <30% reads as occasional reference; 50%+ is
+  // every-other-day habit (the activation signal Ben wanted to track).
+  const dau = stats24h?.visitors?.value ?? 0;
+  const wau = stats7d?.visitors?.value ?? 0;
+  const stickinessRatioPct = wau > 0 ? Math.round((dau / wau) * 1000) / 10 : 0;
+
   return NextResponse.json({
     configured: true,
     window: win,
@@ -286,5 +300,6 @@ export async function GET(request: NextRequest) {
     topPages:     (pages     ?? []).map(r => ({ url:      r.x, count: r.y })),
     topReferrers: (referrers ?? []).filter(r => r.x).map(r => ({ referrer: r.x, count: r.y })),
     topCountries: (countries ?? []).map(r => ({ country:  r.x, count: r.y })),
+    stickiness: { dau, wau, ratioPct: stickinessRatioPct },
   });
 }
