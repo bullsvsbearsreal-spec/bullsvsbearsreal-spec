@@ -3,7 +3,7 @@
 /**
  * /pricing — public-facing tier comparison page.
  *
- * Four tiers: Free / Trader $12 / Pro $29 / Whale $59. Pro is the
+ * Four tiers: Free / Trader $15 / Pro $49 / Whale $99. Pro is the
  * conversion target (the new $29 middle anchor, "MOST POPULAR" badge).
  * Trader is the cheap-entry paid tier. Whale is the premium anchor for
  * funds + power users. All numbers derive from lib/constants/tiers.ts so
@@ -15,7 +15,7 @@
  * CTAs stub out to a "coming soon" modal until NowPayments is wired.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import { useSession } from 'next-auth/react';
 import Link from 'next/link';
 import Header from '@/components/Header';
@@ -204,12 +204,16 @@ export default function PricingPage() {
                     {TIER_ORDER.map((t) => {
                       const b = TIER_BRANDING[t];
                       const Icon = tierIcon(b.iconName);
+                      const featured = t === 'pro';
                       return (
-                        <th scope="col" key={t} className="px-4 py-3 text-center">
+                        <th scope="col" key={t} className={`px-4 py-3 text-center ${featured ? 'bg-hub-yellow/[0.06]' : ''}`}>
                           <div className="inline-flex items-center gap-1.5 text-[11px] uppercase tracking-wider font-bold">
                             <Icon className={`w-3 h-3 ${b.textColor}`} aria-hidden />
                             <span className={b.textColor}>{b.label}</span>
                           </div>
+                          {featured && (
+                            <div className="mt-1 text-[8px] font-bold uppercase tracking-[0.1em] text-hub-yellow">Most popular</div>
+                          )}
                         </th>
                       );
                     })}
@@ -218,34 +222,48 @@ export default function PricingPage() {
                 <tbody>
                   {FEATURE_MATRIX.map((row, i) => {
                     const stripe = i % 2 === 0;
+                    // Section divider whenever the group changes from the row above.
+                    const newGroup = i === 0 || FEATURE_MATRIX[i - 1].group !== row.group;
                     return (
-                      <tr
-                        key={row.label}
-                        className={`border-b border-white/[0.04] ${
-                          stripe ? '' : 'bg-white/[0.01]'
-                        }`}
-                      >
-                        {/* Sticky leftmost cell — theme-aware solid bg
-                            (hub-black / hub-dark) so light + dark mode
-                            both work and the cells underneath stay
-                            hidden during horizontal scroll. `scope="row"`
-                            gives screen readers a row-header anchor so
-                            each cell announcement starts with the feature
-                            label rather than "blank cell". */}
-                        <th
-                          scope="row"
-                          className={`px-4 py-2.5 text-neutral-300 font-normal text-left sticky left-0 ${
-                            stripe ? 'bg-hub-black' : 'bg-hub-dark'
+                      <Fragment key={row.label}>
+                        {newGroup && (
+                          <tr className="bg-hub-darker">
+                            <th
+                              scope="colgroup"
+                              colSpan={1 + TIER_ORDER.length}
+                              className="px-4 pt-4 pb-1.5 text-left text-[10px] font-bold uppercase tracking-[0.12em] text-hub-yellow/80 sticky left-0 bg-hub-darker"
+                            >
+                              {row.group}
+                            </th>
+                          </tr>
+                        )}
+                        <tr
+                          className={`border-b border-white/[0.04] ${
+                            stripe ? '' : 'bg-white/[0.01]'
                           }`}
                         >
-                          {row.label}
-                        </th>
-                        {TIER_ORDER.map((t) => (
-                          <td key={t} className="px-4 py-2.5 text-center">
-                            <FeatureCell value={row.values[t]} tier={t} />
-                          </td>
-                        ))}
-                      </tr>
+                          {/* Sticky leftmost cell — theme-aware solid bg
+                              (hub-black / hub-dark) so light + dark mode
+                              both work and the cells underneath stay
+                              hidden during horizontal scroll. `scope="row"`
+                              gives screen readers a row-header anchor so
+                              each cell announcement starts with the feature
+                              label rather than "blank cell". */}
+                          <th
+                            scope="row"
+                            className={`px-4 py-2.5 text-neutral-300 font-normal text-left sticky left-0 ${
+                              stripe ? 'bg-hub-black' : 'bg-hub-dark'
+                            }`}
+                          >
+                            {row.label}
+                          </th>
+                          {TIER_ORDER.map((t) => (
+                            <td key={t} className={`px-4 py-2.5 text-center ${t === 'pro' ? 'bg-hub-yellow/[0.04]' : ''}`}>
+                              <FeatureCell value={row.values[t]} />
+                            </td>
+                          ))}
+                        </tr>
+                      </Fragment>
                     );
                   })}
                 </tbody>
@@ -625,9 +643,12 @@ function TierToolListCard({ tierList }: { tierList: TierToolList }) {
   );
 }
 
-function FeatureCell({ value, tier }: { value: boolean | string; tier: Tier }) {
+function FeatureCell({ value }: { value: boolean | string }) {
   if (value === true) {
-    return <Check className={`w-4 h-4 mx-auto ${TIER_BRANDING[tier].textColor}`} aria-label="Included" />;
+    // Consistent emerald check across all tiers (matches the competitor
+    // table). Tier emphasis comes from the coloured column headers + the
+    // highlighted Pro column, not four different check colours.
+    return <Check className="w-4 h-4 mx-auto text-emerald-400" aria-label="Included" />;
   }
   if (value === false) {
     return <XIcon className="w-4 h-4 mx-auto text-neutral-700" aria-label="Not included" />;

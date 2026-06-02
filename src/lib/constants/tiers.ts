@@ -267,104 +267,38 @@ export const TOOLS_BY_TIER_COUNT = TOOLS_BY_TIER.reduce(
  *  the comparison table reads cleanly: same row labels across tiers. */
 export interface FeatureGroup {
   label: string;
+  /** Section the row belongs to in the comparison table — the renderer emits a
+   *  divider row whenever this changes from the previous row. */
+  group: string;
   /** Per-tier value cell. `true` = checkmark, `false` = X, string = label. */
   values: Record<Tier, boolean | string>;
 }
 
 export const FEATURE_MATRIX: FeatureGroup[] = [
-  // ── API ──
-  {
-    label: 'API rate limit',
-    values: {
-      free: '100 req/min',
-      trader: '200 req/min',
-      pro: '600 req/min',
-      whale: 'Unlimited',
-    },
-  },
-  {
-    label: 'Daily API requests',
-    values: {
-      free: '5,000 / day',
-      trader: '25,000 / day',
-      pro: 'Unlimited',
-      whale: 'Unlimited',
-    },
-  },
-  {
-    label: 'API archive window (bulk export · accrues from launch)',
-    values: {
-      free: '30 days',
-      trader: '180 days',
-      pro: '1 year',
-      whale: '5 years',
-    },
-  },
-  {
-    label: 'OpenAPI 3.1 spec access',
-    values: { free: true, trader: true, pro: true, whale: true },
-  },
-  {
-    label: 'Fee Model + X-RateLimit headers',
-    values: { free: true, trader: true, pro: true, whale: true },
-  },
-  // ── Alerts + Watch ──
-  {
-    label: 'Custom alerts (price / funding / OI / change)',
-    values: { free: '3', trader: '15', pro: '75', whale: 'Unlimited' },
-  },
-  {
-    label: 'Wallet Alerts (HL + gTrade)',
-    values: { free: '5', trader: '30', pro: '200', whale: 'Unlimited' },
-  },
-  {
-    label: 'Priority alert delivery (dedicated queue · seconds)',
-    values: { free: false, trader: false, pro: false, whale: true },
-  },
-  {
-    label: 'Custom alert webhooks (your own HTTPS endpoint)',
-    values: { free: false, trader: false, pro: false, whale: true },
-  },
-  // ── Data ──
-  {
-    label: 'Historical funding + OI window (accrues from launch)',
-    values: { free: '30 days', trader: '180 days', pro: '1 year', whale: '5 years' },
-  },
-  {
-    label: `Real-time aggregator (${ALL_EXCHANGES.length} venues)`,
-    values: { free: true, trader: true, pro: true, whale: true },
-  },
-  {
-    label: 'Smart Money + Hyperliquid whale feeds',
-    values: { free: false, trader: true, pro: true, whale: true },
-  },
-  // ── Pro-tier power features ──
-  {
-    label: 'Tax CSV export (positions + funding + PnL)',
-    values: { free: false, trader: false, pro: true, whale: true },
-  },
-  {
-    label: 'Custom dashboards (drag/drop tiles)',
-    values: { free: false, trader: false, pro: true, whale: true },
-  },
-  {
-    label: 'Setup scanner (breakout/range/divergence)',
-    values: { free: false, trader: false, pro: true, whale: true },
-  },
-  // ── Whale-only ──
-  {
-    label: '1:1 Telegram channel with the team',
-    values: { free: false, trader: false, pro: false, whale: true },
-  },
+  // ── API access ──
+  { group: 'API access', label: 'API rate limit', values: { free: '100 req/min', trader: '200 req/min', pro: '600 req/min', whale: 'Unlimited' } },
+  { group: 'API access', label: 'Daily API requests', values: { free: '5,000 / day', trader: '25,000 / day', pro: 'Unlimited', whale: 'Unlimited' } },
+  { group: 'API access', label: 'OpenAPI 3.1 spec access', values: { free: true, trader: true, pro: true, whale: true } },
+  { group: 'API access', label: 'Fee Model + X-RateLimit headers', values: { free: true, trader: true, pro: true, whale: true } },
+  // ── Alerts & Watch ──
+  { group: 'Alerts & Watch', label: 'Custom alerts (price / funding / OI / change)', values: { free: '3', trader: '15', pro: '75', whale: 'Unlimited' } },
+  { group: 'Alerts & Watch', label: 'Wallet Alerts (HL + gTrade)', values: { free: '5', trader: '30', pro: '200', whale: 'Unlimited' } },
+  { group: 'Alerts & Watch', label: 'Priority alert delivery (dedicated queue · seconds)', values: { free: false, trader: false, pro: false, whale: true } },
+  { group: 'Alerts & Watch', label: 'Custom alert webhooks (your own HTTPS endpoint)', values: { free: false, trader: false, pro: false, whale: true } },
+  // ── Market data ──
+  // The API bulk-export archive and the in-app funding/OI chart window are the
+  // same per-tier depth, so they're one row instead of two identical-looking ones.
+  { group: 'Market data', label: 'Historical data window (API + in-app · accrues from launch)', values: { free: '30 days', trader: '180 days', pro: '1 year', whale: '5 years' } },
+  { group: 'Market data', label: `Real-time aggregator (${ALL_EXCHANGES.length} venues)`, values: { free: true, trader: true, pro: true, whale: true } },
+  { group: 'Market data', label: 'Smart Money + Hyperliquid whale feeds', values: { free: false, trader: true, pro: true, whale: true } },
+  // ── Pro power tools ──
+  { group: 'Pro power tools', label: 'Tax CSV export (positions + funding + PnL)', values: { free: false, trader: false, pro: true, whale: true } },
+  { group: 'Pro power tools', label: 'Custom dashboards (drag/drop tiles)', values: { free: false, trader: false, pro: true, whale: true } },
+  { group: 'Pro power tools', label: 'Setup scanner (breakout/range/divergence)', values: { free: false, trader: false, pro: true, whale: true } },
   // ── Support ──
-  {
-    label: 'Community Telegram support',
-    values: { free: true, trader: true, pro: true, whale: true },
-  },
-  {
-    label: 'Priority email / DM response',
-    values: { free: false, trader: true, pro: true, whale: true },
-  },
+  { group: 'Support', label: '1:1 Telegram channel with the team', values: { free: false, trader: false, pro: false, whale: true } },
+  { group: 'Support', label: 'Community Telegram support', values: { free: true, trader: true, pro: true, whale: true } },
+  { group: 'Support', label: 'Priority email / DM response', values: { free: false, trader: true, pro: true, whale: true } },
 ];
 
 /**

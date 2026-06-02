@@ -138,7 +138,7 @@ export default function CompetitorComparison() {
               <th scope="col" className="text-left px-3 py-2.5 text-[10px] uppercase tracking-wider text-neutral-500 font-semibold sticky left-0 bg-hub-darker">
                 Feature
               </th>
-              <th scope="col" className="px-3 py-2.5 text-center">
+              <th scope="col" className="px-3 py-2.5 text-center bg-hub-yellow/[0.07]">
                 <div className="inline-flex items-center gap-1.5 text-[11px] font-bold text-hub-yellow uppercase tracking-wider">
                   InfoHub
                 </div>
@@ -177,7 +177,7 @@ export default function CompetitorComparison() {
                     <div>{row.feature}</div>
                     {row.detail && <div className="text-[10px] text-neutral-500 font-normal mt-0.5">{row.detail}</div>}
                   </th>
-                  <td className="px-3 py-2 text-center bg-emerald-500/[0.02]">
+                  <td className="px-3 py-2 text-center bg-hub-yellow/[0.05]">
                     <FeatureCell value={row.values.infohub} accent="pro" />
                   </td>
                   <td className="px-3 py-2 text-center">
