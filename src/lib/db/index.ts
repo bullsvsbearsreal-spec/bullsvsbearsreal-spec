@@ -133,6 +133,22 @@ async function _doInitDB(): Promise<void> {
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_oi_sym_ts ON oi_snapshots(symbol, ts DESC)`;
 
+  // Daily-downsampled OI archive — same accrues-forward retention as
+  // funding_snapshots_daily. One row per (symbol, exchange, UTC day) holding
+  // that venue's mean OI for the day; getOIHistory sums the per-venue means to
+  // reconstruct total OI per day beyond the 30-day raw horizon.
+  await sql`
+    CREATE TABLE IF NOT EXISTS oi_snapshots_daily (
+      symbol       TEXT NOT NULL,
+      exchange     TEXT NOT NULL,
+      day          DATE NOT NULL,
+      oi_usd_avg   REAL NOT NULL,
+      sample_count INTEGER NOT NULL,
+      PRIMARY KEY (symbol, exchange, day)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_oi_daily_sym_day ON oi_snapshots_daily(symbol, day)`;
+
   // Spread snapshots for historical tracking
   await sql`
     CREATE TABLE IF NOT EXISTS spread_snapshots (
@@ -1817,7 +1833,11 @@ export async function getOIHistory(
 ): Promise<OIHistoryPoint[]> {
   try {
     const sql = getSQL();
-    const intervalStr = `${days} days`;
+    // Recent window: raw snapshots (per-timestamp total OI across venues),
+    // capped at the 30-day raw-retention horizon. For days <= 30 this is the
+    // whole result and matches the long-standing behaviour exactly.
+    const rawDays = Math.min(days, 30);
+    const intervalStr = `${rawDays} days`;
     const rows = await sql`
       SELECT EXTRACT(EPOCH FROM ts) * 1000 AS t, SUM(oi_usd) AS oi
       FROM oi_snapshots
@@ -1827,7 +1847,27 @@ export async function getOIHistory(
       ORDER BY ts ASC
       LIMIT 5000
     `;
-    return rows.map((r: any) => ({ t: Number(r.t), oi: Number(r.oi) }));
+    const rawPoints = rows.map((r: any) => ({ t: Number(r.t), oi: Number(r.oi) }));
+
+    // Older window: the daily OI archive (day-granularity totals across
+    // venues), for lookbacks beyond raw retention. Disjoint (day < today-30)
+    // and safe-when-empty. Older days precede the raw window, so the concat
+    // stays time-ascending without a re-sort.
+    if (days > 30) {
+      const olderRows = await sql`
+        SELECT EXTRACT(EPOCH FROM day::timestamptz) * 1000 AS t,
+               SUM(oi_usd_avg) AS oi
+        FROM oi_snapshots_daily
+        WHERE symbol = ${symbol}
+          AND day < (CURRENT_DATE - 30)
+          AND day > (CURRENT_DATE - ${days}::int)
+        GROUP BY day
+        ORDER BY day ASC
+      `;
+      const olderPoints = olderRows.map((r: any) => ({ t: Number(r.t), oi: Number(r.oi) }));
+      return olderPoints.concat(rawPoints);
+    }
+    return rawPoints;
   } catch (e) {
     console.error('DB getOIHistory error:', e);
     return [];
@@ -1992,6 +2032,37 @@ export async function rollupFundingDaily(): Promise<number> {
   }
 }
 
+/**
+ * Roll raw oi_snapshots into the daily OI archive. Same cursor/floor/ts-range
+ * scheme as rollupFundingDaily (see there for the full rationale) — idempotent,
+ * bounded, index-friendly, safe to call every prune cycle. Stores each venue's
+ * mean OI for the day; readers sum the per-venue means for total OI per day.
+ * Returns the number of (symbol, exchange, day) rows upserted.
+ */
+export async function rollupOiDaily(): Promise<number> {
+  try {
+    const sql = getSQL();
+    const [{ max_day }] = await sql`SELECT MAX(day) AS max_day FROM oi_snapshots_daily`;
+    const res = await sql`
+      INSERT INTO oi_snapshots_daily (symbol, exchange, day, oi_usd_avg, sample_count)
+      SELECT symbol, exchange, DATE(ts) AS day,
+             AVG(oi_usd)::real AS oi_usd_avg,
+             COUNT(*)::int     AS sample_count
+      FROM oi_snapshots
+      WHERE ts >= (GREATEST(COALESCE(${max_day}::date, CURRENT_DATE - 2), CURRENT_DATE - 33) + 1)::timestamptz
+        AND ts <  CURRENT_DATE::timestamptz
+      GROUP BY symbol, exchange, DATE(ts)
+      ON CONFLICT (symbol, exchange, day) DO UPDATE
+        SET oi_usd_avg   = EXCLUDED.oi_usd_avg,
+            sample_count = EXCLUDED.sample_count
+    `;
+    return res.count ?? 0;
+  } catch (e) {
+    console.error('DB rollupOiDaily error:', e);
+    return 0;
+  }
+}
+
 export async function pruneOldData(keepDays: number = 90): Promise<{ funding: number; oi: number; liquidations: number }> {
   try {
     const sql = getSQL();
@@ -2003,6 +2074,7 @@ export async function pruneOldData(keepDays: number = 90): Promise<{ funding: nu
     // next run while its raw rows still exist — a failure here never blocks the
     // prune below.
     const dailyRolled = await rollupFundingDaily();
+    const oiRolled = await rollupOiDaily();
 
     const fr = await sql`
       DELETE FROM funding_snapshots WHERE ts < NOW() - ${intervalStr}::interval
@@ -2018,7 +2090,9 @@ export async function pruneOldData(keepDays: number = 90): Promise<{ funding: nu
     // (Whale = 5y) plus a small margin. Cheap — the daily table is tiny.
     await sql`DELETE FROM funding_snapshots_daily WHERE day < CURRENT_DATE - 1830`
       .catch((e: unknown) => console.warn('[db] funding_daily prune:', e));
-    if (dailyRolled > 0) console.log(`[db] funding daily rollup: +${dailyRolled} rows`);
+    await sql`DELETE FROM oi_snapshots_daily WHERE day < CURRENT_DATE - 1830`
+      .catch((e: unknown) => console.warn('[db] oi_daily prune:', e));
+    if (dailyRolled > 0 || oiRolled > 0) console.log(`[db] daily rollup: funding +${dailyRolled}, oi +${oiRolled}`);
 
     // Also clean expired cache entries and stale auth codes
     await sql`DELETE FROM api_cache WHERE expires_at < NOW()`;
