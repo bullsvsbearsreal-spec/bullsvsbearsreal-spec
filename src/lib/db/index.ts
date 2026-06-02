@@ -1608,7 +1608,10 @@ export async function getLiquidationsByExchange(
 ): Promise<Array<{ exchange: string; value: number; count: number; longValue: number; shortValue: number }>> {
   try {
     const sql = getSQL();
-    const intervalStr = `${days} days`;
+    // Recent window: raw events, capped at the 30-day raw horizon. For
+    // days <= 30 this is the whole result (byte-identical to the original).
+    const rawDays = Math.min(days, 30);
+    const intervalStr = `${rawDays} days`;
     const rows = await sql`
       SELECT
         exchange,
@@ -1623,13 +1626,46 @@ export async function getLiquidationsByExchange(
       ORDER BY value DESC
       LIMIT 100
     `;
-    return rows.map((r: any) => ({
-      exchange: r.exchange,
-      value: Number(r.value),
-      count: Number(r.count),
-      longValue: Number(r.long_value),
-      shortValue: Number(r.short_value),
-    }));
+    const byExchange = new Map<string, { exchange: string; value: number; count: number; longValue: number; shortValue: number }>();
+    for (const r of rows as any[]) {
+      byExchange.set(r.exchange, {
+        exchange: r.exchange,
+        value: Number(r.value),
+        count: Number(r.count),
+        longValue: Number(r.long_value),
+        shortValue: Number(r.short_value),
+      });
+    }
+
+    // Older window: fold in the daily archive (day < today-30). Safe-when-empty
+    // — until the archive accrues this adds nothing and the result is unchanged.
+    if (days > 30) {
+      const olderRows = await sql`
+        SELECT
+          exchange,
+          SUM(value_usd) AS value,
+          SUM(event_count) AS count,
+          SUM(long_value_usd) AS long_value,
+          SUM(short_value_usd) AS short_value
+        FROM liquidation_snapshots_daily
+        WHERE symbol = ${symbol}
+          AND day < (CURRENT_DATE - 30)
+          AND day > (CURRENT_DATE - ${days}::int)
+        GROUP BY exchange
+      `;
+      for (const r of olderRows as any[]) {
+        const cur = byExchange.get(r.exchange) ?? { exchange: r.exchange, value: 0, count: 0, longValue: 0, shortValue: 0 };
+        cur.value += Number(r.value);
+        cur.count += Number(r.count);
+        cur.longValue += Number(r.long_value);
+        cur.shortValue += Number(r.short_value);
+        byExchange.set(r.exchange, cur);
+      }
+    }
+
+    return Array.from(byExchange.values())
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 100);
   } catch (e) {
     console.error('DB getLiquidationsByExchange error:', e);
     return [];
@@ -1645,8 +1681,46 @@ export async function getTopLiquidatedSymbols(
 ): Promise<Array<{ symbol: string; value: number; count: number; longValue: number; shortValue: number }>> {
   try {
     const sql = getSQL();
-    const intervalStr = `${days} days`;
-    const rows = await sql`
+
+    // Common case (days <= 30): top-N straight from raw, LIMIT in SQL —
+    // byte-identical to the original query.
+    if (days <= 30) {
+      const intervalStr = `${days} days`;
+      const rows = await sql`
+        SELECT
+          symbol,
+          SUM(value_usd) AS value,
+          COUNT(*) AS count,
+          SUM(CASE WHEN side = 'long' THEN value_usd ELSE 0 END) AS long_value,
+          SUM(CASE WHEN side = 'short' THEN value_usd ELSE 0 END) AS short_value
+        FROM liquidation_snapshots
+        WHERE ts > NOW() - ${intervalStr}::interval
+        GROUP BY symbol
+        ORDER BY value DESC
+        LIMIT ${limit}
+      `;
+      return rows.map((r: any) => ({
+        symbol: r.symbol,
+        value: Number(r.value),
+        count: Number(r.count),
+        longValue: Number(r.long_value),
+        shortValue: Number(r.short_value),
+      }));
+    }
+
+    // Lookback beyond raw retention: aggregate ALL symbols across raw (<=30d) +
+    // the daily archive (>30d), then rank. A symbol outside raw's top-N could
+    // still be top-N over the full window, so raw can't be pre-limited.
+    const bySymbol = new Map<string, { symbol: string; value: number; count: number; longValue: number; shortValue: number }>();
+    const add = (r: any) => {
+      const cur = bySymbol.get(r.symbol) ?? { symbol: r.symbol, value: 0, count: 0, longValue: 0, shortValue: 0 };
+      cur.value += Number(r.value);
+      cur.count += Number(r.count);
+      cur.longValue += Number(r.long_value);
+      cur.shortValue += Number(r.short_value);
+      bySymbol.set(r.symbol, cur);
+    };
+    const rawRows = await sql`
       SELECT
         symbol,
         SUM(value_usd) AS value,
@@ -1654,18 +1728,26 @@ export async function getTopLiquidatedSymbols(
         SUM(CASE WHEN side = 'long' THEN value_usd ELSE 0 END) AS long_value,
         SUM(CASE WHEN side = 'short' THEN value_usd ELSE 0 END) AS short_value
       FROM liquidation_snapshots
-      WHERE ts > NOW() - ${intervalStr}::interval
+      WHERE ts > NOW() - INTERVAL '30 days'
       GROUP BY symbol
-      ORDER BY value DESC
-      LIMIT ${limit}
     `;
-    return rows.map((r: any) => ({
-      symbol: r.symbol,
-      value: Number(r.value),
-      count: Number(r.count),
-      longValue: Number(r.long_value),
-      shortValue: Number(r.short_value),
-    }));
+    (rawRows as any[]).forEach(add);
+    const olderRows = await sql`
+      SELECT
+        symbol,
+        SUM(value_usd) AS value,
+        SUM(event_count) AS count,
+        SUM(long_value_usd) AS long_value,
+        SUM(short_value_usd) AS short_value
+      FROM liquidation_snapshots_daily
+      WHERE day < (CURRENT_DATE - 30)
+        AND day > (CURRENT_DATE - ${days}::int)
+      GROUP BY symbol
+    `;
+    (olderRows as any[]).forEach(add);
+    return Array.from(bySymbol.values())
+      .sort((a, b) => b.value - a.value)
+      .slice(0, limit);
   } catch (e) {
     console.error('DB getTopLiquidatedSymbols error:', e);
     return [];
