@@ -70,12 +70,12 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
       }}
     >
       <p className="text-neutral-400 mb-1.5 font-medium">
-        {label ? new Date(label).toLocaleString(undefined, {
+        {label ? `${new Date(label).toLocaleDateString('en-US', {
+          weekday: 'short',
           month: 'short',
           day: 'numeric',
-          hour: '2-digit',
-          minute: '2-digit',
-        }) : ''}
+          timeZone: 'UTC',
+        })} · UTC` : ''}
       </p>
       <div className="flex flex-col gap-1">
         {payload
@@ -187,6 +187,31 @@ export default function FundingHistoryChart() {
 
   const hasData = chartData.length > 0 && activeSymbols.length > 0;
 
+  // X-axis window + evenly-spaced ticks for the SELECTED range, so the axis
+  // always reflects the chosen window (7D spans 7 days, 30D spans 30, etc.)
+  // even when the underlying daily data is sparse. `start` is floored to a UTC
+  // midnight so the oldest queried day isn't clipped by allowDataOverflow.
+  const { xDomain, xTicks } = useMemo(() => {
+    const DAY = 86_400_000;
+    const end = Date.now();
+    const start = Math.floor((end - TIME_RANGE_DAYS[timeRange] * DAY) / DAY) * DAY;
+    const n = timeRange === '30d' ? 6 : timeRange === '7d' ? 7 : timeRange === '1d' ? 6 : 4;
+    const xTicks = Array.from({ length: n + 1 }, (_, i) => Math.round(start + (i * (end - start)) / n));
+    return { xDomain: [start, end] as [number, number], xTicks };
+  }, [timeRange]);
+
+  // Format ticks in UTC (the funding data is UTC day-bucketed — formatting in
+  // local time shifted every label back a day, e.g. a 2026-06-01 bucket
+  // rendering as "May 31"). Sub-day windows show the time-of-day; multi-day
+  // windows show the date.
+  const fmtXTick = useCallback((t: number) => {
+    const d = new Date(t);
+    if (timeRange === '7d' || timeRange === '30d') {
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+    }
+    return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' });
+  }, [timeRange]);
+
   return (
     <div className="mt-3 mb-3 rounded-xl border border-white/[0.06] bg-[#0d0d0d]">
       {/* Toggle header */}
@@ -281,16 +306,15 @@ export default function FundingHistoryChart() {
                 />
                 <XAxis
                   dataKey="time"
-                  tickFormatter={(t: number) => {
-                    const d = new Date(t);
-                    if (timeRange === '1h' || timeRange === '4h' || timeRange === '1d') {
-                      return d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
-                    }
-                    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
-                  }}
+                  type="number"
+                  scale="time"
+                  domain={xDomain}
+                  ticks={xTicks}
+                  tickFormatter={fmtXTick}
                   stroke="transparent"
                   tick={{ fill: '#737373', fontSize: 11 }}
-                  minTickGap={40}
+                  minTickGap={20}
+                  allowDataOverflow
                 />
                 <YAxis
                   tickFormatter={(v: number) =>
@@ -314,7 +338,7 @@ export default function FundingHistoryChart() {
                 {activeSymbols.map((sym, i) => (
                   <Line
                     key={sym}
-                    type="monotone"
+                    type="linear"
                     dataKey={sym}
                     stroke={SYMBOL_COLORS[i % SYMBOL_COLORS.length]}
                     dot={chartData.length < 5}
