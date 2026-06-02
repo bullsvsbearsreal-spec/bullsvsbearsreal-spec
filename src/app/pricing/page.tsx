@@ -275,6 +275,10 @@ export default function PricingPage() {
               a={`Trader ($${TIER_PRICE_MONTHLY.trader}) is active retail — every venue real-time, ${TIER_LIMITS.trader.maxAlerts} alerts, ${TIER_LIMITS.trader.maxWatchedWallets} wallets, ${TIER_LIMITS.trader.historyDays}d history, ${TIER_LIMITS.trader.apiPerMinute}/min API. Pro ($${TIER_PRICE_MONTHLY.pro}) is "trade for a living" — adds API archive (1y) + Tax CSV export + Custom dashboards + Setup scanner, plus ${TIER_LIMITS.pro.maxAlerts} alerts, ${TIER_LIMITS.pro.maxWatchedWallets} wallets, 1y history, ${TIER_LIMITS.pro.apiPerMinute}/min API. Whale ($${TIER_PRICE_MONTHLY.whale}) is funds + desks — adds priority alert delivery (dedicated queue), custom alert webhooks, 5y archive, unlimited everything, and a 1:1 Telegram channel with the team.`}
             />
             <FaqItem
+              q="How far back does historical data go?"
+              a={`Your tier sets the maximum lookback you can query — ${TIER_LIMITS.free.historyDays}d (Free), ${TIER_LIMITS.trader.historyDays}d (Trader), 1y (Pro), 5y (Whale). We keep full-resolution funding/OI for 30 days and a daily-downsampled archive beyond that. That archive has been accumulating since launch and grows every day, so the deepest windows fill in over time rather than being backfilled. The funding-history API reports the actual coverage it returned alongside your requested window, so you always know exactly how much data you got.`}
+            />
+            <FaqItem
               q="Do you charge based on usage?"
               a="No. Flat monthly or annual price — no overage fees, no surprise bills, no metered billing. If you hit a tier limit, the page tells you and offers an upgrade. Nothing breaks silently."
             />

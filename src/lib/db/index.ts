@@ -102,6 +102,26 @@ async function _doInitDB(): Promise<void> {
   // Partial index for price-multi queries (only rows with mark_price)
   await sql`CREATE INDEX IF NOT EXISTS idx_funding_mark_price ON funding_snapshots(symbol, exchange, ts DESC) WHERE mark_price IS NOT NULL AND mark_price > 0`;
 
+  // Daily-downsampled funding archive. Raw funding_snapshots are pruned at
+  // 30 days (per-minute × venues × symbols is the heavy table), but paid
+  // tiers advertise funding-history windows out to 5y. This rollup keeps one
+  // row per (symbol, exchange, UTC day) so the deeper windows accrue from
+  // launch forward without retaining the raw firehose. rate_sum + rate_count
+  // let readers reconstruct the exact unweighted cross-venue tick average
+  // getBulkFundingHistory computes from raw (avg = SUM(rate_sum)/SUM(rate_count)).
+  await sql`
+    CREATE TABLE IF NOT EXISTS funding_snapshots_daily (
+      symbol     TEXT NOT NULL,
+      exchange   TEXT NOT NULL,
+      day        DATE NOT NULL,
+      rate_sum   DOUBLE PRECISION NOT NULL,
+      rate_count INTEGER NOT NULL,
+      rate_avg   REAL NOT NULL,
+      PRIMARY KEY (symbol, exchange, day)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_funding_daily_sym_day ON funding_snapshots_daily(symbol, day)`;
+
   await sql`
     CREATE TABLE IF NOT EXISTS oi_snapshots (
       id SERIAL PRIMARY KEY,
@@ -1655,26 +1675,59 @@ export async function getBulkFundingHistory(
 
   try {
     const sql = getSQL();
-    const intervalStr = `${days} days`;
-    const rows = await sql`
-      SELECT symbol,
-             DATE(ts) AS day,
-             AVG(rate) AS rate
-      FROM funding_snapshots
-      WHERE symbol = ANY(${symbols})
-        AND ts > NOW() - ${intervalStr}::interval
-      GROUP BY symbol, DATE(ts)
-      ORDER BY symbol, day
-    `;
-
-    rows.forEach((r: any) => {
+    const pushRow = (r: any) => {
       const sym = r.symbol as string;
       if (!result.has(sym)) result.set(sym, []);
       result.get(sym)!.push({
         day: String(r.day).slice(0, 10),
         rate: Number(r.rate),
       });
-    });
+    };
+
+    // Recent window: raw per-minute snapshots aggregated to daily averages,
+    // capped at the 30-day raw-retention horizon (older raw is pruned). For
+    // days <= 30 this is the entire result and matches the long-standing
+    // behaviour exactly.
+    const rawDays = Math.min(days, 30);
+    const rawIntervalStr = `${rawDays} days`;
+    const rawRows = await sql`
+      SELECT symbol,
+             DATE(ts) AS day,
+             AVG(rate) AS rate
+      FROM funding_snapshots
+      WHERE symbol = ANY(${symbols})
+        AND ts > NOW() - ${rawIntervalStr}::interval
+      GROUP BY symbol, DATE(ts)
+      ORDER BY symbol, day
+    `;
+    rawRows.forEach(pushRow);
+
+    // Older window: the daily funding archive, for tiers whose lookback
+    // reaches beyond raw retention. Disjoint from the raw window (day <
+    // today-30) so the two series never double-count a day. Reconstructs the
+    // same unweighted cross-venue tick average via SUM(rate_sum)/SUM(rate_count).
+    // Safe-when-empty: until the archive accrues from launch this yields
+    // nothing and the result is identical to the raw-only query above.
+    if (days > 30) {
+      const olderRows = await sql`
+        SELECT symbol,
+               day,
+               SUM(rate_sum) / NULLIF(SUM(rate_count), 0) AS rate
+        FROM funding_snapshots_daily
+        WHERE symbol = ANY(${symbols})
+          AND day < (CURRENT_DATE - 30)
+          AND day > (CURRENT_DATE - ${days}::int)
+        GROUP BY symbol, day
+        ORDER BY symbol, day
+      `;
+      olderRows.forEach(pushRow);
+    }
+
+    // Recent + older are appended in separate passes; sort each symbol's
+    // series ascending so the 30-day seam is ordered.
+    result.forEach((arr) =>
+      arr.sort((a, b) => (a.day < b.day ? -1 : a.day > b.day ? 1 : 0)),
+    );
   } catch (e) {
     console.error('DB getBulkFundingHistory error:', e);
   }
@@ -1856,10 +1909,66 @@ export async function getOIDeltas(): Promise<OIDelta[]> {
 
 // ─── Data Pruning ───────────────────────────────────────────────────────────
 
+/**
+ * Roll raw funding_snapshots into the daily archive (one row per
+ * symbol/exchange/UTC day) so paid-tier history windows accrue beyond the
+ * 30-day raw-retention horizon. Idempotent + bounded:
+ *
+ *  - Only "complete" days (DATE(ts) < CURRENT_DATE) are rolled — today is
+ *    still accumulating ticks.
+ *  - A cursor (MAX(day) already archived) means steady-state runs roll up at
+ *    most the single day that just completed. An empty / cold-start table
+ *    begins two days back rather than backfilling the whole raw window —
+ *    older raw was already pruned, and retention is "accrues forward" by
+ *    design, so there is nothing deeper to recover.
+ *  - A 33-day floor caps catch-up work after an outage.
+ *  - ON CONFLICT makes re-runs a no-op (safe to call every prune cycle).
+ *
+ * Returns the number of (symbol, exchange, day) rows upserted.
+ */
+export async function rollupFundingDaily(): Promise<number> {
+  try {
+    const sql = getSQL();
+    const [{ max_day }] = await sql`SELECT MAX(day) AS max_day FROM funding_snapshots_daily`;
+    const res = await sql`
+      INSERT INTO funding_snapshots_daily (symbol, exchange, day, rate_sum, rate_count, rate_avg)
+      SELECT symbol, exchange, DATE(ts) AS day,
+             SUM(rate)::double precision AS rate_sum,
+             COUNT(rate)::int            AS rate_count,
+             AVG(rate)::real             AS rate_avg
+      FROM funding_snapshots
+      WHERE rate IS NOT NULL
+        -- Bound on ts (not DATE(ts)) so the ts btree index is usable: the
+        -- steady-state no-op range [today, today) short-circuits on the index
+        -- instead of seq-scanning this (heavy) table every prune cycle. Lower
+        -- bound = start of the first un-rolled complete day; upper = start of
+        -- today (so only complete days roll up).
+        AND ts >= (GREATEST(COALESCE(${max_day}::date, CURRENT_DATE - 2), CURRENT_DATE - 33) + 1)::timestamptz
+        AND ts <  CURRENT_DATE::timestamptz
+      GROUP BY symbol, exchange, DATE(ts)
+      ON CONFLICT (symbol, exchange, day) DO UPDATE
+        SET rate_sum   = EXCLUDED.rate_sum,
+            rate_count = EXCLUDED.rate_count,
+            rate_avg   = EXCLUDED.rate_avg
+    `;
+    return res.count ?? 0;
+  } catch (e) {
+    console.error('DB rollupFundingDaily error:', e);
+    return 0;
+  }
+}
+
 export async function pruneOldData(keepDays: number = 90): Promise<{ funding: number; oi: number; liquidations: number }> {
   try {
     const sql = getSQL();
     const intervalStr = `${keepDays} days`;
+
+    // Archive raw funding into the daily rollup BEFORE pruning raw, so the day
+    // crossing the retention horizon is captured. rollupFundingDaily swallows
+    // its own errors (returns 0) and the cursor re-rolls any missed day on the
+    // next run while its raw rows still exist — a failure here never blocks the
+    // prune below.
+    const dailyRolled = await rollupFundingDaily();
 
     const fr = await sql`
       DELETE FROM funding_snapshots WHERE ts < NOW() - ${intervalStr}::interval
@@ -1870,6 +1979,12 @@ export async function pruneOldData(keepDays: number = 90): Promise<{ funding: nu
     const liq = await sql`
       DELETE FROM liquidation_snapshots WHERE ts < NOW() - ${intervalStr}::interval
     `;
+
+    // Bound the daily funding archive at the deepest advertised tier window
+    // (Whale = 5y) plus a small margin. Cheap — the daily table is tiny.
+    await sql`DELETE FROM funding_snapshots_daily WHERE day < CURRENT_DATE - 1830`
+      .catch((e: unknown) => console.warn('[db] funding_daily prune:', e));
+    if (dailyRolled > 0) console.log(`[db] funding daily rollup: +${dailyRolled} rows`);
 
     // Also clean expired cache entries and stale auth codes
     await sql`DELETE FROM api_cache WHERE expires_at < NOW()`;

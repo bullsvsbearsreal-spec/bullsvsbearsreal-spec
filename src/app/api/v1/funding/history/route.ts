@@ -11,9 +11,15 @@ export const dynamic = 'force-dynamic';
  * GET /api/v1/funding/history
  *
  * Returns historical funding rate snapshots from DB. Lookback window is
- * tier-clamped per /pricing (Free 90d / Pro 365d / Whale 5y) — the
- * `days` param above the tier cap is silently rounded down and the
- * effective value is reported in `meta.days`.
+ * tier-clamped per /pricing (Free 30d / Trader 180d / Pro 1y / Whale 5y) —
+ * a `days` param above the tier cap is rounded down to it and reported in
+ * `meta.days` (with `meta.requestedDays` when it differed).
+ *
+ * The archive accrues from launch forward: full-resolution data is kept for
+ * 30 days and a daily-downsampled rollup beyond that, so deep windows fill in
+ * over time rather than being backfilled. `meta.coverageDays` / `meta.earliestDay`
+ * report the actual span returned, and `meta.note` flags when current coverage
+ * is shallower than the requested window — no silent gap.
  *
  * Query params:
  *   ?symbols=BTC,ETH   — required, comma-separated symbols (max 20)
@@ -56,6 +62,22 @@ export async function GET(request: NextRequest) {
     const history: Record<string, Array<{ day: string; rate: number }>> = {};
     historyMap.forEach((value, key) => { history[key] = value; });
 
+    // Actual coverage. The archive accrues forward, so the real span returned
+    // can be shallower than the (tier-clamped) requested window. Surface the
+    // earliest datapoint + span so partners never mistake "30 days of data"
+    // for "the 180 I asked for". Each symbol's series is day-ascending, so
+    // points[0] is its earliest day.
+    let earliestDay: string | null = null;
+    historyMap.forEach((points) => {
+      const first = points[0];
+      if (first && (!earliestDay || first.day < earliestDay)) {
+        earliestDay = first.day;
+      }
+    });
+    const coverageDays = earliestDay
+      ? Math.floor((Date.now() - Date.parse(`${earliestDay}T00:00:00Z`)) / 86_400_000) + 1
+      : 0;
+
     return NextResponse.json({
       success: true,
       data: history,
@@ -65,9 +87,16 @@ export async function GET(request: NextRequest) {
         days,
         // Tier context so partners can detect when their `days` param
         // got clamped by the tier cap (e.g. Free user asks for 365d,
-        // gets 90). `requestedDays` only present when it differs.
+        // gets 30). `requestedDays` only present when it differs.
         tier,
         tierMaxDays,
+        // Actual span of data returned (≤ days while the archive is still
+        // filling in). `note` flags the shortfall explicitly.
+        coverageDays,
+        earliestDay,
+        ...(coverageDays < days
+          ? { note: 'Archive accrues from launch; windows deeper than current coverage fill in over time.' }
+          : {}),
         ...(requestedDays !== days ? { requestedDays } : {}),
       },
     }, {

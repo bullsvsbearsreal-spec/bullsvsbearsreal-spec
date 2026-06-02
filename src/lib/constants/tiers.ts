@@ -292,7 +292,7 @@ export const FEATURE_MATRIX: FeatureGroup[] = [
     },
   },
   {
-    label: 'API archive window (historical bulk export)',
+    label: 'API archive window (bulk export · accrues from launch)',
     values: {
       free: '30 days',
       trader: '180 days',
@@ -327,7 +327,7 @@ export const FEATURE_MATRIX: FeatureGroup[] = [
   },
   // ── Data ──
   {
-    label: 'Historical funding + OI in-app window',
+    label: 'Historical funding + OI window (accrues from launch)',
     values: { free: '30 days', trader: '180 days', pro: '1 year', whale: '5 years' },
   },
   {
