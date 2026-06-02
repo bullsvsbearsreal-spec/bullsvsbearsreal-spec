@@ -1623,7 +1623,11 @@ export async function getFundingHistory(
 ): Promise<HistoryPoint[]> {
   try {
     const sql = getSQL();
-    const intervalStr = `${days} days`;
+    // Recent window: raw snapshots, capped at the 30-day raw-retention horizon
+    // (older raw is pruned). For days <= 30 this is the whole result and
+    // matches the long-standing behaviour exactly.
+    const rawDays = Math.min(days, 30);
+    const intervalStr = `${rawDays} days`;
     let rows;
     if (exchange) {
       rows = await sql`
@@ -1655,7 +1659,37 @@ export async function getFundingHistory(
         ORDER BY t ASC
       `;
     }
-    return rows.map((r: any) => ({ t: Number(r.t), rate: Number(r.rate) }));
+    const rawPoints = rows.map((r: any) => ({ t: Number(r.t), rate: Number(r.rate) }));
+
+    // Older window: the daily funding archive at day granularity, for
+    // lookbacks beyond raw retention. Disjoint from raw (day < today-30) and
+    // safe-when-empty — yields nothing until the archive accrues, leaving the
+    // recent series untouched. Older days all precede the raw window, so the
+    // concatenation stays time-ascending without a re-sort.
+    if (days > 30) {
+      const olderRows = exchange
+        ? await sql`
+            SELECT EXTRACT(EPOCH FROM day::timestamptz) * 1000 AS t, rate_avg AS rate
+            FROM funding_snapshots_daily
+            WHERE symbol = ${symbol} AND exchange = ${exchange}
+              AND day < (CURRENT_DATE - 30)
+              AND day > (CURRENT_DATE - ${days}::int)
+            ORDER BY day ASC
+          `
+        : await sql`
+            SELECT EXTRACT(EPOCH FROM day::timestamptz) * 1000 AS t,
+                   SUM(rate_sum) / NULLIF(SUM(rate_count), 0) AS rate
+            FROM funding_snapshots_daily
+            WHERE symbol = ${symbol}
+              AND day < (CURRENT_DATE - 30)
+              AND day > (CURRENT_DATE - ${days}::int)
+            GROUP BY day
+            ORDER BY day ASC
+          `;
+      const olderPoints = olderRows.map((r: any) => ({ t: Number(r.t), rate: Number(r.rate) }));
+      return olderPoints.concat(rawPoints);
+    }
+    return rawPoints;
   } catch (e) {
     console.error('DB getFundingHistory error:', e);
     return [];
