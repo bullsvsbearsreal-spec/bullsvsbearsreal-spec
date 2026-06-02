@@ -29,6 +29,18 @@ import {
   clearTriggered,
 } from '@/lib/storage/alerts';
 
+/**
+ * WhatsApp alert delivery is built end-to-end (lib/api/notifications.ts →
+ * sendAlertWhatsApp, via Twilio) but the Twilio number is still on the
+ * sandbox sender, so production delivery would silently fail. Keep it OUT
+ * of the advertised channel list until a real WhatsApp sender is
+ * provisioned — flip this to `true` to re-expose the channel chip + the
+ * setup form below (and re-add "WhatsApp" to the three delivery-copy
+ * strings). The delivery code stays wired regardless, so this flag is the
+ * only switch needed.
+ */
+const WHATSAPP_DELIVERY_ENABLED: boolean = false;
+
 /* ─── Helpers ────────────────────────────────────────────────────── */
 
 function formatMetricValue(metric: AlertMetric, value: number): string {
@@ -370,7 +382,7 @@ export default function AlertsPage() {
                 Set conditions on price, funding rate, open interest, or 24h change.
                 Server-side checks run every 5 min — even when your browser is closed;
                 the open tab re-checks every 60s. Pings deliver via Email, Telegram,
-                Discord, or WhatsApp (configure below).
+                or Discord (configure below).
               </p>
             </div>
             <button
@@ -512,7 +524,9 @@ export default function AlertsPage() {
                       { key: 'email', label: 'Email', icon: Mail },
                       { key: 'telegram', label: 'Telegram', icon: Send },
                       { key: 'discord', label: 'Discord', icon: Hash },
-                      { key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+                      ...(WHATSAPP_DELIVERY_ENABLED
+                        ? [{ key: 'whatsapp', label: 'WhatsApp', icon: MessageCircle }]
+                        : []),
                       { key: 'push', label: 'Push', icon: Smartphone },
                     ].map(({ key, label, icon: Icon }) => {
                       // Push is the only channel we can ground-truth client-side
@@ -552,7 +566,7 @@ export default function AlertsPage() {
                   {/* For non-push channels, point to /profile for setup since
                       we can't ground-truth those without a server round-trip. */}
                   <p className="text-[10px] text-neutral-600 mt-2 leading-relaxed">
-                    Channels you haven&apos;t set up will silently drop alerts. Configure email / Telegram / Discord / WhatsApp in{' '}
+                    Channels you haven&apos;t set up will silently drop alerts. Configure email / Telegram / Discord in{' '}
                     <Link href="/profile?tab=notifications" className="text-hub-yellow hover:underline">your profile</Link>.
                   </p>
                 </div>
@@ -912,7 +926,10 @@ export default function AlertsPage() {
                   </div>
                 )}
 
-                {/* WhatsApp */}
+                {/* WhatsApp — hidden until a real Twilio sender is provisioned
+                    (WHATSAPP_DELIVERY_ENABLED). Delivery code stays wired. */}
+                {WHATSAPP_DELIVERY_ENABLED && (
+                <>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <MessageCircle className="w-4 h-4 text-neutral-400" />
@@ -966,6 +983,8 @@ export default function AlertsPage() {
                       Save Phone
                     </button>
                   </div>
+                )}
+                </>
                 )}
 
                 {/* Cooldown selector */}
@@ -1023,7 +1042,7 @@ export default function AlertsPage() {
                 </div>
                 <div className="flex items-start gap-2">
                   <span className="text-purple-500 text-xs mt-0.5">&#9679;</span>
-                  <p className="text-neutral-400 text-xs"><span className="text-neutral-300 font-medium">Delivery</span> — Email, Telegram, Discord &amp; WhatsApp based on your notification settings</p>
+                  <p className="text-neutral-400 text-xs"><span className="text-neutral-300 font-medium">Delivery</span> — Email, Telegram &amp; Discord based on your notification settings</p>
                 </div>
               </div>
             ) : (
