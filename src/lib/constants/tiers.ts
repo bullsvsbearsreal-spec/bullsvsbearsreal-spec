@@ -206,7 +206,7 @@ export const TOOLS_BY_TIER: TierToolList[] = [
       { label: 'Event Calendar', href: '/economic-calendar', hint: 'Macro + token events' },
       { label: 'Token Unlocks', href: '/token-unlocks', hint: 'Vesting + cliffs' },
       { label: 'Liq Heatmap', href: '/liquidation-heatmap' },
-      { label: 'News + Signals', href: '/news' },
+      { label: 'News + Sentiment', href: '/news' },
       { label: '3 custom alerts · 5 watched wallets', hint: '30d history · 100 API req/min · 5k req/day' },
       { label: 'Community Telegram support' },
     ],
