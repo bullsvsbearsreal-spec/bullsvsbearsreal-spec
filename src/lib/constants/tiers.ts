@@ -219,7 +219,7 @@ export const TOOLS_BY_TIER: TierToolList[] = [
       { label: 'Spreads', href: '/spreads', hint: 'Cross-venue arb · net-of-fees' },
       { label: 'Funding Arb', href: '/spread-scanner', hint: 'Long/short pair grader A→D' },
       { label: 'Trade Optimizer', href: '/trade-optimizer', hint: 'Cheapest venue per trade' },
-      { label: 'Options', href: '/options', hint: 'Chain · Greeks · IV · max pain' },
+      { label: 'Options', href: '/options', hint: 'Max pain · OI by strike · IV smile · skew' },
       { label: 'Wallet Alerts', href: '/watch', hint: 'HL + gTrade position alerter' },
       { label: 'Smart Money', href: '/smart-money', hint: 'Top trader leaderboard + Consensus mode' },
       { label: 'HL Whales', href: '/hl-whales', hint: 'Top Hyperliquid positions' },

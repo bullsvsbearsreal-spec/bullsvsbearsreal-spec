@@ -48,7 +48,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'screener',     label: 'Screener',          href: '/screener',  hint: 'Filter & sort markets' },
       { id: 'chart',        label: 'Chart',             href: '/chart',              hint: 'Candles + book + tape' },
-      { id: 'options',      label: 'Options',           href: '/options',   hint: 'Chain · Greeks · IV · max pain · skew · RV vs IV' },
+      { id: 'options',      label: 'Options',           href: '/options',   hint: 'Max pain · OI by strike · IV smile · skew · RV vs IV' },
       // /options-iv, /rv-iv, /max-pain, /skew consolidated into /options (May 2026)
       { id: 'spreads',      label: 'Spreads',           href: '/spreads',            hint: 'Cross-venue arb' },
       { id: 'funding-arb',  label: 'Funding Arb',       href: '/spread-scanner',     hint: 'Long/short pairs' },
