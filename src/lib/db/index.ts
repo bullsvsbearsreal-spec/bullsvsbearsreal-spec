@@ -258,6 +258,25 @@ async function _doInitDB(): Promise<void> {
   await sql`CREATE INDEX IF NOT EXISTS idx_liq_sym_ex_ts ON liquidation_snapshots(symbol, exchange, ts DESC)`;
   await sql`CREATE UNIQUE INDEX IF NOT EXISTS idx_liq_dedup ON liquidation_snapshots(symbol, exchange, side, price, ts)`;
 
+  // Daily-downsampled liquidation archive — accrues-forward retention like the
+  // funding/OI dailies. One row per (symbol, exchange, UTC day) with total /
+  // long / short USD value + event count. Liquidation-history surfaces cap at
+  // 90d (not a 5y tier window), so this mainly deepens the 30→90d range and
+  // banks data should a longer liquidation-history feature land later.
+  await sql`
+    CREATE TABLE IF NOT EXISTS liquidation_snapshots_daily (
+      symbol          TEXT NOT NULL,
+      exchange        TEXT NOT NULL,
+      day             DATE NOT NULL,
+      value_usd       DOUBLE PRECISION NOT NULL,
+      long_value_usd  DOUBLE PRECISION NOT NULL,
+      short_value_usd DOUBLE PRECISION NOT NULL,
+      event_count     INTEGER NOT NULL,
+      PRIMARY KEY (symbol, exchange, day)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_liq_daily_sym_day ON liquidation_snapshots_daily(symbol, day)`;
+
   // Compound indexes for faster history queries
   await sql`CREATE INDEX IF NOT EXISTS idx_funding_sym_ex_ts ON funding_snapshots(symbol, exchange, ts DESC)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_oi_sym_ex_ts ON oi_snapshots(symbol, exchange, ts DESC)`;
@@ -1520,7 +1539,11 @@ export async function getLiquidationHistory(
 ): Promise<LiquidationHistoryPoint[]> {
   try {
     const sql = getSQL();
-    const intervalStr = `${days} days`;
+    // Recent window: raw events, hourly-bucketed, capped at the 30-day raw
+    // horizon. For days <= 30 this is the whole result (byte-identical to the
+    // long-standing query).
+    const rawDays = Math.min(days, 30);
+    const intervalStr = `${rawDays} days`;
     const rows = await sql`
       SELECT
         EXTRACT(EPOCH FROM date_trunc('hour', ts)) * 1000 AS t,
@@ -1534,13 +1557,42 @@ export async function getLiquidationHistory(
       GROUP BY date_trunc('hour', ts)
       ORDER BY t ASC
     `;
-    return rows.map((r: any) => ({
+    const rawPoints = rows.map((r: any) => ({
       t: Number(r.t),
       value: Number(r.value),
       count: Number(r.count),
       longValue: Number(r.long_value),
       shortValue: Number(r.short_value),
     }));
+
+    // Older window: the daily liquidation archive (day-granularity totals
+    // across venues), for lookbacks beyond raw retention. Disjoint (day <
+    // today-30) + safe-when-empty; older days precede the raw window so the
+    // concat stays time-ascending.
+    if (days > 30) {
+      const olderRows = await sql`
+        SELECT EXTRACT(EPOCH FROM day::timestamptz) * 1000 AS t,
+               SUM(value_usd) AS value,
+               SUM(event_count) AS count,
+               SUM(long_value_usd) AS long_value,
+               SUM(short_value_usd) AS short_value
+        FROM liquidation_snapshots_daily
+        WHERE symbol = ${symbol}
+          AND day < (CURRENT_DATE - 30)
+          AND day > (CURRENT_DATE - ${days}::int)
+        GROUP BY day
+        ORDER BY day ASC
+      `;
+      const olderPoints = olderRows.map((r: any) => ({
+        t: Number(r.t),
+        value: Number(r.value),
+        count: Number(r.count),
+        longValue: Number(r.long_value),
+        shortValue: Number(r.short_value),
+      }));
+      return olderPoints.concat(rawPoints);
+    }
+    return rawPoints;
   } catch (e) {
     console.error('DB getLiquidationHistory error:', e);
     return [];
@@ -2063,6 +2115,40 @@ export async function rollupOiDaily(): Promise<number> {
   }
 }
 
+/**
+ * Roll raw liquidation_snapshots into the daily liquidation archive. Same
+ * cursor/floor/ts-range scheme as the funding/OI rollups (see rollupFundingDaily
+ * for the full rationale). Stores per (symbol, exchange, day): total / long /
+ * short USD value + event count. Returns the number of rows upserted.
+ */
+export async function rollupLiquidationsDaily(): Promise<number> {
+  try {
+    const sql = getSQL();
+    const [{ max_day }] = await sql`SELECT MAX(day) AS max_day FROM liquidation_snapshots_daily`;
+    const res = await sql`
+      INSERT INTO liquidation_snapshots_daily (symbol, exchange, day, value_usd, long_value_usd, short_value_usd, event_count)
+      SELECT symbol, exchange, DATE(ts) AS day,
+             SUM(value_usd)::double precision AS value_usd,
+             SUM(CASE WHEN side = 'long'  THEN value_usd ELSE 0 END)::double precision AS long_value_usd,
+             SUM(CASE WHEN side = 'short' THEN value_usd ELSE 0 END)::double precision AS short_value_usd,
+             COUNT(*)::int AS event_count
+      FROM liquidation_snapshots
+      WHERE ts >= (GREATEST(COALESCE(${max_day}::date, CURRENT_DATE - 2), CURRENT_DATE - 33) + 1)::timestamptz
+        AND ts <  CURRENT_DATE::timestamptz
+      GROUP BY symbol, exchange, DATE(ts)
+      ON CONFLICT (symbol, exchange, day) DO UPDATE
+        SET value_usd       = EXCLUDED.value_usd,
+            long_value_usd  = EXCLUDED.long_value_usd,
+            short_value_usd = EXCLUDED.short_value_usd,
+            event_count     = EXCLUDED.event_count
+    `;
+    return res.count ?? 0;
+  } catch (e) {
+    console.error('DB rollupLiquidationsDaily error:', e);
+    return 0;
+  }
+}
+
 export async function pruneOldData(keepDays: number = 90): Promise<{ funding: number; oi: number; liquidations: number }> {
   try {
     const sql = getSQL();
@@ -2075,6 +2161,7 @@ export async function pruneOldData(keepDays: number = 90): Promise<{ funding: nu
     // prune below.
     const dailyRolled = await rollupFundingDaily();
     const oiRolled = await rollupOiDaily();
+    const liqRolled = await rollupLiquidationsDaily();
 
     const fr = await sql`
       DELETE FROM funding_snapshots WHERE ts < NOW() - ${intervalStr}::interval
@@ -2092,7 +2179,13 @@ export async function pruneOldData(keepDays: number = 90): Promise<{ funding: nu
       .catch((e: unknown) => console.warn('[db] funding_daily prune:', e));
     await sql`DELETE FROM oi_snapshots_daily WHERE day < CURRENT_DATE - 1830`
       .catch((e: unknown) => console.warn('[db] oi_daily prune:', e));
-    if (dailyRolled > 0 || oiRolled > 0) console.log(`[db] daily rollup: funding +${dailyRolled}, oi +${oiRolled}`);
+    // Liquidation history surfaces cap at 90d (not a 5y tier window), so its
+    // archive only needs that window + margin.
+    await sql`DELETE FROM liquidation_snapshots_daily WHERE day < CURRENT_DATE - 120`
+      .catch((e: unknown) => console.warn('[db] liquidation_daily prune:', e));
+    if (dailyRolled > 0 || oiRolled > 0 || liqRolled > 0) {
+      console.log(`[db] daily rollup: funding +${dailyRolled}, oi +${oiRolled}, liq +${liqRolled}`);
+    }
 
     // Also clean expired cache entries and stale auth codes
     await sql`DELETE FROM api_cache WHERE expires_at < NOW()`;
